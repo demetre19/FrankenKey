@@ -14,3 +14,4 @@
 {"artifacts": ["dependency-tree.csv", "todo.csv", "agent-roster.csv", "completion-report.md"], "kind": "orchestration_dependency_plan_written", "status": "complete", "ts": "2026-07-05T16:56:02Z"}
 {"install_root": "/Volumes/TheHoneyBadger/", "kind": "tooling_install_directive_recorded", "stage_gate": "START BUILD", "ts": "2026-07-05T16:56:38Z"}
 {"artifact": "context.md", "kind": "orchestration_context_written", "status": "complete", "ts": "2026-07-05T16:57:23Z"}
+{"kind": "start_build_received", "status": "build_execution_started", "ts": "2026-07-05T16:59:16Z"}
