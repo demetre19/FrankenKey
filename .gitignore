@@ -39,7 +39,7 @@ captures/
 *.apks
 
 # AutoBuild volatile worker internals (durable run state remains tracked)
-.prd-runs/**/worktrees/*/.git/
+.prd-runs/**/worktrees/
 .prd-runs/**/worker-home/
 .prd-runs/**/tmp/
 .prd-runs/**/cache/
