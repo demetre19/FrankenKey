@@ -41,6 +41,11 @@
       "answer": "Always when enabled",
       "question": "When should the custom snippet top row be visible?",
       "rationale": "Show the snippet row above the keyboard whenever FrankenKey is open, controlled by an app setting to turn the row on or off."
+    },
+    "snippet_storage": {
+      "answer": "Local only",
+      "question": "How should custom snippets be stored and handled for privacy?",
+      "rationale": "Store snippets only on-device; no cloud sync, accounts, analytics, or network access for snippet content."
     }
   },
   "prd_skill_read": true,
@@ -50,6 +55,6 @@
   "run_id": "20260705T161907Z-5c0f9642",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
-  "updated_at": "2026-07-05T16:49:04Z",
+  "updated_at": "2026-07-05T16:49:37Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row"
 }
