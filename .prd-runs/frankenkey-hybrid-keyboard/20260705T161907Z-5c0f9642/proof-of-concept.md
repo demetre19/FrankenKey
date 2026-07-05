@@ -86,3 +86,47 @@ Evidence:
   - slot count boundaries `0`, `1`, `7`, `8`, `14`, and `15` produce expected page counts and page slices.
 
 Decision: snippet model boundary proof is complete. Continue to local-only snippet storage implementation.
+
+
+## T002 — Local-only snippet storage
+
+Status: done  
+Recorded: `2026-07-05T17:44:59Z`
+
+Evidence:
+
+- Added `srcs/juloo.keyboard2/snippets/SnippetStore.java`.
+- Added focused JUnit test `test/juloo.keyboard2/snippets/SnippetStoreTest.java`.
+- Added test-only dependency `org.json:json:20240303` so Android JSON storage code can run under local JVM unit tests.
+- Verified:
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetStoreTest --rerun-tasks`
+  - Result: `BUILD SUCCESSFUL`.
+- Covered contracts:
+  - JSON roundtrip preserves list order, index, phrase, custom label, and icon-label flag;
+  - empty slots remain visible after save/load;
+  - null and malformed JSON return fixed visible empty slots up to requested minimum;
+  - default slot count is `SnippetStore.DEFAULT_SLOT_COUNT`;
+  - `replaceSlot` updates by index without reordering surrounding slots;
+  - encoded JSON uses local slot fields only and no URL/network/account/cloud-style fields.
+
+Decision: local-only storage model is complete. Continue to runtime row and insertion integration.
+
+
+## P002 — Additive row layout seam
+
+Status: passed  
+Recorded: `2026-07-05T17:44:59Z`
+
+Evidence:
+
+- Added focused static layout test `test/juloo.keyboard2/snippets/KeyboardLayoutSeamTest.java`.
+- Verified:
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.KeyboardLayoutSeamTest --rerun-tasks`
+  - Result: `BUILD SUCCESSFUL`.
+- The test parses `res/layout/keyboard.xml` and proves:
+  - root remains a vertical `LinearLayout`;
+  - `juloo.keyboard2.Keyboard2View` remains a direct child;
+  - `Keyboard2View` keeps id `@+id/keyboard_view`, which `Keyboard2.create_keyboard_view()` uses for runtime lookup;
+  - there is a direct sibling insertion position before `Keyboard2View` for the additive snippet row.
+
+Decision: the row seam is proven without touching `Keyboard2View` or baseline key hit-testing code. Continue to paged snippet row implementation.

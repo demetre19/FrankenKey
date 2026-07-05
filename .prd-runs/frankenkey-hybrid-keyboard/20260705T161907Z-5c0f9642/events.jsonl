@@ -19,3 +19,5 @@
 {"id": "P001", "kind": "proof_passed", "summary": "Unexpected Keyboard upstream import and debug build path passed", "ts": "2026-07-05T17:18:44Z"}
 {"foundation_commit": "7802453", "id": "T001", "kind": "implementation_done", "merge_commit": "ffd8af6", "recorded_at": "2026-07-05T17:24:14Z", "status": "done", "upstream_commit": "9c70f1113e3217c744f0618d872e1be3cc68b1c0"}
 {"focused_command": "./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetSlotTest", "id": "P003", "kind": "proof_passed", "recorded_at": "2026-07-05T17:29:10Z", "status": "passed", "test_file": "test/juloo.keyboard2/snippets/SnippetSlotTest.java"}
+{"focused_command": "./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetStoreTest --rerun-tasks", "id": "T002", "kind": "implementation_done", "recorded_at": "2026-07-05T17:44:59Z", "status": "done"}
+{"focused_command": "./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.KeyboardLayoutSeamTest --rerun-tasks", "id": "P002", "kind": "proof_passed", "recorded_at": "2026-07-05T17:44:59Z", "status": "passed"}

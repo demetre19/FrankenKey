@@ -10,6 +10,7 @@ dependencies {
   implementation("androidx.window:window-java:1.4.0")
   implementation("androidx.core:core:1.16.0") // Version 1.17.0 available with sdk 36
   testImplementation("junit:junit:4.13.2")
+  testImplementation("org.json:json:20240303")
 }
 
 android {
