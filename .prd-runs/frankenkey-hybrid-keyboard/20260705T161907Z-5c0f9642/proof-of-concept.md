@@ -61,3 +61,28 @@ Evidence:
   - IME component advertised: `provides-component:'ime'`.
 
 Decision: baseline source and FrankenKey identity checkpoint are complete. Continue to snippet model proof before storage/editor/runtime implementation.
+
+
+## P003 — Snippet model labels and seven-slot grouping
+
+Status: passed  
+Recorded: `2026-07-05T17:29:10Z`
+
+Evidence:
+
+- Added production model classes:
+  - `srcs/juloo.keyboard2/snippets/SnippetSlot.java`
+  - `srcs/juloo.keyboard2/snippets/SnippetPages.java`
+- Added focused JUnit test: `test/juloo.keyboard2/snippets/SnippetSlotTest.java`.
+- Verified with external JDK 17 and a run-local `python` shim for Gradle generation tasks:
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetSlotTest`
+  - Result: `BUILD SUCCESSFUL`.
+- Covered contracts:
+  - empty slot display labels are one-based slot indexes;
+  - phrase labels use the first one or two Unicode code points without splitting surrogate pairs;
+  - non-empty custom labels override generated labels;
+  - configured state follows a non-empty insertable phrase;
+  - page size is exactly seven;
+  - slot count boundaries `0`, `1`, `7`, `8`, `14`, and `15` produce expected page counts and page slices.
+
+Decision: snippet model boundary proof is complete. Continue to local-only snippet storage implementation.
