@@ -130,3 +130,28 @@ Evidence:
   - there is a direct sibling insertion position before `Keyboard2View` for the additive snippet row.
 
 Decision: the row seam is proven without touching `Keyboard2View` or baseline key hit-testing code. Continue to paged snippet row implementation.
+
+
+## T004 — Runtime paged snippet row
+
+Status: done  
+Recorded: `2026-07-05T17:51:18Z`
+
+Evidence:
+
+- Added `srcs/juloo.keyboard2/snippets/SnippetRowView.java`.
+- Inserted `SnippetRowView` as a direct sibling immediately above `Keyboard2View` in `res/layout/keyboard.xml`.
+- Updated `Keyboard2.create_keyboard_view()` to bind `R.id.snippet_row` and `Keyboard2.refresh_config()` to call `_snippet_row_view.refresh_config(_prefs, null)`.
+- Updated `test/juloo.keyboard2/snippets/KeyboardLayoutSeamTest.java` to defend the runtime row seam and shared page-size contract.
+- Verified:
+  - `./gradlew compileDebugJavaWithJavac` — `BUILD SUCCESSFUL`.
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.KeyboardLayoutSeamTest --rerun-tasks` — `BUILD SUCCESSFUL`.
+- Runtime row behavior implemented:
+  - visible whenever `SnippetStore.PREF_ENABLED` is true/default;
+  - loads local-only slots from `SnippetStore`;
+  - renders seven controls per page via `SnippetPages.PAGE_SIZE`;
+  - horizontally scrolls and snaps to page-width groups;
+  - shows empty slot labels as visible disabled/low-alpha controls;
+  - leaves `Keyboard2View` as the same direct child/id and does not modify its touch/key handling.
+
+Decision: runtime row implementation is complete. Continue to exact snippet insertion proof/wiring.

@@ -6,6 +6,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -14,11 +17,13 @@ import static org.junit.Assert.*;
 public class KeyboardLayoutSeamTest
 {
   private static final String ANDROID_NS = "http://schemas.android.com/apk/res/android";
+  private static final String KEYBOARD_VIEW_TAG = "juloo.keyboard2.Keyboard2View";
+  private static final String SNIPPET_ROW_TAG = "juloo.keyboard2.snippets.SnippetRowView";
 
   public KeyboardLayoutSeamTest() {}
 
   @Test
-  public void keyboard_view_remains_direct_child_with_insertable_sibling_seam()
+  public void snippet_row_is_direct_sibling_immediately_above_keyboard_view()
       throws Exception
   {
     Document layout = parseLayout("res/layout/keyboard.xml");
@@ -30,15 +35,92 @@ public class KeyboardLayoutSeamTest
         "vertical", root.getAttributeNS(ANDROID_NS, "orientation"));
 
     List<Element> rows = directElementChildren(root);
-    int keyboardRowIndex = indexOfTag(rows, "juloo.keyboard2.Keyboard2View");
+    int snippetRowIndex = indexOfTag(rows, SNIPPET_ROW_TAG);
+    int keyboardRowIndex = indexOfTag(rows, KEYBOARD_VIEW_TAG);
 
-    assertTrue("Keyboard2View must be a direct child so an additive row can be inserted before it without wrapping or replacing the baseline view.",
+    assertTrue("SnippetRowView must be an additive direct child of the keyboard root.",
+        snippetRowIndex >= 0);
+    assertTrue("Keyboard2View must remain a direct child; the snippet row must not wrap or replace it.",
         keyboardRowIndex >= 0);
-    assertEquals("The baseline Keyboard2View id is the runtime lookup contract that must survive the seam.",
+    assertEquals("SnippetRowView must be the direct sibling immediately above Keyboard2View.",
+        keyboardRowIndex - 1, snippetRowIndex);
+    assertEquals("SnippetRowView id is the runtime lookup contract.",
+        "@+id/snippet_row",
+        rows.get(snippetRowIndex).getAttributeNS(ANDROID_NS, "id"));
+    assertEquals("Keyboard2View must retain the runtime lookup id.",
         "@+id/keyboard_view",
         rows.get(keyboardRowIndex).getAttributeNS(ANDROID_NS, "id"));
-    assertTrue("There must be a direct sibling position before Keyboard2View for the additive row.",
-        keyboardRowIndex > 0);
+    assertEquals("The layout must contain exactly one Keyboard2View.",
+        1, countTag(rows, KEYBOARD_VIEW_TAG));
+  }
+
+  @Test
+  public void snippet_row_uses_shared_page_size_constant()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/snippets/SnippetRowView.java");
+
+    assertTrue("SnippetRowView must use SnippetPages.PAGE_SIZE so runtime slots stay in seven-control pages.",
+        source.contains("SnippetPages.PAGE_SIZE"));
+  }
+
+  @Test
+  public void keyboard_service_finds_and_refreshes_snippet_row()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/Keyboard2.java");
+    String createKeyboardView = methodBody(source, "private void create_keyboard_view(");
+    String refreshConfig = methodBody(source, "private void refresh_config(");
+
+    assertTrue("create_keyboard_view() must bind the snippet row by R.id.snippet_row.",
+        containsLineWithAll(createKeyboardView, "findViewById", "R.id.snippet_row"));
+    assertTrue("refresh_config() must refresh the snippet row when keyboard config changes.",
+        containsLineWithAll(refreshConfig, "snippet", "refresh_config("));
+  }
+
+  private static String readSource(String path)
+      throws Exception
+  {
+    return new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+  }
+
+  private static String methodBody(String source, String methodSignature)
+  {
+    int methodIndex = source.indexOf(methodSignature);
+    assertTrue("Expected method in source: " + methodSignature, methodIndex >= 0);
+    int openBrace = source.indexOf('{', methodIndex);
+    assertTrue("Expected method body for: " + methodSignature, openBrace >= 0);
+
+    int depth = 0;
+    for (int i = openBrace; i < source.length(); i++)
+    {
+      char c = source.charAt(i);
+      if (c == '{')
+        depth++;
+      else if (c == '}')
+      {
+        depth--;
+        if (depth == 0)
+          return source.substring(openBrace + 1, i);
+      }
+    }
+    fail("Expected closing brace for: " + methodSignature);
+    return "";
+  }
+
+  private static boolean containsLineWithAll(String source, String... parts)
+  {
+    String[] lines = source.split("\\R");
+    for (String line : lines)
+    {
+      String lowerLine = line.toLowerCase();
+      boolean hasAll = true;
+      for (String part : parts)
+        hasAll &= lowerLine.contains(part.toLowerCase());
+      if (hasAll)
+        return true;
+    }
+    return false;
   }
 
   private static Document parseLayout(String path)
@@ -69,5 +151,14 @@ public class KeyboardLayoutSeamTest
       if (tagName.equals(elements.get(i).getTagName()))
         return i;
     return -1;
+  }
+
+  private static int countTag(List<Element> elements, String tagName)
+  {
+    int count = 0;
+    for (Element element : elements)
+      if (tagName.equals(element.getTagName()))
+        count++;
+    return count;
   }
 }

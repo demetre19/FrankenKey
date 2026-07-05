@@ -31,6 +31,7 @@ import juloo.keyboard2.dict.DictionariesActivity;
 import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
 import juloo.keyboard2.suggestions.Suggestions;
+import juloo.keyboard2.snippets.SnippetRowView;
 
 public class Keyboard2 extends InputMethodService
   implements SharedPreferences.OnSharedPreferenceChangeListener
@@ -39,6 +40,7 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _keyboard_container_view;
   private Keyboard2View _keyboard_layout_view;
   private CandidatesView _candidates_view;
+  private SnippetRowView _snippet_row_view;
   private Suggestions _suggestions;
   private KeyEventHandler _keyeventhandler;
   /** If not 'null', the layout to use instead of [_config.current_layout]. */
@@ -50,6 +52,7 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _emojiPane = null;
   private ViewGroup _clipboard_pane = null;
   private Handler _handler;
+  private SharedPreferences _prefs;
 
   private Config _config;
 
@@ -126,11 +129,11 @@ public class Keyboard2 extends InputMethodService
   public void onCreate()
   {
     super.onCreate();
-    SharedPreferences prefs = DirectBootAwarePreferences.get_shared_preferences(this);
+    _prefs = DirectBootAwarePreferences.get_shared_preferences(this);
     _handler = new Handler(getMainLooper());
     _foldStateTracker = new FoldStateTracker(this);
     _dictionaries = Dictionaries.instance(this);
-    Config.initGlobalConfig(prefs, getResources(),
+    Config.initGlobalConfig(_prefs, getResources(),
         _foldStateTracker.isUnfolded(), _dictionaries);
     _config = Config.globalConfig();
     Receiver recvr = this.new Receiver();
@@ -138,7 +141,7 @@ public class Keyboard2 extends InputMethodService
     _keyeventhandler = new KeyEventHandler(recvr, _suggestions);
     KeyValue.Stateful._handler = recvr;
     _config.handler = _keyeventhandler;
-    prefs.registerOnSharedPreferenceChangeListener(this);
+    _prefs.registerOnSharedPreferenceChangeListener(this);
     Logs.set_debug_logs(getResources().getBoolean(R.bool.debug_logs));
     refreshSubtypeImm();
     create_keyboard_view();
@@ -158,6 +161,7 @@ public class Keyboard2 extends InputMethodService
     _keyboard_container_view = (ViewGroup)inflate_view(R.layout.keyboard);
     _keyboard_layout_view = (Keyboard2View)_keyboard_container_view.findViewById(R.id.keyboard_view);
     _candidates_view = (CandidatesView)_keyboard_container_view.findViewById(R.id.candidates_view);
+    _snippet_row_view = (SnippetRowView)_keyboard_container_view.findViewById(R.id.snippet_row);
   }
 
   InputMethodManager get_imm()
@@ -229,6 +233,7 @@ public class Keyboard2 extends InputMethodService
     bg.setAlpha(_config.keyboardOpacity);
     _keyboard_container_view.setBackground(bg);
     _keyboard_layout_view.reset();
+    _snippet_row_view.refresh_config(_prefs, null);
     refresh_candidates_view();
   }
 
