@@ -136,6 +136,10 @@ def parse_sequences_file(fname, xkb_char_extra_names={}):
 
 # A sequence directory can contain several sequence files as well as
 # 'keysymdef.h'.
+def compose_file_order(fname):
+    basename = os.path.basename(fname)
+    return (0 if basename == "extra.json" else 1, basename)
+
 def parse_sequences_dir(dname):
     compose_files = []
     xkb_char_extra_names = {}
@@ -147,7 +151,7 @@ def parse_sequences_dir(dname):
         else:
             compose_files.append(fname)
     sequences = []
-    for fname in compose_files:
+    for fname in sorted(compose_files, key=compose_file_order):
         sequences.extend(parse_sequences_file(fname, xkb_char_extra_names))
     return sequences
 
