@@ -1,0 +1,45 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+*.keystore
+*.jks
+*token*
+*credentials*
+secrets/
+credentials/
+
+# Local editor and OS state
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependency and build outputs
+node_modules/
+build/
+dist/
+out/
+.gradle/
+.cxx/
+.externalNativeBuild/
+.kotlin/
+
+# Android/local generated files
+local.properties
+captures/
+*.apk
+*.aab
+*.apks
+
+# AutoBuild volatile worker internals (durable run state remains tracked)
+.prd-runs/**/worktrees/*/.git/
+.prd-runs/**/worker-home/
+.prd-runs/**/tmp/
+.prd-runs/**/cache/
