@@ -192,3 +192,31 @@ Evidence:
 - Focused insertion test verifies the row listener inserts `slot.getPhrase()` and does not add suggestion-style whitespace.
 
 Decision: tapping a configured snippet row slot is wired to exact phrase insertion and keeps the keyboard path active.
+
+
+## T003 — Fleksy-like snippet settings editor
+
+Status: done  
+Recorded: `2026-07-05T18:00:03Z`
+
+Evidence:
+
+- Added `srcs/juloo.keyboard2/snippets/SnippetSlotsPreference.java`.
+- Added snippets settings category in `res/xml/settings.xml`:
+  - enable toggle key `frankenkey_snippets_enabled`;
+  - `juloo.keyboard2.snippets.SnippetSlotsPreference` editor.
+- Added default English strings in `res/values/strings.xml`.
+- Added focused JUnit/source/XML test `test/juloo.keyboard2/snippets/SnippetSettingsTest.java`.
+- Verified:
+  - `./gradlew compileDebugJavaWithJavac` — `BUILD SUCCESSFUL`.
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetSettingsTest --rerun-tasks` — `BUILD SUCCESSFUL`.
+- Editor contracts implemented:
+  - fixed indexed visible slots loaded from `SnippetStore`;
+  - empty slots remain visible;
+  - slot dialog exposes phrase input, optional custom label, icon-style checkbox, and live preview via `SnippetSlot.getDisplayLabel()`;
+  - save persists via `SnippetStore.replaceSlot`/`saveSlots`;
+  - clear resets phrase/label/icon flag;
+  - add-page action adds seven more visible slots for another horizontal group;
+  - no cloud/account/network storage path is introduced.
+
+Decision: settings editor implementation is complete. Continue to verification phase.

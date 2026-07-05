@@ -13,6 +13,10 @@
     <ListPreference android:key="numpad_layout" android:title="@string/pref_numpad_layout" android:summary="%s" android:defaultValue="high_first" android:entries="@array/pref_numpad_layout_entries" android:entryValues="@array/pref_numpad_layout_values"/>
     <ListPreference android:key="split_layout" android:title="@string/pref_split_layout" android:summary="%s" android:defaultValue="wide" android:entries="@array/pref_split_layout_entries" android:entryValues="@array/pref_split_layout_values"/>
   </PreferenceCategory>
+  <PreferenceCategory android:title="@string/pref_category_snippets">
+    <CheckBoxPreference android:key="frankenkey_snippets_enabled" android:title="@string/pref_snippets_enabled_title" android:summary="@string/pref_snippets_enabled_summary" android:defaultValue="true"/>
+    <juloo.keyboard2.snippets.SnippetSlotsPreference/>
+  </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_suggestions">
     <CheckBoxPreference android:key="suggestions" android:title="@string/pref_suggestions_title" android:summary="@string/pref_suggestions_summary" android:defaultValue="true"/>
     <CheckBoxPreference android:key="space_bar_auto_complete" android:title="@string/pref_space_bar_auto_complete_title" android:summary="@string/pref_space_bar_auto_complete_summary" android:defaultValue="false"/>
