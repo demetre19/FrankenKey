@@ -58,13 +58,22 @@ public class SnippetSettingsTest
       throws Exception
   {
     String source = readSource(SNIPPET_PREF_SOURCE);
+    String loadAndReattach = methodBody(source, "private void load_and_reattach(");
+    String changeSlot = methodBody(source, "private void change_slot(");
+    String persistSlots = methodBody(source, "private void persist_slots(");
 
-    assertTrue("SnippetSlotsPreference must load visible slots through SnippetStore.loadSlots(...).",
-        source.contains("SnippetStore.loadSlots("));
-    assertTrue("Saving an edited slot must serialize through SnippetStore.saveSlots(...).",
-        source.contains("SnippetStore.saveSlots("));
+    assertTrue("SnippetSlotsPreference must load visible slots from SnippetStore's private snippet file.",
+        loadAndReattach.contains("SnippetStore.loadSlots(getContext())"));
     assertTrue("Saving or clearing one slot must replace by slot index instead of rebuilding/reordering the list.",
-        source.contains("SnippetStore.replaceSlot("));
+        changeSlot.contains("SnippetStore.replaceSlot(_slots, slot)"));
+    assertTrue("SnippetSlotsPreference must persist edited phrases through SnippetStore.saveSlots(getContext(), ...).",
+        persistSlots.contains("SnippetStore.saveSlots(getContext(), _slots)"));
+    assertFalse("SnippetSlotsPreference must not write raw phrases through a SharedPreferences editor.",
+        persistSlots.contains(".edit(") || persistSlots.contains("putString(")
+        || persistSlots.contains("SharedPreferences.Editor"));
+    assertFalse("SnippetSlotsPreference must not address the legacy raw SharedPreferences slots key.",
+        persistSlots.contains("SnippetStore.PREF_SLOTS")
+        || source.contains("PreferenceManager.getDefaultSharedPreferences"));
   }
 
   @Test
@@ -109,6 +118,30 @@ public class SnippetSettingsTest
     Path sourcePath = Paths.get(path);
     assertTrue("Expected production source file: " + path, Files.isRegularFile(sourcePath));
     return new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
+  }
+
+  private static String methodBody(String source, String methodSignature)
+  {
+    int methodIndex = source.indexOf(methodSignature);
+    assertTrue("Expected method in source: " + methodSignature, methodIndex >= 0);
+    int openBrace = source.indexOf('{', methodIndex);
+    assertTrue("Expected method body for: " + methodSignature, openBrace >= 0);
+
+    int depth = 0;
+    for (int i = openBrace; i < source.length(); i++)
+    {
+      char c = source.charAt(i);
+      if (c == '{')
+        depth++;
+      else if (c == '}')
+      {
+        depth--;
+        if (depth == 0)
+          return source.substring(openBrace + 1, i);
+      }
+    }
+    fail("Expected closing brace for: " + methodSignature);
+    return "";
   }
 
   private static Document parseXml(String path)

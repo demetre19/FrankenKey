@@ -3,6 +3,10 @@ package juloo.keyboard2.snippets;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -14,6 +18,9 @@ import static org.junit.Assert.*;
 public class SnippetStoreTest
 {
   public SnippetStoreTest() {}
+
+  private static final String SNIPPET_STORE_SOURCE =
+      "srcs/juloo.keyboard2/snippets/SnippetStore.java";
 
   @Test
   public void json_roundtrip_preserves_order_and_slot_fields()
@@ -110,6 +117,116 @@ public class SnippetStoreTest
             disallowedRemoteFields.contains(key.toLowerCase(Locale.ROOT)));
       }
     }
+  }
+
+  @Test
+  public void context_load_migrates_legacy_preferences_to_no_backup_file_then_removes_key()
+      throws Exception
+  {
+    String source = readSource(SNIPPET_STORE_SOURCE);
+    String contextLoad = methodBody(source,
+        "public static List<SnippetSlot> loadSlots(Context context)");
+    String contextSave = methodBody(source,
+        "public static void saveSlots(Context context");
+    String migration = methodBody(source,
+        "private static void migrateLegacySlots(Context context)");
+    String slotsFile = methodBody(source,
+        "private static File slotsFile(Context context)");
+
+    int credentialGate = contextLoad.indexOf(
+        "canAccessCredentialProtectedStorage(context)");
+    int lockedReturn = contextLoad.indexOf("return emptySlots", credentialGate);
+    int migrationCall = contextLoad.indexOf("migrateLegacySlots(context)");
+    int noBackupRead = contextLoad.indexOf("readFile(slotsFile(context))");
+
+    assertTrue("loadSlots(Context) must keep legacy migration behind the credential-protected storage gate.",
+        credentialGate >= 0 && lockedReturn > credentialGate
+        && migrationCall > lockedReturn);
+    assertTrue("Legacy default preferences may be consulted only before loading the no-backup snippet file.",
+        migrationCall >= 0 && migrationCall < noBackupRead);
+
+    int defaultPrefs = migration.indexOf(
+        "PreferenceManager.getDefaultSharedPreferences(context)");
+    int containsLegacy = migration.indexOf("prefs.contains(PREF_SLOTS)");
+    int readLegacy = migration.indexOf("prefs.getString(PREF_SLOTS, null)");
+    int noBackupFile = migration.indexOf("slotsFile(context)");
+    int writeMigrated = migration.indexOf("writeFile(file, encoded)");
+    int existingStore = migration.indexOf("file.isFile()");
+    int removalGate = migration.indexOf("if (migrated)");
+    int removeLegacy = migration.indexOf(".remove(PREF_SLOTS)", removalGate);
+    int applyRemoval = migration.indexOf(".apply()", removeLegacy);
+
+    assertTrue("Legacy snippets must be read from default SharedPreferences only inside the one-shot migration helper.",
+        defaultPrefs >= 0 && containsLegacy > defaultPrefs
+        && readLegacy > containsLegacy);
+    assertEquals("Default SharedPreferences access for raw snippet phrases must stay isolated to the migration helper.",
+        1,
+        countOccurrences(source,
+            "PreferenceManager.getDefaultSharedPreferences(context)"));
+    assertOrdered("Migrated phrases must be written through the no-backup snippet file path before legacy removal.",
+        noBackupFile, writeMigrated, removalGate, removeLegacy, applyRemoval);
+    assertTrue("If the no-backup file already exists, legacy raw preferences still must be treated as removable.",
+        existingStore >= 0 && existingStore < removalGate);
+    assertTrue("The snippet storage file must live under Context.getNoBackupFilesDir().",
+        slotsFile.contains("context.getNoBackupFilesDir()"));
+    assertFalse("New snippet saves must not write raw phrases through backup-eligible default SharedPreferences.",
+        contextSave.contains("PreferenceManager.getDefaultSharedPreferences")
+        || contextSave.contains("PREF_SLOTS")
+        || contextSave.contains("putString("));
+  }
+
+  private static String readSource(String path)
+      throws Exception
+  {
+    Path sourcePath = Paths.get(path);
+    assertTrue("Expected production source file: " + path,
+        Files.isRegularFile(sourcePath));
+    return new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
+  }
+
+  private static String methodBody(String source, String methodSignature)
+  {
+    int methodIndex = source.indexOf(methodSignature);
+    assertTrue("Expected method in source: " + methodSignature, methodIndex >= 0);
+    int openBrace = source.indexOf('{', methodIndex);
+    assertTrue("Expected method body for: " + methodSignature, openBrace >= 0);
+
+    int depth = 0;
+    for (int i = openBrace; i < source.length(); i++)
+    {
+      char c = source.charAt(i);
+      if (c == '{')
+        depth++;
+      else if (c == '}')
+      {
+        depth--;
+        if (depth == 0)
+          return source.substring(openBrace + 1, i);
+      }
+    }
+    fail("Expected closing brace for: " + methodSignature);
+    return "";
+  }
+
+  private static void assertOrdered(String message, int... indexes)
+  {
+    for (int i = 0; i < indexes.length; ++i)
+      assertTrue(message + " (missing step " + i + ")", indexes[i] >= 0);
+    for (int i = 1; i < indexes.length; ++i)
+      assertTrue(message + " (step " + i + " out of order)",
+          indexes[i] > indexes[i - 1]);
+  }
+
+  private static int countOccurrences(String source, String needle)
+  {
+    int count = 0;
+    int index = source.indexOf(needle);
+    while (index >= 0)
+    {
+      count++;
+      index = source.indexOf(needle, index + needle.length());
+    }
+    return count;
   }
 
   private static void assertSlots(List<SnippetSlot> actual,

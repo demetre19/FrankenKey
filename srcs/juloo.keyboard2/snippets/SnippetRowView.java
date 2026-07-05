@@ -33,15 +33,17 @@ public class SnippetRowView extends HorizontalScrollView
           LayoutParams.WRAP_CONTENT));
   }
 
-  public void refresh_config(SharedPreferences prefs, OnSnippetClickListener listener)
+  public void refresh_config(SharedPreferences prefs, boolean editorAllowsText,
+      OnSnippetClickListener listener)
   {
-    if (!SnippetStore.isEnabled(prefs))
+    if (!editorAllowsText || !SnippetStore.isEnabled(prefs))
     {
+      _pages.removeAllViews();
       setVisibility(GONE);
       return;
     }
     setVisibility(VISIBLE);
-    List<SnippetSlot> slots = SnippetStore.loadSlots(prefs);
+    List<SnippetSlot> slots = SnippetStore.loadSlots(getContext());
     int pages = SnippetPages.pageCount(slots.size());
     _pages.removeAllViews();
     for (int page = 0; page < pages; ++page)

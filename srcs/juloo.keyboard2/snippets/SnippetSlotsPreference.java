@@ -3,7 +3,6 @@ package juloo.keyboard2.snippets;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.text.Editable;
@@ -41,7 +40,7 @@ public class SnippetSlotsPreference extends PreferenceCategory
 
   private void load_and_reattach()
   {
-    _slots = SnippetStore.loadSlots(getSharedPreferences());
+    _slots = SnippetStore.loadSlots(getContext());
     reattach();
   }
 
@@ -74,9 +73,7 @@ public class SnippetSlotsPreference extends PreferenceCategory
   private void persist_slots(List<SnippetSlot> slots)
   {
     _slots = SnippetStore.withMinimumSlots(slots, SnippetStore.DEFAULT_SLOT_COUNT);
-    SharedPreferences.Editor editor = getSharedPreferences().edit();
-    SnippetStore.saveSlots(editor, _slots);
-    editor.apply();
+    SnippetStore.saveSlots(getContext(), _slots);
     reattach();
   }
 

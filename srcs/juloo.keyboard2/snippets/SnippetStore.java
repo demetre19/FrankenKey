@@ -1,6 +1,15 @@
 package juloo.keyboard2.snippets;
 
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build.VERSION;
+import android.os.UserManager;
+import android.preference.PreferenceManager;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
@@ -12,6 +21,7 @@ public final class SnippetStore
   public static final String PREF_ENABLED = "frankenkey_snippets_enabled";
   public static final String PREF_SLOTS = "frankenkey_snippet_slots";
   public static final int DEFAULT_SLOT_COUNT = SnippetSlot.PAGE_SIZE;
+  private static final String STORE_FILE = "frankenkey_snippets.json";
 
   private SnippetStore() {}
 
@@ -25,15 +35,55 @@ public final class SnippetStore
     editor.putBoolean(PREF_ENABLED, enabled);
   }
 
-  public static List<SnippetSlot> loadSlots(SharedPreferences prefs)
+  public static List<SnippetSlot> loadSlots(Context context)
   {
-    return loadSlots(prefs.getString(PREF_SLOTS, null), DEFAULT_SLOT_COUNT);
+    if (!canAccessCredentialProtectedStorage(context))
+      return emptySlots(DEFAULT_SLOT_COUNT);
+    migrateLegacySlots(context);
+    try
+    {
+      return loadSlots(readFile(slotsFile(context)), DEFAULT_SLOT_COUNT);
+    }
+    catch (IOException _e)
+    {
+      return emptySlots(DEFAULT_SLOT_COUNT);
+    }
   }
 
-  public static void saveSlots(SharedPreferences.Editor editor,
-      List<SnippetSlot> slots)
+  public static void saveSlots(Context context, List<SnippetSlot> slots)
   {
-    editor.putString(PREF_SLOTS, saveSlots(slots));
+    if (!canAccessCredentialProtectedStorage(context))
+      return;
+    try
+    {
+      writeFile(slotsFile(context), saveSlots(slots));
+    }
+    catch (IOException _e) {}
+  }
+
+  private static void migrateLegacySlots(Context context)
+  {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+    if (!prefs.contains(PREF_SLOTS))
+      return;
+    String encoded = prefs.getString(PREF_SLOTS, null);
+    boolean migrated = false;
+    try
+    {
+      File file = slotsFile(context);
+      if (file.isFile())
+        migrated = true;
+      else if (encoded != null)
+      {
+        writeFile(file, encoded);
+        migrated = true;
+      }
+      else
+        migrated = true;
+    }
+    catch (IOException _e) {}
+    if (migrated)
+      prefs.edit().remove(PREF_SLOTS).apply();
   }
 
   public static List<SnippetSlot> loadSlots(String encoded, int minimumSlots)
@@ -114,6 +164,54 @@ public final class SnippetStore
     }
     out.set(slot.getIndex(), slot);
     return out;
+  }
+
+  private static boolean canAccessCredentialProtectedStorage(Context context)
+  {
+    if (VERSION.SDK_INT < 24)
+      return true;
+    UserManager um = (UserManager)context.getSystemService(Context.USER_SERVICE);
+    return um == null || um.isUserUnlocked();
+  }
+
+  private static File slotsFile(Context context)
+  {
+    return new File(context.getNoBackupFilesDir(), STORE_FILE);
+  }
+
+  private static String readFile(File file)
+      throws IOException
+  {
+    if (!file.isFile())
+      return null;
+    long length = file.length();
+    if (length <= 0)
+      return "";
+    byte[] bytes = new byte[(int)length];
+    try (FileInputStream input = new FileInputStream(file))
+    {
+      int offset = 0;
+      while (offset < bytes.length)
+      {
+        int read = input.read(bytes, offset, bytes.length - offset);
+        if (read < 0)
+          break;
+        offset += read;
+      }
+      return new String(bytes, 0, offset, StandardCharsets.UTF_8);
+    }
+  }
+
+  private static void writeFile(File file, String content)
+      throws IOException
+  {
+    File dir = file.getParentFile();
+    if (dir != null)
+      dir.mkdirs();
+    try (FileOutputStream output = new FileOutputStream(file))
+    {
+      output.write(content.getBytes(StandardCharsets.UTF_8));
+    }
   }
 
   private static List<SnippetSlot> emptySlots(int count)

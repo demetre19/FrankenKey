@@ -39,6 +39,7 @@ public final class EditorConfig
   /** Suggestions. */
   // Doesn't override [_config.suggestions_enabled].
   public boolean should_show_candidates_view;
+  public boolean should_show_snippet_row;
 
   public EditorConfig() {}
 
@@ -99,8 +100,22 @@ public final class EditorConfig
     }
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
-    /* Suggestions */
     should_show_candidates_view = CandidatesView.should_show(info);
+    should_show_snippet_row = should_show_snippet_row(info);
+  }
+
+  static boolean should_show_snippet_row(EditorInfo info)
+  {
+    int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
+    switch (info.inputType & InputType.TYPE_MASK_CLASS)
+    {
+      case InputType.TYPE_CLASS_TEXT:
+        return (variation & InputType.TYPE_TEXT_VARIATION_PASSWORD) == 0;
+      case InputType.TYPE_CLASS_NUMBER:
+        return variation != InputType.TYPE_NUMBER_VARIATION_PASSWORD;
+      default:
+        return true;
+    }
   }
 
   String actionLabel_of_imeAction(int action, Resources res)

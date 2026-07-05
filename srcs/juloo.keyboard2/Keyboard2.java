@@ -233,7 +233,9 @@ public class Keyboard2 extends InputMethodService
     bg.setAlpha(_config.keyboardOpacity);
     _keyboard_container_view.setBackground(bg);
     _keyboard_layout_view.reset();
-    _snippet_row_view.refresh_config(_prefs, slot -> _keyeventhandler.snippet_entered(slot.getPhrase()));
+    _snippet_row_view.refresh_config(_prefs,
+        _config.editor_config.should_show_snippet_row,
+        slot -> _keyeventhandler.snippet_entered(slot.getPhrase()));
     refresh_candidates_view();
   }
 

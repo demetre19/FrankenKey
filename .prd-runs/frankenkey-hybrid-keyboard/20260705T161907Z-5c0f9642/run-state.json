@@ -12,7 +12,7 @@
   "build_started_at": "2026-07-05T16:59:16Z",
   "context_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/context.md",
   "created_at": "2026-07-05T16:19:07.202952+00:00",
-  "current_phase": "snippet_implementation",
+  "current_phase": "complete",
   "custom_snippet_scope": "Fleksy-inspired feature is custom snippets launched via top-row buttons; do not clone full Fleksy extension/store system.",
   "feature": "frankenkey-hybrid-keyboard",
   "fleksy_repo_research_status": "no_exact_hotkey_source_found_in_repo",
@@ -57,6 +57,13 @@
   "prd_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/PRD.md",
   "prd_skill_read": true,
   "prior_answers_reused": "false",
+  "privacy_fixes": {
+    "direct_boot": "DirectBootAwarePreferences removes/skips legacy SnippetStore.PREF_SLOTS during copy.",
+    "legacy_migration": "SnippetStore.loadSlots(Context) migrates legacy PREF_SLOTS JSON from default SharedPreferences into the no-backup snippet file and removes PREF_SLOTS after successful migration/removal.",
+    "recorded_at": "2026-07-05T19:05:46Z",
+    "secure_editor_gate": "Keyboard2 passes editor_config.should_show_snippet_row to SnippetRowView; SnippetRowView hides/removes pages before loading phrases when false. EditorConfig rejects password, visible-password, web-password, combined password-bit text inputs, and number-password while allowing normal no-suggestions text.",
+    "storage": "SnippetSlotsPreference uses SnippetStore Context APIs; SnippetStore writes raw phrases to Context.getNoBackupFilesDir()/frankenkey_snippets.json."
+  },
   "project_dir": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
   "proofs": {
     "P001": {
@@ -106,6 +113,15 @@
       "recorded_at": "2026-07-05T17:55:08Z",
       "status": "passed",
       "test_file": "test/juloo.keyboard2/snippets/SnippetInsertionTest.java"
+    },
+    "P005": {
+      "apk": "build/outputs/apk/debug/FrankenKey-debug.apk",
+      "command": "./gradlew assembleDebug; aapt2 dump badging build/outputs/apk/debug/FrankenKey-debug.apk",
+      "ime_component": true,
+      "label": "FrankenKey (Debug)",
+      "package": "dev.frankenkey.keyboard.debug",
+      "recorded_at": "2026-07-05T18:24:51Z",
+      "status": "passed"
     }
   },
   "repo_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
@@ -114,7 +130,7 @@
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "start_build_approved": true,
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
-  "status": "snippet_settings_editor_implemented",
+  "status": "complete",
   "target_branch": "main",
   "tasks": {
     "T001": {
@@ -128,7 +144,7 @@
     },
     "T002": {
       "focused_command": "./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetStoreTest --rerun-tasks",
-      "notes": "Local-only SharedPreferences JSON storage preserves order, phrase, custom label, icon label flag, empty slots, default visible slots, and replace semantics. Added org.json as test-only dependency so Android JSON code is executable in local JVM tests.",
+      "notes": "Local-only snippet slot JSON preserves order, phrase, custom label, icon label flag, empty slots, default visible slots, and replace semantics. Context storage writes raw phrases to no-backup storage and migrates/removes legacy PREF_SLOTS from default preferences.",
       "production_files": [
         "srcs/juloo.keyboard2/snippets/SnippetStore.java",
         "build.gradle.kts"
@@ -188,11 +204,14 @@
   },
   "tooling_observations": {
     "adb": "/opt/homebrew/bin/adb",
-    "adb_devices_attached": false,
-    "android_sdk_detected": false,
+    "adb_devices_attached": "runtime emulator created and used for smoke test",
+    "android_sdk": "/Volumes/TheHoneyBadger/AndroidTooling/android-sdk",
+    "android_sdk_detected": true,
+    "android_studio_app": "not_installed; /Applications lookup and Spotlight bundle query returned no result",
     "fontforge": null,
     "git": "/opt/homebrew/bin/git",
     "java": "/usr/bin/java",
+    "java_home": "/Volumes/TheHoneyBadger/AndroidTooling/jdks/jdk-17.0.19+10/Contents/Home",
     "keytool": "/usr/bin/keytool",
     "python3": "/opt/homebrew/bin/python3"
   },
@@ -200,8 +219,47 @@
     "baseline_keyboard_requirement": "Copy/preserve Unexpected Keyboard exactly for bottom layout, typing behavior, gestures, modifiers, and existing settings.",
     "snippet_integration_requirement": "Add custom snippets only as a Fleksy-style top-row add-on layer."
   },
-  "updated_at": "2026-07-05T18:00:03Z",
+  "updated_at": "2026-07-05T19:05:46Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row",
+  "verification": {
+    "R001": {
+      "notes": "FixedAcceptanceReview and FixedAdversarialReview both returned NO BLOCKERS after migration/removal and combined-password fixes.",
+      "recorded_at": "2026-07-05T19:05:46Z",
+      "status": "passed"
+    },
+    "V001": {
+      "command": "./gradlew testDebugUnitTest",
+      "notes": "Full unit suite passes after snippet, privacy, migration, and secure-gate fixes.",
+      "recorded_at": "2026-07-05T19:05:46Z",
+      "status": "passed"
+    },
+    "V002": {
+      "commands": [
+        "./gradlew testDebugUnitTest --tests juloo.keyboard2.EditorConfigTest --tests juloo.keyboard2.snippets.SnippetStoreTest --tests juloo.keyboard2.DirectBootAwarePreferencesTest --tests juloo.keyboard2.snippets.KeyboardLayoutSeamTest --tests juloo.keyboard2.snippets.SnippetSettingsTest --rerun-tasks",
+        "./gradlew testDebugUnitTest"
+      ],
+      "notes": "Snippet behavior, no-backup storage, legacy migration/removal, secure-editor hiding, no-suggestions allowance, direct-boot exclusion, settings persistence, and layout seam verified.",
+      "recorded_at": "2026-07-05T19:05:46Z",
+      "status": "passed"
+    },
+    "V003": {
+      "apk": "build/outputs/apk/debug/FrankenKey-debug.apk",
+      "commands": [
+        "./gradlew assembleDebug",
+        "aapt2 dump badging build/outputs/apk/debug/FrankenKey-debug.apk",
+        "adb -s emulator-5554 install -r build/outputs/apk/debug/FrankenKey-debug.apk",
+        "adb -s emulator-5554 shell ime enable dev.frankenkey.keyboard.debug/juloo.keyboard2.Keyboard2",
+        "adb -s emulator-5554 shell ime set dev.frankenkey.keyboard.debug/juloo.keyboard2.Keyboard2",
+        "adb -s emulator-5554 shell settings get secure default_input_method",
+        "adb -s emulator-5554 shell dumpsys input_method"
+      ],
+      "emulator": "FrankenKeyParity",
+      "ime_id": "dev.frankenkey.keyboard.debug/juloo.keyboard2.Keyboard2",
+      "notes": "Final rebuilt APK metadata is FrankenKey/debug IME; final rebuilt APK installed, enabled, selected, and dumpsys input_method showed the FrankenKey IME as current.",
+      "recorded_at": "2026-07-05T19:05:46Z",
+      "status": "passed"
+    }
+  },
   "worktrees_created": {
     "foundation": {
       "branch": "autobuild/foundation",

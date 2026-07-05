@@ -78,6 +78,55 @@ public class KeyboardLayoutSeamTest
         containsLineWithAll(refreshConfig, "snippet", "refresh_config("));
   }
 
+  @Test
+  public void keyboard_service_uses_secure_editor_snippet_policy_for_snippet_row()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/Keyboard2.java");
+    String refreshConfig = methodBody(source, "private void refresh_config(");
+
+    int snippetRefresh = refreshConfig.indexOf("_snippet_row_view.refresh_config(");
+    assertTrue("refresh_config() must refresh the snippet row.",
+        snippetRefresh >= 0);
+
+    int snippetPolicy = refreshConfig.indexOf(
+        "_config.editor_config.should_show_snippet_row", snippetRefresh);
+    int clickListener = refreshConfig.indexOf("slot ->", snippetRefresh);
+
+    assertTrue("SnippetRowView must receive the editor snippet policy as its secure-editor visibility gate.",
+        snippetPolicy > snippetRefresh);
+    assertTrue("The snippet policy must be the visibility argument, not dead code elsewhere in refresh_config().",
+        clickListener > snippetPolicy);
+  }
+
+  @Test
+  public void snippet_row_removes_snippets_when_editor_disallows_user_visible_text()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/snippets/SnippetRowView.java");
+    String refreshConfig = methodBody(source, "public void refresh_config(");
+
+    int denialGate = refreshConfig.indexOf("!editorAllowsText");
+    int enabledGate = refreshConfig.indexOf("SnippetStore.isEnabled", denialGate);
+    int loadSlots = refreshConfig.indexOf("SnippetStore.loadSlots");
+    int removePages = refreshConfig.indexOf("_pages.removeAllViews()", denialGate);
+    int hideRow = refreshConfig.indexOf("setVisibility(GONE)", denialGate);
+    int returnFromDeniedEditor = refreshConfig.indexOf("return;", denialGate);
+
+    assertTrue("SnippetRowView must have an explicit editorAllowsText denial gate.",
+        denialGate >= 0);
+    assertTrue("The local enable toggle may share the denial branch but must be checked before any slot load.",
+        enabledGate >= 0 && enabledGate < loadSlots);
+    assertTrue("Denied editors must not load persisted snippet phrases.",
+        loadSlots > 0);
+    assertTrue("Denied editors must remove already-rendered snippet pages before any slot load.",
+        removePages > denialGate && removePages < loadSlots);
+    assertTrue("Denied editors must hide the snippet row before any slot load.",
+        hideRow > denialGate && hideRow < loadSlots);
+    assertTrue("Denied editors must return before any persisted snippet phrases are read.",
+        returnFromDeniedEditor > hideRow && returnFromDeniedEditor < loadSlots);
+  }
+
   private static String readSource(String path)
       throws Exception
   {

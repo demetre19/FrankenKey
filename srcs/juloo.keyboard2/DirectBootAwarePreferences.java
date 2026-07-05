@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build.VERSION;
 import android.preference.PreferenceManager;
+import juloo.keyboard2.snippets.SnippetStore;
 import java.util.Map;
 import java.util.Set;
 
@@ -64,9 +65,12 @@ public final class DirectBootAwarePreferences
   static void copy_shared_preferences(SharedPreferences src, SharedPreferences dst)
   {
     SharedPreferences.Editor e = dst.edit();
+    e.remove(SnippetStore.PREF_SLOTS);
     Map<String, ?> entries = src.getAll();
     for (String k : entries.keySet())
     {
+      if (SnippetStore.PREF_SLOTS.equals(k))
+        continue;
       Object v = entries.get(k);
       if (v instanceof Boolean)
         e.putBoolean(k, (Boolean)v);
