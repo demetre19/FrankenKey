@@ -4,11 +4,13 @@
   "feature": "frankenkey-hybrid-keyboard",
   "run_id": "20260705T161907Z-5c0f9642",
   "run_dir": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642",
-  "intake_status": "run_setup",
+  "intake_status": "prd_discovery_ready",
   "git_root": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "prior_answers_reused": "false",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row",
   "created_at": "2026-07-05T16:19:07.202952+00:00",
-  "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite"
+  "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
+  "updated_at": "2026-07-05T16:19:59.023782+00:00",
+  "prd_skill_read": true
 }
