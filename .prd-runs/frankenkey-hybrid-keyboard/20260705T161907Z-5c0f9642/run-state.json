@@ -55,6 +55,10 @@
   "run_id": "20260705T161907Z-5c0f9642",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
-  "updated_at": "2026-07-05T16:49:37Z",
+  "unexpected_keyboard_exact_baseline": {
+    "baseline_keyboard_requirement": "Copy/preserve Unexpected Keyboard exactly for bottom layout, typing behavior, gestures, modifiers, and existing settings.",
+    "snippet_integration_requirement": "Add custom snippets only as a Fleksy-style top-row add-on layer."
+  },
+  "updated_at": "2026-07-05T16:51:09Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row"
 }
