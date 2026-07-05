@@ -37,3 +37,27 @@ Evidence:
 - Build output: `.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/worktrees/foundation/build/outputs/apk/debug/Unexpected-Keyboard-debug.apk`.
 
 Decision: source import/build path is proven. Continue to identity changes and baseline source checkpoint.
+
+
+## T001 — Baseline import and FrankenKey identity checkpoint
+
+Status: done  
+Recorded: `2026-07-05T17:24:14Z`
+
+Evidence:
+
+- Imported Unexpected Keyboard upstream commit `9c70f1113e3217c744f0618d872e1be3cc68b1c0` into the project source tree.
+- Foundation branch commit: `7802453`.
+- Main merge commit: `ffd8af6`.
+- Preserved upstream namespace/source package `juloo.keyboard2` and baseline implementation structure to avoid unnecessary bottom-keyboard churn.
+- Changed only app/build identity required for FrankenKey:
+  - Gradle `applicationId` base: `dev.frankenkey.keyboard`.
+  - Root project name: `FrankenKey`.
+  - App labels: `FrankenKey` / `FrankenKey (Debug)`.
+- Rebuilt debug APK after identity changes: `BUILD SUCCESSFUL`.
+- APK metadata proof from `aapt2 dump badging`:
+  - package: `dev.frankenkey.keyboard.debug`.
+  - application label: `FrankenKey (Debug)`.
+  - IME component advertised: `provides-component:'ime'`.
+
+Decision: baseline source and FrankenKey identity checkpoint are complete. Continue to snippet model proof before storage/editor/runtime implementation.
