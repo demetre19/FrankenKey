@@ -10,6 +10,7 @@ import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import java.util.Iterator;
 import juloo.keyboard2.suggestions.Suggestions;
+import juloo.keyboard2.snippets.SnippetInserter;
 
 public final class KeyEventHandler
   implements Config.IKeyEventHandler,
@@ -148,6 +149,11 @@ public final class KeyEventHandler
     send_text(content);
   }
 
+  public void snippet_entered(String phrase)
+  {
+    send_text(phrase);
+  }
+
   @Override
   public void currently_typed_word(String word)
   {
@@ -259,7 +265,7 @@ public final class KeyEventHandler
       return;
     _autocap.typed(text);
     _typedword.typed(text);
-    conn.commitText(text, 1);
+    SnippetInserter.insert(conn, text);
   }
 
   void replace_surrounding_text(int remove_before, int remove_after,

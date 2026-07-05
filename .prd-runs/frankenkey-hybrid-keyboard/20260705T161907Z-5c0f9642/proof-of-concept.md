@@ -155,3 +155,40 @@ Evidence:
   - leaves `Keyboard2View` as the same direct child/id and does not modify its touch/key handling.
 
 Decision: runtime row implementation is complete. Continue to exact snippet insertion proof/wiring.
+
+
+## P004 — Exact snippet insertion helper
+
+Status: passed  
+Recorded: `2026-07-05T17:55:08Z`
+
+Evidence:
+
+- Added `srcs/juloo.keyboard2/snippets/SnippetInserter.java`.
+- Added focused JUnit test `test/juloo.keyboard2/snippets/SnippetInsertionTest.java`.
+- Verified:
+  - `./gradlew testDebugUnitTest --tests juloo.keyboard2.snippets.SnippetInsertionTest --rerun-tasks`
+  - Result: `BUILD SUCCESSFUL`.
+- Covered contracts:
+  - `InputConnection.commitText` receives exactly the configured phrase;
+  - cursor position argument is `1`;
+  - no trailing space is appended;
+  - null `InputConnection` is safe and returns `false`.
+
+Decision: exact phrase insertion helper proof is complete.
+
+
+## T005 — Snippet tap insertion wiring
+
+Status: done  
+Recorded: `2026-07-05T17:55:08Z`
+
+Evidence:
+
+- Added `KeyEventHandler.snippet_entered(String phrase)` delegating to existing `send_text(phrase)`.
+- Updated `send_text` to use `SnippetInserter.insert(conn, text)` after existing autocapitalisation/current-word updates, preserving the same `commitText(text, 1)` text path.
+- Updated `Keyboard2.refresh_config()` to pass a non-null `SnippetRowView` listener:
+  - `_keyeventhandler.snippet_entered(slot.getPhrase())`.
+- Focused insertion test verifies the row listener inserts `slot.getPhrase()` and does not add suggestion-style whitespace.
+
+Decision: tapping a configured snippet row slot is wired to exact phrase insertion and keeps the keyboard path active.
