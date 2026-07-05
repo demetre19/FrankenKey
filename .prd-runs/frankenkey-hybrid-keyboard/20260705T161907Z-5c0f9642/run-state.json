@@ -1,4 +1,5 @@
 {
+  "access_readiness": "no_secret_blockers; environment_prerequisites_recorded",
   "apk_hotkey_evidence": {
     "activities": [
       "HotKeysActivity",
@@ -8,7 +9,9 @@
     "runtime": "ExtensionBar.HotKeys supplies HotKey(index, icon, phrase) list to HotKeyExtensionBar",
     "storage": "hotkey_prefs entries keyed by index with JSON [isFont, icon, phrase]"
   },
+  "context_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/context.md",
   "created_at": "2026-07-05T16:19:07.202952+00:00",
+  "current_phase": "orchestration_planning",
   "custom_snippet_scope": "Fleksy-inspired feature is custom snippets launched via top-row buttons; do not clone full Fleksy extension/store system.",
   "feature": "frankenkey-hybrid-keyboard",
   "fleksy_repo_research_status": "no_exact_hotkey_source_found_in_repo",
@@ -16,6 +19,7 @@
   "git_root": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
   "intake_status": "prd_discovery_ready",
   "mode": "NEW_BUILD",
+  "planning_started_at": "2026-07-05T16:55:05Z",
   "prd_answers": {
     "app_identity": {
       "answer": "FrankenKey",
@@ -48,17 +52,38 @@
       "rationale": "Store snippets only on-device; no cloud sync, accounts, analytics, or network access for snippet content."
     }
   },
+  "prd_approved_at": "2026-07-05T16:55:05Z",
+  "prd_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/PRD.md",
   "prd_skill_read": true,
   "prior_answers_reused": "false",
   "project_dir": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
+  "repo_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey",
   "run_dir": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642",
   "run_id": "20260705T161907Z-5c0f9642",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
+  "status": "orchestration_plan_ready_pending_start_build",
+  "target_branch": "main",
+  "tooling_install_directive": {
+    "approved": true,
+    "install_root": "/Volumes/TheHoneyBadger/",
+    "scope": "Android Studio, Android SDK, and related Android build tooling as needed",
+    "stage_gate": "Install only after START BUILD"
+  },
+  "tooling_observations": {
+    "adb": "/opt/homebrew/bin/adb",
+    "adb_devices_attached": false,
+    "android_sdk_detected": false,
+    "fontforge": null,
+    "git": "/opt/homebrew/bin/git",
+    "java": "/usr/bin/java",
+    "keytool": "/usr/bin/keytool",
+    "python3": "/opt/homebrew/bin/python3"
+  },
   "unexpected_keyboard_exact_baseline": {
     "baseline_keyboard_requirement": "Copy/preserve Unexpected Keyboard exactly for bottom layout, typing behavior, gestures, modifiers, and existing settings.",
     "snippet_integration_requirement": "Add custom snippets only as a Fleksy-style top-row add-on layer."
   },
-  "updated_at": "2026-07-05T16:51:09Z",
+  "updated_at": "2026-07-05T16:57:23Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row"
 }
