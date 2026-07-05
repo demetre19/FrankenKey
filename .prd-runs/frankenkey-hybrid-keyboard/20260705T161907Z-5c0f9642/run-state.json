@@ -17,6 +17,11 @@
   "intake_status": "prd_discovery_ready",
   "mode": "NEW_BUILD",
   "prd_answers": {
+    "app_identity": {
+      "answer": "FrankenKey",
+      "question": "What should the Android app identity be for the build?",
+      "rationale": "Use app name FrankenKey and a new package id such as dev.frankenkey.keyboard, separate from Unexpected Keyboard."
+    },
     "snippet_insertion_behavior": {
       "answer": "Insert phrase, keep keyboard open",
       "question": "When a user taps a custom snippet button, what should happen?",
@@ -45,6 +50,6 @@
   "run_id": "20260705T161907Z-5c0f9642",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
-  "updated_at": "2026-07-05T16:47:31Z",
+  "updated_at": "2026-07-05T16:49:04Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row"
 }
