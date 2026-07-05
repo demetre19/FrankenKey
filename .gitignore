@@ -43,3 +43,5 @@ captures/
 .prd-runs/**/worker-home/
 .prd-runs/**/tmp/
 .prd-runs/**/cache/
+.prd-runs/**/*.sqlite-shm
+.prd-runs/**/*.sqlite-wal

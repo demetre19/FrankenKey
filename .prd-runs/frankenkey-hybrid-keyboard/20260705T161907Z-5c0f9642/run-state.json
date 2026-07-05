@@ -18,9 +18,9 @@
   "mode": "NEW_BUILD",
   "prd_answers": {
     "snippet_navigation": {
-      "answer": "Fleksy-style groups of 7",
+      "answer": "Fleksy-style groups of 7 with horizontal left/right scrolling between groups",
       "question": "How should custom snippet buttons be organized in the top row?",
-      "rationale": "Show 7 snippet buttons at a time, with additional groups/pages if the user adds more; matches the APK Hotkey Extension model."
+      "rationale": "Each visible page shows seven snippet buttons; users swipe/scroll left or right to reveal additional groups of seven, matching the intended Fleksy-like interaction."
     }
   },
   "prd_skill_read": true,
@@ -30,6 +30,6 @@
   "run_id": "20260705T161907Z-5c0f9642",
   "sqlite_readiness": "created_opened_fresh_state_sqlite",
   "state_path": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/.prd-runs/frankenkey-hybrid-keyboard/20260705T161907Z-5c0f9642/state.sqlite",
-  "updated_at": "2026-07-05T16:43:43Z",
+  "updated_at": "2026-07-05T16:44:33Z",
   "user_goal": "Hybrid exact Unexpected Keyboard layout/function plus Fleksy-style scrollable custom hotkey extension row"
 }
