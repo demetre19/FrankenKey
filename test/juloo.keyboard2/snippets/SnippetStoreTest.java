@@ -43,6 +43,20 @@ public class SnippetStoreTest
   }
 
   @Test
+  public void json_roundtrip_preserves_spaces_and_emoji_without_percent_encoding()
+      throws Exception
+  {
+    String phrase = "Hello there 😀 — normal text";
+    String encoded = SnippetStore.saveSlots(Arrays.asList(
+        SnippetSlot.of(0, phrase, "👋", true)));
+
+    assertFalse("Snippet storage must not URL-encode spaces as %20.",
+        encoded.contains("%20"));
+    assertSlots(SnippetStore.loadSlots(encoded, 1),
+        SnippetSlot.of(0, phrase, "👋", true));
+  }
+
+  @Test
   public void load_null_or_malformed_json_returns_visible_empty_slots()
   {
     assertEmptySlots(SnippetStore.loadSlots(null, 4), 4);

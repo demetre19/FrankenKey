@@ -31,6 +31,20 @@ public class SnippetInsertionTest
   }
 
   @Test
+  public void inserter_commits_spaces_and_emoji_as_plain_text()
+  {
+    CapturingInputConnection input = CapturingInputConnection.create();
+    String phrase = "Hello there 😀 — normal text";
+
+    assertTrue(SnippetInserter.insert(input.connection, phrase));
+
+    assertEquals("Snippets must paste rich/plain user text exactly, not URL/HTML-encoded text.",
+        phrase, input.committedText.toString());
+    assertFalse("Snippet insertion must not turn spaces into percent-encoding.",
+        input.committedText.toString().contains("%20"));
+  }
+
+  @Test
   public void inserter_does_not_append_space_to_phrase()
   {
     CapturingInputConnection input = CapturingInputConnection.create();

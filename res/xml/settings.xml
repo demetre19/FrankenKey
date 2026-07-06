@@ -15,8 +15,8 @@
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_snippets">
     <CheckBoxPreference android:key="frankenkey_snippets_enabled" android:title="@string/pref_snippets_enabled_title" android:summary="@string/pref_snippets_enabled_summary" android:defaultValue="true"/>
-    <juloo.keyboard2.snippets.SnippetSlotsPreference/>
   </PreferenceCategory>
+  <juloo.keyboard2.snippets.SnippetSlotsPreference/>
   <PreferenceCategory android:title="@string/pref_category_suggestions">
     <CheckBoxPreference android:key="suggestions" android:title="@string/pref_suggestions_title" android:summary="@string/pref_suggestions_summary" android:defaultValue="true"/>
     <CheckBoxPreference android:key="space_bar_auto_complete" android:title="@string/pref_space_bar_auto_complete_title" android:summary="@string/pref_space_bar_auto_complete_summary" android:defaultValue="false"/>

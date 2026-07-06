@@ -34,8 +34,9 @@ public class SnippetSettingsTest
     Document settings = parseXml("res/xml/settings.xml");
     Element root = settings.getDocumentElement();
 
-    Element snippetsCategory = directCategoryContaining(root, SNIPPET_SLOTS_TAG);
-    assertNotNull("SnippetSlotsPreference must live inside a settings category, not as a loose root control.",
+    Element snippetsCategory = directCategoryContainingKey(root,
+        "CheckBoxPreference", SnippetStore.PREF_ENABLED);
+    assertNotNull("Snippet settings must expose the local enable toggle in a settings category.",
         snippetsCategory);
 
     Element enable = directChildWithKey(snippetsCategory, "CheckBoxPreference",
@@ -43,8 +44,10 @@ public class SnippetSettingsTest
     assertNotNull("Snippet settings must expose the local enable toggle using SnippetStore.PREF_ENABLED.",
         enable);
 
-    Element slots = directChildWithTag(snippetsCategory, SNIPPET_SLOTS_TAG);
-    assertNotNull("Snippet settings must expose the custom fixed-slot editor preference.",
+    assertNull("SnippetSlotsPreference extends PreferenceCategory; nesting it inside another PreferenceCategory crashes Settings on Android.",
+        directChildWithTag(snippetsCategory, SNIPPET_SLOTS_TAG));
+    Element slots = directChildWithTag(root, SNIPPET_SLOTS_TAG);
+    assertNotNull("Snippet settings must expose the custom fixed-slot editor preference as a top-level settings section.",
         slots);
 
     assertEquals("There must be one snippets enable checkbox in settings.",
@@ -151,6 +154,16 @@ public class SnippetSettingsTest
     factory.setNamespaceAware(true);
     factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
     return factory.newDocumentBuilder().parse(new File(path));
+  }
+
+  private static Element directCategoryContainingKey(Element root,
+      String childTag, String key)
+  {
+    for (Element category : directElementChildren(root))
+      if ("PreferenceCategory".equals(category.getTagName())
+          && directChildWithKey(category, childTag, key) != null)
+        return category;
+    return null;
   }
 
   private static Element directCategoryContaining(Element root, String childTag)
