@@ -31,7 +31,6 @@ Version code: 58
 SHA-256: 75ee12dfb83907f1805a29cd5575b60b13dcc450d80f913dbbd0434a7219b0b1
 ```
 
-This repository is now a distribution page for the finished product. Development source files, build scripts, generators, tests, and temporary project files have been removed from the current tree so the repo only presents the installable app and product information.
 
 ---
 
