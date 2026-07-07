@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Build.VERSION;
 import android.preference.PreferenceManager;
 import juloo.keyboard2.snippets.SnippetStore;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 import java.util.Map;
 import java.util.Set;
 
@@ -66,10 +67,14 @@ public final class DirectBootAwarePreferences
   {
     SharedPreferences.Editor e = dst.edit();
     e.remove(SnippetStore.PREF_SLOTS);
+    e.remove(PersonalizationStore.PREF_WORDS);
+    e.remove(PersonalizationStore.PREF_BIGRAMS);
     Map<String, ?> entries = src.getAll();
     for (String k : entries.keySet())
     {
-      if (SnippetStore.PREF_SLOTS.equals(k))
+      if (SnippetStore.PREF_SLOTS.equals(k)
+          || PersonalizationStore.PREF_WORDS.equals(k)
+          || PersonalizationStore.PREF_BIGRAMS.equals(k))
         continue;
       Object v = entries.get(k);
       if (v instanceof Boolean)

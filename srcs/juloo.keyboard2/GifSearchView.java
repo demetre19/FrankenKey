@@ -101,6 +101,12 @@ public final class GifSearchView extends LinearLayout
     refreshResults();
   }
 
+  void setTypingKeyboard(KeyboardData typingLayout)
+  {
+    if (_typingKeyboard != null)
+      _typingKeyboard.setKeyboard(typingLayout);
+  }
+
   InputConnection getSearchInputConnection()
   {
     if (_query == null)

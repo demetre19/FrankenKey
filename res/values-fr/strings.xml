@@ -33,11 +33,10 @@
     <string name="pref_extra_keys_title">Ajouter des touches au clavier</string>
     <string name="pref_extra_keys_custom">Ajouter des touches personnalisées</string>
     <string name="pref_extra_keys_internal">Sélectionner les touches à ajouter au clavier</string>
-    <string name="pref_category_suggestions">Suggestions</string>
+    <string name="pref_category_typing_assistance">Suggestions</string>
     <string name="pref_suggestions_title">Suggestions</string>
-    <string name="pref_suggestions_summary">Activer la suggestion de mots correction orthographique</string>
-    <string name="pref_space_bar_auto_complete_title">Correction automatique avec la barre d\'espace</string>
-    <string name="pref_space_bar_auto_complete_summary">Entrer la meilleure suggestion en appuyant sur espace</string>
+    <string name="pref_autocorrect_title">Correction automatique avec la barre d\'espace</string>
+    <string name="pref_autocorrect_summary">Entrer la meilleure suggestion en appuyant sur espace</string>
     <string name="pref_category_typing">Saisie</string>
     <string name="pref_swipe_dist_title">Distance de swipe</string>
     <string name="pref_swipe_dist_summary">La distance des caractères dans les coins (%s)</string>

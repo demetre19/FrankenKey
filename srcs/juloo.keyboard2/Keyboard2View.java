@@ -162,11 +162,11 @@ public class Keyboard2View extends View
     vibrate();
   }
 
-  public void onPointerUp(KeyValue k, Pointers.Modifiers mods)
+  public void onPointerUp(KeyValue k, Pointers.Modifiers mods, TouchTrace.Entry touch)
   {
     // [key_up] must be called before [updateFlags]. The latter might disable
     // flags.
-    _config.handler.key_up(k, mods);
+    _config.handler.key_up(k, mods, touch);
     updateFlags();
     invalidate();
   }
@@ -176,6 +176,22 @@ public class Keyboard2View extends View
     _config.handler.key_cancel(k, mods);
     updateFlags();
     invalidate();
+  }
+
+  public void onKeyboardSwipeUp()
+  {
+    _config.handler.keyboard_swiped_up();
+    updateFlags();
+    invalidate();
+    vibrate();
+  }
+
+  public void onKeyboardSwipeDown()
+  {
+    _config.handler.keyboard_swiped_down();
+    updateFlags();
+    invalidate();
+    vibrate();
   }
 
   public void onPointerHold(KeyValue k, Pointers.Modifiers mods, int holdCount)
@@ -215,7 +231,8 @@ public class Keyboard2View extends View
         float ty = event.getY(p);
         KeyboardData.Key key = getKeyAtPosition(tx, ty);
         if (key != null)
-          _pointers.onTouchDown(tx, ty, event.getPointerId(p), key);
+          _pointers.onTouchDown(tx, ty, event.getPointerId(p), key,
+              getTouchEntryAtPosition(tx, ty));
         break;
       case MotionEvent.ACTION_MOVE:
         for (p = 0; p < event.getPointerCount(); p++)
@@ -259,6 +276,39 @@ public class Keyboard2View extends View
       if (tx < xRight)
         return key;
       x = xRight;
+    }
+    return null;
+  }
+
+  private TouchTrace.Entry getTouchEntryAtPosition(float tx, float ty)
+  {
+    float y = _config.marginTop;
+    if (ty < y)
+      return null;
+    for (KeyboardData.Row row : _keyboard.rows)
+    {
+      float rowTop = y + row.shift * _tc.row_height;
+      float rowBottom = rowTop + row.height * _tc.row_height;
+      if (ty < rowBottom)
+      {
+        float x = _marginLeft;
+        if (tx < x)
+          return null;
+        for (KeyboardData.Key key : row.keys)
+        {
+          float xLeft = x + key.shift * _keyWidth;
+          float xRight = xLeft + key.width * _keyWidth;
+          if (tx < xLeft)
+            return null;
+          if (tx < xRight)
+            return TouchTrace.entry(tx, ty, (xLeft + xRight) / 2f,
+                (rowTop + rowBottom) / 2f, xRight - xLeft,
+                rowBottom - rowTop);
+          x = xRight;
+        }
+        return null;
+      }
+      y = rowBottom;
     }
     return null;
   }

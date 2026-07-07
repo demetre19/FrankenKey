@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <item name="candidates_separator_left" type="id"/>
+  <item name="candidates_separator_right" type="id"/>
+</resources>

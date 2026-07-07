@@ -47,6 +47,19 @@ public final class ClipboardHistoryService
       _paste_callback.paste_from_clipboard_pane(clip);
   }
 
+  /** Paste the current system clipboard through the keyboard's own text path.
+      Returns false when there is no text-like clipboard content to paste. */
+  public static boolean paste_current_clip()
+  {
+    if (_service == null)
+      return false;
+    String clip = _service.get_current_clip_text();
+    if (clip == null || clip.length() == 0)
+      return false;
+    paste(clip);
+    return true;
+  }
+
   /** The maximum size limits the amount of user data stored in memory but also
       gives a sense to the user that the history is not persisted and can be
       forgotten as soon as the app stops. */
@@ -55,12 +68,14 @@ public final class ClipboardHistoryService
   static ClipboardHistoryService _service = null;
   static ClipboardPasteCallback _paste_callback = null;
 
+  Context _ctx;
   ClipboardManager _cm;
   List<HistoryEntry> _history;
   OnClipboardHistoryChange _listener = null;
 
   ClipboardHistoryService(Context ctx)
   {
+    _ctx = ctx.getApplicationContext() == null ? ctx : ctx.getApplicationContext();
     _history = new ArrayList<HistoryEntry>();
     _cm = (ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE);
     _cm.addPrimaryClipChangedListener(this.new SystemListener());
@@ -140,18 +155,45 @@ public final class ClipboardHistoryService
   /** Add what is currently in the system clipboard into the history. */
   void add_current_clip()
   {
-    ClipData clip = null;
-    // getPrimaryClip might throw when the keyboard is disconnected.
-    try { clip = _cm.getPrimaryClip(); } catch (Exception _e) {}
+    ClipData clip = get_primary_clip();
     if (clip == null)
       return;
     int count = clip.getItemCount();
     for (int i = 0; i < count; i++)
     {
-      CharSequence text = clip.getItemAt(i).getText();
+      String text = clip_item_text(clip.getItemAt(i));
       if (text != null)
-        add_clip(text.toString());
+        add_clip(text);
     }
+  }
+
+  String get_current_clip_text()
+  {
+    ClipData clip = get_primary_clip();
+    if (clip == null)
+      return null;
+    int count = clip.getItemCount();
+    for (int i = 0; i < count; i++)
+    {
+      String text = clip_item_text(clip.getItemAt(i));
+      if (text != null && text.length() > 0)
+        return text;
+    }
+    return null;
+  }
+
+  private ClipData get_primary_clip()
+  {
+    // getPrimaryClip might throw when the keyboard is disconnected.
+    try { return _cm.getPrimaryClip(); } catch (Exception _e) { return null; }
+  }
+
+  private String clip_item_text(ClipData.Item item)
+  {
+    if (item == null)
+      return null;
+    CharSequence text = item.coerceToText(_ctx);
+    return text == null ? null : text.toString();
   }
 
   int get_history_ttl_minutes() {

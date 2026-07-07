@@ -122,11 +122,10 @@
     <string name="pref_show_number_row_no_number_row">keine Zahlenreihe</string>
     <string name="pref_show_number_row_no_symbols">Zahlenreihe ohne Symbole</string>
     <string name="pref_show_number_row_symbols">Zahlenreihe mit Symbolen</string>
-    <string name="pref_category_suggestions">Vorschläge</string>
+    <string name="pref_category_typing_assistance">Vorschläge</string>
     <string name="pref_suggestions_title">Vorschläge</string>
-    <string name="pref_suggestions_summary">Aktiviere Vervollständigung und Rechtschreibprüfung</string>
-    <string name="pref_space_bar_auto_complete_title">automatische Vervollständigung durch Leertaste</string>
-    <string name="pref_space_bar_auto_complete_summary">besten Vorschlag mit der Leertaste auswählen</string>
+    <string name="pref_autocorrect_title">automatische Vervollständigung durch Leertaste</string>
+    <string name="pref_autocorrect_summary">besten Vorschlag mit der Leertaste auswählen</string>
     <string name="pref_change_method_key_replacement_title">zwischen Eingabemethoden wechseln</string>
     <string name="pref_change_method_key_replacement_e_picker">Eingabemethode auswählen (lange drücken)</string>
     <string name="pref_change_method_key_replacement_e_prev">Zum zuletzt Genutzten wechseln</string>

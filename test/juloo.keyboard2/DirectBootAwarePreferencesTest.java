@@ -2,6 +2,7 @@ package juloo.keyboard2;
 
 import android.content.SharedPreferences;
 import juloo.keyboard2.snippets.SnippetStore;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 import org.junit.Test;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,7 +15,7 @@ public class DirectBootAwarePreferencesTest
   public DirectBootAwarePreferencesTest() {}
 
   @Test
-  public void copy_shared_preferences_does_not_copy_or_keep_snippet_phrases()
+  public void copy_shared_preferences_does_not_copy_or_keep_private_typing_data()
   {
     FakeSharedPreferences src = new FakeSharedPreferences()
       .put("bool_setting", true)
@@ -24,16 +25,24 @@ public class DirectBootAwarePreferencesTest
       .put("string_setting", "layout-name")
       .put("set_setting", setOf("emoji", "latin"))
       .put(SnippetStore.PREF_SLOTS,
-          "[{\"index\":0,\"phrase\":\"door code 1234\"}]");
+          "[{\"index\":0,\"phrase\":\"door code 1234\"}]")
+      .put(PersonalizationStore.PREF_WORDS, setOf("cazoo:3"))
+      .put(PersonalizationStore.PREF_BIGRAMS, setOf("good morning:2"));
     FakeSharedPreferences dst = new FakeSharedPreferences()
       .put(SnippetStore.PREF_SLOTS,
-          "[{\"index\":0,\"phrase\":\"old secret\"}]");
+          "[{\"index\":0,\"phrase\":\"old secret\"}]")
+      .put(PersonalizationStore.PREF_WORDS, setOf("old:1"))
+      .put(PersonalizationStore.PREF_BIGRAMS, setOf("old pair:1"));
 
     DirectBootAwarePreferences.copy_shared_preferences(src, dst);
 
     Map<String, ?> copied = dst.getAll();
     assertFalse("Snippet phrases must never be present in direct-boot shared preferences.",
         copied.containsKey(SnippetStore.PREF_SLOTS));
+    assertFalse("Learned words must never be present in direct-boot shared preferences.",
+        copied.containsKey(PersonalizationStore.PREF_WORDS));
+    assertFalse("Learned next-word pairs must never be present in direct-boot shared preferences.",
+        copied.containsKey(PersonalizationStore.PREF_BIGRAMS));
     assertEquals(true, copied.get("bool_setting"));
     assertEquals(1.25f, copied.get("float_setting"));
     assertEquals(7, copied.get("int_setting"));

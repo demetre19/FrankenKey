@@ -124,11 +124,10 @@
     <string name="pref_show_number_row_no_number_row">Без ряда цифр</string>
     <string name="pref_show_number_row_no_symbols">Ряд цифр без символов</string>
     <string name="pref_show_number_row_symbols">Ряд цифр с символами</string>
-    <string name="pref_category_suggestions">Предложения</string>
+    <string name="pref_category_typing_assistance">Предложения</string>
     <string name="pref_suggestions_title">Предложения</string>
-    <string name="pref_suggestions_summary">Использовать завершение слов и проверку орфографии</string>
-    <string name="pref_space_bar_auto_complete_title">Автозавершение пробелом</string>
-    <string name="pref_space_bar_auto_complete_summary">Вставлять лучшее предложение при нажатии пробела</string>
+    <string name="pref_autocorrect_title">Автозавершение пробелом</string>
+    <string name="pref_autocorrect_summary">Вставлять лучшее предложение при нажатии пробела</string>
     <string name="pref_change_method_key_replacement_title">Переключение методов ввода</string>
     <string name="pref_change_method_key_replacement_e_picker">Показывать выбор метода ввода (долгим нажатием)</string>
     <string name="pref_change_method_key_replacement_e_prev">Переключиться на последнюю использованную</string>

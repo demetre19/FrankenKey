@@ -119,7 +119,7 @@
     <string name="clipboard_pin_heading">Piesprausts</string>
     <string name="clipboard_remove_confirm">Noņemt šo starpliktuves vienumu?</string>
     <string name="clipboard_remove_confirmed">Jā</string>
-    <string name="pref_category_suggestions">\@string/pref_suggestions_title</string>
+    <string name="pref_category_typing_assistance">\@string/pref_suggestions_title</string>
     <string name="pref_suggestions_title">Ieteikumi</string>
     <string name="pref_theme_e_cobalt">Kobalts</string>
     <string name="pref_theme_e_pine">Priede</string>
@@ -139,12 +139,11 @@
     <string name="pref_clipboard_history_duration_5">Ne ilgāk kā 5 minūtes</string>
     <string name="pref_clipboard_history_duration_30">Ne ilgāk kā 30 minūtes</string>
     <string name="pref_clipboard_history_duration_stop">Līdz lietotnes apturēšanai</string>
-    <string name="pref_space_bar_auto_complete_title">Automātiska aizpildīšana/vārdu izvēle ar atstarpes taustiņu</string>
+    <string name="pref_autocorrect_title">Automātiska aizpildīšana/vārdu izvēle ar atstarpes taustiņu</string>
     <string name="toast_no_voice_input">Nav uzstādīta neviena runas atpazīšanas lietotne</string>
-    <string name="pref_suggestions_summary">Iespējot automātisko vārdu ieteikšanu un pareizrakstības pārbaudi</string>
     <string name="key_descr_forward_delete_word">Dzēst vārdu pa labi</string>
     <string name="dictionaries_from_internet">Lejupielādēt vārdnīcu no interneta</string>
-    <string name="pref_space_bar_auto_complete_summary">Ievadīt labāko ieteikumu ar atstarpes taustiņa nospiešanu</string>
+    <string name="pref_autocorrect_summary">Ievadīt labāko ieteikumu ar atstarpes taustiņa nospiešanu</string>
     <string name="pref_change_method_key_replacement_e_picker">Rādīt ievades metodes atlasītāju (ilgi nospiediet)</string>
     <string name="pref_change_method_key_replacement_e_next">Pārslēgties uz nākamo sarakstā</string>
     <string name="pref_number_entry_title">Izkārtojums skaitļu, datumu un tālruņu numuru ievadīšanai</string>

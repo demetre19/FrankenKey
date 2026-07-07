@@ -5,6 +5,7 @@ import android.os.Build.VERSION;
 import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -25,10 +26,13 @@ public class CandidatesView extends LinearLayout
       - Entries at indexes [0] to [2] are word suggestions.
       - Entry at index [3] is the emoji suggestion. */
   String[] _items = new String[NUM_CANDIDATES];
+  Suggestions.Source[] _sources = new Suggestions.Source[NUM_CANDIDATES];
+
 
   /** Text views showing the candidates in [_items]. Text views visibility is
       set to [GONE] when there are less than [NUM_CANDIDATES] suggestions. */
   TextView[] _item_views = new TextView[NUM_CANDIDATES];
+  View[] _separators = new View[2];
 
   /** Message when no dictionary is installed. Visible when no candidates are
       shown. Might be [null]. */
@@ -47,23 +51,33 @@ public class CandidatesView extends LinearLayout
     setup_item_view(1, R.id.candidates_right);
     setup_item_view(2, R.id.candidates_left);
     setup_item_view(3, R.id.candidates_emoji);
+    setup_separator_view(0, R.id.candidates_separator_left);
+    setup_separator_view(1, R.id.candidates_separator_right);
   }
 
   public void set_candidates(Suggestions s)
   {
     int s_count = s.count;
     for (int i = 0; i < Suggestions.MAX_COUNT; i++)
+    {
       _items[i] = (i < s_count) ? s.suggestions[i] : null;
+      _sources[i] = (i < s_count) ? s.sources[i] : Suggestions.Source.NONE;
+    }
     _items[3] = s.emoji_suggestion;
+    _sources[3] = s.emoji_suggestion == null ? Suggestions.Source.NONE : Suggestions.Source.EMOJI;
+    expose_learn_action();
+    expose_learn_feedback(s);
     // Hide the status message when showing candidates.
     if (s_count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
+    update_separators();
     for (int i = 0; i < _item_views.length; i++)
     {
       TextView v = _item_views[i];
       if (_items[i] != null)
       {
-        v.setText(_items[i]);
+        v.setText(label_for(_items[i], _sources[i]));
+        v.setContentDescription(description_for(_items[i], _sources[i]));
         v.setVisibility(View.VISIBLE);
       }
       else
@@ -72,14 +86,30 @@ public class CandidatesView extends LinearLayout
       }
     }
   }
+  void update_separators()
+  {
+    update_separator(0, _items[2] != null && _items[0] != null);
+    update_separator(1, _items[0] != null && _items[1] != null);
+  }
+
+  void update_separator(int index, boolean visible)
+  {
+    View separator = _separators[index];
+    if (separator != null)
+      separator.setVisibility(visible ? View.VISIBLE : View.GONE);
+  }
+
 
   void clear_candidates()
   {
     for (int i = 0; i < _item_views.length; i++)
     {
       _items[i] = null;
+      _sources[i] = Suggestions.Source.NONE;
       _item_views[i].setVisibility(View.GONE);
     }
+    for (int i = 0; i < _separators.length; i++)
+      update_separator(i, false);
   }
 
   public void refresh_config(Config config)
@@ -155,21 +185,119 @@ public class CandidatesView extends LinearLayout
     _status_no_dict.setVisibility(View.VISIBLE);
   }
 
+  void expose_learn_action()
+  {
+    String entered_text = null;
+    for (int i = 0; i < Suggestions.MAX_COUNT; i++)
+      if (_sources[i] == Suggestions.Source.ENTERED_TEXT)
+      {
+        entered_text = _items[i];
+        break;
+      }
+    if (entered_text == null)
+      return;
+    _items[2] = entered_text;
+    _sources[2] = Suggestions.Source.LEARN_ACTION;
+  }
+  void expose_learn_feedback(Suggestions s)
+  {
+    if (s.learn_feedback == Suggestions.LearnFeedback.NONE
+        || s.learn_feedback_word == null)
+      return;
+    _items[2] = s.learn_feedback_word;
+    _sources[2] = s.learn_feedback == Suggestions.LearnFeedback.LEARNED
+      ? Suggestions.Source.LEARNED_FEEDBACK
+      : Suggestions.Source.UNLEARNED_FEEDBACK;
+  }
+
+
+  String label_for(String text, Suggestions.Source source)
+  {
+    if (source == Suggestions.Source.LEARN_ACTION)
+      return "📖+";
+    if (source == Suggestions.Source.LEARNED_FEEDBACK)
+      return "📖✓";
+    if (source == Suggestions.Source.UNLEARNED_FEEDBACK)
+      return "📖−";
+    return text;
+  }
+
+  String description_for(String text, Suggestions.Source source)
+  {
+    if (source == Suggestions.Source.LEARN_ACTION)
+      return "Learn or unlearn " + text;
+    if (source == Suggestions.Source.LEARNED_FEEDBACK)
+      return "Learned " + text;
+    if (source == Suggestions.Source.UNLEARNED_FEEDBACK)
+      return "Forgot " + text;
+    return text;
+  }
+
+  private void setup_separator_view(int index, int item_id)
+  {
+    _separators[index] = findViewById(item_id);
+    update_separator(index, false);
+  }
+
   private void setup_item_view(final int item_index, int item_id)
   {
     TextView v = (TextView)findViewById(item_id);
+    v.setSingleLine(true);
+    v.setMaxLines(1);
     v.setOnClickListener(new View.OnClickListener()
         {
           @Override
           public void onClick(View _v)
           {
             String it = _items[item_index];
-            if (it != null)
+            if (it == null)
+              return;
+            if (_sources[item_index] == Suggestions.Source.LEARN_ACTION)
+              Config.globalConfig().handler.suggestion_swiped_up(it);
+            else if (_sources[item_index] != Suggestions.Source.LEARNED_FEEDBACK
+                && _sources[item_index] != Suggestions.Source.UNLEARNED_FEEDBACK)
               Config.globalConfig().handler.suggestion_entered(it);
+          }
+        });
+    v.setOnTouchListener(new View.OnTouchListener()
+        {
+          float _down_y;
+
+          @Override
+          public boolean onTouch(View _v, MotionEvent event)
+          {
+            String it = _items[item_index];
+            if (it == null)
+              return false;
+            switch (event.getActionMasked())
+            {
+              case MotionEvent.ACTION_DOWN:
+                _down_y = event.getY();
+                return false;
+              case MotionEvent.ACTION_UP:
+                float dy = event.getY() - _down_y;
+                if (Math.abs(dy) < swipe_threshold_px())
+                  return false;
+                if (_sources[item_index] == Suggestions.Source.LEARNED_FEEDBACK
+                    || _sources[item_index] == Suggestions.Source.UNLEARNED_FEEDBACK)
+                  return true;
+                if (dy < 0 || _sources[item_index] == Suggestions.Source.LEARN_ACTION)
+                  Config.globalConfig().handler.suggestion_swiped_up(it);
+                else
+                  Config.globalConfig().handler.suggestion_entered(it);
+                return true;
+              default:
+                return false;
+            }
           }
         });
     v.setVisibility(View.GONE);
     _item_views[item_index] = v;
+  }
+
+  float swipe_threshold_px()
+  {
+    return 24.f * getResources().getDisplayMetrics().density;
   }
 
   /** Whether the candidates view should be shown for a given editor. */

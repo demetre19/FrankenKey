@@ -25,6 +25,7 @@ public final class ClipboardPinView extends NonScrollListView
   List<String> _entries;
   ClipboardPinEntriesAdapter _adapter;
   SharedPreferences _persist_store;
+  private static final int TIPS_HIDE_PIN_COUNT = 3;
 
   public ClipboardPinView(Context ctx, AttributeSet attrs)
   {
@@ -41,6 +42,7 @@ public final class ClipboardPinView extends NonScrollListView
     catch (Exception _e) {}
     _adapter = this.new ClipboardPinEntriesAdapter();
     setAdapter(_adapter);
+    update_tips_visibility();
   }
 
   /** Pin a clipboard and persist the change. */
@@ -50,6 +52,7 @@ public final class ClipboardPinView extends NonScrollListView
     _adapter.notifyDataSetChanged();
     persist();
     invalidate();
+    update_tips_visibility();
   }
 
   /** Remove the entry at index [pos] and persist the change. */
@@ -61,12 +64,43 @@ public final class ClipboardPinView extends NonScrollListView
     _adapter.notifyDataSetChanged();
     persist();
     invalidate();
+    update_tips_visibility();
   }
 
   /** Send the specified entry to the editor. */
   public void paste_entry(int pos)
   {
     ClipboardHistoryService.paste(_entries.get(pos));
+  }
+
+  @Override
+  protected void onAttachedToWindow()
+  {
+    super.onAttachedToWindow();
+    update_tips_visibility();
+  }
+
+  void update_tips_visibility()
+  {
+    View tips = find_tips_section();
+    if (tips != null)
+      tips.setVisibility(_entries.size() >= TIPS_HIDE_PIN_COUNT
+          ? View.GONE : View.VISIBLE);
+  }
+
+  private View find_tips_section()
+  {
+    View parent = this;
+    while (parent != null)
+    {
+      View tips = parent.findViewById(R.id.clipboard_tips_section);
+      if (tips != null)
+        return tips;
+      if (!(parent.getParent() instanceof View))
+        return null;
+      parent = (View)parent.getParent();
+    }
+    return null;
   }
 
   static void load_from_prefs(SharedPreferences store, List<String> dst)
@@ -113,6 +147,12 @@ public final class ClipboardPinView extends NonScrollListView
         v = View.inflate(getContext(), R.layout.clipboard_pin_entry, null);
       ((TextView)v.findViewById(R.id.clipboard_pin_text))
         .setText(_entries.get(pos));
+      v.setOnClickListener(
+          new View.OnClickListener()
+          {
+            @Override
+            public void onClick(View v) { paste_entry(pos); }
+          });
       v.findViewById(R.id.clipboard_pin_paste).setOnClickListener(
           new View.OnClickListener()
           {

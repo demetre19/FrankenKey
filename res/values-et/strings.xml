@@ -56,11 +56,10 @@
     <string name="pref_extra_keys_title">Klahvide lisamine klahvistikule</string>
     <string name="pref_extra_keys_custom">Lisa sinu valitud klahve</string>
     <string name="pref_extra_keys_internal">Vali klahvistikule lisatavad klahvid</string>
-    <string name="pref_category_suggestions">Soovitused</string>
+    <string name="pref_category_typing_assistance">Soovitused</string>
     <string name="pref_suggestions_title">Soovitused</string>
-    <string name="pref_suggestions_summary">Kasuta sõnade automaattäidet ja õigekirjakontrolli</string>
-    <string name="pref_space_bar_auto_complete_title">Automaattäide tühikuklahviga</string>
-    <string name="pref_space_bar_auto_complete_summary">Saad sisestada parima soovituse tühikuklahviga</string>
+    <string name="pref_autocorrect_title">Automaattäide tühikuklahviga</string>
+    <string name="pref_autocorrect_summary">Saad sisestada parima soovituse tühikuklahviga</string>
     <string name="pref_category_typing">Kirjutamine</string>
     <string name="pref_swipe_dist_title">Viipamise pikkus</string>
     <string name="pref_long_timeout_title">Aegumine pikal vajutusel</string>

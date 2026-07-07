@@ -11,7 +11,9 @@ import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import java.util.Iterator;
+import juloo.keyboard2.autocorrect.Autocorrect;
 import juloo.keyboard2.suggestions.Suggestions;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.snippets.SnippetInserter;
 
 public final class KeyEventHandler
@@ -22,6 +24,7 @@ public final class KeyEventHandler
   IReceiver _recv;
   Autocapitalisation _autocap;
   Suggestions _suggestions;
+  Config _config;
   CurrentlyTypedWord _typedword;
   /** State of the system modifiers. It is updated whether a modifier is down
       or up and a corresponding key event is sent. */
@@ -33,8 +36,8 @@ public final class KeyEventHandler
   /** Whether to force sending arrow keys to move the cursor when
       [setSelection] could be used instead. */
   boolean _move_cursor_force_fallback = false;
-  /** Whether the space bar automatically enters the best suggestion. */
-  boolean _space_bar_auto_complete = false;
+  /** Whether pressing space should automatically commit a correction. */
+  boolean _autocorrect_enabled = false;
   /** Remember the action that was handled. This is used by autocorrect. */
   LastAction _last_action = null;
   LastAction _next_last_action = null;
@@ -68,13 +71,14 @@ public final class KeyEventHandler
   /** Editing just started. */
   public void started(Config conf)
   {
+    _config = conf;
     InputConnection ic = _recv.getCurrentInputConnection();
     _autocap.started(conf, ic);
     _typedword.started(conf, ic);
     _suggestions.started();
     _move_cursor_force_fallback =
       conf.editor_config.should_move_cursor_force_fallback;
-    _space_bar_auto_complete = conf.space_bar_auto_complete;
+    _autocorrect_enabled = conf.autocorrect_enabled;
     _last_action = null;
   }
 
@@ -119,7 +123,7 @@ public final class KeyEventHandler
 
   /** A key has been released. */
   @Override
-  public void key_up(KeyValue key, Pointers.Modifiers mods)
+  public void key_up(KeyValue key, Pointers.Modifiers mods, TouchTrace.Entry touch)
   {
     if (key == null)
       return;
@@ -128,10 +132,21 @@ public final class KeyEventHandler
     update_meta_state(mods);
     switch (key.getKind())
     {
-      case Char: send_text(String.valueOf(key.getChar())); break;
-      case String: send_text(key.getString()); break;
+      case Char:
+        char c = key.getChar();
+        if (is_autocorrect_separator(c))
+          handle_word_separator(String.valueOf(c));
+        else
+          send_text(String.valueOf(c), touch);
+        break;
+      case String: send_text(key.getString(), null); break;
       case Event: _recv.handle_event_key(key.getEvent()); break;
-      case Keyevent: send_key_down_up(key.getKeyevent()); break;
+      case Keyevent:
+        if (key.getKeyevent() == KeyEvent.KEYCODE_ENTER)
+          handle_word_separator("\n");
+        else
+          send_key_down_up(key.getKeyevent());
+        break;
       case Modifier: break;
       case Editing: handle_editing_key(key.getEditing()); break;
       case Compose_pending: _recv.set_compose_pending(true); break;
@@ -146,7 +161,7 @@ public final class KeyEventHandler
   @Override
   public void key_hold(KeyValue key, Pointers.Modifiers mods, int holdCount)
   {
-    key_up(key, mods);
+    key_up(key, mods, null);
   }
 
   @Override
@@ -165,12 +180,122 @@ public final class KeyEventHandler
   @Override
   public void suggestion_entered(String text)
   {
+    commit_correction(text, " ");
+  }
+
+  @Override
+  public void suggestion_swiped_up(String text)
+  {
+    toggle_learned_word(text);
+  }
+
+  @Override
+  public void keyboard_swiped_up()
+  {
+    learn_current_word();
+  }
+
+  @Override
+  public void keyboard_swiped_down()
+  {
+    unlearn_current_word();
+  }
+
+  void learn_current_word()
+  {
+    learn_word(_typedword.get());
+  }
+
+  void unlearn_current_word()
+  {
+    unlearn_word(_typedword.get());
+  }
+
+  boolean can_change_learning(String word)
+  {
+    return _config != null
+      && _config.suggestions_enabled
+      && _config.editor_config.should_use_typing_assistance
+      && PersonalizationStore.is_learnable(word);
+  }
+
+  void learn_word(String word)
+  {
+    if (!can_change_learning(word))
+      return;
+    _config.personalization.record_word(word);
+    refresh_learning_feedback(word, Suggestions.LearnFeedback.LEARNED);
+  }
+
+  void unlearn_word(String word)
+  {
+    if (!can_change_learning(word))
+      return;
+    if (!_config.personalization.unlearn_word(word))
+      return;
+    refresh_learning_feedback(word, Suggestions.LearnFeedback.FORGOT);
+  }
+
+  void toggle_learned_word(String word)
+  {
+    if (!can_change_learning(word))
+      return;
+    if (_config.personalization.is_learned(word))
+    {
+      _config.personalization.unlearn_word(word);
+      refresh_learning_feedback(word, Suggestions.LearnFeedback.FORGOT);
+    }
+    else
+    {
+      _config.personalization.record_word(word);
+      refresh_learning_feedback(word, Suggestions.LearnFeedback.LEARNED);
+    }
+  }
+
+  void refresh_learning_feedback(String word, Suggestions.LearnFeedback feedback)
+  {
+    _suggestions.currently_typed_word(_typedword.get(), _typedword.touch_trace());
+    _suggestions.show_learn_feedback(word, feedback);
+  }
+
+  void commit_correction(String text, String separator)
+  {
+    learn_committed_word(text);
     String old = _typedword.get();
     int cur_rel = _typedword.cursor_relative();
-    replace_surrounding_text(old.length() + cur_rel, -cur_rel, text + " ");
+    replace_surrounding_text(old.length() + cur_rel, -cur_rel,
+        text + separator);
     last_replaced_word = old;
-    last_replacement_word_len = text.length() + 1;
+    last_replacement_word_len = text.length() + separator.length();
+    last_replacement_separator = separator;
     _next_last_action = LastAction.SUGGESTION_ENTERED;
+  }
+
+  void learn_committed_word(String word)
+  {
+    if (_config == null)
+      return;
+    if (!_config.suggestions_enabled
+        || !_config.editor_config.should_use_typing_assistance)
+    {
+      _config.personalization.reset_context();
+      return;
+    }
+    if (!is_recognized_or_learned_word(word))
+      return;
+    _config.personalization.record_word(word);
+  }
+
+  boolean is_recognized_or_learned_word(String word)
+  {
+    if (word == null || word.length() == 0)
+      return false;
+    if (_config.personalization.is_learned(word))
+      return true;
+    if (_config.current_hunspell != null && _config.current_hunspell.spell(word))
+      return true;
+    return _config.current_dictionary != null
+      && _config.current_dictionary.find(word.toLowerCase(java.util.Locale.ROOT)).found;
   }
 
   @Override
@@ -185,15 +310,15 @@ public final class KeyEventHandler
   }
 
   @Override
-  public void currently_typed_word(String word)
+  public void currently_typed_word(String word, TouchTrace touchTrace)
   {
-    _suggestions.currently_typed_word(word);
+    _suggestions.currently_typed_word(word, touchTrace);
   }
 
   public void ime_subtype_changed()
   {
     // Refresh the suggestions immediately after dictionary changed.
-    _suggestions.currently_typed_word(_typedword.get());
+    _suggestions.currently_typed_word(_typedword.get(), _typedword.touch_trace());
   }
 
   /** Update [_mods] to be consistent with the [mods], sending key events if
@@ -290,11 +415,16 @@ public final class KeyEventHandler
 
   void send_text(String text)
   {
+    send_text(text, null);
+  }
+
+  void send_text(String text, TouchTrace.Entry touch)
+  {
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return;
     _autocap.typed(text);
-    _typedword.typed(text);
+    _typedword.typed(text, touch);
     SnippetInserter.insert(conn, text);
   }
 
@@ -324,12 +454,12 @@ public final class KeyEventHandler
   {
     switch (ev)
     {
-      case COPY: if(_typedword.is_selection_not_empty()) send_context_menu_action(android.R.id.copy); break;
-      case PASTE: send_context_menu_action(android.R.id.paste); break;
-      case CUT: if(_typedword.is_selection_not_empty()) send_context_menu_action(android.R.id.cut); break;
+      case COPY: send_context_menu_action(android.R.id.copy); break;
+      case PASTE: if (!ClipboardHistoryService.paste_current_clip()) send_context_menu_action(android.R.id.paste); break;
+      case CUT: send_context_menu_action(android.R.id.cut); break;
       case SELECT_ALL: send_context_menu_action(android.R.id.selectAll); break;
       case SHARE: send_context_menu_action(android.R.id.shareText); break;
-      case PASTE_PLAIN: send_context_menu_action(android.R.id.pasteAsPlainText); break;
+      case PASTE_PLAIN: if (!ClipboardHistoryService.paste_current_clip()) send_context_menu_action(android.R.id.pasteAsPlainText); break;
       case UNDO: send_context_menu_action(android.R.id.undo); break;
       case REDO: send_context_menu_action(android.R.id.redo); break;
       case REPLACE: send_context_menu_action(android.R.id.replaceText); break;
@@ -642,7 +772,7 @@ public final class KeyEventHandler
       else
       {
         key_down(kv, false);
-        key_up(kv, mods);
+        key_up(kv, mods, null);
         mods = Pointers.Modifiers.EMPTY;
       }
       should_delay = wait_after_macro_key(kv);
@@ -709,19 +839,64 @@ public final class KeyEventHandler
       enter a suggestion (with the space bar or the candidates view) or [null]
       otherwise. */
   String last_replaced_word = null;
-  /** Length of the text before the cursor that should be replaced by
-      backspace. */
+  /** Length of the correction text plus separator before the cursor that
+      should be replaced by Backspace. */
   int last_replacement_word_len = 0;
+  String last_replacement_separator = " ";
+
+  boolean is_autocorrect_separator(char c)
+  {
+    switch (c)
+    {
+      case '.':
+      case ',':
+      case '!':
+      case '?':
+      case ';':
+      case ':':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  boolean should_try_autocorrect()
+  {
+    return _autocorrect_enabled
+      && _config != null
+      && _config.editor_config.should_use_typing_assistance
+      && !_typedword.is_selection_not_empty()
+      && _typedword.cursor_relative() == 0;
+  }
+
+  boolean should_commit_typed_word()
+  {
+    return !_typedword.is_selection_not_empty()
+      && _typedword.cursor_relative() == 0;
+  }
+
+  void handle_word_separator(String separator)
+  {
+    if (should_try_autocorrect())
+    {
+      String correction = Autocorrect.correction(_config.current_hunspell,
+          _config.current_dictionary, _typedword.get(), _typedword.touch_trace(),
+          _config.current_layout_geometry);
+      if (correction != null)
+      {
+        commit_correction(correction, separator);
+        return;
+      }
+    }
+    if (should_commit_typed_word())
+      learn_committed_word(_typedword.get());
+    send_text(separator);
+  }
 
   /** Implement autocorrect when enabled in the settings. */
   void handle_space_bar()
   {
-    if (_space_bar_auto_complete && _suggestions.count > 0
-        && !_typedword.is_selection_not_empty()
-        && _typedword.cursor_relative() == 0)
-      suggestion_entered(_suggestions.suggestions[0]);
-    else
-      send_text(" ");
+    handle_word_separator(" ");
   }
 
   void send_backspace()
@@ -808,7 +983,7 @@ public final class KeyEventHandler
         && last_replaced_word != null)
     {
       replace_surrounding_text(last_replacement_word_len, 0,
-          last_replaced_word + " ");
+          last_replaced_word + last_replacement_separator);
       last_replaced_word = null;
     }
     else

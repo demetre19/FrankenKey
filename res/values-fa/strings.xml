@@ -95,9 +95,9 @@
     <string name="pref_show_number_row_no_number_row">بدون ردیف شماره</string>
     <string name="pref_show_number_row_no_symbols">ردیف شماره بدون نشانه ها</string>
     <string name="pref_show_number_row_symbols">ردیف شماره با نشانه ها</string>
-    <string name="pref_category_suggestions">پیشنهادات</string>
+    <string name="pref_category_typing_assistance">پیشنهادات</string>
     <string name="pref_suggestions_title">پیشنهادات</string>
-    <string name="pref_space_bar_auto_complete_summary">وارد کردن بهترین پیشنهاد با فشار فاصله</string>
+    <string name="pref_autocorrect_summary">وارد کردن بهترین پیشنهاد با فشار فاصله</string>
     <string name="pref_change_method_key_replacement_title">تغییر دادن روش های ورودی</string>
     <string name="pref_change_method_key_replacement_e_picker">نمایش انتخاب کننده روش های ورود (با نگه داشتن)</string>
     <string name="pref_change_method_key_replacement_e_prev">تغییر به آخرین استفاده شده</string>

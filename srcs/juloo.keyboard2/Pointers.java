@@ -89,7 +89,7 @@ public final class Pointers implements Handler.Callback
     int flags = pointer_flags_of_kv(kv) | FLAG_P_FAKE | FLAG_P_LATCHED;
     if (locked)
       flags |= FLAG_P_LOCKED;
-    Pointer ptr = new Pointer(-1, key, kv, 0.f, 0.f, Modifiers.EMPTY, flags);
+    Pointer ptr = new Pointer(-1, key, kv, 0.f, 0.f, Modifiers.EMPTY, flags, null);
     _ptrs.add(ptr);
     _handler.onPointerFlagsChanged(false);
   }
@@ -146,6 +146,17 @@ public final class Pointers implements Handler.Callback
       ptr.sliding.onTouchUp(ptr);
       return;
     }
+    if (isVerticalKeyboardSwipe(ptr))
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      if (ptr.lastDy < 0)
+        _handler.onKeyboardSwipeUp();
+      else
+        _handler.onKeyboardSwipeDown();
+      return;
+    }
     stopLongPress(ptr);
     KeyValue ptr_value = ptr.value;
     if (ptr.gesture != null && ptr.gesture.is_in_progress())
@@ -163,7 +174,7 @@ public final class Pointers implements Handler.Callback
       else // Otherwise, unlatch
       {
         removePtr(latched);
-        _handler.onPointerUp(ptr_value, ptr.modifiers);
+        _handler.onPointerUp(ptr_value, ptr.modifiers, null);
       }
     }
     else if ((ptr.flags & FLAG_P_LATCHABLE) != 0)
@@ -179,7 +190,7 @@ public final class Pointers implements Handler.Callback
     {
       clearLatched();
       removePtr(ptr);
-      _handler.onPointerUp(ptr_value, ptr.modifiers);
+      _handler.onPointerUp(ptr_value, ptr.modifiers, ptr.touch);
     }
   }
 
@@ -204,7 +215,7 @@ public final class Pointers implements Handler.Callback
     return false;
   }
 
-  public void onTouchDown(float x, float y, int pointerId, KeyboardData.Key key)
+  public void onTouchDown(float x, float y, int pointerId, KeyboardData.Key key, TouchTrace.Entry touch)
   {
     // Ignore new presses while a sliding key is active. On some devices, ghost
     // touch events can happen while the pointer travels on top of other keys.
@@ -214,7 +225,7 @@ public final class Pointers implements Handler.Callback
     // The other key already "own" the latched modifiers and will clear them.
     Modifiers mods = getModifiers(isOtherPointerDown());
     KeyValue value = _handler.modifyKey(key.keys[0], mods);
-    Pointer ptr = make_pointer(pointerId, key, value, x, y, mods);
+    Pointer ptr = make_pointer(pointerId, key, value, x, y, mods, touch);
     _ptrs.add(ptr);
     startLongPress(ptr);
     _handler.onPointerDown(value, false);
@@ -281,6 +292,8 @@ public final class Pointers implements Handler.Callback
     if (y == 0.0) y = -400;
     float dx = x - ptr.downX;
     float dy = y - ptr.downY;
+    ptr.lastDx = dx;
+    ptr.lastDy = dy;
 
     float dist = Math.abs(dx) + Math.abs(dy);
     if (dist < _config.swipe_dist_px)
@@ -306,6 +319,8 @@ public final class Pointers implements Handler.Callback
       { // Gesture starts
 
         ptr.gesture = new Gesture(direction);
+        if (isVerticalKeyboardSwipe(ptr))
+          return;
         KeyValue new_value = getNearestKeyAtDirection(ptr, direction);
         if (new_value != null)
         { // Pointer is swiping into a side key.
@@ -379,6 +394,13 @@ public final class Pointers implements Handler.Callback
       else if ((ptr.flags & FLAG_P_LATCHABLE) != 0)
         ptr.flags &= ~FLAG_P_LATCHABLE;
     }
+  }
+
+  boolean isVerticalKeyboardSwipe(Pointer ptr)
+  {
+    return ptr.gesture != null
+      && Math.abs(ptr.lastDy) >= _config.swipe_dist_px
+      && Math.abs(ptr.lastDy) > Math.abs(ptr.lastDx);
   }
 
   /** Make a pointer into the locked state. */
@@ -544,10 +566,10 @@ public final class Pointers implements Handler.Callback
   // Pointers
 
   Pointer make_pointer(int p, KeyboardData.Key k, KeyValue v, float x, float y,
-      Modifiers m)
+      Modifiers m, TouchTrace.Entry touch)
   {
     int flags = (v == null) ? 0 : pointer_flags_of_kv(v);
-    return new Pointer(p, k, v, x, y, m, flags);
+    return new Pointer(p, k, v, x, y, m, flags, touch);
   }
 
   private static final class Pointer
@@ -562,6 +584,7 @@ public final class Pointers implements Handler.Callback
     public KeyValue value;
     public float downX;
     public float downY;
+    public TouchTrace.Entry touch;
     /** Modifier flags at the time the key was pressed. */
     public Modifiers modifiers;
     /** See [FLAG_P_*] flags. */
@@ -572,8 +595,10 @@ public final class Pointers implements Handler.Callback
     public int holdCount;
     /** [null] when not in sliding mode. */
     public Sliding sliding;
+    public float lastDx;
+    public float lastDy;
 
-    public Pointer(int p, KeyboardData.Key k, KeyValue v, float x, float y, Modifiers m, int f)
+    public Pointer(int p, KeyboardData.Key k, KeyValue v, float x, float y, Modifiers m, int f, TouchTrace.Entry t)
     {
       pointerId = p;
       key = k;
@@ -582,10 +607,13 @@ public final class Pointers implements Handler.Callback
       downX = x;
       downY = y;
       modifiers = m;
+      touch = t;
       flags = f;
       timeoutWhat = -1;
       holdCount = 0;
       sliding = null;
+      lastDx = 0.f;
+      lastDy = 0.f;
     }
 
     public boolean hasFlagsAny(int has)
@@ -700,7 +728,7 @@ public final class Pointers implements Handler.Callback
       KeyValue released = KeyValue.sliderKey(slider, 0);
       removePtr(ptr);
       if (commit)
-        _handler.onPointerUp(released, ptr.modifiers);
+        _handler.onPointerUp(released, ptr.modifiers, null);
       else
         _handler.onPointerFlagsChanged(false);
     }
@@ -867,7 +895,7 @@ public final class Pointers implements Handler.Callback
 
     /** Key is released. [k] is the key that was returned by
         [modifySelectedKey] or [modifySelectedKey]. */
-    public void onPointerUp(KeyValue k, Modifiers mods);
+    public void onPointerUp(KeyValue k, Modifiers mods, TouchTrace.Entry touch);
 
     /** Flags changed because latched or locked keys or cancelled pointers. */
     public void onPointerFlagsChanged(boolean shouldVibrate);
@@ -878,5 +906,11 @@ public final class Pointers implements Handler.Callback
 
     /** Sliding pointer was cancelled before release. */
     public void onPointerCancel(KeyValue k, Modifiers mods);
+
+    /** Keyboard-wide vertical swipe, independent of side-label keys. */
+    public void onKeyboardSwipeUp();
+
+    /** Keyboard-wide vertical swipe, independent of side-label keys. */
+    public void onKeyboardSwipeDown();
   }
 }

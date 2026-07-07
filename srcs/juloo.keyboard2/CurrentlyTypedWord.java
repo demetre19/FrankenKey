@@ -18,6 +18,7 @@ public final class CurrentlyTypedWord
 
   /** The currently typed word. */
   StringBuilder _w = new StringBuilder();
+  TouchTrace _touch_trace = new TouchTrace();
   /** This can be disabled if the editor doesn't support looking at the text
       before the cursor. */
   boolean _enabled = false;
@@ -46,6 +47,11 @@ public final class CurrentlyTypedWord
     return _w.toString();
   }
 
+
+  public TouchTrace touch_trace()
+  {
+    return _touch_trace.copy();
+  }
   public boolean is_selection_not_empty()
   {
     return _has_selection;
@@ -75,10 +81,15 @@ public final class CurrentlyTypedWord
 
   public void typed(String s)
   {
+    typed(s, null);
+  }
+
+  public void typed(String s, TouchTrace.Entry touch)
+  {
     if (!_enabled)
       return;
     _has_selection = false;
-    type_chars(s);
+    type_chars(s, touch);
     callback();
   }
 
@@ -114,11 +125,11 @@ public final class CurrentlyTypedWord
   void callback()
   {
     String w = _w.toString();
-    _callback.currently_typed_word(w);
+    _callback.currently_typed_word(w, touch_trace());
   }
 
   /** Estimate the currently typed word after [chars] has been typed. */
-  void type_chars(CharSequence s, int start, int end)
+  void type_chars(CharSequence s, int start, int end, TouchTrace.Entry touch)
   {
     int insert_start = 0;
     // Iterate over code points as that's the unit of [_cursor].
@@ -132,14 +143,28 @@ public final class CurrentlyTypedWord
       if (!is_word_char(c) && i <= end)
         insert_start = i;
     }
+    int insert_at = Math.max(_w.length() + _w_cursor, 0);
     if (insert_start > 0)
-      _w.setLength(0);
-    _w.insert(Math.max(_w.length() + _w_cursor, 0), s, insert_start, end);
+    {
+      _touch_trace.clear();
+      _w.delete(0, insert_at);
+      insert_at = 0;
+    }
+    _w.insert(insert_at, s, insert_start, end);
+    if (touch != null && end - insert_start == 1 && _w_cursor == 0)
+      _touch_trace.add(touch);
+    else if (end > insert_start)
+      _touch_trace.removeFrom(insert_at);
   }
 
   void type_chars(CharSequence s)
   {
-    type_chars(s, 0, s.length());
+    type_chars(s, 0, s.length(), null);
+  }
+
+  void type_chars(CharSequence s, TouchTrace.Entry touch)
+  {
+    type_chars(s, 0, s.length(), touch);
   }
 
   /** Append chars to the current word without moving the cursor. Return the
@@ -181,6 +206,7 @@ public final class CurrentlyTypedWord
   void set_current_word(CharSequence text_before_cursor)
   {
     _w.setLength(0);
+    _touch_trace.clear();
     if (text_before_cursor == null)
       return;
     int saved_cursor = _cursor;
@@ -193,12 +219,13 @@ public final class CurrentlyTypedWord
   void set_current_word(SurroundingText st)
   {
     _w.setLength(0);
+    _touch_trace.clear();
     if (st == null)
       return;
     int saved_cursor = _cursor;
     int st_sel = st.getSelectionStart();
     CharSequence st_text = st.getText();
-    type_chars(st_text, 0, st_sel);
+    type_chars(st_text, 0, st_sel, null);
     _w_cursor = -append_chars(st_text, st_sel, st_text.length());
     _cursor = saved_cursor;
     callback();
@@ -230,6 +257,6 @@ public final class CurrentlyTypedWord
 
   public static interface Callback
   {
-    public void currently_typed_word(String word);
+    public void currently_typed_word(String word, TouchTrace touchTrace);
   }
 }

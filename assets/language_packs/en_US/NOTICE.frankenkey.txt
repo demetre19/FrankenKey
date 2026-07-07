@@ -1,0 +1,12 @@
+FrankenKey English Hunspell language pack.
+
+Dictionary files:
+- en_US.aff
+- en_US.dic
+
+Source: LibreOffice dictionaries repository, English dictionary package.
+Upstream files retained in this directory:
+- README_en_US.txt
+- license.txt
+
+The English dictionary is derived from SCOWL and related sources as documented in README_en_US.txt and license.txt. Retain those files when redistributing this language pack.

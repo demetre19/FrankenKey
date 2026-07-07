@@ -164,6 +164,30 @@ public class CleanModeFleksyLayoutTest
   }
 
   @Test
+  public void clean_text_bottom_row_matches_frankenkey_emoji_and_gif_corner_positions()
+      throws Exception
+  {
+    Element cleanRow = directRows(parseLayout(CLEAN_TEXT).getDocumentElement()).get(3);
+    Element frankenRow = parseLayout(BOTTOM_ROW).getDocumentElement();
+    List<Element> cleanKeys = directKeys(cleanRow);
+    List<Element> frankenKeys = directKeys(frankenRow);
+
+    assertEquals("Clean/Fleksy Fn key must stay in the same bottom-row slot as FrankenKey Fn.",
+        indexOfKey(frankenKeys, "fn"), indexOfKey(cleanKeys, "fn"));
+    assertEquals("FrankenKey Fn lower-left corner is the emoji switch reference.",
+        "switch_emoji", key(frankenRow, "fn").getAttribute("key3"));
+    assertEquals("Clean/Fleksy Fn must expose emoji from the same lower-left corner.",
+        "switch_emoji", key(cleanRow, "fn").getAttribute("key3"));
+
+    assertEquals("Clean/Fleksy Enter key must stay in the same bottom-row slot as FrankenKey Enter.",
+        indexOfKey(frankenKeys, "enter"), indexOfKey(cleanKeys, "enter"));
+    assertEquals("FrankenKey Enter lower-right corner is the GIF reference.",
+        "gif", key(frankenRow, "enter").getAttribute("key4"));
+    assertEquals("Clean/Fleksy Enter must expose GIF from the same lower-right corner.",
+        "gif", key(cleanRow, "enter").getAttribute("key4"));
+  }
+
+  @Test
   public void clean_numeric_layout_matches_fleksy_symbol_rows()
       throws Exception
   {
@@ -295,6 +319,15 @@ public class CleanModeFleksyLayoutTest
         return key;
     fail("Missing key with " + attribute + "=\"" + value + "\"");
     return null;
+  }
+
+  private static int indexOfKey(List<Element> keys, String key0)
+  {
+    for (int i = 0; i < keys.size(); i++)
+      if (key0.equals(keys.get(i).getAttribute("key0")))
+        return i;
+    fail("Missing key0=\"" + key0 + "\"");
+    return -1;
   }
 
   private static Element preferenceWithAndroidKey(Document settings, String key)

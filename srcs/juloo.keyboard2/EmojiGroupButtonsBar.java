@@ -28,8 +28,11 @@ public class EmojiGroupButtonsBar extends LinearLayout
 
   void add_group(int id, String symbol)
   {
-    addView(this.new EmojiGroupButton(getContext(), id, symbol),
-        new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT, 1.f));
+    LayoutParams params = new LayoutParams(LayoutParams.FILL_PARENT,
+        LayoutParams.WRAP_CONTENT, 1.f);
+    int margin = (int)(2.f * getResources().getDisplayMetrics().density);
+    params.setMargins(margin, 0, margin, margin);
+    addView(this.new EmojiGroupButton(getContext(), id, symbol), params);
   }
 
   EmojiGridView get_emoji_grid()

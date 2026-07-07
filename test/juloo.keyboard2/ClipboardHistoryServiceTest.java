@@ -33,7 +33,7 @@ public class ClipboardHistoryServiceTest
       .putBoolean("clipboard_history_enabled", true)
       .putString("clipboard_history_duration", "-1")
       .commit();
-    Config.initGlobalConfig(_prefs, testResources(), false, null);
+    installTestConfig();
     ClipboardHistoryService._service = null;
     ClipboardHistoryService._paste_callback = null;
     _service = new ClipboardHistoryService(context);
@@ -94,10 +94,46 @@ public class ClipboardHistoryServiceTest
     return String.format("clip-%03d", index);
   }
 
+  private void installTestConfig()
+  {
+    try
+    {
+      java.lang.reflect.Constructor<Config> ctor =
+        Config.class.getDeclaredConstructor(SharedPreferences.class,
+            Resources.class, Boolean.class,
+            juloo.keyboard2.dict.Dictionaries.class);
+      ctor.setAccessible(true);
+      Config config = ctor.newInstance(_prefs, testResources(), Boolean.FALSE,
+          null);
+      java.lang.reflect.Field globalConfig =
+        Config.class.getDeclaredField("_globalConfig");
+      globalConfig.setAccessible(true);
+      globalConfig.set(null, config);
+    }
+    catch (Exception e)
+    {
+      throw new AssertionError("Clipboard history tests need Config preferences but not keyboard layout XML initialization.", e);
+    }
+  }
+
   private static Resources testResources()
   {
     Resources base = RuntimeEnvironment.getApplication().getResources();
-    return new Resources(base.getAssets(), base.getDisplayMetrics(),
-        base.getConfiguration());
+    return new TestResources(base);
+  }
+
+  private static final class TestResources extends Resources
+  {
+    TestResources(Resources base)
+    {
+      super(base.getAssets(), base.getDisplayMetrics(),
+          base.getConfiguration());
+    }
+
+    @Override
+    public float getDimension(int id)
+    {
+      return 1f;
+    }
   }
 }

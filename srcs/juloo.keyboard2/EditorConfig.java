@@ -42,6 +42,8 @@ public final class EditorConfig
   // Doesn't override [_config.suggestions_enabled].
   public boolean should_show_candidates_view;
   public boolean should_show_snippet_row;
+  /** Whether autocorrect and local learning are safe for this editor. */
+  public boolean should_use_typing_assistance;
 
   public EditorConfig() {}
 
@@ -105,12 +107,35 @@ public final class EditorConfig
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
     should_show_candidates_view = CandidatesView.should_show(info);
+    should_use_typing_assistance = should_use_typing_assistance(info);
     should_show_snippet_row = should_show_snippet_row(info);
   }
 
   static boolean should_show_snippet_row(EditorInfo info)
   {
     return true;
+  }
+
+  static boolean should_use_typing_assistance(EditorInfo info)
+  {
+    int class_ = info.inputType & InputType.TYPE_MASK_CLASS;
+    int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
+    int flags = info.inputType & InputType.TYPE_MASK_FLAGS;
+    if (class_ != InputType.TYPE_CLASS_TEXT)
+      return false;
+    if ((flags & InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0)
+      return false;
+    switch (variation)
+    {
+      case InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE:
+      case InputType.TYPE_TEXT_VARIATION_NORMAL:
+      case InputType.TYPE_TEXT_VARIATION_PERSON_NAME:
+      case InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE:
+      case InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT:
+        return true;
+      default:
+        return false;
+    }
   }
 
   String actionLabel_of_imeAction(int action, Resources res)

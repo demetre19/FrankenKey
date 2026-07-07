@@ -3,7 +3,9 @@
   <juloo.keyboard2.suggestions.CandidatesView android:id="@+id/candidates_view" style="@style/candidates_view">
     <TextView android:id="@+id/candidates_emoji" style="@style/candidates_emoji"/>
     <TextView android:id="@+id/candidates_left" style="@style/candidates_item"/>
+    <TextView android:id="@+id/candidates_separator_left" style="@style/candidates_separator"/>
     <TextView android:id="@+id/candidates_middle" style="@style/candidates_item"/>
+    <TextView android:id="@+id/candidates_separator_right" style="@style/candidates_separator"/>
     <TextView android:id="@+id/candidates_right" style="@style/candidates_item"/>
   </juloo.keyboard2.suggestions.CandidatesView>
   <juloo.keyboard2.snippets.SnippetRowView android:id="@+id/snippet_row" android:layout_width="match_parent" android:layout_height="wrap_content"/>

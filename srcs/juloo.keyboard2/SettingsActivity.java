@@ -9,13 +9,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.content.SharedPreferences;
 import android.preference.PreferenceCategory;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 import android.view.View;
 import android.view.ViewGroup;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 
 public class SettingsActivity extends PreferenceActivity
 {
@@ -37,6 +40,7 @@ public class SettingsActivity extends PreferenceActivity
     if (dashboard != null)
       dashboard.setIntent(new Intent(Intent.ACTION_VIEW,
             Uri.parse(GiphyClient.DASHBOARD_URL)));
+    setupTypingAssistancePreferences();
 
     boolean foldableDevice = FoldStateTracker.isFoldableDevice(this);
     findPreference("margin_bottom_portrait_unfolded").setEnabled(foldableDevice);
@@ -67,6 +71,54 @@ public class SettingsActivity extends PreferenceActivity
       .copy_preferences_to_protected_storage(this,
           getPreferenceManager().getSharedPreferences());
     super.onStop();
+  }
+
+
+  private void setupTypingAssistancePreferences()
+  {
+    refreshTypingAssistanceStatus();
+    Preference clear = findPreference("clear_typing_assistance_data");
+    if (clear != null)
+      clear.setOnPreferenceClickListener(preference -> {
+        clearTypingAssistanceData();
+        return true;
+      });
+  }
+
+  private void refreshTypingAssistanceStatus()
+  {
+    Preference status = findPreference("typing_assistance_status");
+    if (status == null)
+      return;
+    SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+    boolean has_data = PersonalizationStore.has_data(prefs);
+    status.setSummary(getString(has_data
+          ? R.string.pref_typing_assistance_status_with_learning
+          : R.string.pref_typing_assistance_status_empty));
+  }
+
+  private void clearTypingAssistanceData()
+  {
+    SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+    PersonalizationStore.clear(prefs);
+    try
+    {
+      SharedPreferences protected_prefs =
+        DirectBootAwarePreferences.get_shared_preferences(this);
+      if (protected_prefs != prefs)
+        PersonalizationStore.clear(protected_prefs);
+    }
+    catch (Exception _e) {}
+    try
+    {
+      Config config = Config.globalConfig();
+      if (config != null && config.personalization != null)
+        config.personalization.clear();
+    }
+    catch (Exception _e) {}
+    refreshTypingAssistanceStatus();
+    Toast.makeText(this, R.string.pref_clear_typing_assistance_done,
+        Toast.LENGTH_SHORT).show();
   }
 
   private void styleSettingsList()

@@ -310,6 +310,184 @@ public class SettingsUiContractsTest
         preference.getAttribute("android:defaultValue"));
   }
 
+  @Test
+  public void typing_assistance_settings_split_suggestions_and_autocorrect()
+      throws Exception
+  {
+    Element root = settingsRoot();
+    Element suggestions = preferenceWithKey(root, "suggestions");
+    Element autocorrect = preferenceWithKey(root, "autocorrect");
+
+    assertNotNull("Settings must expose a Suggestions toggle with its own persisted key.",
+        suggestions);
+    assertNotNull("Settings must expose an Autocorrect toggle with its own persisted key.",
+        autocorrect);
+    assertNotSame("Suggestions and Autocorrect must be separate preference rows, not aliases for one combined setting.",
+        suggestions, autocorrect);
+    assertEquals("Suggestions must remain a visible checkbox toggle.",
+        "CheckBoxPreference", suggestions.getTagName());
+    assertEquals("Autocorrect must be a visible checkbox toggle.",
+        "CheckBoxPreference", autocorrect.getTagName());
+    assertEquals("Suggestions must have suggestion-specific title text.",
+        "@string/pref_suggestions_title",
+        suggestions.getAttribute("android:title"));
+    assertEquals("Suggestions must have suggestion-specific summary text.",
+        "@string/pref_suggestions_summary",
+        suggestions.getAttribute("android:summary"));
+    assertEquals("Autocorrect must have autocorrect-specific title text.",
+        "@string/pref_autocorrect_title",
+        autocorrect.getAttribute("android:title"));
+    assertEquals("Autocorrect must have autocorrect-specific summary text.",
+        "@string/pref_autocorrect_summary",
+        autocorrect.getAttribute("android:summary"));
+  }
+
+  @Test
+  public void typing_assistance_settings_are_first_visible_category()
+      throws Exception
+  {
+    Element root = settingsRoot();
+    NodeList children = root.getChildNodes();
+    Element firstElement = null;
+    for (int i = 0; i < children.getLength(); ++i)
+      if (children.item(i) instanceof Element)
+      {
+        firstElement = (Element)children.item(i);
+        break;
+      }
+
+    assertNotNull("Settings screen must contain at least one visible preference row.",
+        firstElement);
+    assertEquals("Typing assistance must be the first settings group so the Autocorrect and Suggestions toggles are not hidden below layout and snippet controls.",
+        "@string/pref_category_typing_assistance",
+        firstElement.getAttribute("android:title"));
+  }
+
+  @Test
+  public void typing_assistance_status_and_clear_controls_are_exposed_in_settings()
+      throws Exception
+  {
+    Element root = settingsRoot();
+    Element status = preferenceWithKey(root, "typing_assistance_status");
+    Element clear = preferenceWithKey(root, "clear_typing_assistance_data");
+
+    assertNotNull("Settings must expose a non-clickable typing-assistance status row.",
+        status);
+    assertNotNull("Settings must expose a row that clears learned typing-assistance data.",
+        clear);
+    assertEquals("Typing-assistance status must use the status title resource.",
+        "@string/pref_typing_assistance_status_title",
+        status.getAttribute("android:title"));
+    assertEquals("Typing-assistance status must be read-only, not an action row.",
+        "false", status.getAttribute("android:selectable"));
+    assertEquals("Clear learned words must use the clear-action title resource.",
+        "@string/pref_clear_typing_assistance_title",
+        clear.getAttribute("android:title"));
+    assertEquals("Clear learned words must explain it deletes local suggestion and next-word learning data.",
+        "@string/pref_clear_typing_assistance_summary",
+        clear.getAttribute("android:summary"));
+  }
+
+  @Test
+  public void settings_clear_typing_assistance_data_clears_personalization_and_refreshes_status()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
+    String setup = methodBody(source, "private void setupTypingAssistancePreferences()");
+    String clear = methodBody(source, "private void clearTypingAssistanceData()");
+    String refresh = methodBody(source, "private void refreshTypingAssistanceStatus()");
+
+    assertTrue("SettingsActivity must wire the clear row to the learned-data clearing action.",
+        setup.contains("findPreference(\"clear_typing_assistance_data\")")
+        && setup.contains("setOnPreferenceClickListener")
+        && setup.contains("clearTypingAssistanceData()"));
+    assertTrue("SettingsActivity must render status from PersonalizationStore.has_data so the row reflects whether learned words or bigrams exist.",
+        refresh.contains("findPreference(\"typing_assistance_status\")")
+        && refresh.contains("PersonalizationStore.has_data(prefs)")
+        && refresh.contains("pref_typing_assistance_status_with_learning")
+        && refresh.contains("pref_typing_assistance_status_empty"));
+    assertOrdered("Clearing learned data must remove PersonalizationStore data from settings preferences before refreshing the status row and showing completion feedback.",
+        clear.indexOf("getPreferenceManager().getSharedPreferences()"),
+        clear.indexOf("PersonalizationStore.clear(prefs)"),
+        clear.indexOf("refreshTypingAssistanceStatus()"),
+        clear.indexOf("pref_clear_typing_assistance_done"));
+    assertTrue("Clearing learned data must also clear device-protected preferences when a distinct Direct Boot store is available.",
+        clear.contains("DirectBootAwarePreferences.get_shared_preferences(this)")
+        && clear.contains("PersonalizationStore.clear(protected_prefs)"));
+  }
+
+  @Test
+  public void typing_assistance_strings_keep_suggestions_copy_separate_from_autocorrect()
+      throws Exception
+  {
+    String suggestionsTitle = resourceString("pref_suggestions_title");
+    String suggestionsSummary = resourceString("pref_suggestions_summary");
+    String autocorrectTitle = resourceString("pref_autocorrect_title");
+    String autocorrectSummary = resourceString("pref_autocorrect_summary");
+
+    String suggestionsCopy = (suggestionsTitle + " " + suggestionsSummary)
+      .toLowerCase(java.util.Locale.US);
+    String autocorrectSummaryCopy = autocorrectSummary
+      .toLowerCase(java.util.Locale.US);
+
+    assertEquals("Suggestions title must name only suggestion display.",
+        "Suggestions", suggestionsTitle);
+    assertEquals("Autocorrect title must be its own user-visible setting.",
+        "Autocorrect", autocorrectTitle);
+    assertNotEquals("Suggestions and Autocorrect summaries must describe different user-visible behavior.",
+        suggestionsSummary, autocorrectSummary);
+    assertFalse("Suggestions copy must not describe spell-checking.",
+        suggestionsCopy.contains("spell"));
+    assertFalse("Suggestions copy must not describe correction.",
+        suggestionsCopy.contains("correct"));
+    assertFalse("Suggestions copy must not describe completion.",
+        suggestionsCopy.contains("complete")
+        || suggestionsCopy.contains("completion"));
+    assertTrue("Autocorrect summary must describe spelling correction behavior.",
+        autocorrectSummaryCopy.contains("spell")
+        || autocorrectSummaryCopy.contains("mistake"));
+  }
+
+  @Test
+  public void config_reads_suggestions_and_autocorrect_from_independent_preferences()
+      throws Exception
+  {
+    String config = readSource("srcs/juloo.keyboard2/Config.java");
+    String suggestionsAssignment = assignmentStatement(config,
+        "suggestions_enabled");
+    String autocorrectAssignment = assignmentStatement(config,
+        "autocorrect_enabled");
+
+    assertTrue("Config must expose suggestion display separately from correction.",
+        config.contains("public boolean suggestions_enabled;"));
+    assertTrue("Config must expose autocorrect separately from suggestion display.",
+        config.contains("public boolean autocorrect_enabled;"));
+    assertTrue("Config suggestions_enabled must read the persisted suggestions key.",
+        suggestionsAssignment.contains("_prefs.getBoolean(\"suggestions\""));
+    assertTrue("Config autocorrect_enabled must read the persisted autocorrect key.",
+        autocorrectAssignment.contains("_prefs.getBoolean(\"autocorrect\""));
+    assertFalse("Config suggestions_enabled must not be backed by the autocorrect key.",
+        suggestionsAssignment.contains("_prefs.getBoolean(\"autocorrect\""));
+    assertFalse("Config autocorrect_enabled must not be backed by the suggestions key.",
+        autocorrectAssignment.contains("_prefs.getBoolean(\"suggestions\""));
+  }
+
+  @Test
+  public void config_no_longer_exposes_space_bar_auto_complete_as_main_setting()
+      throws Exception
+  {
+    String config = readSource("srcs/juloo.keyboard2/Config.java");
+
+    assertFalse("Config must not expose the legacy combined completion/correction field.",
+        Pattern.compile("\\b(?:public|protected|private)\\s+boolean\\s+space_bar_auto_complete\\b")
+          .matcher(config)
+          .find());
+    assertFalse("Config must not assign the legacy combined completion/correction field as the active setting.",
+        Pattern.compile("\\bspace_bar_auto_complete\\s*=")
+          .matcher(config)
+          .find());
+  }
+
   private static String readSource(String path)
       throws Exception
   {
@@ -338,6 +516,36 @@ public class SettingsUiContractsTest
         return preference;
     }
     return null;
+  }
+
+  private static String resourceString(String name)
+      throws Exception
+  {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl",
+        true);
+    Element root = factory.newDocumentBuilder()
+      .parse(new File("res/values/strings.xml"))
+      .getDocumentElement();
+    NodeList strings = root.getElementsByTagName("string");
+    for (int i = 0; i < strings.getLength(); ++i)
+    {
+      Element string = (Element)strings.item(i);
+      if (name.equals(string.getAttribute("name")))
+        return string.getTextContent();
+    }
+    fail("Missing string resource: " + name);
+    return "";
+  }
+
+  private static String assignmentStatement(String source, String fieldName)
+  {
+    Matcher matcher = Pattern.compile("\\b" + Pattern.quote(fieldName)
+        + "\\s*=\\s*[^;]+;")
+      .matcher(source);
+    assertTrue("Missing assignment for field: " + fieldName,
+        matcher.find());
+    return matcher.group();
   }
 
   private static String methodBody(String source, String methodSignature)

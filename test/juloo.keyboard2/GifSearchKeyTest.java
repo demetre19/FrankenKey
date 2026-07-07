@@ -1,18 +1,25 @@
 package juloo.keyboard2;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Typeface;
 import android.text.InputType;
 import android.view.inputmethod.EditorInfo;
 import android.os.Handler;
 import android.view.inputmethod.InputConnection;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import juloo.keyboard2.dict.Dictionaries;
 import java.util.List;
 import juloo.keyboard2.suggestions.Suggestions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import android.widget.FrameLayout;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import java.io.File;
@@ -173,6 +180,55 @@ public class GifSearchKeyTest
   }
 
   @Test
+  public void switch_numeric_while_gif_pane_is_open_updates_embedded_keyboard_only()
+      throws Exception
+  {
+    SharedPreferences prefs = RuntimeEnvironment.getApplication()
+      .getSharedPreferences("gif_numeric_switch_test", Context.MODE_PRIVATE);
+    prefs.edit().clear().putBoolean("clean_mode", true).commit();
+    try
+    {
+      Resources resources = layoutResources();
+      Config config = newConfig(prefs, resources);
+      setPrivateStaticField(Config.class, "_globalConfig", config);
+      KeyboardData textLayout = KeyboardData.load_string_exn(
+          "<keyboard bottom_row=\"false\" width=\"1\"><row><key c=\"a\"/></row></keyboard>");
+      KeyboardData numericLayout = KeyboardData.load_string_exn(
+          "<keyboard bottom_row=\"false\" width=\"2\"><row><key c=\"1\"/><key c=\"switch_text\"/></row></keyboard>");
+      TestKeyboard2 keyboard = new TestKeyboard2(textLayout, numericLayout);
+      setPrivateField(keyboard, "_config", config);
+      Theme._key_font = Typeface.DEFAULT;
+      GifSearchView pane = new GifSearchView(RuntimeEnvironment.getApplication(), null);
+      RecordingKeyboard2View embedded = new RecordingKeyboard2View(
+          RuntimeEnvironment.getApplication());
+      setPrivateField(pane, "_typingKeyboard", embedded);
+      pane.setTypingKeyboard(textLayout);
+      new FrameLayout(RuntimeEnvironment.getApplication()).addView(pane);
+      setPrivateField(keyboard, "_gif_pane", pane);
+      Keyboard2.Receiver receiver = keyboard.new Receiver();
+
+      assertNull("The embedded GIF search keyboard should start on text input, not digits.",
+          embedded.lastLayout.findKeyWithValue(KeyValue.getKeyByName("1")));
+
+      receiver.handle_event_key(KeyValue.Event.SWITCH_NUMERIC);
+
+      assertSame("Pressing 123 in the GIF pane must replace the visible embedded keyboard layout.",
+          numericLayout, embedded.lastLayout);
+      assertNotNull("Pressing 123 in the GIF pane must expose digit keys in the visible embedded keyboard.",
+          embedded.lastLayout.findKeyWithValue(KeyValue.getKeyByName("1")));
+      assertNotNull("The embedded numeric layout must offer ABC to return to GIF search text typing.",
+          embedded.lastLayout.findKeyWithValue(KeyValue.getSpecialKeyByName("switch_text")));
+      assertNull("Pressing 123 in the GIF pane must not switch the hidden main keyboard instead.",
+          keyboard.hiddenMainLayout);
+    }
+    finally
+    {
+      prefs.edit().clear().commit();
+    }
+  }
+
+
+  @Test
   public void gif_search_backspace_key_deletes_previous_query_character()
   {
     GifSearchHarness search = GifSearchHarness.create();
@@ -242,7 +298,7 @@ public class GifSearchKeyTest
 
     void press(String keyName)
     {
-      handler.key_up(KeyValue.getKeyByName(keyName), Pointers.Modifiers.EMPTY);
+      handler.key_up(KeyValue.getKeyByName(keyName), Pointers.Modifiers.EMPTY, null);
     }
 
     String query()
@@ -465,6 +521,112 @@ public class GifSearchKeyTest
     return null;
   }
 
+  private static final class TestKeyboard2 extends Keyboard2
+  {
+    final KeyboardData textLayout;
+    final KeyboardData numericLayout;
+    KeyboardData hiddenMainLayout;
+
+    TestKeyboard2(KeyboardData textLayout, KeyboardData numericLayout)
+    {
+      this.textLayout = textLayout;
+      this.numericLayout = numericLayout;
+    }
+
+    @Override
+    KeyboardData current_layout()
+    {
+      return textLayout;
+    }
+
+    @Override
+    KeyboardData loadCleanNumericLayout()
+    {
+      return numericLayout;
+    }
+
+    @Override
+    KeyboardData loadNumericLayout()
+    {
+      return numericLayout;
+    }
+
+    @Override
+    void setSpecialLayout(KeyboardData layout)
+    {
+      hiddenMainLayout = layout;
+    }
+  }
+
+  private static final class RecordingKeyboard2View extends Keyboard2View
+  {
+    KeyboardData lastLayout;
+
+    RecordingKeyboard2View(Context context)
+    {
+      super(context, null);
+    }
+
+    @Override
+    public void refresh_navigation_bar(Context context)
+    {
+    }
+
+    @Override
+    public void setKeyboard(KeyboardData layout)
+    {
+      lastLayout = layout;
+    }
+  }
+
+  private static Config newConfig(SharedPreferences prefs, Resources resources)
+      throws Exception
+  {
+    Constructor<Config> constructor = Config.class.getDeclaredConstructor(
+        SharedPreferences.class, Resources.class, Boolean.class,
+        Dictionaries.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(prefs, resources, Boolean.FALSE, null);
+  }
+
+  private static void setPrivateStaticField(Class<?> type, String fieldName,
+      Object value)
+      throws Exception
+  {
+    Field field = declaredField(type, fieldName);
+    field.setAccessible(true);
+    field.set(null, value);
+  }
+
+  private static void setPrivateField(Object target, String fieldName,
+      Object value)
+      throws Exception
+  {
+    Field field = declaredField(target.getClass(), fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
+
+
+  private static Field declaredField(Class<?> type, String fieldName)
+      throws NoSuchFieldException
+  {
+    Class<?> current = type;
+    while (current != null)
+    {
+      try { return current.getDeclaredField(fieldName); }
+      catch (NoSuchFieldException e) { current = current.getSuperclass(); }
+    }
+    throw new NoSuchFieldException(fieldName);
+  }
+
+
+  private static Resources layoutResources()
+  {
+    Resources base = RuntimeEnvironment.getApplication().getResources();
+    return new TestResources(base);
+  }
+
   private static Resources testResources()
   {
     Resources base = RuntimeEnvironment.getApplication().getResources();
@@ -476,6 +638,16 @@ public class GifSearchKeyTest
     TestResources(Resources base)
     {
       super(base.getAssets(), base.getDisplayMetrics(), base.getConfiguration());
+    }
+
+    @Override
+    public float getDimension(int id)
+    {
+      if (id == R.dimen.margin_top)
+        return 3.0f;
+      if (id == R.dimen.key_padding)
+        return 2.0f;
+      return super.getDimension(id);
     }
 
     @Override

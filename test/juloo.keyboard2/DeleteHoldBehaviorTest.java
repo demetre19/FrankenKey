@@ -155,7 +155,7 @@ public class DeleteHoldBehaviorTest
         "gamma", receiver.input.selectedText());
     assertEquals(true, receiver.selectionStates.get(2));
 
-    handler.key_up(release, Pointers.Modifiers.EMPTY);
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
 
     assertEquals("Release with repeat 0 must delete the currently selected chunk.",
         "alpha beta ", receiver.input.text.toString());

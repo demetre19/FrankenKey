@@ -7,9 +7,11 @@ import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build.VERSION;
+import android.os.UserManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.text.InputType;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.LogPrinter;
 import android.view.*;
@@ -27,11 +29,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import juloo.cdict.Cdict;
+import juloo.keyboard2.autocorrect.Hunspell;
 import juloo.keyboard2.dict.Dictionaries;
 import juloo.keyboard2.dict.DictionariesActivity;
+import juloo.keyboard2.lang.LanguagePackManager;
 import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
 import juloo.keyboard2.suggestions.Suggestions;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.snippets.SnippetRowView;
 
 public class Keyboard2 extends InputMethodService
@@ -50,9 +55,11 @@ public class Keyboard2 extends InputMethodService
   private KeyboardData _localeTextLayout;
   /** Installed and current locales. */
   private Dictionaries _dictionaries;
+  private LanguagePackManager _language_pack_manager;
   private ViewGroup _emojiPane = null;
   private ViewGroup _clipboard_pane = null;
   private ViewGroup _gif_pane = null;
+  private boolean _emojiPaneCommitting = false;
   private Handler _handler;
   private SharedPreferences _prefs;
 
@@ -79,9 +86,11 @@ public class Keyboard2 extends InputMethodService
   /** Layout currently visible. */
   KeyboardData current_layout()
   {
-    if (_currentSpecialLayout != null)
-      return _currentSpecialLayout;
-    return LayoutModifier.modify_layout(current_layout_unmodified());
+    KeyboardData layout = _currentSpecialLayout != null
+      ? _currentSpecialLayout
+      : LayoutModifier.modify_layout(current_layout_unmodified());
+    _config.current_layout_geometry = layout;
+    return layout;
   }
 
   void setTextLayout(int l)
@@ -150,9 +159,11 @@ public class Keyboard2 extends InputMethodService
     _handler = new Handler(getMainLooper());
     _foldStateTracker = new FoldStateTracker(this);
     _dictionaries = Dictionaries.instance(this);
+    _language_pack_manager = new LanguagePackManager(this);
     Config.initGlobalConfig(_prefs, getResources(),
         _foldStateTracker.isUnfolded(), _dictionaries);
     _config = Config.globalConfig();
+    _config.personalization = create_personalization_store();
     Receiver recvr = this.new Receiver();
     _suggestions = new Suggestions(recvr, _config);
     _keyeventhandler = new KeyEventHandler(recvr, _suggestions);
@@ -203,15 +214,43 @@ public class Keyboard2 extends InputMethodService
     _localeTextLayout = default_layout;
   }
 
+  private PersonalizationStore create_personalization_store()
+  {
+    if (VERSION.SDK_INT >= 24)
+    {
+      UserManager user = (UserManager)getSystemService(USER_SERVICE);
+      if (user != null && !user.isUserUnlocked())
+        return PersonalizationStore.empty();
+    }
+    return new PersonalizationStore(
+        PreferenceManager.getDefaultSharedPreferences(this));
+  }
+
   private void refresh_current_dictionary()
   {
     _config.current_dictionary = null;
     _config.emoji_dictionary = null;
+    _config.current_language_pack = null;
+    if (_config.current_hunspell != null)
+    {
+      _config.current_hunspell.close();
+      _config.current_hunspell = null;
+    }
     if (_config.device_locales.default_ == null)
       return;
     String current = _config.device_locales.default_.dictionary;
     if (current == null)
       return;
+    _config.current_language_pack = _language_pack_manager.find(current);
+    if (_config.current_language_pack != null)
+      try
+      {
+        _config.current_hunspell = Hunspell.load(_config.current_language_pack);
+      }
+      catch (Hunspell.ConstructionError e)
+      {
+        Logs.exn("", e);
+      }
     Cdict[] dicts = _dictionaries.load(current);
     if (dicts == null)
       return;
@@ -236,6 +275,7 @@ public class Keyboard2 extends InputMethodService
   {
     int prev_theme = _config.theme;
     _config.refresh(getResources(), _foldStateTracker.isUnfolded(), _dictionaries);
+    _config.personalization = create_personalization_store();
     refresh_current_dictionary();
     // Refreshing the theme config requires re-creating the views
     if (prev_theme != _config.theme)
@@ -299,6 +339,25 @@ public class Keyboard2 extends InputMethodService
   void showKeyboardView()
   {
     setInputView(_keyboard_container_view);
+  }
+
+  private boolean isEmojiPaneOpen()
+  {
+    return _emojiPane != null && _emojiPane.getParent() != null;
+  }
+
+  void insertEmojiFromPane(KeyValue key)
+  {
+    boolean wasCommitting = _emojiPaneCommitting;
+    _emojiPaneCommitting = true;
+    try
+    {
+      _keyeventhandler.key_up(key, Pointers.Modifiers.EMPTY, null);
+    }
+    finally
+    {
+      _emojiPaneCommitting = wasCommitting;
+    }
   }
 
   private boolean isGifPaneOpen()
@@ -452,17 +511,30 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case SWITCH_TEXT:
+          if (isGifPaneOpen())
+          {
+            ((GifSearchView)_gif_pane).setTypingKeyboard(current_layout());
+            break;
+          }
           _currentSpecialLayout = null;
           _keyboard_layout_view.setKeyboard(current_layout());
           break;
 
         case SWITCH_NUMERIC:
-          setSpecialLayout(_config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout());
+          KeyboardData numericLayout = _config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout();
+          if (isGifPaneOpen())
+          {
+            ((GifSearchView)_gif_pane).setTypingKeyboard(numericLayout);
+            break;
+          }
+          setSpecialLayout(numericLayout);
           break;
 
         case SWITCH_EMOJI:
           if (_emojiPane == null)
             _emojiPane = (ViewGroup)inflate_view(R.layout.emoji_pane);
+          ((EmojiSearchView)_emojiPane).setKeyboard(Keyboard2.this,
+              current_layout());
           setInputView(_emojiPane);
           break;
 
@@ -497,6 +569,11 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case ACTION:
+          if (isEmojiPaneOpen())
+          {
+            ((EmojiSearchView)_emojiPane).refreshResults();
+            break;
+          }
           if (isGifPaneOpen())
           {
             ((GifSearchView)_gif_pane).refreshResults();
@@ -528,7 +605,13 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case SWITCH_CLEAN_SYMBOLS:
-          setSpecialLayout(loadCleanSymbolsLayout());
+          KeyboardData symbolsLayout = loadCleanSymbolsLayout();
+          if (isGifPaneOpen())
+          {
+            ((GifSearchView)_gif_pane).setTypingKeyboard(symbolsLayout);
+            break;
+          }
+          setSpecialLayout(symbolsLayout);
           break;
 
         case CAPS_LOCK:
@@ -564,6 +647,8 @@ public class Keyboard2 extends InputMethodService
 
     public InputConnection getCurrentInputConnection()
     {
+      if (isEmojiPaneOpen() && !_emojiPaneCommitting)
+        return ((EmojiSearchView)_emojiPane).getSearchInputConnection();
       if (isGifPaneOpen())
         return ((GifSearchView)_gif_pane).getSearchInputConnection();
       return Keyboard2.this.getCurrentInputConnection();

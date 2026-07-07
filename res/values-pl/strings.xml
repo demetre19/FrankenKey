@@ -124,11 +124,10 @@
     <string name="pref_show_number_row_no_number_row">Brak rzędu</string>
     <string name="pref_show_number_row_no_symbols">Rząd cyfr bez symboli</string>
     <string name="pref_show_number_row_symbols">Rząd cyfr z symbolami</string>
-    <string name="pref_category_suggestions">Sugestie</string>
+    <string name="pref_category_typing_assistance">Sugestie</string>
     <string name="pref_suggestions_title">Przewidywanie</string>
-    <string name="pref_suggestions_summary">Włącz uzupełnianie słów i sprawdzanie pisownii</string>
-    <string name="pref_space_bar_auto_complete_title">Automatyczne zastępowanie po spacji</string>
-    <string name="pref_space_bar_auto_complete_summary">Wstaw najlepszą propopzycję po naciśnięciu spacji</string>
+    <string name="pref_autocorrect_title">Automatyczne zastępowanie po spacji</string>
+    <string name="pref_autocorrect_summary">Wstaw najlepszą propopzycję po naciśnięciu spacji</string>
     <string name="pref_change_method_key_replacement_title">Przełączanie metod wprowadzania</string>
     <string name="pref_change_method_key_replacement_e_picker">Pokaz wybór metody wprowadzania (jak przy dł. naciśnięciu)</string>
     <string name="pref_change_method_key_replacement_e_prev">Przełącz na ostatnio używaną</string>

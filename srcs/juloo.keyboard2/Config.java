@@ -10,9 +10,12 @@ import java.util.List;
 import java.util.Map;
 import juloo.cdict.Cdict;
 import juloo.keyboard2.dict.Dictionaries;
+import juloo.keyboard2.autocorrect.Hunspell;
+import juloo.keyboard2.lang.LanguagePack;
 import juloo.keyboard2.prefs.CustomExtraKeysPreference;
 import juloo.keyboard2.prefs.ExtraKeysPreference;
 import juloo.keyboard2.prefs.LayoutsPreference;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 
 public final class Config
 {
@@ -76,7 +79,7 @@ public final class Config
   public int circle_sensitivity;
   public boolean clipboard_history_enabled;
   public int clipboard_history_duration;
-  public boolean space_bar_auto_complete;
+  public boolean autocorrect_enabled;
   public boolean physical_keyboard_hide;
 
   // Dynamically set
@@ -89,6 +92,10 @@ public final class Config
   public DeviceLocales device_locales = null;
   public Cdict current_dictionary = null; // Might be 'null'.
   public Cdict emoji_dictionary = null; // Might be 'null'.
+  public LanguagePack current_language_pack = null; // Might be 'null'.
+  public Hunspell current_hunspell = null; // Might be 'null'.
+  public PersonalizationStore personalization;
+  public KeyboardData current_layout_geometry = null; // Might be 'null'.
   public IKeyEventHandler handler;
   public boolean orientation_landscape = false;
   public boolean foldable_unfolded = false;
@@ -105,6 +112,7 @@ public final class Config
   {
     _prefs = prefs;
     editor_config = new EditorConfig();
+    personalization = PersonalizationStore.empty();
     // static values
     marginTop = res.getDimension(R.dimen.margin_top);
     keyPadding = res.getDimension(R.dimen.key_padding);
@@ -201,7 +209,7 @@ public final class Config
     circle_sensitivity = Integer.valueOf(_prefs.getString("circle_sensitivity", "2"));
     clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", true);
     clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "-1"));
-    space_bar_auto_complete = _prefs.getBoolean("space_bar_auto_complete", false);
+    autocorrect_enabled = _prefs.getBoolean("autocorrect", true);
     physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "show").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;
@@ -345,11 +353,14 @@ public final class Config
   public static interface IKeyEventHandler
   {
     public void key_down(KeyValue value, boolean is_swipe);
-    public void key_up(KeyValue value, Pointers.Modifiers mods);
+    public void key_up(KeyValue value, Pointers.Modifiers mods, TouchTrace.Entry touch);
     public void key_cancel(KeyValue value, Pointers.Modifiers mods);
     public void key_hold(KeyValue value, Pointers.Modifiers mods, int hold_count);
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(String text);
+    public void suggestion_swiped_up(String text);
+    public void keyboard_swiped_up();
+    public void keyboard_swiped_down();
   }
 
   /** Config migrations. */

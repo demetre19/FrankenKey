@@ -6,6 +6,7 @@ import android.util.AttributeSet;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
@@ -27,6 +28,8 @@ public class EmojiGridView extends GridView
 
   private List<Emoji> _emojiArray;
   private HashMap<Emoji, Integer> _lastUsed;
+  private int _currentGroup;
+  private String _searchQuery = "";
 
   /*
    ** TODO: adapt column width and emoji size
@@ -43,17 +46,50 @@ public class EmojiGridView extends GridView
 
   public void setEmojiGroup(int group)
   {
-    _emojiArray = (group == GROUP_LAST_USE) ? getLastEmojis() : Emoji.getEmojisByGroup(group);
+    _currentGroup = group;
+    if (_searchQuery.length() == 0)
+      showEmojiList((group == GROUP_LAST_USE) ? getLastEmojis() : Emoji.getEmojisByGroup(group));
+  }
+
+  public void setSearchQuery(String query)
+  {
+    _searchQuery = query == null ? "" : query.trim();
+    if (_searchQuery.length() == 0)
+      showEmojiList((_currentGroup == GROUP_LAST_USE) ? getLastEmojis() : Emoji.getEmojisByGroup(_currentGroup));
+    else
+      showEmojiList(Emoji.search(_searchQuery));
+  }
+
+  private void showEmojiList(List<Emoji> emojis)
+  {
+    _emojiArray = emojis;
     setAdapter(new EmojiViewAdpater(getContext(), _emojiArray));
   }
 
   public void onItemClick(AdapterView<?> parent, View v, int pos, long id)
   {
-    Config config = Config.globalConfig();
-    Integer used = _lastUsed.get(_emojiArray.get(pos));
-    _lastUsed.put(_emojiArray.get(pos), (used == null) ? 1 : used.intValue() + 1);
-    config.handler.key_up(_emojiArray.get(pos).kv(), Pointers.Modifiers.EMPTY);
+    Emoji emoji = _emojiArray.get(pos);
+    Integer used = _lastUsed.get(emoji);
+    _lastUsed.put(emoji, (used == null) ? 1 : used.intValue() + 1);
+    EmojiSearchView pane = getEmojiSearchView();
+    if (pane == null || !pane.insertEmoji(emoji))
+    {
+      Config config = Config.globalConfig();
+      config.handler.key_up(emoji.kv(), Pointers.Modifiers.EMPTY, null);
+    }
     saveLastUsed(); // TODO: opti
+  }
+
+  private EmojiSearchView getEmojiSearchView()
+  {
+    ViewParent parent = getParent();
+    while (parent != null)
+    {
+      if (parent instanceof EmojiSearchView)
+        return (EmojiSearchView)parent;
+      parent = parent.getParent();
+    }
+    return null;
   }
 
   private List<Emoji> getLastEmojis()

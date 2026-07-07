@@ -33,11 +33,10 @@
     <string name="pref_extra_keys_title">往鍵盤上新增按鍵</string>
     <string name="pref_extra_keys_custom">新增自訂按鍵</string>
     <string name="pref_extra_keys_internal">選取要新增至鍵盤的按鍵</string>
-    <string name="pref_category_suggestions">建議</string>
+    <string name="pref_category_typing_assistance">建議</string>
     <string name="pref_suggestions_title">建議</string>
-    <string name="pref_suggestions_summary">啟用自動選字與拼字檢查</string>
-    <string name="pref_space_bar_auto_complete_title">以空白鍵自動選字</string>
-    <string name="pref_space_bar_auto_complete_summary">以空白鍵填入最好的建議字詞</string>
+    <string name="pref_autocorrect_title">以空白鍵自動選字</string>
+    <string name="pref_autocorrect_summary">以空白鍵填入最好的建議字詞</string>
     <string name="pref_category_typing">輸入</string>
     <string name="pref_swipe_dist_title">滑動距離</string>
     <string name="pref_swipe_dist_summary">按鍵角落字元間距 (%s)</string>
