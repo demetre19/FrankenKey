@@ -53,8 +53,10 @@ It includes:
   - `x` for cut
   - `c` for copy
   - `v` for paste
-- Clean numeric and symbol pages inspired by Fleksy's simple symbol layout.
-- Clipboard history for up to 50 recent clips.
+- Clean numeric and symbol pages with a large voice dictation key beside `ABC`.
+- Voice dictation in the top-left corner of the bottom-right action key, so Enter/Search/Done/Go layouts keep dictation available without adding clutter.
+- Clipboard and emoji/GIF controls on the bottom rows for fast access to paste history, emoji search, and GIF search.
+- Clipboard history for up to 50 recent clips; tap a saved clip to paste it, or pin important clips for reuse.
 
 This mode is for daily typing first. The advanced controls are still nearby, but they do not crowd the default view.
 

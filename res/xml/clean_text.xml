@@ -39,6 +39,6 @@
     <key width="1.0" role="action" key0="fn" key2="switch_clipboard" key3="switch_emoji"/>
     <key width="5.0" role="space_bar" key0="space"/>
     <key width="1.0" key0="."/>
-    <key width="1.7" role="action" key0="enter" key4="gif"/>
+    <key width="1.7" role="action" key0="enter" key1="loc voice_typing" key2="action" key4="gif"/>
   </row>
 </keyboard>

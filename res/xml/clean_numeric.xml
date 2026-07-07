@@ -41,6 +41,6 @@
     <key width="1.0" role="action" key0="voice_typing"/>
     <key width="5.0" role="space_bar" key0="space"/>
     <key width="1.0" key0="."/>
-    <key width="1.7" role="action" key0="enter"/>
+    <key width="1.7" role="action" key0="enter" key1="loc voice_typing" key2="action"/>
   </row>
 </keyboard>

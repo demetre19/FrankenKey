@@ -42,6 +42,6 @@
     <key width="2.8" role="space_bar" key0="space" key1="superscript" key3="subscript"/>
     <key width="1.2" role="action" key0="0" key2="."/>
     <key width="1.2" role="action" key0="loc compose" key7="up" key6="right" key5="left" key8="down"/>
-    <key width="1.2" role="action" key0="enter" key1="=" key2="action" key4="gif"/>
+    <key width="1.2" role="action" key0="enter" key1="loc voice_typing" key2="action" key4="gif"/>
   </row>
 </keyboard>

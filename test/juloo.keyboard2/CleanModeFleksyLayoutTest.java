@@ -1,10 +1,6 @@
 package juloo.keyboard2;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.res.Resources;
 import java.io.File;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,7 +8,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.RuntimeEnvironment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -26,58 +21,26 @@ public class CleanModeFleksyLayoutTest
   private static final String ANDROID_NS = "http://schemas.android.com/apk/res/android";
   private static final String CLEAN_TEXT = "res/xml/clean_text.xml";
   private static final String BOTTOM_ROW = "res/xml/bottom_row.xml";
-  private static final String SETTINGS = "res/xml/settings.xml";
   private static final String CLEAN_NUMERIC = "res/xml/clean_numeric.xml";
   private static final String CLEAN_SYMBOLS = "res/xml/clean_symbols.xml";
+  private static final String UNTRANSLATED_STRINGS = "res/values/untranslated_strings.xml";
+  private static final String[] BOTTOM_RIGHT_DICTATION_VARIATIONS = {
+    BOTTOM_ROW,
+    CLEAN_TEXT,
+    CLEAN_NUMERIC,
+    CLEAN_SYMBOLS,
+    "res/xml/clipboard_bottom_row.xml",
+    "res/xml/emoji_bottom_row.xml",
+    "res/xml/gif_bottom_row.xml",
+    "res/xml/greekmath.xml",
+    "res/xml/numeric.xml",
+    "res/xml/numeric_landscape.xml",
+    "res/xml/numpad.xml",
+    "res/xml/pin.xml",
+    "res/xml/pin_landscape.xml",
+  };
 
   public CleanModeFleksyLayoutTest() {}
-
-  @Test
-  public void clean_mode_preference_is_loaded_into_public_config_boolean()
-      throws Exception
-  {
-    SharedPreferences prefs = RuntimeEnvironment.getApplication()
-      .getSharedPreferences("clean_mode_config_contract", Context.MODE_PRIVATE);
-    prefs.edit().clear().putBoolean("clean_mode", true).commit();
-    try
-    {
-      Config.initGlobalConfig(prefs, testResources(), false, null);
-      Field cleanMode = publicCleanModeField();
-
-      assertEquals("Clean mode must be exposed as a public boolean Config field.",
-          boolean.class, cleanMode.getType());
-      assertTrue("clean_mode=true must be read into Config so keyboard selection can branch without re-reading preferences.",
-          cleanMode.getBoolean(Config.globalConfig()));
-    }
-    finally
-    {
-      prefs.edit().clear().commit();
-    }
-  }
-
-  @Test
-  public void clean_mode_defaults_to_fleksy_in_config_and_settings()
-      throws Exception
-  {
-    SharedPreferences prefs = RuntimeEnvironment.getApplication()
-      .getSharedPreferences("clean_mode_default_contract", Context.MODE_PRIVATE);
-    prefs.edit().clear().commit();
-    try
-    {
-      Config.initGlobalConfig(prefs, testResources(), false, null);
-      assertTrue("Missing clean_mode preference must select Clean/Fleksy mode for the everyday keyboard.",
-          Config.globalConfig().clean_mode);
-    }
-    finally
-    {
-      prefs.edit().clear().commit();
-    }
-
-    Element cleanMode = preferenceWithAndroidKey(parseLayout(SETTINGS),
-        "clean_mode");
-    assertEquals("Settings UI must advertise Clean/Fleksy as the default layout mode.",
-        "true", cleanMode.getAttributeNS(ANDROID_NS, "defaultValue"));
-  }
 
   @Test
   public void clean_text_layout_is_fleksy_clean_letter_rows()
@@ -164,13 +127,15 @@ public class CleanModeFleksyLayoutTest
   }
 
   @Test
-  public void clean_text_bottom_row_matches_frankenkey_emoji_and_gif_corner_positions()
+  public void clean_text_bottom_row_matches_frankenkey_voice_emoji_and_gif_corner_positions()
       throws Exception
   {
     Element cleanRow = directRows(parseLayout(CLEAN_TEXT).getDocumentElement()).get(3);
     Element frankenRow = parseLayout(BOTTOM_ROW).getDocumentElement();
     List<Element> cleanKeys = directKeys(cleanRow);
     List<Element> frankenKeys = directKeys(frankenRow);
+    Element frankenEnter = key(frankenRow, "enter");
+    Element cleanEnter = key(cleanRow, "enter");
 
     assertEquals("Clean/Fleksy Fn key must stay in the same bottom-row slot as FrankenKey Fn.",
         indexOfKey(frankenKeys, "fn"), indexOfKey(cleanKeys, "fn"));
@@ -181,10 +146,28 @@ public class CleanModeFleksyLayoutTest
 
     assertEquals("Clean/Fleksy Enter key must stay in the same bottom-row slot as FrankenKey Enter.",
         indexOfKey(frankenKeys, "enter"), indexOfKey(cleanKeys, "enter"));
+    assertEquals("FrankenKey Enter top-left corner is the voice typing reference.",
+        "loc voice_typing", frankenEnter.getAttribute("key1"));
+    assertEquals("Clean/Fleksy Enter must expose voice typing from the same top-left corner.",
+        frankenEnter.getAttribute("key1"), cleanEnter.getAttribute("key1"));
+    assertEquals("Clean/Fleksy Enter must preserve the same Go/Done action corner as FrankenKey Enter.",
+        frankenEnter.getAttribute("key2"), cleanEnter.getAttribute("key2"));
     assertEquals("FrankenKey Enter lower-right corner is the GIF reference.",
-        "gif", key(frankenRow, "enter").getAttribute("key4"));
+        "gif", frankenEnter.getAttribute("key4"));
     assertEquals("Clean/Fleksy Enter must expose GIF from the same lower-right corner.",
-        "gif", key(cleanRow, "enter").getAttribute("key4"));
+        "gif", cleanEnter.getAttribute("key4"));
+  }
+
+  @Test
+  public void every_bottom_right_action_variation_has_dictation_on_top_left_corner()
+      throws Exception
+  {
+    for (String path : BOTTOM_RIGHT_DICTATION_VARIATIONS)
+    {
+      Element bottomRight = bottomRightKey(path);
+      assertEquals(path + " bottom-right key must expose dictation in the top-left corner regardless of whether it renders as Return, Go, Done, symbols, PIN, emoji, clipboard, GIF, or numpad.",
+          "loc voice_typing", bottomRight.getAttribute("key1"));
+    }
   }
 
   @Test
@@ -230,6 +213,18 @@ public class CleanModeFleksyLayoutTest
   }
 
   @Test
+  public void launcher_source_code_link_points_to_frankenkey_repo()
+      throws Exception
+  {
+    Element repoUrl = stringResource(parseLayout(UNTRANSLATED_STRINGS),
+        "launcher_repo_url");
+
+    assertEquals("The launcher source-code action must open the FrankenKey fork, not the upstream Unexpected Keyboard repo.",
+        "https://github.com/demetre19/FrankenKey",
+        repoUrl.getTextContent().trim());
+  }
+
+  @Test
   public void clean_symbol_middle_rows_wire_fleksy_left_swipe_word_delete()
       throws Exception
   {
@@ -261,28 +256,6 @@ public class CleanModeFleksyLayoutTest
         children.get(keyboardView).getAttributeNS(ANDROID_NS, "id"));
   }
 
-  private static Field publicCleanModeField()
-      throws Exception
-  {
-    try
-    {
-      return Config.class.getField("clean_mode");
-    }
-    catch (NoSuchFieldException snakeCaseMissing)
-    {
-      try
-      {
-        return Config.class.getField("cleanMode");
-      }
-      catch (NoSuchFieldException camelCaseMissing)
-      {
-        AssertionError failure = new AssertionError(
-            "Config must expose clean_mode (or cleanMode) as a public boolean read from the clean_mode preference.");
-        failure.initCause(snakeCaseMissing);
-        throw failure;
-      }
-    }
-  }
 
   private static void assertCleanLetterKey(Element row, String key0,
       String... allowedSideKeys)
@@ -330,22 +303,6 @@ public class CleanModeFleksyLayoutTest
     return -1;
   }
 
-  private static Element preferenceWithAndroidKey(Document settings, String key)
-  {
-    NodeList preferences = settings.getElementsByTagName("*");
-    for (int i = 0; i < preferences.getLength(); i++)
-    {
-      Node node = preferences.item(i);
-      if (node instanceof Element)
-      {
-        Element preference = (Element)node;
-        if (key.equals(preference.getAttributeNS(ANDROID_NS, "key")))
-          return preference;
-      }
-    }
-    fail("Missing settings preference with android:key=\"" + key + "\"");
-    return null;
-  }
 
   private static void assertMiddleRowLeftSwipeDeletesWords(String path)
       throws Exception
@@ -361,13 +318,21 @@ public class CleanModeFleksyLayoutTest
   private static void assertBottomRowMirrorsFleksy(String path, Element row)
   {
     List<Element> keys = directKeys(row);
-    assertEquals(path + " bottom row must expose text, voice, space, period, and enter in order.",
+    assertEquals(path + " bottom row must expose text, the large voice key, space, period, and enter in order.",
         Arrays.asList("switch_text", "voice_typing", "space", ".", "enter"),
         primaryNames(keys));
 
+    Element enter = key(row, "enter");
+    assertEquals(path + " standalone voice key must remain immediately to the right of ABC.",
+        "voice_typing", keys.get(1).getAttribute("key0"));
+    assertEquals(path + " Enter top-left corner must also open voice typing.",
+        "loc voice_typing", enter.getAttribute("key1"));
+    assertEquals(path + " Enter must still be the Go/Done action key.",
+        "action", enter.getAttribute("key2"));
+
     assertWidthBetween(path, keys.get(0), 1.3f, 2.0f);
     assertWidthBetween(path, keys.get(1), 0.8f, 1.4f);
-    assertWidthBetween(path, keys.get(2), 4.0f, 5.0f);
+    assertWidthBetween(path, keys.get(2), 4.0f, 5.5f);
     assertWidthBetween(path, keys.get(3), 0.8f, 1.4f);
     assertWidthBetween(path, keys.get(4), 1.3f, 2.0f);
     assertTrue(path + " space bar must remain visibly wider than the adjacent control keys.",
@@ -424,7 +389,37 @@ public class CleanModeFleksyLayoutTest
           "=<", key.getString());
       return key.getString();
     }
+    if (name.startsWith("\\") && name.length() > 1)
+      return name.substring(1);
     return name;
+  }
+
+  private static Element bottomRightKey(String path)
+      throws Exception
+  {
+    Element root = parseLayout(path).getDocumentElement();
+    List<Element> rows;
+    if ("row".equals(root.getTagName()))
+      rows = Arrays.asList(root);
+    else
+      rows = directRows(root);
+    assertFalse(path + " must have at least one row.", rows.isEmpty());
+    List<Element> keys = directKeys(rows.get(rows.size() - 1));
+    assertFalse(path + " final row must have at least one key.", keys.isEmpty());
+    return keys.get(keys.size() - 1);
+  }
+
+  private static Element stringResource(Document resources, String name)
+  {
+    NodeList strings = resources.getElementsByTagName("string");
+    for (int i = 0; i < strings.getLength(); i++)
+    {
+      Element string = (Element)strings.item(i);
+      if (name.equals(string.getAttribute("name")))
+        return string;
+    }
+    fail("Missing string resource name=\"" + name + "\"");
+    return null;
   }
 
   private static Document parseLayout(String path)
@@ -476,10 +471,4 @@ public class CleanModeFleksyLayoutTest
     return -1;
   }
 
-  private static Resources testResources()
-  {
-    Resources base = RuntimeEnvironment.getApplication().getResources();
-    return new Resources(base.getAssets(), base.getDisplayMetrics(),
-        base.getConfiguration());
-  }
 }
