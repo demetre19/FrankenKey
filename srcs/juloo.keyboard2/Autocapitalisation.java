@@ -1,7 +1,7 @@
 package juloo.keyboard2;
 
 import android.os.Handler;
-import android.text.InputType;
+import android.text.TextUtils;
 import android.view.inputmethod.InputConnection;
 import android.view.KeyEvent;
 
@@ -157,20 +157,20 @@ public final class Autocapitalisation
   void type_one_char(char c)
   {
     _cursor++;
-    if (is_trigger_character(c))
+    if (should_refresh_caps_mode_after(c))
       _should_update_caps_mode = true;
     else
       _should_enable_shift = false;
   }
 
+  boolean should_refresh_caps_mode_after(char c)
+  {
+    return (_caps_mode & TextUtils.CAP_MODE_CHARACTERS) != 0
+      || is_trigger_character(c);
+  }
+
   boolean is_trigger_character(char c)
   {
-    switch (c)
-    {
-      case ' ':
-        return true;
-      default:
-        return false;
-    }
+    return Character.isWhitespace(c) || c == '.' || c == '!' || c == '?';
   }
 }

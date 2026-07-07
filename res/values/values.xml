@@ -13,6 +13,7 @@
   <dimen name="candidates_emoji_height">40dp</dimen>
   <!-- Will be overwritten automatically by Gradle for the debug build variant -->
   <bool name="debug_logs">false</bool>
+  <integer name="frankenkey_gif_size">1559</integer>
   <!-- Color fallback for the Monet themes on Android API < 31. This makes the
        Monet themes very similar to the "Dark" and "Light" themes. -->
   <color name="system_accent1_100">#3333ff</color>

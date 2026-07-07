@@ -2,6 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
   <PreferenceCategory android:title="@string/pref_category_layout">
     <juloo.keyboard2.prefs.LayoutsPreference/>
+    <CheckBoxPreference android:key="clean_mode" android:title="@string/pref_clean_mode_title" android:summary="@string/pref_clean_mode_summary" android:defaultValue="true"/>
     <PreferenceScreen android:title="@string/pref_extra_keys_title">
       <PreferenceCategory android:title="@string/pref_extra_keys_custom">
         <juloo.keyboard2.prefs.CustomExtraKeysPreference/>
@@ -28,8 +29,9 @@
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="longpress_timeout" android:title="@string/pref_long_timeout_title" android:summary="%sms" android:defaultValue="600" min="50" max="2000"/>
     <CheckBoxPreference android:key="keyrepeat_enabled" android:title="@string/pref_keyrepeat_enabled" android:defaultValue="true"/>
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="longpress_interval" android:dependency="keyrepeat_enabled" android:title="@string/pref_long_interval_title" android:summary="%sms" android:defaultValue="25" min="5" max="100"/>
+    <juloo.keyboard2.prefs.IntSlideBarPreference android:key="delete_words_interval" android:title="@string/pref_delete_words_interval_title" android:summary="%sms" android:defaultValue="250" min="50" max="1000"/>
     <CheckBoxPreference android:key="lock_double_tap" android:title="@string/pref_lock_double_tap_title" android:summary="@string/pref_lock_double_tap_summary" android:defaultValue="false"/>
-    <ListPreference android:key="physical_keyboard_behavior" android:title="@string/pref_physical_keyboard_behavior" android:summary="%s" android:defaultValue="hide" android:entries="@array/pref_physical_keyboard_behavior_entries" android:entryValues="@array/pref_physical_keyboard_behavior_values"/>
+    <ListPreference android:key="physical_keyboard_behavior" android:title="@string/pref_physical_keyboard_behavior" android:summary="%s" android:defaultValue="show" android:entries="@array/pref_physical_keyboard_behavior_entries" android:entryValues="@array/pref_physical_keyboard_behavior_values"/>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_behavior">
     <CheckBoxPreference android:key="autocapitalisation" android:title="@string/pref_autocapitalisation_title" android:summary="@string/pref_autocapitalisation_summary" android:defaultValue="true"/>
@@ -40,6 +42,7 @@
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_style">
     <ListPreference android:key="theme" android:title="@string/pref_theme" android:summary="%s" android:defaultValue="system" android:entries="@array/pref_theme_entries" android:entryValues="@array/pref_theme_values"/>
+    <juloo.keyboard2.prefs.CustomThemesPreference android:key="custom_themes" android:title="@string/pref_custom_themes_title" android:defaultValue="[]"/>
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="label_brightness" android:title="@string/pref_label_brightness" android:summary="%s%%" android:defaultValue="100" min="50" max="100"/>
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="keyboard_opacity" android:title="@string/pref_keyboard_opacity" android:summary="%s%%" android:defaultValue="100" min="0" max="100"/>
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="key_opacity" android:title="@string/pref_key_opacity" android:summary="%s%%" android:defaultValue="100" min="0" max="100"/>
@@ -69,7 +72,11 @@
     <juloo.keyboard2.prefs.IntSlideBarPreference android:key="custom_border_radius" android:title="@string/pref_corners_radius_title" android:summary="%s%%" android:defaultValue="0" min="0" max="100" android:dependency="border_config"/>
     <juloo.keyboard2.prefs.SlideBarPreference android:key="custom_border_line_width" android:title="@string/pref_border_width_title" android:summary="%sdp" android:defaultValue="0" min="0" max="5" android:dependency="border_config"/>
   </PreferenceCategory>
+  <PreferenceCategory android:title="@string/pref_category_gif">
+    <EditTextPreference android:key="giphy_api_key" android:title="@string/pref_giphy_api_key_title" android:summary="@string/pref_giphy_api_key_summary" android:dialogTitle="@string/pref_giphy_api_key_dialog"/>
+    <Preference android:key="giphy_api_dashboard" android:title="@string/pref_giphy_dashboard_title" android:summary="@string/pref_giphy_dashboard_summary"/>
+  </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_clipboard">
-    <ListPreference android:key="clipboard_history_duration" android:title="@string/pref_clipboard_history_duration" android:summary="%s" android:defaultValue="5" android:entries="@array/pref_clipboard_duration_entries" android:entryValues="@array/pref_clipboard_duration_values"/>
+    <ListPreference android:key="clipboard_history_duration" android:title="@string/pref_clipboard_history_duration" android:summary="%s" android:defaultValue="-1" android:entries="@array/pref_clipboard_duration_entries" android:entryValues="@array/pref_clipboard_duration_values"/>
   </PreferenceCategory>
 </PreferenceScreen>

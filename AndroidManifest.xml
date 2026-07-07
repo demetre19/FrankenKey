@@ -13,6 +13,8 @@
       <meta-data android:name="android.view.im" android:resource="@xml/method"/>
     </service>
 
+    <provider android:name="juloo.keyboard2.GifContentProvider" android:authorities="${applicationId}.gifcontent" android:exported="false" android:grantUriPermissions="true"/>
+
     <activity android:name="juloo.keyboard2.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>

@@ -38,11 +38,14 @@ public final class SnippetStore
   public static List<SnippetSlot> loadSlots(Context context)
   {
     if (!canAccessCredentialProtectedStorage(context))
-      return emptySlots(DEFAULT_SLOT_COUNT);
+      return loadDirectBootSlots(context);
+    migrateNoBackupSlots(context);
     migrateLegacySlots(context);
     try
     {
-      return loadSlots(readFile(slotsFile(context)), DEFAULT_SLOT_COUNT);
+      String encoded = readFile(slotsFile(context));
+      mirrorSlotsToDirectBoot(context, encoded);
+      return loadSlots(encoded, DEFAULT_SLOT_COUNT);
     }
     catch (IOException _e)
     {
@@ -54,9 +57,50 @@ public final class SnippetStore
   {
     if (!canAccessCredentialProtectedStorage(context))
       return;
+    String encoded = saveSlots(slots);
     try
     {
-      writeFile(slotsFile(context), saveSlots(slots));
+      writeFile(slotsFile(context), encoded);
+      mirrorSlotsToDirectBoot(context, encoded);
+    }
+    catch (IOException _e) {}
+  }
+
+  private static List<SnippetSlot> loadDirectBootSlots(Context context)
+  {
+    try
+    {
+      return loadSlots(readFile(directBootSlotsFile(context)),
+          DEFAULT_SLOT_COUNT);
+    }
+    catch (IOException _e)
+    {
+      return emptySlots(DEFAULT_SLOT_COUNT);
+    }
+  }
+
+  private static void mirrorSlotsToDirectBoot(Context context, String encoded)
+  {
+    if (VERSION.SDK_INT < 24)
+      return;
+    try
+    {
+      writeFile(directBootSlotsFile(context), encoded == null ? "" : encoded);
+    }
+    catch (IOException _e) {}
+  }
+
+  private static void migrateNoBackupSlots(Context context)
+  {
+    File file = slotsFile(context);
+    if (file.isFile())
+      return;
+    File noBackupFile = legacyNoBackupSlotsFile(context);
+    if (!noBackupFile.isFile())
+      return;
+    try
+    {
+      writeFile(file, readFile(noBackupFile));
     }
     catch (IOException _e) {}
   }
@@ -175,6 +219,17 @@ public final class SnippetStore
   }
 
   private static File slotsFile(Context context)
+  {
+    return new File(context.getFilesDir(), STORE_FILE);
+  }
+
+  private static File directBootSlotsFile(Context context)
+  {
+    return new File(context.createDeviceProtectedStorageContext().getFilesDir(),
+        STORE_FILE);
+  }
+
+  private static File legacyNoBackupSlotsFile(Context context)
   {
     return new File(context.getNoBackupFilesDir(), STORE_FILE);
   }

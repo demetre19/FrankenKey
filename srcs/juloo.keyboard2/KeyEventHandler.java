@@ -1,6 +1,8 @@
 package juloo.keyboard2;
 
 import android.annotation.SuppressLint;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyCharacterMap;
@@ -36,6 +38,21 @@ public final class KeyEventHandler
   /** Remember the action that was handled. This is used by autocorrect. */
   LastAction _last_action = null;
   LastAction _next_last_action = null;
+  private DeleteSelection _delete_selection = null;
+
+  private static final class DeleteSelection
+  {
+    final String textBeforeCursor;
+    final int cursor;
+    int steps;
+
+    DeleteSelection(String textBeforeCursor_, int cursor_)
+    {
+      textBeforeCursor = textBeforeCursor_;
+      cursor = cursor_;
+      steps = 0;
+    }
+  }
 
   public KeyEventHandler(IReceiver recv, Suggestions sg)
   {
@@ -124,6 +141,19 @@ public final class KeyEventHandler
     }
     update_meta_state(old_mods);
     _last_action = _next_last_action;
+  }
+
+  @Override
+  public void key_hold(KeyValue key, Pointers.Modifiers mods, int holdCount)
+  {
+    key_up(key, mods);
+  }
+
+  @Override
+  public void key_cancel(KeyValue key, Pointers.Modifiers mods)
+  {
+    if (is_delete_words_slider(key))
+      cancel_delete_words_selection();
   }
 
   @Override
@@ -338,7 +368,141 @@ public final class KeyEventHandler
       case Cursor_down: move_cursor_vertical(r); break;
       case Selection_cursor_left: move_cursor_sel(r, true, key_down); break;
       case Selection_cursor_right: move_cursor_sel(r, false, key_down); break;
+      case Delete_words_left: handle_delete_words_slider(r, key_down); break;
     }
+  }
+
+  private boolean is_delete_words_slider(KeyValue key)
+  {
+    return key != null
+      && key.getKind() == KeyValue.Kind.Slider
+      && key.getSlider() == KeyValue.Slider.Delete_words_left;
+  }
+
+  private void handle_delete_words_slider(int r, boolean key_down)
+  {
+    if (r == 0 && !key_down)
+    {
+      commit_delete_words_selection();
+      return;
+    }
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    if (key_down)
+      _delete_selection = null;
+    if (!ensure_delete_words_selection(conn))
+      return;
+    _delete_selection.steps = Math.max(0, _delete_selection.steps + r);
+    apply_delete_words_selection(conn);
+  }
+
+  private boolean ensure_delete_words_selection(InputConnection conn)
+  {
+    if (_delete_selection != null)
+      return true;
+    ExtractedTextRequest req = new ExtractedTextRequest();
+    req.hintMaxChars = 4096;
+    ExtractedText et = conn.getExtractedText(req, 0);
+    if (et == null || et.text == null || !can_set_selection(conn))
+      return false;
+    int cursor = Math.max(et.selectionStart, et.selectionEnd);
+    int local_cursor = cursor - et.startOffset;
+    if (local_cursor < 0)
+      local_cursor = 0;
+    if (local_cursor > et.text.length())
+      local_cursor = et.text.length();
+    _delete_selection = new DeleteSelection(
+        et.text.subSequence(0, local_cursor).toString(), cursor);
+    return true;
+  }
+
+  private void apply_delete_words_selection(InputConnection conn)
+  {
+    if (_delete_selection == null)
+      return;
+    int start = delete_start_for_steps(_delete_selection.textBeforeCursor,
+        _delete_selection.steps);
+    int selection_start = _delete_selection.cursor
+      - (_delete_selection.textBeforeCursor.length() - start);
+    if (conn.setSelection(selection_start, _delete_selection.cursor))
+      _recv.selection_state_changed(_delete_selection.steps > 0);
+  }
+
+  private void commit_delete_words_selection()
+  {
+    DeleteSelection sel = _delete_selection;
+    _delete_selection = null;
+    if (sel == null)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    int start = delete_start_for_steps(sel.textBeforeCursor, sel.steps);
+    int selection_start = sel.cursor - (sel.textBeforeCursor.length() - start);
+    if (selection_start == sel.cursor)
+    {
+      conn.setSelection(sel.cursor, sel.cursor);
+      _recv.selection_state_changed(false);
+      return;
+    }
+    conn.beginBatchEdit();
+    if (conn.setSelection(selection_start, sel.cursor))
+    {
+      conn.commitText("", 1);
+      _autocap.event_sent(KeyEvent.KEYCODE_DEL, 0);
+      _typedword.event_sent(KeyEvent.KEYCODE_DEL, 0);
+    }
+    conn.endBatchEdit();
+    _recv.selection_state_changed(false);
+  }
+
+  private void cancel_delete_words_selection()
+  {
+    DeleteSelection sel = _delete_selection;
+    _delete_selection = null;
+    if (sel == null)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn != null)
+      conn.setSelection(sel.cursor, sel.cursor);
+    _recv.selection_state_changed(false);
+  }
+
+  static int delete_start_for_steps(String text, int steps)
+  {
+    int pos = text.length();
+    for (int i = 0; i < steps; ++i)
+    {
+      int next = previous_delete_start(text, pos);
+      if (next == pos)
+        break;
+      pos = next;
+    }
+    return pos;
+  }
+
+  private static int previous_delete_start(String text, int pos)
+  {
+    int p = Math.max(0, Math.min(pos, text.length()));
+    while (p > 0 && Character.isWhitespace(text.charAt(p - 1)))
+      --p;
+    if (p == 0)
+      return 0;
+    if (is_word_char(text.charAt(p - 1)))
+      while (p > 0 && is_word_char(text.charAt(p - 1)))
+        --p;
+    else
+      while (p > 0
+          && !Character.isWhitespace(text.charAt(p - 1))
+          && !is_word_char(text.charAt(p - 1)))
+        --p;
+    return p;
+  }
+
+  private static boolean is_word_char(char c)
+  {
+    return Character.isLetterOrDigit(c) || c == '\'' || c == '’';
   }
 
   void handle_stateful(KeyValue.Stateful st)
@@ -560,6 +724,83 @@ public final class KeyEventHandler
       send_text(" ");
   }
 
+  void send_backspace()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn != null)
+    {
+      conn.beginBatchEdit();
+      try
+      {
+        conn.finishComposingText();
+        CharSequence selection = conn.getSelectedText(0);
+        if (selection != null && selection.length() > 0)
+        {
+          if (conn.commitText("", 1))
+          {
+            record_backspace();
+            return;
+          }
+        }
+        else
+        {
+          String before = extracted_text_snapshot(conn);
+          if (delete_previous_codepoint(conn))
+          {
+            String after = extracted_text_snapshot(conn);
+            if (before == null || after == null || !before.equals(after))
+            {
+              record_backspace();
+              return;
+            }
+          }
+        }
+      }
+      finally
+      {
+        conn.endBatchEdit();
+      }
+    }
+    send_key_down_up(KeyEvent.KEYCODE_DEL);
+  }
+
+  private String extracted_text_snapshot(InputConnection conn)
+  {
+    ExtractedTextRequest req = new ExtractedTextRequest();
+    ExtractedText et = conn.getExtractedText(req, 0);
+    if (et == null || et.text == null)
+      return null;
+    return et.startOffset + ":" + et.selectionStart + ":" + et.selectionEnd
+      + ":" + et.text.toString();
+  }
+
+  private boolean delete_previous_codepoint(InputConnection conn)
+  {
+    if (VERSION.SDK_INT >= VERSION_CODES.N)
+      return conn.deleteSurroundingTextInCodePoints(1, 0)
+        || conn.deleteSurroundingText(1, 0);
+    if (delete_previous_codepoint_if_available(conn))
+      return true;
+    return conn.deleteSurroundingText(1, 0);
+  }
+
+  private boolean delete_previous_codepoint_if_available(InputConnection conn)
+  {
+    try
+    {
+      java.lang.reflect.Method method = conn.getClass().getMethod(
+          "deleteSurroundingTextInCodePoints", int.class, int.class);
+      return (Boolean)method.invoke(conn, 1, 0);
+    }
+    catch (Exception _e) { return false; }
+  }
+
+  private void record_backspace()
+  {
+    _autocap.event_sent(KeyEvent.KEYCODE_DEL, 0);
+    _typedword.event_sent(KeyEvent.KEYCODE_DEL, 0);
+  }
+
   /** Undo the last autocorrect. */
   void handle_backspace()
   {
@@ -571,9 +812,7 @@ public final class KeyEventHandler
       last_replaced_word = null;
     }
     else
-    {
-      send_key_down_up(KeyEvent.KEYCODE_DEL);
-    }
+      send_backspace();
   }
 
   public static interface IReceiver extends Suggestions.Callback

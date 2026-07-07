@@ -42,6 +42,7 @@ public final class Config
   public boolean inverse_numpad = false;
   public boolean add_number_row;
   public boolean number_row_symbols;
+  public boolean clean_mode;
   public float swipe_dist_px;
   public float slide_step_px;
   public boolean suggestions_enabled;
@@ -51,6 +52,7 @@ public final class Config
   public long vibrate_duration;
   public long longPressTimeout;
   public long longPressInterval;
+  public long deleteWordsInterval;
   public boolean keyrepeat_enabled;
   public float margin_bottom;
   public int keyboard_rows_height_pixels;
@@ -107,7 +109,7 @@ public final class Config
     marginTop = res.getDimension(R.dimen.margin_top);
     keyPadding = res.getDimension(R.dimen.key_padding);
     labelTextSize = 0.33f;
-    sublabelTextSize = 0.22f;
+    sublabelTextSize = 0.19f;
     // from prefs
     refresh(res, foldableUnfolded, dicts);
     // initialized later
@@ -144,6 +146,7 @@ public final class Config
     String number_row = _prefs.getString("number_row", "no_number_row");
     add_number_row = !number_row.equals("no_number_row");
     number_row_symbols = number_row.equals("symbols");
+    clean_mode = _prefs.getBoolean("clean_mode", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
     // The baseline for the swipe distance correspond to approximately the
     // width of a key in portrait mode, as most layouts have 10 columns.
@@ -159,6 +162,7 @@ public final class Config
     vibrate_duration = _prefs.getInt("vibrate_duration", 20);
     longPressTimeout = _prefs.getInt("longpress_timeout", 600);
     longPressInterval = _prefs.getInt("longpress_interval", 65);
+    deleteWordsInterval = _prefs.getInt("delete_words_interval", 250);
     keyrepeat_enabled = _prefs.getBoolean("keyrepeat_enabled", true);
     margin_bottom = get_dip_pref_oriented(dm, "margin_bottom", 7, 3);
     key_vertical_margin = get_dip_pref(dm, "key_vertical_margin", 1.5f) / 100;
@@ -195,10 +199,10 @@ public final class Config
     current_layout_narrow = _prefs.getInt("current_layout_portrait", 0);
     current_layout_wide = _prefs.getInt("current_layout_landscape", 0);
     circle_sensitivity = Integer.valueOf(_prefs.getString("circle_sensitivity", "2"));
-    clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", false);
-    clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "5"));
+    clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", true);
+    clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "-1"));
     space_bar_auto_complete = _prefs.getBoolean("space_bar_auto_complete", false);
-    physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "hide").equals("hide");
+    physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "show").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;
     split_layout = get_split_layout();
@@ -258,25 +262,37 @@ public final class Config
     int night_mode = res.getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
     switch (theme_name)
     {
-      case "light": return R.style.Light;
-      case "black": return R.style.Black;
-      case "altblack": return R.style.AltBlack;
-      case "dark": return R.style.Dark;
-      case "white": return R.style.White;
-      case "epaper": return R.style.ePaper;
-      case "desert": return R.style.Desert;
-      case "jungle": return R.style.Jungle;
-      case "monetlight": return R.style.MonetLight;
-      case "monetdark": return R.style.MonetDark;
+      case "light":
+      case "white":
+      case "epaper":
+      case "desert":
+      case "monetlight":
+      case "fleksyrowslight":
+        return R.style.Light;
+      case "forest":
+      case "jungle":
+      case "everforestlight":
+      case "pine":
+        return R.style.Forest;
+      case "blue":
+      case "cobalt":
+        return R.style.Blue;
+      case "gray":
+      case "epaperblack":
+        return R.style.Gray;
+      case "custom":
+        return R.style.Gray;
+      case "dark":
+      case "black":
+      case "altblack":
+      case "monetdark":
+      case "rosepine":
+      case "fleksyrowsdark":
+        return R.style.Dark;
       case "monet":
         if ((night_mode & Configuration.UI_MODE_NIGHT_NO) != 0)
-          return R.style.MonetLight;
-        return R.style.MonetDark;
-      case "rosepine": return R.style.RosePine;
-      case "everforestlight": return R.style.EverforestLight;
-      case "cobalt": return R.style.Cobalt;
-      case "pine": return R.style.Pine;
-      case "epaperblack": return R.style.ePaperBlack;
+          return R.style.Light;
+        return R.style.Dark;
       default:
       case "system":
         if ((night_mode & Configuration.UI_MODE_NIGHT_NO) != 0)
@@ -330,6 +346,8 @@ public final class Config
   {
     public void key_down(KeyValue value, boolean is_swipe);
     public void key_up(KeyValue value, Pointers.Modifiers mods);
+    public void key_cancel(KeyValue value, Pointers.Modifiers mods);
+    public void key_hold(KeyValue value, Pointers.Modifiers mods, int hold_count);
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(String text);
   }

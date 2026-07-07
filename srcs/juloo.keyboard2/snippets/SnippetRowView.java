@@ -2,6 +2,7 @@ package juloo.keyboard2.snippets;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -76,6 +77,7 @@ public class SnippetRowView extends HorizontalScrollView
     v.setText(slot.getDisplayLabel());
     v.setGravity(Gravity.CENTER);
     v.setSingleLine(true);
+    v.setEllipsize(TextUtils.TruncateAt.END);
     v.setTextColor(themeColor(R.attr.colorLabel));
     v.setBackgroundResource(R.drawable.suggestions_item_background);
     v.setAlpha(slot.isConfigured() ? 1.0f : 0.45f);

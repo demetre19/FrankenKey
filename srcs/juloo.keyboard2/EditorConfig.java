@@ -15,6 +15,8 @@ public final class EditorConfig
       enter key. */
   public KeyValue enter_key_replacement = null;
   public int actionId;
+  /** Whether the corner GIF key should be shown on keyboard layouts. */
+  public boolean gif_action_key = true;
   /** Whether selection mode turns on automatically when text is selected. */
   public boolean selection_mode_enabled = true;
   /** Whether the numeric layout should be shown by default. */
@@ -51,6 +53,7 @@ public final class EditorConfig
        Editors with [TYPE_NULL] are for example Termux and Emacs. */
     selection_mode_enabled = inputType != InputType.TYPE_NULL;
     enter_key_replacement = null;
+    gif_action_key = true;
     /* Action key. Looks at [info.actionLabel] first. */
     if (info.actionLabel != null)
     {
@@ -89,7 +92,8 @@ public final class EditorConfig
     /* setSelection fallback */
     should_move_cursor_force_fallback = _should_move_cursor_force_fallback(info);
     /* Autocapitalisation */
-    caps_mode = info.inputType & TextUtils.CAP_MODE_SENTENCES;
+    caps_mode = info.inputType & (TextUtils.CAP_MODE_CHARACTERS |
+        TextUtils.CAP_MODE_WORDS | TextUtils.CAP_MODE_SENTENCES);
     caps_initially_enabled = (info.initialCapsMode != 0);
     caps_initially_updated = caps_should_update_state(info);
     /* CurrentlyTypedWord */
@@ -106,16 +110,7 @@ public final class EditorConfig
 
   static boolean should_show_snippet_row(EditorInfo info)
   {
-    int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
-    switch (info.inputType & InputType.TYPE_MASK_CLASS)
-    {
-      case InputType.TYPE_CLASS_TEXT:
-        return (variation & InputType.TYPE_TEXT_VARIATION_PASSWORD) == 0;
-      case InputType.TYPE_CLASS_NUMBER:
-        return variation != InputType.TYPE_NUMBER_VARIATION_PASSWORD;
-      default:
-        return true;
-    }
+    return true;
   }
 
   String actionLabel_of_imeAction(int action, Resources res)

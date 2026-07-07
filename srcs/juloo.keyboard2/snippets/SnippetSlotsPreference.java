@@ -6,8 +6,10 @@ import android.content.DialogInterface;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -18,6 +20,8 @@ import juloo.keyboard2.R;
 
 public class SnippetSlotsPreference extends PreferenceCategory
 {
+  private static final String PREF_EXPANDED =
+      "frankenkey_snippets_settings_expanded";
   private boolean _attached = false;
   private List<SnippetSlot> _slots;
 
@@ -49,9 +53,51 @@ public class SnippetSlotsPreference extends PreferenceCategory
     if (!_attached)
       return;
     removeAll();
+    addPreference(new TogglePreference(getContext(), is_expanded()));
+    if (!is_expanded())
+      return;
     for (SnippetSlot slot : _slots)
       addPreference(new SlotPreference(getContext(), slot));
     addPreference(new AddPagePreference(getContext()));
+  }
+
+  private boolean is_expanded()
+  {
+    return getPreferenceManager().getSharedPreferences()
+      .getBoolean(PREF_EXPANDED, false);
+  }
+
+  private void set_expanded(boolean expanded)
+  {
+    getPreferenceManager().getSharedPreferences()
+      .edit()
+      .putBoolean(PREF_EXPANDED, expanded)
+      .apply();
+  }
+
+  private class TogglePreference extends Preference
+  {
+    private final boolean _expanded;
+
+    TogglePreference(Context context, boolean expanded)
+    {
+      super(context);
+      _expanded = expanded;
+      setPersistent(false);
+      setTitle(expanded ? R.string.pref_snippets_slots_hide :
+          R.string.pref_snippets_slots_show);
+      setSummary(expanded ? R.string.pref_snippets_slots_hide_summary :
+          R.string.pref_snippets_slots_show_summary);
+      setIcon(expanded ? android.R.drawable.arrow_up_float :
+          android.R.drawable.arrow_down_float);
+    }
+
+    @Override
+    protected void onClick()
+    {
+      set_expanded(!_expanded);
+      reattach();
+    }
   }
 
   private void change_slot(SnippetSlot slot)
@@ -96,6 +142,28 @@ public class SnippetSlotsPreference extends PreferenceCategory
     {
       show_editor(_slot);
     }
+
+    @Override
+    protected void onBindView(View view)
+    {
+      super.onBindView(view);
+      TextView title = (TextView)view.findViewById(android.R.id.title);
+      TextView summary = (TextView)view.findViewById(android.R.id.summary);
+      if (title != null)
+      {
+        title.setSingleLine(false);
+        title.setMaxLines(2);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setHorizontallyScrolling(false);
+      }
+      if (summary != null)
+      {
+        summary.setSingleLine(false);
+        summary.setMaxLines(2);
+        summary.setEllipsize(TextUtils.TruncateAt.END);
+        summary.setHorizontallyScrolling(false);
+      }
+    }
   }
 
   private class AddPagePreference extends Preference
@@ -120,6 +188,7 @@ public class SnippetSlotsPreference extends PreferenceCategory
     return getContext().getString(R.string.pref_snippets_slot_title,
         slot.getIndex() + 1, slot.getDisplayLabel());
   }
+
 
   private void show_editor(final SnippetSlot slot)
   {

@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
+import juloo.keyboard2.prefs.CustomThemesPreference;
 
 public class Theme
 {
@@ -14,6 +15,10 @@ public class Theme
   public final int colorKeyActivated;
   public final int colorKeyAction;
   public final int colorKeySpaceBar;
+  public final int colorKeyAlternate;
+  public final int colorKeyActionAlternate;
+  public final int colorKeySpaceBarAlternate;
+  public final int colorKeyboard;
 
   // Label colors
   public final int lockedColor;
@@ -38,36 +43,105 @@ public class Theme
   public final int colorNavBar;
   public final boolean isLightNavBar;
 
+
   public Theme(Context context, AttributeSet attrs)
   {
     getKeyFont(context); // _key_font will be accessed
     TypedArray s = context.getTheme().obtainStyledAttributes(attrs, R.styleable.keyboard, 0, 0);
-    colorKey = s.getColor(R.styleable.keyboard_colorKey, 0);
-    colorKeyActivated = s.getColor(R.styleable.keyboard_colorKeyActivated, 0);
-    colorKeyAction = s.getColor(R.styleable.keyboard_colorKeyAction, colorKey);
-    colorKeySpaceBar = s.getColor(R.styleable.keyboard_colorKeySpaceBar, colorKey);
-    // colorKeyboard = s.getColor(R.styleable.keyboard_colorKeyboard, 0);
-    colorNavBar = s.getColor(R.styleable.keyboard_navigationBarColor, 0);
-    isLightNavBar = s.getBoolean(R.styleable.keyboard_windowLightNavigationBar, false);
-    labelColor = s.getColor(R.styleable.keyboard_colorLabel, 0);
-    activatedColor = s.getColor(R.styleable.keyboard_colorLabelActivated, 0);
-    pressedColor = s.getColor(R.styleable.keyboard_colorLabelPressed, labelColor);
-    lockedColor = s.getColor(R.styleable.keyboard_colorLabelLocked, 0);
-    subLabelColor = s.getColor(R.styleable.keyboard_colorSubLabel, 0);
-    secondaryLabelColor = adjustLight(labelColor,
-        s.getFloat(R.styleable.keyboard_secondaryDimming, 0.25f));
-    greyedLabelColor = adjustLight(labelColor,
-        s.getFloat(R.styleable.keyboard_greyedDimming, 0.5f));
-    keyBorderRadius = s.getDimension(R.styleable.keyboard_keyBorderRadius, 0);
-    keyBorderWidth = s.getDimension(R.styleable.keyboard_keyBorderWidth, 0);
-    keyBorderWidthActivated = s.getDimension(R.styleable.keyboard_keyBorderWidthActivated, 0);
-    keyBorderWidthAction = s.getDimension(R.styleable.keyboard_keyBorderWidthAction, 0);
-    keyBorderWidthSpaceBar = s.getDimension(R.styleable.keyboard_keyBorderWidthSpaceBar, 0);
-    keyBorderColorLeft = s.getColor(R.styleable.keyboard_keyBorderColorLeft, colorKey);
-    keyBorderColorTop = s.getColor(R.styleable.keyboard_keyBorderColorTop, colorKey);
-    keyBorderColorRight = s.getColor(R.styleable.keyboard_keyBorderColorRight, colorKey);
-    keyBorderColorBottom = s.getColor(R.styleable.keyboard_keyBorderColorBottom, colorKey);
+    int colorKey_ = s.getColor(R.styleable.keyboard_colorKey, 0);
+    int colorKeyAction_ = s.getColor(R.styleable.keyboard_colorKeyAction, colorKey_);
+    int colorKeySpaceBar_ = s.getColor(R.styleable.keyboard_colorKeySpaceBar, colorKey_);
+    int colorKeyAlternate_ = s.getColor(R.styleable.keyboard_colorKeyAlternate, colorKey_);
+    int colorKeyActionAlternate_ = s.getColor(R.styleable.keyboard_colorKeyActionAlternate, colorKeyAction_);
+    int colorKeySpaceBarAlternate_ = s.getColor(R.styleable.keyboard_colorKeySpaceBarAlternate, colorKeySpaceBar_);
+    int colorKeyActivated_ = s.getColor(R.styleable.keyboard_colorKeyActivated, 0);
+    int colorKeyboard_ = s.getColor(R.styleable.keyboard_colorKeyboard, 0);
+    int colorNavBar_ = s.getColor(R.styleable.keyboard_navigationBarColor, 0);
+    boolean isLightNavBar_ = s.getBoolean(R.styleable.keyboard_windowLightNavigationBar, false);
+    int labelColor_ = s.getColor(R.styleable.keyboard_colorLabel, 0);
+    int activatedColor_ = s.getColor(R.styleable.keyboard_colorLabelActivated, 0);
+    int pressedColor_ = s.getColor(R.styleable.keyboard_colorLabelPressed, labelColor_);
+    int lockedColor_ = s.getColor(R.styleable.keyboard_colorLabelLocked, 0);
+    int subLabelColor_ = s.getColor(R.styleable.keyboard_colorSubLabel, 0);
+    float secondaryDimming = s.getFloat(R.styleable.keyboard_secondaryDimming, 0.25f);
+    float greyedDimming = s.getFloat(R.styleable.keyboard_greyedDimming, 0.5f);
+    float keyBorderRadius_ = s.getDimension(R.styleable.keyboard_keyBorderRadius, 0);
+    float keyBorderWidth_ = s.getDimension(R.styleable.keyboard_keyBorderWidth, 0);
+    float keyBorderWidthActivated_ = s.getDimension(R.styleable.keyboard_keyBorderWidthActivated, 0);
+    float keyBorderWidthAction_ = s.getDimension(R.styleable.keyboard_keyBorderWidthAction, 0);
+    float keyBorderWidthSpaceBar_ = s.getDimension(R.styleable.keyboard_keyBorderWidthSpaceBar, 0);
+    int keyBorderColorLeft_ = s.getColor(R.styleable.keyboard_keyBorderColorLeft, colorKey_);
+    int keyBorderColorTop_ = s.getColor(R.styleable.keyboard_keyBorderColorTop, colorKey_);
+    int keyBorderColorRight_ = s.getColor(R.styleable.keyboard_keyBorderColorRight, colorKey_);
+    int keyBorderColorBottom_ = s.getColor(R.styleable.keyboard_keyBorderColorBottom, colorKey_);
     s.recycle();
+
+    if (isCustomTheme(context))
+    {
+      CustomThemesPreference.CustomTheme custom =
+        CustomThemesPreference.load_selected(
+            DirectBootAwarePreferences.get_shared_preferences(context));
+      colorKeyboard_ = custom.colorKeyboard;
+      colorKey_ = custom.colorKey;
+      colorKeyAlternate_ = custom.colorKeyAlternate;
+      colorKeyAction_ = custom.colorKeyAction;
+      colorKeyActionAlternate_ = custom.colorKeyActionAlternate;
+      colorKeySpaceBar_ = custom.colorKeySpaceBar;
+      colorKeySpaceBarAlternate_ = custom.colorKeySpaceBarAlternate;
+      colorKeyActivated_ = adjustLight(custom.colorKey, 0.35f);
+      colorNavBar_ = custom.colorKeyboard;
+      isLightNavBar_ = contrastTextColor(custom.colorKeyboard) == 0xff000000;
+      labelColor_ = custom.colorLabel;
+      activatedColor_ = adjustLight(custom.colorLabel, 0.35f);
+      pressedColor_ = custom.colorLabel;
+      lockedColor_ = adjustLight(custom.colorLabel, 0.45f);
+      subLabelColor_ = custom.colorSubLabel;
+      keyBorderColorLeft_ = custom.colorKeyAlternate;
+      keyBorderColorTop_ = custom.colorKey;
+      keyBorderColorRight_ = custom.colorKeyAlternate;
+      keyBorderColorBottom_ = custom.colorKeyAlternate;
+    }
+
+    colorKey = colorKey_;
+    colorKeyAction = colorKeyAction_;
+    colorKeySpaceBar = colorKeySpaceBar_;
+    colorKeyAlternate = colorKeyAlternate_;
+    colorKeyActionAlternate = colorKeyActionAlternate_;
+    colorKeySpaceBarAlternate = colorKeySpaceBarAlternate_;
+    colorKeyActivated = colorKeyActivated_;
+    colorKeyboard = colorKeyboard_;
+    colorNavBar = colorNavBar_;
+    isLightNavBar = isLightNavBar_;
+    labelColor = labelColor_;
+    activatedColor = activatedColor_;
+    pressedColor = pressedColor_;
+    lockedColor = lockedColor_;
+    subLabelColor = subLabelColor_;
+    secondaryLabelColor = adjustLight(labelColor_, secondaryDimming);
+    greyedLabelColor = adjustLight(labelColor_, greyedDimming);
+    keyBorderRadius = keyBorderRadius_;
+    keyBorderWidth = keyBorderWidth_;
+    keyBorderWidthActivated = keyBorderWidthActivated_;
+    keyBorderWidthAction = keyBorderWidthAction_;
+    keyBorderWidthSpaceBar = keyBorderWidthSpaceBar_;
+    keyBorderColorLeft = keyBorderColorLeft_;
+    keyBorderColorTop = keyBorderColorTop_;
+    keyBorderColorRight = keyBorderColorRight_;
+    keyBorderColorBottom = keyBorderColorBottom_;
+  }
+
+  private static boolean isCustomTheme(Context context)
+  {
+    try
+    {
+      return CustomThemesPreference.THEME_VALUE.equals(
+          DirectBootAwarePreferences.get_shared_preferences(context)
+            .getString("theme", "system"));
+    }
+    catch (Exception _e)
+    {
+      return false;
+    }
   }
 
   /** Interpolate the 'value' component toward its opposite by 'alpha'. */
@@ -78,6 +152,43 @@ public class Theme
     float v = hsv[2];
     hsv[2] = alpha - (2 * alpha - 1) * v;
     return Color.HSVToColor(hsv);
+  }
+
+  static int ensureTextContrast(int color, int background)
+  {
+    return contrastRatio(color, background) >= 4.5
+      ? color : contrastTextColor(background);
+  }
+
+  static int contrastTextColor(int background)
+  {
+    return contrastRatio(0xffffffff, background) >=
+      contrastRatio(0xff000000, background) ? 0xffffffff : 0xff000000;
+  }
+
+  static double contrastRatio(int foreground, int background)
+  {
+    double foregroundLuminance = relativeLuminance(foreground);
+    double backgroundLuminance = relativeLuminance(background);
+    double lighter = Math.max(foregroundLuminance, backgroundLuminance);
+    double darker = Math.min(foregroundLuminance, backgroundLuminance);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  private static double relativeLuminance(int color)
+  {
+    double red = linearColor((color >> 16) & 0xff);
+    double green = linearColor((color >> 8) & 0xff);
+    double blue = linearColor(color & 0xff);
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  }
+
+  private static double linearColor(int channel)
+  {
+    double value = channel / 255.0;
+    if (value <= 0.03928)
+      return value / 12.92;
+    return Math.pow((value + 0.055) / 1.055, 2.4);
   }
 
   Paint initIndicationPaint(Paint.Align align, Typeface font)
@@ -111,6 +222,9 @@ public class Theme
     public final Key key_activated;
     public final Key key_action;
     public final Key key_space_bar;
+    public final Key key_alternate;
+    public final Key key_action_alternate;
+    public final Key key_space_bar_alternate;
     public final Key key_suggestion;
 
     public Computed(Theme theme, Config config, float keyWidth, KeyboardData layout)
@@ -125,11 +239,14 @@ public class Theme
       // added on the right and on the bottom of every keys.
       margin_top = config.marginTop + vertical_margin / 2;
       margin_left = horizontal_margin / 2;
-      key = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Normal);
-      key_action = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Action);
-      key_space_bar = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Space_bar);
-      key_activated = new Key(theme, config, keyWidth, true, KeyboardData.Key.Role.Normal);
-      key_suggestion = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Suggestion);
+      key = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Normal, false);
+      key_alternate = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Normal, true);
+      key_action = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Action, false);
+      key_action_alternate = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Action, true);
+      key_space_bar = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Space_bar, false);
+      key_space_bar_alternate = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Space_bar, true);
+      key_activated = new Key(theme, config, keyWidth, true, KeyboardData.Key.Role.Normal, false);
+      key_suggestion = new Key(theme, config, keyWidth, false, KeyboardData.Key.Role.Suggestion, false);
       indication_paint = init_label_paint(config, null);
       indication_paint.setColor(theme.subLabelColor);
     }
@@ -148,9 +265,17 @@ public class Theme
       final Paint _sublabel_paint;
       final Paint _special_sublabel_paint;
       final int _label_alpha_bits;
+      public final int labelColor;
+      public final int subLabelColor;
+      public final int secondaryLabelColor;
+      public final int greyedLabelColor;
+      public final int pressedColor;
+      public final int activatedColor;
+      public final int lockedColor;
+
 
       public Key(Theme theme, Config config, float keyWidth, boolean activated,
-          KeyboardData.Key.Role role)
+          KeyboardData.Key.Role role, boolean alternate)
       {
         border_radius = config.borderConfig ? config.customBorderRadius * keyWidth : theme.keyBorderRadius;
         int bg_color;
@@ -165,11 +290,11 @@ public class Theme
           switch (role)
           {
             case Action:
-              bg_color = theme.colorKeyAction;
+              bg_color = alternate ? theme.colorKeyActionAlternate : theme.colorKeyAction;
               border_width = theme.keyBorderWidthAction;
               break;
             case Space_bar:
-              bg_color = theme.colorKeySpaceBar;
+              bg_color = alternate ? theme.colorKeySpaceBarAlternate : theme.colorKeySpaceBar;
               border_width = theme.keyBorderWidthSpaceBar;
               break;
             case Suggestion:
@@ -177,12 +302,20 @@ public class Theme
               border_width = 0;
               break;
             default:
-              bg_color = theme.colorKey;
+            case Normal:
+              bg_color = alternate ? theme.colorKeyAlternate : theme.colorKey;
               border_width = config.borderConfig ? config.customBorderLineWidth : theme.keyBorderWidth;
               break;
           }
           bg_paint.setAlpha(config.keyOpacity);
         }
+        labelColor = Theme.ensureTextContrast(theme.labelColor, bg_color);
+        subLabelColor = Theme.ensureTextContrast(theme.subLabelColor, bg_color);
+        secondaryLabelColor = Theme.ensureTextContrast(theme.secondaryLabelColor, bg_color);
+        greyedLabelColor = Theme.ensureTextContrast(theme.greyedLabelColor, bg_color);
+        pressedColor = Theme.ensureTextContrast(theme.pressedColor, bg_color);
+        activatedColor = Theme.ensureTextContrast(theme.activatedColor, bg_color);
+        lockedColor = Theme.ensureTextContrast(theme.lockedColor, bg_color);
         bg_paint.setColor(bg_color);
         border_left_paint = init_border_paint(config, border_width, theme.keyBorderColorLeft);
         border_top_paint = init_border_paint(config, border_width, theme.keyBorderColorTop);

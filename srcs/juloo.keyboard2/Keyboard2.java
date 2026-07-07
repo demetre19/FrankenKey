@@ -19,6 +19,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +52,7 @@ public class Keyboard2 extends InputMethodService
   private Dictionaries _dictionaries;
   private ViewGroup _emojiPane = null;
   private ViewGroup _clipboard_pane = null;
+  private ViewGroup _gif_pane = null;
   private Handler _handler;
   private SharedPreferences _prefs;
 
@@ -70,7 +72,7 @@ public class Keyboard2 extends InputMethodService
     if (layout_i < _config.layouts.size())
       layout = _config.layouts.get(layout_i);
     if (layout == null)
-      layout = _localeTextLayout;
+      layout = _config.clean_mode ? loadCleanTextLayout() : _localeTextLayout;
     return layout;
   }
 
@@ -117,6 +119,21 @@ public class Keyboard2 extends InputMethodService
   {
     return loadNumpad(_config.orientation_landscape ?
         R.xml.numeric_landscape : R.xml.numeric);
+  }
+
+  KeyboardData loadCleanTextLayout()
+  {
+    return KeyboardData.load(getResources(), R.xml.clean_text);
+  }
+
+  KeyboardData loadCleanNumericLayout()
+  {
+    return KeyboardData.load(getResources(), R.xml.clean_numeric);
+  }
+
+  KeyboardData loadCleanSymbolsLayout()
+  {
+    return KeyboardData.load(getResources(), R.xml.clean_symbols);
   }
 
   KeyboardData loadPinentry(int layout_id)
@@ -226,6 +243,7 @@ public class Keyboard2 extends InputMethodService
       create_keyboard_view();
       _emojiPane = null;
       _clipboard_pane = null;
+      _gif_pane = null;
       setInputView(_keyboard_container_view);
     }
     // Set keyboard background opacity
@@ -249,7 +267,7 @@ public class Keyboard2 extends InputMethodService
           return loadPinentry(_config.orientation_landscape ?
               R.xml.pin_landscape : R.xml.pin);
         case NUMBER:
-          return loadNumericLayout();
+          return _config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout();
       }
     }
     return null;
@@ -276,6 +294,16 @@ public class Keyboard2 extends InputMethodService
     super.setInputView(v);
     updateSoftInputWindowLayoutParams();
     v.requestApplyInsets();
+  }
+
+  void showKeyboardView()
+  {
+    setInputView(_keyboard_container_view);
+  }
+
+  private boolean isGifPaneOpen()
+  {
+    return _gif_pane != null && _gif_pane.getParent() != null;
   }
 
   @Override
@@ -429,7 +457,7 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case SWITCH_NUMERIC:
-          setSpecialLayout(loadNumericLayout());
+          setSpecialLayout(_config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout());
           break;
 
         case SWITCH_EMOJI:
@@ -446,7 +474,8 @@ public class Keyboard2 extends InputMethodService
 
         case SWITCH_BACK_EMOJI:
         case SWITCH_BACK_CLIPBOARD:
-          setInputView(_keyboard_container_view);
+        case SWITCH_BACK_GIF:
+          showKeyboardView();
           break;
 
         case CHANGE_METHOD_PICKER:
@@ -468,9 +497,22 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case ACTION:
+          if (isGifPaneOpen())
+          {
+            ((GifSearchView)_gif_pane).refreshResults();
+            break;
+          }
           InputConnection conn = getCurrentInputConnection();
           if (conn != null)
             conn.performEditorAction(_config.editor_config.actionId);
+          break;
+
+        case GIF:
+          if (_gif_pane == null)
+            _gif_pane = (ViewGroup)inflate_view(R.layout.gif_pane);
+          ((GifSearchView)_gif_pane).setKeyboard(Keyboard2.this,
+              current_layout());
+          setInputView(_gif_pane);
           break;
 
         case SWITCH_FORWARD:
@@ -485,6 +527,10 @@ public class Keyboard2 extends InputMethodService
           setSpecialLayout(loadNumpad(R.xml.greekmath));
           break;
 
+        case SWITCH_CLEAN_SYMBOLS:
+          setSpecialLayout(loadCleanSymbolsLayout());
+          break;
+
         case CAPS_LOCK:
           set_shift_state(true, true);
           break;
@@ -495,10 +541,6 @@ public class Keyboard2 extends InputMethodService
             _config.shouldOfferVoiceTyping = false;
           break;
 
-        case SWITCH_VOICE_TYPING_CHOOSER:
-          VoiceImeSwitcher.choose_voice_ime(Keyboard2.this, get_imm(),
-              Config.globalPrefs());
-          break;
         case HIDE_SELF:
           Keyboard2.this.requestHideSelf(0);
           break;
@@ -522,6 +564,8 @@ public class Keyboard2 extends InputMethodService
 
     public InputConnection getCurrentInputConnection()
     {
+      if (isGifPaneOpen())
+        return ((GifSearchView)_gif_pane).getSearchInputConnection();
       return Keyboard2.this.getCurrentInputConnection();
     }
 

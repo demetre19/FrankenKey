@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="settingsTheme" parent="@android:style/Theme.Material">
+    <!-- Keep nested preference screens aligned with the main settings list. -->
+    <item name="android:fitsSystemWindows">true</item>
+  </style>
+</resources>

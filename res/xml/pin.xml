@@ -22,6 +22,6 @@
     <key role="action" shift="1.0" key0="*" key1="switch_text" key3="switch_numeric"/>
     <key key0="0" key3="+" key4="space"/>
     <key role="action" key0="\#" key7="up" key6="right" key5="left" key8="down"/>
-    <key role="action" key0="action" key2="enter"/>
+    <key role="action" key0="action" key2="enter" key4="gif"/>
   </row>
 </keyboard>

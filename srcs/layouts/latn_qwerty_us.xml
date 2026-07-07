@@ -51,25 +51,25 @@ Useful links.
     <key c="p" ne="0"/>
   </row>
   <row>
-    <key shift="0.5" c="a" nw="loc tab" ne="`"/>
-    <key c="s" ne="loc §" sw="loc ß"/>
-    <key c="d"/>
-    <key c="f"/>
-    <key c="g" ne="-" sw="_"/>
-    <key c="h" ne="=" sw="+"/>
-    <key c="j" se="}" sw="{"/>
-    <key c="k" sw="[" se="]"/>
-    <key c="l" ne="|" sw="\\"/>
+    <key shift="0.5" c="a" nw="loc tab" ne="`" w="loc delete_words_left"/>
+    <key c="s" ne="loc §" sw="loc ß" w="loc delete_words_left"/>
+    <key c="d" w="loc delete_words_left"/>
+    <key c="f" w="loc delete_words_left"/>
+    <key c="g" ne="-" sw="_" w="loc delete_words_left"/>
+    <key c="h" ne="=" sw="+" w="loc delete_words_left"/>
+    <key c="j" se="}" sw="{" w="loc delete_words_left"/>
+    <key c="k" sw="[" se="]" w="loc delete_words_left"/>
+    <key c="l" ne="|" sw="\\" w="loc delete_words_left"/>
   </row>
   <row>
     <key width="1.5" role="action" c="shift" ne="loc capslock"/>
     <key c="z"/>
     <key c="x" ne="loc †"/>
-    <key c="c" ne="&lt;" sw="."/>
-    <key c="v" ne="&gt;" sw=","/>
+    <key c="c" ne="&lt;"/>
+    <key c="v" ne="&gt;"/>
     <key c="b" ne="\?" sw="/"/>
-    <key c="n" ne=":" sw=";"/>
-    <key c="m" ne="&quot;" sw="'"/>
+    <key c="n" ne=":" sw="."/>
+    <key c="m" ne="&quot;" sw=","/>
     <key width="1.5" role="action" c="backspace" ne="delete"/>
   </row>
 </keyboard>

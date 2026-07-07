@@ -11,6 +11,7 @@ dependencies {
   implementation("androidx.core:core:1.16.0") // Version 1.17.0 available with sdk 36
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20240303")
+  testImplementation("org.robolectric:robolectric:4.15.1")
 }
 
 android {
@@ -21,8 +22,8 @@ android {
     applicationId = "dev.frankenkey.keyboard"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 55
-    versionName = "2.0.4"
+    versionCode = 58
+    versionName = "2.0.7"
   }
 
   sourceSets {
@@ -37,6 +38,7 @@ android {
       java.srcDirs("test")
     }
   }
+
 
   externalNativeBuild {
     ndkBuild {

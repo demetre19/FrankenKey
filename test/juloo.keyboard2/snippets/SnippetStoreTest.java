@@ -134,7 +134,43 @@ public class SnippetStoreTest
   }
 
   @Test
-  public void context_load_migrates_legacy_preferences_to_no_backup_file_then_removes_key()
+  public void locked_context_load_uses_device_protected_slots_file()
+      throws Exception
+  {
+    String source = readSource(SNIPPET_STORE_SOURCE);
+    String contextLoad = methodBody(source,
+        "public static List<SnippetSlot> loadSlots(Context context)");
+    String loadDirectBoot = methodBody(source,
+        "private static List<SnippetSlot> loadDirectBootSlots(Context context)");
+    String directBootSlotsFile = methodBody(source,
+        "private static File directBootSlotsFile(Context context)");
+
+    int credentialGate = contextLoad.indexOf(
+        "canAccessCredentialProtectedStorage(context)");
+    int directBootReturn = contextLoad.indexOf(
+        "return loadDirectBootSlots(context)", credentialGate);
+    int noBackupMigrationCall =
+      contextLoad.indexOf("migrateNoBackupSlots(context)");
+    int lockedEmptyReturn = contextLoad.indexOf("return emptySlots",
+        credentialGate);
+
+    assertOrdered("When the user is still locked, loadSlots(Context) must route to device-protected snippets before touching credential-protected migrations.",
+        credentialGate, directBootReturn, noBackupMigrationCall);
+    assertTrue("Locked load must not short-circuit to empty slots before it has tried the direct-boot snippet mirror.",
+        lockedEmptyReturn < 0 || lockedEmptyReturn > noBackupMigrationCall);
+    assertTrue("The direct-boot load helper must read the mirrored snippet slot JSON from its own file path.",
+        loadDirectBoot.contains("readFile(directBootSlotsFile(context))")
+        && loadDirectBoot.contains("loadSlots(readFile(directBootSlotsFile(context))"));
+    assertTrue("Missing mirrored direct-boot snippets may fall back to visible empty slots, but only inside the direct-boot helper.",
+        loadDirectBoot.contains("catch (IOException _e)")
+        && loadDirectBoot.contains("return emptySlots(DEFAULT_SLOT_COUNT)"));
+    assertTrue("Direct-boot snippets must live in device-protected storage so the keyboard can read them before first unlock.",
+        directBootSlotsFile.contains(
+          "context.createDeviceProtectedStorageContext().getFilesDir()"));
+  }
+
+  @Test
+  public void unlocked_context_save_and_load_mirror_encoded_slots_to_direct_boot()
       throws Exception
   {
     String source = readSource(SNIPPET_STORE_SOURCE);
@@ -142,33 +178,61 @@ public class SnippetStoreTest
         "public static List<SnippetSlot> loadSlots(Context context)");
     String contextSave = methodBody(source,
         "public static void saveSlots(Context context");
-    String migration = methodBody(source,
+    String mirrorSlots = methodBody(source,
+        "private static void mirrorSlotsToDirectBoot(Context context");
+    String noBackupMigration = methodBody(source,
+        "private static void migrateNoBackupSlots(Context context)");
+    String legacyMigration = methodBody(source,
         "private static void migrateLegacySlots(Context context)");
     String slotsFile = methodBody(source,
         "private static File slotsFile(Context context)");
+    String legacyNoBackupSlotsFile = methodBody(source,
+        "private static File legacyNoBackupSlotsFile(Context context)");
 
-    int credentialGate = contextLoad.indexOf(
-        "canAccessCredentialProtectedStorage(context)");
-    int lockedReturn = contextLoad.indexOf("return emptySlots", credentialGate);
-    int migrationCall = contextLoad.indexOf("migrateLegacySlots(context)");
-    int noBackupRead = contextLoad.indexOf("readFile(slotsFile(context))");
+    int noBackupMigrationCall =
+      contextLoad.indexOf("migrateNoBackupSlots(context)");
+    int legacyMigrationCall = contextLoad.indexOf("migrateLegacySlots(context)");
+    int backedUpRead = contextLoad.indexOf(
+        "String encoded = readFile(slotsFile(context))");
+    int mirrorAfterRead =
+      contextLoad.indexOf("mirrorSlotsToDirectBoot(context, encoded)", backedUpRead);
+    int loadEncoded = contextLoad.indexOf("return loadSlots(encoded",
+        mirrorAfterRead);
+    assertOrdered("Unlocked loads must migrate, read the credential-protected slot JSON, mirror those exact bytes for direct boot, then decode them.",
+        noBackupMigrationCall, legacyMigrationCall, backedUpRead,
+        mirrorAfterRead, loadEncoded);
 
-    assertTrue("loadSlots(Context) must keep legacy migration behind the credential-protected storage gate.",
-        credentialGate >= 0 && lockedReturn > credentialGate
-        && migrationCall > lockedReturn);
-    assertTrue("Legacy default preferences may be consulted only before loading the no-backup snippet file.",
-        migrationCall >= 0 && migrationCall < noBackupRead);
+    int encodeSlots = contextSave.indexOf("String encoded = saveSlots(slots)");
+    int writeCredentialFile =
+      contextSave.indexOf("writeFile(slotsFile(context), encoded)", encodeSlots);
+    int mirrorAfterSave =
+      contextSave.indexOf("mirrorSlotsToDirectBoot(context, encoded)",
+          writeCredentialFile);
+    assertOrdered("Unlocked saves must write encoded slot JSON to the credential-protected file and mirror the same encoded bytes to direct boot.",
+        encodeSlots, writeCredentialFile, mirrorAfterSave);
 
-    int defaultPrefs = migration.indexOf(
+    assertTrue("The direct-boot mirror must write only the encoded slot JSON through the device-protected slot file.",
+        mirrorSlots.contains("writeFile(directBootSlotsFile(context), encoded == null ? \"\" : encoded)"));
+
+    int targetFile = noBackupMigration.indexOf("slotsFile(context)");
+    int targetExists = noBackupMigration.indexOf("file.isFile()", targetFile);
+    int sourceFile = noBackupMigration.indexOf("legacyNoBackupSlotsFile(context)");
+    int sourceExists = noBackupMigration.indexOf("noBackupFile.isFile()", sourceFile);
+    int copyLegacyFile = noBackupMigration.indexOf(
+        "writeFile(file, readFile(noBackupFile))");
+    assertOrdered("No-backup snippets must be copied only when the new backup-eligible file is missing and the old file exists.",
+        targetFile, targetExists, sourceFile, sourceExists, copyLegacyFile);
+
+    int defaultPrefs = legacyMigration.indexOf(
         "PreferenceManager.getDefaultSharedPreferences(context)");
-    int containsLegacy = migration.indexOf("prefs.contains(PREF_SLOTS)");
-    int readLegacy = migration.indexOf("prefs.getString(PREF_SLOTS, null)");
-    int noBackupFile = migration.indexOf("slotsFile(context)");
-    int writeMigrated = migration.indexOf("writeFile(file, encoded)");
-    int existingStore = migration.indexOf("file.isFile()");
-    int removalGate = migration.indexOf("if (migrated)");
-    int removeLegacy = migration.indexOf(".remove(PREF_SLOTS)", removalGate);
-    int applyRemoval = migration.indexOf(".apply()", removeLegacy);
+    int containsLegacy = legacyMigration.indexOf("prefs.contains(PREF_SLOTS)");
+    int readLegacy = legacyMigration.indexOf("prefs.getString(PREF_SLOTS, null)");
+    int backedUpFile = legacyMigration.indexOf("slotsFile(context)");
+    int writeMigrated = legacyMigration.indexOf("writeFile(file, encoded)");
+    int existingStore = legacyMigration.indexOf("file.isFile()");
+    int removalGate = legacyMigration.indexOf("if (migrated)");
+    int removeLegacy = legacyMigration.indexOf(".remove(PREF_SLOTS)", removalGate);
+    int applyRemoval = legacyMigration.indexOf(".apply()", removeLegacy);
 
     assertTrue("Legacy snippets must be read from default SharedPreferences only inside the one-shot migration helper.",
         defaultPrefs >= 0 && containsLegacy > defaultPrefs
@@ -177,12 +241,14 @@ public class SnippetStoreTest
         1,
         countOccurrences(source,
             "PreferenceManager.getDefaultSharedPreferences(context)"));
-    assertOrdered("Migrated phrases must be written through the no-backup snippet file path before legacy removal.",
-        noBackupFile, writeMigrated, removalGate, removeLegacy, applyRemoval);
-    assertTrue("If the no-backup file already exists, legacy raw preferences still must be treated as removable.",
+    assertOrdered("Migrated phrases must be written through the backup-eligible snippet file path before legacy removal.",
+        backedUpFile, writeMigrated, removalGate, removeLegacy, applyRemoval);
+    assertTrue("If the new file already exists, legacy raw preferences still must be treated as removable.",
         existingStore >= 0 && existingStore < removalGate);
-    assertTrue("The snippet storage file must live under Context.getNoBackupFilesDir().",
-        slotsFile.contains("context.getNoBackupFilesDir()"));
+    assertTrue("The active snippet storage file must live under Context.getFilesDir() so Android backup can include it.",
+        slotsFile.contains("context.getFilesDir()"));
+    assertTrue("The old no-backup file path must remain readable only as a migration source.",
+        legacyNoBackupSlotsFile.contains("context.getNoBackupFilesDir()"));
     assertFalse("New snippet saves must not write raw phrases through backup-eligible default SharedPreferences.",
         contextSave.contains("PreferenceManager.getDefaultSharedPreferences")
         || contextSave.contains("PREF_SLOTS")

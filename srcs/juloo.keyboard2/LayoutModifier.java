@@ -166,12 +166,13 @@ public final class LayoutModifier
             return globalConfig.change_method_key_replacement;
           case ACTION:
             return ec.action_key_replacement;
+          case GIF:
+            return should_show_gif_key(ec) ? orig : null;
           case SWITCH_FORWARD:
             return (globalConfig.layouts.size() > 1) ? orig : null;
           case SWITCH_BACKWARD:
             return (globalConfig.layouts.size() > 2) ? orig : null;
           case SWITCH_VOICE_TYPING:
-          case SWITCH_VOICE_TYPING_CHOOSER:
             return globalConfig.shouldOfferVoiceTyping ? orig : null;
         }
         break;
@@ -186,6 +187,11 @@ public final class LayoutModifier
         break;
     }
     return orig;
+  }
+
+  static boolean should_show_gif_key(EditorConfig ec)
+  {
+    return true;
   }
 
   static char inverse_numpad_char(char c)

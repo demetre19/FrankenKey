@@ -185,6 +185,11 @@ public final class Pointers implements Handler.Callback
 
   public void onTouchCancel()
   {
+    for (Pointer ptr : _ptrs)
+      if (ptr.hasFlagsAny(FLAG_P_SLIDING) && ptr.sliding != null
+          && ptr.sliding.commitsOnTouchUp())
+        _handler.onPointerCancel(KeyValue.sliderKey(ptr.sliding.slider, 0),
+            ptr.modifiers);
     clear();
     _handler.onPointerFlagsChanged(true);
   }
@@ -428,6 +433,14 @@ public final class Pointers implements Handler.Callback
     startLongPress(ptr);
   }
 
+  private long repeatInterval(Pointer ptr)
+  {
+    long interval = _config.longPressInterval;
+    for (int i = 1; i < ptr.holdCount && interval > 35; ++i)
+      interval = Math.max(35, interval * 93 / 100);
+    return interval;
+  }
+
   /** A pointer is long pressing. */
   private void handleLongPress(Pointer ptr)
   {
@@ -455,9 +468,10 @@ public final class Pointers implements Handler.Callback
     // For every other keys, key-repeat
     if (_config.keyrepeat_enabled)
     {
-      _handler.onPointerHold(kv, ptr.modifiers);
+      ptr.holdCount++;
+      _handler.onPointerHold(kv, ptr.modifiers, ptr.holdCount);
       _longpress_handler.sendEmptyMessageDelayed(ptr.timeoutWhat,
-          _config.longPressInterval);
+          repeatInterval(ptr));
     }
   }
 
@@ -554,6 +568,8 @@ public final class Pointers implements Handler.Callback
     public int flags;
     /** Identify timeout messages. */
     public int timeoutWhat;
+    /** Number of key-repeat events fired for this pointer. */
+    public int holdCount;
     /** [null] when not in sliding mode. */
     public Sliding sliding;
 
@@ -568,6 +584,7 @@ public final class Pointers implements Handler.Callback
       modifiers = m;
       flags = f;
       timeoutWhat = -1;
+      holdCount = 0;
       sliding = null;
     }
 
@@ -589,6 +606,8 @@ public final class Pointers implements Handler.Callback
     /** [System.currentTimeMillis()] at the time of the last move. Equals to
       [-1] when the sliding hasn't started yet. */
     long last_move_ms = -1;
+    /** Last time a word-delete slider emitted a step. */
+    long last_delete_words_emit_ms;
     /** The property which is being slided. */
     KeyValue.Slider slider;
     /** Direction of the initial movement, positive if sliding to the right and
@@ -603,6 +622,8 @@ public final class Pointers implements Handler.Callback
       slider = s;
       direction_x = dirx;
       direction_y = diry;
+      last_delete_words_emit_ms = (s == KeyValue.Slider.Delete_words_left)
+        ? System.currentTimeMillis() : -1;
     }
 
     static final float SPEED_SMOOTHING = 0.7f;
@@ -642,10 +663,32 @@ public final class Pointers implements Handler.Callback
       int d_ = (int)d;
       if (d_ != 0)
       {
-        d -= d_;
-        _handler.onPointerHold(KeyValue.sliderKey(slider, d_),
-            ptr.modifiers);
+        if (slider == KeyValue.Slider.Delete_words_left)
+          d_ = pacedDeleteWordsDelta(d_);
+        if (d_ != 0)
+        {
+          d -= d_;
+          _handler.onPointerHold(KeyValue.sliderKey(slider, d_),
+              ptr.modifiers, 0);
+        }
       }
+    }
+
+    private int pacedDeleteWordsDelta(int delta)
+    {
+      long interval = Math.max(1,
+          (long)(_config.deleteWordsInterval / Math.max(1.f, speed)));
+      long now = System.currentTimeMillis();
+      if (last_delete_words_emit_ms < 0)
+        last_delete_words_emit_ms = now;
+      long elapsed = now - last_delete_words_emit_ms;
+      if (elapsed < interval)
+        return 0;
+      int steps = (int)Math.min(Math.abs(delta), elapsed / interval);
+      if (steps <= 0)
+        return 0;
+      last_delete_words_emit_ms = now;
+      return delta > 0 ? steps : -steps;
     }
 
     /** Handle a sliding pointer going up. Latched modifiers are not
@@ -653,8 +696,18 @@ public final class Pointers implements Handler.Callback
         cancelled. */
     public void onTouchUp(Pointer ptr)
     {
+      boolean commit = commitsOnTouchUp();
+      KeyValue released = KeyValue.sliderKey(slider, 0);
       removePtr(ptr);
-      _handler.onPointerFlagsChanged(false);
+      if (commit)
+        _handler.onPointerUp(released, ptr.modifiers);
+      else
+        _handler.onPointerFlagsChanged(false);
+    }
+
+    boolean commitsOnTouchUp()
+    {
+      return slider == KeyValue.Slider.Delete_words_left;
     }
 
     /** [speed] is computed from the elapsed time and distance traveled
@@ -819,7 +872,11 @@ public final class Pointers implements Handler.Callback
     /** Flags changed because latched or locked keys or cancelled pointers. */
     public void onPointerFlagsChanged(boolean shouldVibrate);
 
-    /** Key is repeating. */
-    public void onPointerHold(KeyValue k, Modifiers mods);
+    /** Key is repeating. [holdCount] starts at 1 for timed key repeat.
+        Sliders pass 0 because their repeat amount comes from the slider key. */
+    public void onPointerHold(KeyValue k, Modifiers mods, int holdCount);
+
+    /** Sliding pointer was cancelled before release. */
+    public void onPointerCancel(KeyValue k, Modifiers mods);
   }
 }

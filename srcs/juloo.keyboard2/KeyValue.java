@@ -10,6 +10,7 @@ public final class KeyValue implements Comparable<KeyValue>
     CONFIG,
     SWITCH_TEXT,
     SWITCH_NUMERIC,
+    SWITCH_CLEAN_SYMBOLS,
     SWITCH_EMOJI,
     SWITCH_BACK_EMOJI,
     SWITCH_CLIPBOARD,
@@ -23,7 +24,8 @@ public final class KeyValue implements Comparable<KeyValue>
     SWITCH_GREEKMATH,
     CAPS_LOCK,
     SWITCH_VOICE_TYPING,
-    SWITCH_VOICE_TYPING_CHOOSER,
+    GIF,
+    SWITCH_BACK_GIF,
     HIDE_SELF,
   }
 
@@ -542,7 +544,8 @@ public final class KeyValue implements Comparable<KeyValue>
   public static final KeyValue CHANGE_METHOD = eventKey(0xE009, Event.CHANGE_METHOD_PICKER, FLAG_SMALLER_FONT);
   public static final KeyValue CHANGE_METHOD_PREV = eventKey(0xE009, Event.CHANGE_METHOD_PREV, FLAG_SMALLER_FONT);
   public static final KeyValue CHANGE_METHOD_NEXT = eventKey(0xE009, Event.CHANGE_METHOD_NEXT, FLAG_SMALLER_FONT);
-  public static final KeyValue VOICE_TYPING_CHOOSER = eventKey(0xE015, Event.SWITCH_VOICE_TYPING_CHOOSER, FLAG_SMALLER_FONT);
+  public static final KeyValue VOICE_TYPING_CHOOSER = eventKey(0xE015, Event.SWITCH_VOICE_TYPING, FLAG_SMALLER_FONT);
+  public static final KeyValue GIF = eventKey("gif", Event.GIF, FLAG_SMALLER_FONT);
   public static final KeyValue COMPOSE_CANCEL = placeholderKey(0xE01A, Placeholder.COMPOSE_CANCEL, FLAG_SECONDARY);
 
   public static KeyValue getSpecialKeyByName(String name)
@@ -641,11 +644,15 @@ public final class KeyValue implements Comparable<KeyValue>
       /* Special event keys */
       case "config": return CONFIG;
       case "switch_text": return eventKey("ABC", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
-      case "switch_numeric": return eventKey("123+", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "switch_numeric": return eventKey("123", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "switch_clean_text": return eventKey("abc", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
+      case "switch_clean_numeric": return eventKey("123", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "switch_clean_symbols": return eventKey("=<", Event.SWITCH_CLEAN_SYMBOLS, FLAG_SMALLER_FONT);
       case "switch_emoji": return eventKey(0xE001, Event.SWITCH_EMOJI, FLAG_SMALLER_FONT);
       case "switch_back_emoji": return eventKey("ABC", Event.SWITCH_BACK_EMOJI, 0);
       case "switch_clipboard": return eventKey(0xE017, Event.SWITCH_CLIPBOARD, 0);
       case "switch_back_clipboard": return eventKey("ABC", Event.SWITCH_BACK_CLIPBOARD, 0);
+      case "switch_back_gif": return eventKey("ABC", Event.SWITCH_BACK_GIF, 0);
       case "switch_forward": return eventKey(0xE013, Event.SWITCH_FORWARD, FLAG_SMALLER_FONT);
       case "switch_backward": return eventKey(0xE014, Event.SWITCH_BACKWARD, FLAG_SMALLER_FONT);
       case "switch_greekmath": return eventKey("πλ∇¬", Event.SWITCH_GREEKMATH, FLAG_SMALLER_FONT);
@@ -655,6 +662,7 @@ public final class KeyValue implements Comparable<KeyValue>
       case "action": return eventKey("Action", Event.ACTION, FLAG_SMALLER_FONT); // Will always be replaced
       case "capslock": return eventKey(0xE012, Event.CAPS_LOCK, 0);
       case "voice_typing": return eventKey(0xE015, Event.SWITCH_VOICE_TYPING, FLAG_SMALLER_FONT);
+      case "gif": return GIF;
       case "voice_typing_chooser": return VOICE_TYPING_CHOOSER;
       case "complete_first": return statefulKey(Stateful.Complete_first);
       case "complete_second": return statefulKey(Stateful.Complete_second);
@@ -754,6 +762,7 @@ public final class KeyValue implements Comparable<KeyValue>
       case "redo": return editingKey(0xE037, Editing.REDO, 0);
       case "delete_word": return editingKey(0xE01B, Editing.DELETE_WORD, 0);
       case "forward_delete_word": return editingKey(0xE01C, Editing.FORWARD_DELETE_WORD, 0);
+      case "delete_words_left": return sliderKey(Slider.Delete_words_left, 1);
       case "cursor_left": return sliderKey(Slider.Cursor_left, 1);
       case "cursor_right": return sliderKey(Slider.Cursor_right, 1);
       case "cursor_up": return sliderKey(Slider.Cursor_up, 1);
@@ -870,7 +879,8 @@ public final class KeyValue implements Comparable<KeyValue>
     Cursor_up(0xE005, true),
     Cursor_down(0xE007, true),
     Selection_cursor_left(0xE008, false),
-    Selection_cursor_right(0xE006, false);
+    Selection_cursor_right(0xE006, false),
+    Delete_words_left(0xE011, false);
 
     final String symbol;
     final boolean vertical;

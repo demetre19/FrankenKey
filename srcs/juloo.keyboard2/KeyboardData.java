@@ -406,7 +406,7 @@ public final class KeyboardData
     public final KeyValue[] keys;
     /** Key accessed by the anti-clockwise circle gesture. */
     public final KeyValue anticircle;
-    /** Pack flags for every key values. Flags are: [F_LOC]. */
+    /** Pack flags for every key values. Flags are: [F_LOC, F_HIDDEN]. */
     private final int keysflags;
     /** Key width in relative unit. */
     public final float width;
@@ -419,7 +419,10 @@ public final class KeyboardData
 
     /** Whether a key was declared with the 'loc' prefix. */
     public static final int F_LOC = 1;
-    public static final int ALL_FLAGS = F_LOC;
+    /** Whether a key should stay active but not draw a sublabel. */
+    public static final int F_HIDDEN = 2;
+    static final int FLAGS_PER_KEY = 2;
+    public static final int ALL_FLAGS = F_LOC | F_HIDDEN;
 
     protected Key(KeyValue[] ks, KeyValue antic, int f, float w, float s, String i, Role role_)
     {
@@ -459,6 +462,14 @@ public final class KeyboardData
       if (key_val == null)
         return 0;
       int flags = 0;
+      String name_hidden = stripPrefix(key_val, "hide ");
+      if (name_hidden == null)
+        name_hidden = stripPrefix(key_val, "hidden ");
+      if (name_hidden != null)
+      {
+        flags |= F_HIDDEN;
+        key_val = name_hidden;
+      }
       String name_loc = stripPrefix(key_val, "loc ");
       if (name_loc != null)
       {
@@ -466,7 +477,7 @@ public final class KeyboardData
         key_val = name_loc;
       }
       ks[index] = KeyValue.getKeyByName(key_val);
-      return (flags << index);
+      return (flags << (index * FLAGS_PER_KEY));
     }
 
     static KeyValue parse_nonloc_key_attr(XmlPullParser parser, String attr_name) throws Exception
@@ -511,7 +522,7 @@ public final class KeyboardData
     /** Whether key at [index] as [flag]. */
     public boolean keyHasFlag(int index, int flag)
     {
-      return (keysflags & (flag << index)) != 0;
+      return (keysflags & (flag << (index * FLAGS_PER_KEY))) != 0;
     }
 
     /** New key with the width multiplied by 's'. */
@@ -537,7 +548,7 @@ public final class KeyboardData
       KeyValue[] ks = new KeyValue[keys.length];
       for (int j = 0; j < keys.length; j++) ks[j] = keys[j];
       ks[i] = kv;
-      int flags = (keysflags & ~(ALL_FLAGS << i));
+      int flags = (keysflags & ~(ALL_FLAGS << (i * FLAGS_PER_KEY)));
       return new Key(ks, anticircle, flags, width, shift, indication, role);
     }
 
