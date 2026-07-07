@@ -57,6 +57,7 @@ It includes:
 - Voice dictation in the top-left corner of the bottom-right action key, so Enter/Search/Done/Go layouts keep dictation available without adding clutter.
 - Clipboard and emoji/GIF controls on the bottom rows for fast access to paste history, emoji search, and GIF search.
 - Clipboard history for up to 50 recent clips; tap a saved clip to paste it, or pin important clips for reuse.
+- Snippet expansion for saved phrases, shortcuts, and reusable text blocks; the same snippet feature is available in both Everyday mode and FrankenKey mode.
 
 This mode is for daily typing first. The advanced controls are still nearby, but they do not crowd the default view.
 
@@ -77,6 +78,10 @@ It includes:
 - A `123` button kept from the Fleksy-style layout for quick numeric access.
 
 This mode is for coding, remote desktop work, Termux, SSH, config editing, and situations where every key needs to do more than one thing.
+
+### Shared headline feature: snippets
+
+Both keyboard modes share FrankenKey's snippet feature, so saved phrases, shortcuts, and reusable text blocks are available whether you are using the clean Everyday layout or the dense FrankenKey power layout. That makes snippets a major feature instead of a mode-specific extra.
 
 ---
 
