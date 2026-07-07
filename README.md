@@ -26,9 +26,9 @@ Current release:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.7
-Version code: 58
-SHA-256: 75ee12dfb83907f1805a29cd5575b60b13dcc450d80f913dbbd0434a7219b0b1
+Version: 2.0.8
+Version code: 59
+SHA-256: 0343891efaec8d6a830a5b8792fda44d16b86491c0f1745b58e8fdb7c8497322
 ```
 
 
@@ -66,8 +66,11 @@ It includes:
   - `x` for cut
   - `c` for copy
   - `v` for paste
-- Clean numeric and symbol pages.
-- Clipboard history for up to 50 recent clips.
+- Clean numeric and symbol pages with a large voice dictation key beside `ABC`.
+- Voice dictation in the top-left corner of the bottom-right action key, so Enter/Search/Done/Go layouts keep dictation available without adding clutter.
+- Clipboard and emoji/GIF controls on the bottom rows for fast access to paste history, emoji search, and GIF search.
+- Clipboard history for up to 50 recent clips; tap a saved clip to paste it, or pin important clips for reuse.
+- Snippet expansion for saved phrases, shortcuts, and reusable text blocks; the same huge snippet feature is available in both Everyday mode and FrankenKey mode.
 
 This is the mode to use most of the time.
 
@@ -95,6 +98,10 @@ It adds compact access to:
 - A `123` button for fast numeric access.
 
 This mode is dense on purpose. It is for power work, not default typing.
+
+### Shared headline feature: snippets
+
+Both keyboard modes share FrankenKey's snippet feature, so saved phrases, shortcuts, and reusable text blocks are available whether you are using the clean Everyday layout or the dense FrankenKey power layout. That makes snippets a major feature instead of a mode-specific extra.
 
 ---
 

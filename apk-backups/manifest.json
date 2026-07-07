@@ -1,0 +1,40 @@
+{
+  "backups": [
+    {
+      "label": "old-accepted-signer",
+      "file": "FrankenKey-2.0.7-vc58-old-signer-68c0ab2f.apk",
+      "source": "/Volumes/TheHoneyBadger/***DOWNLOADS/FrankenKey-installable-release (1).apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "58",
+      "versionName": "2.0.7",
+      "size": 3902803,
+      "sha256": "75ee12dfb83907f1805a29cd5575b60b13dcc450d80f913dbbd0434a7219b0b1",
+      "signerSha256": "68c0ab2fe486ba764f74ce1846f0b80c55b99753b60b329109e8d9ad26234408",
+      "note": "Old accepted APK signer; install/update compatible with currently old-signed installs."
+    },
+    {
+      "label": "debug-key-release-build",
+      "file": "FrankenKey-2.0.8-vc59-debug-key-81be0b43.apk",
+      "source": "../FrankenKey-autobuild-autocorrect/FrankenKey-autocorrect-suggestions-v2.0.8-vc59-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "59",
+      "versionName": "2.0.8",
+      "size": 5922827,
+      "sha256": "719d1b0102a9efe9234250bf180926725f945981358a67df760f8d96ce8c42d8",
+      "signerSha256": "81be0b43c765c2df5b34fc7686b094c82ebe5a46729a8580d56487e57aa591e6",
+      "note": "Earlier 2.0.8 release artifact signed with project debug keystore; not update-compatible with old accepted signer or new persistent release key."
+    },
+    {
+      "label": "new-persistent-release-key",
+      "file": "FrankenKey-2.0.8-vc59-new-release-key-9fdb3633.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "59",
+      "versionName": "2.0.8",
+      "size": 5922856,
+      "sha256": "0343891efaec8d6a830a5b8792fda44d16b86491c0f1745b58e8fdb7c8497322",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Current usual APK signed with newly persisted FrankenKey release key; future builds should use this signer."
+    }
+  ]
+}
