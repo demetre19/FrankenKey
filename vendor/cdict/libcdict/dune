@@ -1,7 +1,0 @@
-(library
- (public_name cdict.c)
- (name cdict_c)
- (foreign_stubs
-  (language c)
-  (names libcdict))
- (modes native))

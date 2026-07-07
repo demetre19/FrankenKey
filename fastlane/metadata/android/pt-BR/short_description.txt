@@ -1,1 +1,0 @@
-Um teclado virtual leve para desenvolvedores.

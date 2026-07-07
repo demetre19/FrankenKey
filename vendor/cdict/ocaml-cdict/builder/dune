@@ -1,9 +1,0 @@
-(library
- (public_name cdict.builder)
- (name cdict_builder)
- (libraries dfa))
-
-(rule
- (with-stdout-to
-  constants.ml
-  (run gen/gen_constants.exe)))

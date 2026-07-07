@@ -1,3 +1,0 @@
-Bug fixes.
-
-Thanks to the contributors: @doak

@@ -1,4 +1,0 @@
-(test
- (name dfa_test)
- (package dfa)
- (libraries dfa))

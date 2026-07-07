@@ -1,45 +1,59 @@
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="FrankenKey logo" width="160" />
+  <img src="logo.png" alt="FrankenKey logo" width="170" />
 </p>
 
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  A keyboard that combines the everyday speed of Fleksy-style typing with the compact power-user controls of Unexpected Keyboard.
+  The finished Android APK for a keyboard that blends Fleksy-style everyday typing with Unexpected Keyboard-style power controls.
 </p>
 
 <p align="center">
-  <strong>Everyday mode:</strong> clean Fleksy-style typing.<br />
-  <strong>FrankenKey mode:</strong> dense coding, terminal, and SSH controls.
+  <a href="FrankenKey-installable-release.apk"><strong>Download the APK</strong></a>
 </p>
+
+---
+
+## Download
+
+Install the final APK from this repository:
+
+```text
+FrankenKey-installable-release.apk
+```
+
+Current release:
+
+```text
+Package: dev.frankenkey.keyboard
+Version: 2.0.7
+Version code: 58
+SHA-256: 75ee12dfb83907f1805a29cd5575b60b13dcc450d80f913dbbd0434a7219b0b1
+```
+
+This repository is now a distribution page for the finished product. Development source files, build scripts, generators, tests, and temporary project files have been removed from the current tree so the repo only presents the installable app and product information.
 
 ---
 
 ## What is FrankenKey?
 
-FrankenKey is an Android keyboard built from the best parts of two very different keyboard ideas:
+FrankenKey combines two keyboard ideas:
 
-- **Fleksy-style everyday typing**: a clean keyboard with large letter targets, a simple bottom row, fast access to symbols, and gesture-driven deletion.
-- **Unexpected Keyboard-style power use**: a compact keyboard where swipes and corner labels expose coding, shell, and navigation keys without needing a giant layout.
+- **Fleksy-style everyday use** for fast, clean typing.
+- **Unexpected Keyboard-style power use** for coding, SSH, terminal work, and compact computer controls.
 
-The goal is simple: use a clean keyboard most of the time, then switch to the dense FrankenKey layout when you are coding, using Termux, logging into servers over SSH, editing config files, or working on a computer remotely.
-
-FrankenKey is not affiliated with Fleksy. Fleksy is credited here as the product that inspired the clean everyday typing mode. FrankenKey is based on and gives full credit to [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by Julow and its contributors.
+The default experience is the clean Fleksy-style layout. FrankenKey's denser computer layout is optional for when you need extra keys.
 
 ---
 
-## The two keyboard modes
+## Everyday mode
 
-### 1. Everyday Fleksy-style mode
-
-This is the default mode.
-
-Use it when you are writing normal messages, searching, browsing, taking notes, or doing anything where a clean keyboard is faster than a dense programmer layout.
+Everyday mode is for normal typing: messages, search, notes, browser input, and daily phone use.
 
 It includes:
 
-- A clean QWERTY layout with minimal visual noise.
-- A Fleksy-style bottom row:
+- Clean QWERTY rows.
+- A simple Fleksy-style bottom row:
   - `123`
   - `Fn`
   - space
@@ -47,119 +61,67 @@ It includes:
   - enter
 - No default `Ctrl` key.
 - No default arrow-key cluster.
-- Hidden middle-row left-swipe word deletion.
-- Bottom-letter editing shortcuts:
+- Hidden left-swipe word deletion on the middle row.
+- Fast edit shortcuts on the bottom letter row:
   - `z` for select all
   - `x` for cut
   - `c` for copy
   - `v` for paste
-- Clean numeric and symbol pages inspired by Fleksy's simple symbol layout.
+- Clean numeric and symbol pages.
 - Clipboard history for up to 50 recent clips.
 
-This mode is for daily typing first. The advanced controls are still nearby, but they do not crowd the default view.
-
-### 2. FrankenKey mode
-
-This is the optional power-user layout.
-
-Turn this on when you want the compact computer keyboard behavior inherited from Unexpected Keyboard.
-
-It includes:
-
-- Dense corner and swipe labels for symbols.
-- Coding punctuation close to the home row.
-- `Ctrl`, `Fn`, `Alt`, `Meta`, and related modifier access.
-- Arrow keys and navigation controls.
-- Terminal-friendly keys such as Tab, Esc, and shell punctuation.
-- Compact access to brackets, braces, slashes, quotes, pipes, and operators.
-- A `123` button kept from the Fleksy-style layout for quick numeric access.
-
-This mode is for coding, remote desktop work, Termux, SSH, config editing, and situations where every key needs to do more than one thing.
+This is the mode to use most of the time.
 
 ---
 
-## Screenshots
+## FrankenKey mode
 
-| Everyday setup | Typing | Symbols |
-| --- | --- | --- |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="FrankenKey screenshot 1" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="FrankenKey screenshot 2" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="FrankenKey screenshot 3" /> |
-| Power tools | Settings | Clipboard |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="FrankenKey screenshot 4" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="FrankenKey screenshot 5" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" alt="FrankenKey screenshot 6" /> |
+FrankenKey mode is the optional compact computer layout.
 
----
+Use it for:
 
-## Why combine these keyboards?
+- Coding on a phone.
+- Termux.
+- SSH sessions.
+- Remote computer work.
+- Editing config files.
+- Any task that needs more than letters and basic punctuation.
 
-Most people need two different keyboards:
+It adds compact access to:
 
-1. A fast, clean one for normal typing.
-2. A compact power keyboard for coding and terminal work.
+- `Ctrl`, `Fn`, `Alt`, and `Meta`.
+- Arrow and navigation keys.
+- Tab and Esc.
+- Brackets, braces, pipes, slashes, quotes, operators, and shell punctuation.
+- A `123` button for fast numeric access.
 
-Fleksy showed how good a phone keyboard can feel when the layout gets out of the way. Unexpected Keyboard showed how much power can fit into a small Android keyboard when swipes and corner labels are used well.
-
-FrankenKey keeps those ideas separate instead of forcing one layout to do everything at once:
-
-- Everyday mode stays clean.
-- FrankenKey mode stays dense.
-- You choose the mode that matches the job.
+This mode is dense on purpose. It is for power work, not default typing.
 
 ---
 
 ## Credits
 
-FrankenKey stands on the work of others.
+FrankenKey gives full credit to the projects and creators it builds on.
 
 ### Unexpected Keyboard
 
-FrankenKey is based on [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by [Julow](https://github.com/Julow) and maintained with contributions from the Unexpected Keyboard community.
+FrankenKey is based on [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by [Julow](https://github.com/Julow) with work from the Unexpected Keyboard contributor community.
 
-Unexpected Keyboard provides the foundation for:
-
-- Android input method behavior.
-- Swipe and corner-key architecture.
-- Compact programmer-focused layout ideas.
-- Open source keyboard infrastructure.
-
-Please see the original project and its history for the upstream work that made FrankenKey possible.
+Unexpected Keyboard provided the open source Android keyboard foundation, including the compact swipe and corner-key approach that makes FrankenKey mode possible.
 
 ### Fleksy
 
-Fleksy is credited as the inspiration for FrankenKey's clean everyday mode:
+Fleksy inspired the clean everyday typing experience: clear rows, simple controls, fast symbol access, and gesture-first keyboard behavior.
 
-- Large, clear letter rows.
-- Simple bottom-row structure.
-- Fast symbol access.
-- Gesture-first typing behavior.
-
-FrankenKey is not affiliated with, endorsed by, or sponsored by Fleksy. The Fleksy references describe design inspiration only.
+FrankenKey is not affiliated with, endorsed by, or sponsored by Fleksy. Fleksy is credited here for design inspiration only.
 
 ---
 
 ## Privacy
 
-FrankenKey is open source and designed as a local keyboard. The keyboard does not need ads or tracking to work.
+FrankenKey is designed as a local keyboard. It does not need ads or tracking to work.
 
-Clipboard history is kept for practical typing use. Recent clipboard entries are capped at 50 items.
-
----
-
-## Build
-
-This repository is an Android project.
-
-Typical local build:
-
-```bash
-./gradlew assembleDebug
-```
-
-Release builds in this fork have been tested with:
-
-```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease
-```
-
-If Gradle needs `python`, provide a `python` shim to `python3` before running the build.
+Clipboard history is capped at 50 recent items.
 
 ---
 
@@ -167,4 +129,4 @@ If Gradle needs `python`, provide a `python` shim to `python3` before running th
 
 FrankenKey follows the license terms inherited from Unexpected Keyboard. See [LICENSE](LICENSE).
 
-Because this is a fork, keep upstream attribution intact when redistributing modified versions.
+Keep upstream credit intact when sharing modified builds.

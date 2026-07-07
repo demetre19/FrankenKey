@@ -1,7 +1,0 @@
-(library
- (name aosp_parser))
-
-(ocamllex lexer)
-
-(menhir
- (modules parser))

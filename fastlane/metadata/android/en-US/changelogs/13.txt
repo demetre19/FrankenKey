@@ -1,3 +1,0 @@
-- Add support for Swedish
-- Fix keyboard shortcuts not working in some applications
-- Fix a graphical bug and add some tweaks
