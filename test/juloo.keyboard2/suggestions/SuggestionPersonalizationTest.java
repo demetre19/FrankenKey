@@ -461,6 +461,7 @@ public class SuggestionPersonalizationTest
     TextView middle = view.findViewById(R.id.candidates_middle);
     TextView right = view.findViewById(R.id.candidates_right);
     TextView left = view.findViewById(R.id.candidates_left);
+    int normalMaxTextSize = middle.getAutoSizeMaxTextSize();
     String learned = "pneumonoultramicroscopicsilicovolcanoconiosis";
     String hunspell = "antidisestablishmentarianism";
     String dictionary = "floccinaucinihilipilification";
@@ -475,9 +476,12 @@ public class SuggestionPersonalizationTest
 
     view.set_candidates(published);
 
-    assertLongCandidateLabel("Learned", middle, learned);
-    assertLongCandidateLabel("Hunspell", right, hunspell);
-    assertLongCandidateLabel("Dictionary", left, dictionary);
+    assertLongCandidateLabel("Learned", middle, learned, normalMaxTextSize);
+    assertLongCandidateLabel("Hunspell", right, hunspell, normalMaxTextSize);
+    assertLongCandidateLabel("Dictionary", left, dictionary, normalMaxTextSize);
+    view.set_candidates(wordSuggestions("short", "tiny", "brief"));
+    assertEquals("Short candidate labels must restore the normal candidate text size after a long-word shrink.",
+        normalMaxTextSize, middle.getAutoSizeMaxTextSize());
   }
 
   @Test
@@ -634,7 +638,7 @@ public class SuggestionPersonalizationTest
   }
 
   private static void assertLongCandidateLabel(String label, TextView view,
-      String expected)
+      String expected, int normalMaxTextSize)
   {
     assertEquals(label + " candidate must display the source-free word itself; source metadata must not be appended as overflow-visible suffix text.",
         expected, view.getText().toString());
@@ -642,8 +646,8 @@ public class SuggestionPersonalizationTest
         1, view.getMaxLines());
     assertEquals(label + " candidate labels must use uniform autosizing so long suggestions shrink inside the visible strip instead of overflowing.",
         TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM, view.getAutoSizeTextType());
-    assertTrue(label + " candidate autosizing must have room to shrink below the configured max text size.",
-        view.getAutoSizeMinTextSize() < view.getAutoSizeMaxTextSize());
+    assertTrue(label + " candidate autosizing must use a smaller max size for words over ten letters instead of waiting for truncation.",
+        view.getAutoSizeMaxTextSize() < normalMaxTextSize);
   }
 
   private static TextView candidateTextView(Context context, int id)

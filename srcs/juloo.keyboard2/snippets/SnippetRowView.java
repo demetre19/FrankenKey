@@ -1,5 +1,8 @@
 package juloo.keyboard2.snippets;
 
+import android.graphics.Canvas;
+import android.graphics.Paint;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
@@ -22,6 +25,7 @@ public class SnippetRowView extends HorizontalScrollView
   }
 
   private LinearLayout _pages;
+  private final Paint _divider_paint = new Paint();
 
   public SnippetRowView(Context context, AttributeSet attrs)
   {
@@ -32,6 +36,9 @@ public class SnippetRowView extends HorizontalScrollView
     _pages.setOrientation(LinearLayout.HORIZONTAL);
     addView(_pages, new LayoutParams(LayoutParams.WRAP_CONTENT,
           LayoutParams.WRAP_CONTENT));
+    setWillNotDraw(false);
+    _divider_paint.setColor(themeColor(R.attr.clipboard_divider_color));
+    _divider_paint.setAlpha(140);
   }
 
   public void refresh_config(SharedPreferences prefs, boolean editorAllowsText,
@@ -134,6 +141,24 @@ public class SnippetRowView extends HorizontalScrollView
       return;
     int page = (getScrollX() + width / 2) / width;
     smoothScrollTo(page * width, 0);
+  }
+
+  @Override
+  protected void onDraw(Canvas canvas)
+  {
+    super.onDraw(canvas);
+    canvas.drawRect(0, 0, getWidth(), dividerHeight(), _divider_paint);
+  }
+
+  private int dividerHeight()
+  {
+    TypedValue value = new TypedValue();
+    getContext().getTheme().resolveAttribute(
+        R.attr.clipboard_divider_height, value, true);
+    if (value.type == TypedValue.TYPE_DIMENSION)
+      return Math.max(1, TypedValue.complexToDimensionPixelSize(value.data,
+            getResources().getDisplayMetrics()));
+    return 1;
   }
 
   private int themeColor(int attr)

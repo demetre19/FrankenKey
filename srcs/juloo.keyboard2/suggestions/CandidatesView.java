@@ -20,6 +20,10 @@ import juloo.keyboard2.R;
 public class CandidatesView extends LinearLayout
 {
   static final int NUM_CANDIDATES = 4;
+  static final int LONG_CANDIDATE_LENGTH = 10;
+  static final float LONG_CANDIDATE_TEXT_SCALE = 0.78f;
+  float _candidate_text_size_px = 0f;
+
 
   /** Candidates currently visible. Entries can be [null] when there are less
       than [NUM_CANDIDATES] suggestions.
@@ -76,7 +80,7 @@ public class CandidatesView extends LinearLayout
       TextView v = _item_views[i];
       if (_items[i] != null)
       {
-        v.setText(label_for(_items[i], _sources[i]));
+        set_candidate_text(v, _items[i], _sources[i]);
         v.setContentDescription(description_for(_items[i], _sources[i]));
         v.setVisibility(View.VISIBLE);
       }
@@ -124,6 +128,13 @@ public class CandidatesView extends LinearLayout
     set_sizes(config);
   }
 
+  void set_candidate_text(TextView v, String text, Suggestions.Source source)
+  {
+    String label = label_for(text, source);
+    v.setText(label);
+    apply_candidate_text_size(v, label);
+  }
+
   /** Set the height of the suggestion row and the text size. */
   void set_sizes(Config config)
   {
@@ -134,17 +145,35 @@ public class CandidatesView extends LinearLayout
     p.height = (int)row_height;
     setLayoutParams(p);
     // Match the size of labels on the keyboard.
-    float text_size = row_height * config.characterSize * config.labelTextSize;
+    _candidate_text_size_px = row_height * config.characterSize * config.labelTextSize;
     for (int i = 0; i < NUM_CANDIDATES; i++)
     {
       TextView v = _item_views[i];
-      // Set text size and enable auto size if supported.
-      if (VERSION.SDK_INT < 26)
-        v.setTextSize(TypedValue.COMPLEX_UNIT_PX, text_size);
-      else
-        v.setAutoSizeTextTypeUniformWithConfiguration(
-            (int)(text_size / 2.), (int)text_size, 1, TypedValue.COMPLEX_UNIT_PX);
+      apply_candidate_text_size(v, null);
     }
+  }
+
+  void apply_candidate_text_size(TextView v, String label)
+  {
+    float text_size = _candidate_text_size_px;
+    if (text_size <= 0f)
+      return;
+    float max_size = candidate_max_text_size(text_size, label);
+    if (VERSION.SDK_INT < 26)
+      v.setTextSize(TypedValue.COMPLEX_UNIT_PX, max_size);
+    else
+      v.setAutoSizeTextTypeUniformWithConfiguration(
+          Math.max(1, (int)(max_size / 2.)),
+          Math.max(1, (int)max_size),
+          1, TypedValue.COMPLEX_UNIT_PX);
+  }
+
+  float candidate_max_text_size(float text_size, String label)
+  {
+    if (label != null && label.codePointCount(0, label.length())
+        > LONG_CANDIDATE_LENGTH)
+      return text_size * LONG_CANDIDATE_TEXT_SCALE;
+    return text_size;
   }
 
   /** Show or hide a status view and inflate it if needed. */

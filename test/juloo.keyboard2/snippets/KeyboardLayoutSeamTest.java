@@ -65,6 +65,20 @@ public class KeyboardLayoutSeamTest
   }
 
   @Test
+  public void snippet_row_draws_theme_divider_at_suggestion_boundary()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/snippets/SnippetRowView.java");
+
+    assertTrue("SnippetRowView must draw the snippets/suggestions seam itself so the divider hides with the row.",
+        source.contains("protected void onDraw(Canvas canvas)"));
+    assertTrue("The seam color must come from the active keyboard theme so it remains subtle in light, dark, and custom themes.",
+        source.contains("R.attr.clipboard_divider_color"));
+    assertTrue("The seam height must reuse the theme divider height instead of a hard-coded dp block.",
+        source.contains("R.attr.clipboard_divider_height"));
+  }
+
+  @Test
   public void keyboard_service_finds_and_refreshes_snippet_row()
       throws Exception
   {
