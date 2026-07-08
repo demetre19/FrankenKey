@@ -35,6 +35,18 @@
       "sha256": "0343891efaec8d6a830a5b8792fda44d16b86491c0f1745b58e8fdb7c8497322",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Current usual APK signed with newly persisted FrankenKey release key; future builds should use this signer."
+    },
+    {
+      "label": "snippet-seam-long-candidate-release",
+      "file": "FrankenKey-2.0.12-vc63-new-release-key-9fdb3633-e63da23f.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "63",
+      "versionName": "2.0.12",
+      "size": 5953722,
+      "sha256": "e63da23f0ff9810b2684ded7bb811892cc8840d2de7b61a18ce1e248cd839fda",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release with subtle snippets/suggestions divider and smaller long suggestion labels."
     }
   ]
 }
