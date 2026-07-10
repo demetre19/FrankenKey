@@ -95,7 +95,7 @@ public class SnippetSettingsTest
   }
 
   @Test
-  public void slots_preference_has_edit_clear_and_custom_icon_label_paths()
+  public void slots_preference_has_edit_clear_and_custom_label_without_no_op_icon_toggle()
       throws Exception
   {
     String source = readSource(SNIPPET_PREF_SOURCE);
@@ -109,10 +109,13 @@ public class SnippetSettingsTest
         lowerSource.contains("clear") && source.contains("SnippetSlot.of("));
     assertTrue("The editor must read existing custom label text into the edit path.",
         source.contains("getCustomLabel()"));
-    assertTrue("The editor must read and save the icon-label flag.",
-        source.contains("isIconLabel()") && lowerSource.contains("icon"));
-    assertTrue("The icon-label option must be exposed as a checkbox or checkable editor control.",
-        source.contains("CheckBox") || source.contains("setChecked("));
+    assertFalse("The snippet editor must not expose the nonfunctional icon-style checkbox.",
+        source.contains("CheckBox")
+        || source.contains("setChecked(")
+        || source.contains("pref_snippets_icon_label"));
+    String strings = readSource("res/values/strings.xml");
+    assertFalse("Removing the no-op editor control must also remove its dead UI string.",
+        strings.contains("pref_snippets_icon_label"));
   }
 
   private static String readSource(String path)

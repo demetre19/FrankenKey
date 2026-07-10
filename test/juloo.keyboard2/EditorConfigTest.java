@@ -86,6 +86,50 @@ public class EditorConfigTest
         | TextUtils.CAP_MODE_SENTENCES, config.caps_mode);
   }
 
+  @Test
+  public void caps_mode_fallback_and_standalone_i_follow_editor_policy()
+  {
+    EditorConfig plainText = new EditorConfig();
+    plainText.refresh(editor(InputType.TYPE_CLASS_TEXT), null);
+
+    assertEquals("Plain text editors that omit caps flags must receive sentence capitalization repair.",
+        TextUtils.CAP_MODE_SENTENCES, plainText.caps_mode);
+    assertTrue("Plain text editors must allow standalone i capitalization.",
+        plainText.autocapitalise_standalone_i);
+
+    EditorConfig uri = new EditorConfig();
+    uri.refresh(editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_URI), null);
+
+    assertEquals("URI editors must not receive the generic sentence-capitalization fallback.",
+        0, uri.caps_mode);
+    assertTrue("URI editors are not password editors and must still allow standalone i capitalization.",
+        uri.autocapitalise_standalone_i);
+
+    EditorConfig webEdit = new EditorConfig();
+    webEdit.refresh(editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT), null);
+
+    assertEquals("Web-edit text editors must not receive the generic sentence-capitalization fallback.",
+        0, webEdit.caps_mode);
+
+    EditorConfig email = new EditorConfig();
+    email.refresh(editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS), null);
+
+    assertEquals("Email-address editors must not receive the generic sentence-capitalization fallback.",
+        0, email.caps_mode);
+
+    EditorConfig password = new EditorConfig();
+    password.refresh(editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_PASSWORD), null);
+
+    assertEquals("Password editors must not receive the generic sentence-capitalization fallback.",
+        0, password.caps_mode);
+    assertFalse("Password editors must not rewrite a user's standalone lowercase i.",
+        password.autocapitalise_standalone_i);
+  }
+
   private static EditorInfo editor(int inputType)
   {
     EditorInfo info = new EditorInfo();

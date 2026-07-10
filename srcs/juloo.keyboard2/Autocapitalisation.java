@@ -19,6 +19,13 @@ public final class Autocapitalisation
 
   /** Keep track of the cursor to recognize cursor movements from typing. */
   int _cursor;
+  /** One lowercase character whose exact editor suffix may be safely rewritten. */
+  int _pending_rewrite_cursor = -1;
+  char _pending_rewrite_original = 0;
+  char _pending_rewrite_replacement = 0;
+
+  private static final int REWRITE_CONTEXT_LIMIT = 64;
+
 
   public Autocapitalisation(Handler h, Callback cb)
   {
@@ -33,8 +40,10 @@ public final class Autocapitalisation
    */
   public void started(Config config, InputConnection ic)
   {
+    cancel_pending_rewrite();
     _ic = ic;
     EditorConfig ec = config.editor_config;
+    _cursor = Math.max(0, ec.initial_sel_start);
     if (!config.autocapitalisation || ec.caps_mode == 0)
     {
       _enabled = false;
@@ -47,15 +56,54 @@ public final class Autocapitalisation
     callback_now(true);
   }
 
+  /** End an editor session and prevent delayed work touching its old connection. */
+  public void finished()
+  {
+    cancel_pending_rewrite();
+    _enabled = false;
+    _should_enable_shift = false;
+    _should_disable_shift = false;
+    _should_update_caps_mode = false;
+    _ic = null;
+    _cursor = 0;
+  }
+
+  /** Re-evaluate caps mode after replacing [remove_before] preceding UTF-16
+      units with [inserted] without individual key input. */
+  public void text_replaced(int remove_before, CharSequence inserted)
+  {
+    cancel_pending_rewrite();
+    _cursor = Math.max(0, _cursor - Math.max(0, remove_before)
+        + (inserted == null ? 0 : inserted.length()));
+    if (!_enabled)
+      return;
+    if (inserted != null)
+      for (int i = 0; i < inserted.length(); i++)
+        if (is_trigger_character(inserted.charAt(i)))
+        {
+          _should_update_caps_mode = true;
+          break;
+        }
+    callback(true);
+  }
+
   public void typed(CharSequence c)
   {
-    for (int i = 0; i < c.length(); i++)
-      type_one_char(c.charAt(i));
+    if (c.length() == 1 && should_rewrite_lowercase(c.charAt(0)))
+    {
+      char original = c.charAt(0);
+      type_one_char(original);
+      request_rewrite(original, Character.toUpperCase(original));
+    }
+    else
+      for (int i = 0; i < c.length(); i++)
+        type_one_char(c.charAt(i));
     callback(false);
   }
 
   public void event_sent(int code, int meta)
   {
+    cancel_pending_rewrite();
     if (meta != 0)
     {
       _should_enable_shift = false;
@@ -77,6 +125,7 @@ public final class Autocapitalisation
 
   public void stop()
   {
+    cancel_pending_rewrite();
     _should_enable_shift = false;
     _should_update_caps_mode = false;
     callback_now(true);
@@ -103,6 +152,9 @@ public final class Autocapitalisation
   public static interface Callback
   {
     public void update_shift_state(boolean should_enable, boolean should_disable);
+    /** Replace the exact suffix before the cursor, returning whether it matched. */
+    public boolean replace_recent_text(String expected_suffix,
+        String replacement_suffix);
   }
 
   /** Returns [true] if shift might be disabled. */
@@ -110,6 +162,7 @@ public final class Autocapitalisation
   {
     if (new_cursor == _cursor) // Just typing
       return;
+    cancel_pending_rewrite();
     if (new_cursor == 0 && _ic != null)
     {
       // Detect whether the input box has been cleared
@@ -126,6 +179,7 @@ public final class Autocapitalisation
   {
     public void run()
     {
+      rewrite_pending_lowercase();
       if (_should_update_caps_mode && _ic != null)
       {
         _should_enable_shift = _enabled && (_ic.getCursorCapsMode(_caps_mode) != 0);
@@ -144,6 +198,7 @@ public final class Autocapitalisation
     _should_disable_shift = might_disable;
     // The callback must be delayed because [getCursorCapsMode] would sometimes
     // be called before the editor finished handling the previous event.
+    _handler.removeCallbacks(delayed_callback);
     _handler.postDelayed(delayed_callback, 50);
   }
 
@@ -152,6 +207,71 @@ public final class Autocapitalisation
   {
     _should_disable_shift = might_disable;
     delayed_callback.run();
+  }
+
+  boolean should_rewrite_lowercase(char c)
+  {
+    if (!_enabled || !Character.isLowerCase(c))
+      return false;
+    if ((_caps_mode & TextUtils.CAP_MODE_CHARACTERS) != 0
+        || _should_enable_shift || _should_update_caps_mode)
+      return true;
+    if (_ic != null && _ic.getCursorCapsMode(_caps_mode) != 0)
+      return true;
+    if ((_caps_mode & TextUtils.CAP_MODE_SENTENCES) == 0 || _ic == null)
+      return false;
+    CharSequence before = _ic.getTextBeforeCursor(REWRITE_CONTEXT_LIMIT, 0);
+    if (before == null)
+      return false;
+    int i = before.length() - 1;
+    while (i >= 0 && Character.isWhitespace(before.charAt(i)))
+      --i;
+    return i < 0 || before.charAt(i) == '.' || before.charAt(i) == '!'
+      || before.charAt(i) == '?';
+  }
+
+
+  void request_rewrite(char original, char replacement)
+  {
+    _pending_rewrite_cursor = _cursor;
+    _pending_rewrite_original = original;
+    _pending_rewrite_replacement = replacement;
+  }
+
+  void cancel_pending_rewrite()
+  {
+    _pending_rewrite_cursor = -1;
+    _pending_rewrite_original = 0;
+    _pending_rewrite_replacement = 0;
+    if (_handler != null)
+      _handler.removeCallbacks(delayed_callback);
+  }
+
+  void rewrite_pending_lowercase()
+  {
+    int target_cursor = _pending_rewrite_cursor;
+    char original = _pending_rewrite_original;
+    char replacement = _pending_rewrite_replacement;
+    _pending_rewrite_cursor = -1;
+    _pending_rewrite_original = 0;
+    _pending_rewrite_replacement = 0;
+    if (!_enabled || _ic == null || target_cursor < 1
+        || target_cursor > _cursor)
+      return;
+    int chars_after_target = _cursor - target_cursor;
+    if (chars_after_target > REWRITE_CONTEXT_LIMIT)
+      return;
+    CharSequence before = _ic.getTextBeforeCursor(
+        chars_after_target + 1 + REWRITE_CONTEXT_LIMIT, 0);
+    if (before == null)
+      return;
+    int target_index = before.length() - chars_after_target - 1;
+    if (target_index < 0 || before.charAt(target_index) != original
+        || TextUtils.getCapsMode(before, target_index, _caps_mode) == 0)
+      return;
+    String expected = before.subSequence(target_index, before.length()).toString();
+    String replacement_text = replacement + expected.substring(1);
+    _callback.replace_recent_text(expected, replacement_text);
   }
 
   void type_one_char(char c)

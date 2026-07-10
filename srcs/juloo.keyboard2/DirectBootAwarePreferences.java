@@ -69,12 +69,14 @@ public final class DirectBootAwarePreferences
     e.remove(SnippetStore.PREF_SLOTS);
     e.remove(PersonalizationStore.PREF_WORDS);
     e.remove(PersonalizationStore.PREF_BIGRAMS);
+    e.remove(PersonalizationStore.PREF_CORRECTIONS);
     Map<String, ?> entries = src.getAll();
     for (String k : entries.keySet())
     {
       if (SnippetStore.PREF_SLOTS.equals(k)
           || PersonalizationStore.PREF_WORDS.equals(k)
-          || PersonalizationStore.PREF_BIGRAMS.equals(k))
+          || PersonalizationStore.PREF_BIGRAMS.equals(k)
+          || PersonalizationStore.PREF_CORRECTIONS.equals(k))
         continue;
       Object v = entries.get(k);
       if (v instanceof Boolean)

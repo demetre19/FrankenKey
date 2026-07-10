@@ -146,6 +146,50 @@
     <item name="android:backgroundTint">?attr/colorLabel</item>
     <item name="android:backgroundTintMode">src_in</item>
   </style>
+  <style name="clipboardGridCard">
+    <item name="android:layout_width">fill_parent</item>
+    <item name="android:layout_height">@dimen/clipboard_grid_card_height</item>
+    <item name="android:padding">10dp</item>
+    <item name="android:background">@drawable/clipboard_card_background</item>
+    <item name="android:clickable">true</item>
+    <item name="android:focusable">true</item>
+  </style>
+  <style name="clipboardGridText">
+    <item name="android:layout_width">fill_parent</item>
+    <item name="android:layout_height">fill_parent</item>
+    <item name="android:textSize">14dp</item>
+    <item name="android:textColor">?attr/colorLabel</item>
+    <item name="android:ellipsize">end</item>
+    <item name="android:maxLines">5</item>
+  </style>
+  <style name="clipboardGridImage">
+    <item name="android:layout_width">fill_parent</item>
+    <item name="android:layout_height">fill_parent</item>
+    <item name="android:scaleType">centerCrop</item>
+  </style>
+  <style name="clipboardGridButtons">
+    <item name="android:orientation">horizontal</item>
+    <item name="android:layout_width">wrap_content</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_gravity">bottom|right</item>
+    <item name="android:background">@drawable/clipboard_icon_background</item>
+    <item name="android:padding">2dp</item>
+  </style>
+  <style name="clipboardGridButton">
+    <item name="android:layout_width">@dimen/clipboard_grid_button_size</item>
+    <item name="android:layout_height">@dimen/clipboard_grid_button_size</item>
+    <item name="android:layout_marginHorizontal">2dp</item>
+    <item name="android:backgroundTint">?attr/colorLabel</item>
+    <item name="android:backgroundTintMode">src_in</item>
+  </style>
+  <style name="clipboardEditorAction">
+    <item name="android:layout_width">36dp</item>
+    <item name="android:layout_height">36dp</item>
+    <item name="android:gravity">center</item>
+    <item name="android:textSize">22dp</item>
+    <item name="android:textColor">?attr/colorLabel</item>
+    <item name="android:background">@drawable/clipboard_icon_background</item>
+  </style>
   <!-- Launcher activity -->
   <style name="paragraph">
     <item name="android:layout_width">fill_parent</item>
@@ -154,28 +198,98 @@
     <item name="android:layout_marginHorizontal">24dp</item>
     <item name="android:layout_gravity">center</item>
   </style>
-  <style name="anim">
-    <item name="android:adjustViewBounds">true</item>
-    <item name="android:layout_height">120dp</item>
-    <item name="android:layout_weight">1</item>
-    <item name="android:layout_width">wrap_content</item>
-  </style>
-  <style name="anim_text">
-    <item name="android:layout_gravity">center</item>
+  <style name="launcher_intro">
+    <item name="android:layout_width">match_parent</item>
     <item name="android:layout_height">wrap_content</item>
-    <item name="android:layout_marginHorizontal">20dp</item>
-    <item name="android:layout_weight">1</item>
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:layout_marginTop">20dp</item>
+    <item name="android:layout_marginBottom">12dp</item>
+    <item name="android:textColor">#A8B2BE</item>
+    <item name="android:textSize">16sp</item>
+  </style>
+  <style name="launcher_setup_button">
     <item name="android:layout_width">wrap_content</item>
-    <item name="android:textAlignment">center</item>
-    <item name="android:textSize">18dp</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_margin">4dp</item>
+    <item name="android:minHeight">48dp</item>
+    <item name="android:minWidth">92dp</item>
+    <item name="android:paddingHorizontal">10dp</item>
+    <item name="android:textSize">13sp</item>
+  </style>
+  <style name="launcher_heading">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:layout_marginTop">22dp</item>
+    <item name="android:layout_marginBottom">8dp</item>
+    <item name="android:textColor">#F4F7FA</item>
+    <item name="android:textSize">18sp</item>
     <item name="android:textStyle">bold</item>
   </style>
-  <style name="anim_box">
-    <item name="android:layout_gravity">center</item>
+  <style name="launcher_card">
+    <item name="android:layout_width">match_parent</item>
     <item name="android:layout_height">wrap_content</item>
-    <item name="android:layout_marginVertical">16dp</item>
-    <item name="android:layout_width">wrap_content</item>
-    <item name="android:orientation">horizontal</item>
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:background">@drawable/launcher_card</item>
+  </style>
+  <style name="launcher_card_title">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:textColor">#F4F7FA</item>
+    <item name="android:textSize">15sp</item>
+    <item name="android:textStyle">bold</item>
+  </style>
+  <style name="launcher_card_body">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginTop">4dp</item>
+    <item name="android:textColor">#A8B2BE</item>
+    <item name="android:textSize">14sp</item>
+  </style>
+  <style name="launcher_accent_text">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginTop">12dp</item>
+    <item name="android:textColor">#8CE9D7</item>
+    <item name="android:textSize">14sp</item>
+    <item name="android:textStyle">bold</item>
+  </style>
+  <style name="launcher_direction_map">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:gravity">center</item>
+    <item name="android:lineSpacingExtra">6dp</item>
+    <item name="android:textColor">#8CE9D7</item>
+    <item name="android:textSize">14sp</item>
+    <item name="android:textStyle">bold</item>
+  </style>
+  <style name="launcher_feature_card" parent="launcher_card_body">
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:layout_marginTop">0dp</item>
+    <item name="android:background">@drawable/launcher_card</item>
+  </style>
+  <style name="launcher_try_area">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:background">@drawable/launcher_input</item>
+    <item name="android:minHeight">52dp</item>
+    <item name="android:textColor">#F4F7FA</item>
+    <item name="android:textColorHint">#A8B2BE</item>
+    <item name="android:textSize">15sp</item>
+  </style>
+  <style name="launcher_privacy_card" parent="launcher_card">
+    <item name="android:layout_marginTop">22dp</item>
+    <item name="android:background">@drawable/launcher_privacy_card</item>
+  </style>
+  <style name="launcher_source">
+    <item name="android:layout_width">match_parent</item>
+    <item name="android:layout_height">wrap_content</item>
+    <item name="android:layout_marginHorizontal">24dp</item>
+    <item name="android:layout_marginTop">8dp</item>
+    <item name="android:gravity">center</item>
+    <item name="android:textColor">#68A8FF</item>
+    <item name="android:textSize">12sp</item>
   </style>
   <!-- Dictionaries activity -->
   <style name="dictionary_list_view">
@@ -209,7 +323,13 @@
     <item name="android:layout_height">24dp</item>
   </style>
   <style name="appTheme" parent="@android:style/Theme.Material.Light"/>
-  <style name="settingsTheme" parent="appTheme">
+  <style name="launcherTheme" parent="@android:style/Theme.Material">
+    <item name="android:colorAccent">#55D6BE</item>
+    <item name="android:navigationBarColor">#0B0D10</item>
+    <item name="android:windowActionModeOverlay">true</item>
+    <item name="android:windowBackground">#0B0D10</item>
+  </style>
+  <style name="settingsTheme" parent="@android:style/Theme.Material">
     <!-- Setting this in the activity theme so it propagate to nested
          preference screens. -->
     <item name="android:fitsSystemWindows">true</item>

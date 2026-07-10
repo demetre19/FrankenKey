@@ -5,6 +5,9 @@
   <dimen name="emoji_grid_height">200dp</dimen>
   <dimen name="emoji_text_size">28dp</dimen>
   <dimen name="clipboard_view_height">300dp</dimen>
+  <dimen name="clipboard_expanded_view_height">620dp</dimen>
+  <dimen name="clipboard_grid_card_height">112dp</dimen>
+  <dimen name="clipboard_grid_button_size">20dp</dimen>
   <dimen name="pref_button_size">28dp</dimen>
   <dimen name="candidates_gap">8dp</dimen>
   <dimen name="candidates_suggestions_padding">4dp</dimen>

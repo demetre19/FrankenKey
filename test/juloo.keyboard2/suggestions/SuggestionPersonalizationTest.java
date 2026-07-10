@@ -2,19 +2,12 @@ package juloo.keyboard2.suggestions;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
-import android.view.View;
-import android.widget.TextView;
-import android.widget.LinearLayout;
-import juloo.keyboard2.Config;
-import juloo.keyboard2.KeyValue;
-import juloo.keyboard2.KeyboardData;
-import juloo.keyboard2.Pointers;
-import juloo.keyboard2.R;
-import juloo.keyboard2.TouchTrace;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import juloo.keyboard2.TouchTrace;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,688 +22,645 @@ public class SuggestionPersonalizationTest
 {
   private SharedPreferences _prefs;
 
-  public SuggestionPersonalizationTest() {}
-
   @Before
   public void setUp()
   {
-    _prefs = RuntimeEnvironment.getApplication()
-      .getSharedPreferences("suggestion_personalization_test", Context.MODE_PRIVATE);
+    _prefs = RuntimeEnvironment.getApplication().getSharedPreferences(
+        "decoder_personalization_test", Context.MODE_PRIVATE);
     _prefs.edit().clear().commit();
   }
 
   @After
   public void tearDown()
-      throws Exception
   {
     _prefs.edit().clear().commit();
-    resetGlobalConfig();
   }
 
   @Test
-  public void learned_prefix_suggestions_persist_and_rank_by_frequency()
+  public void learned_prefixes_persist_and_order_by_count_then_text()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
-
-    store.record_word("Cazoo");
-    store.record_word("cabin");
-    store.record_word("cazoo");
-    store.record_word("cazoo");
+    record(store, "cazoo", 3);
+    record(store, "cabin", 2);
+    record(store, "camel", 2);
 
     PersonalizationStore reloaded = new PersonalizationStore(_prefs);
 
-    assertEquals("Learned prefix suggestions must be persisted locally and ordered by learned frequency before alphabetical tie-breaking.",
-        Arrays.asList("cazoo", "cabin"),
+    assertEquals("Learned completions must survive a keyboard restart and use count-first, deterministic alphabetical tie-breaking.",
+        Arrays.asList("cazoo", "cabin", "camel"),
         reloaded.suggest_words("CA", 3));
   }
 
   @Test
-  public void next_word_suggestions_use_previous_committed_word_bigram_counts()
-  {
-    PersonalizationStore store = new PersonalizationStore(_prefs);
-    store.record_word("good");
-    store.record_word("morning");
-    store.record_word("good");
-    store.record_word("night");
-    store.record_word("good");
-    store.record_word("morning");
-
-    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-    reloaded.reset_context();
-    reloaded.record_word("good");
-
-    assertEquals("After a committed word, next-word suggestions must come from persisted bigram counts for that previous word.",
-        Arrays.asList("morning", "night"),
-        reloaded.suggest_next_words(5));
-  }
-
-  @Test
-  public void unlearned_word_is_removed_from_prefix_suggestions_without_forgetting_unrelated_words()
-  {
-    PersonalizationStore store = new PersonalizationStore(_prefs);
-    store.record_word("Cazoo");
-    store.record_word("cabin");
-    store.record_word("cazoo");
-
-    store.unlearn_word("CAZOO");
-    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-
-    assertFalse("Unlearning must remove the selected word from the persisted learned-word set.",
-        reloaded.is_learned("cazoo"));
-    assertTrue("Unlearning one word must not clear unrelated learned words.",
-        reloaded.is_learned("cabin"));
-    assertEquals("Prefix suggestions must stop surfacing the unlearned word while preserving other matching learned words.",
-        Arrays.asList("cabin"),
-        reloaded.suggest_words("ca", 3));
-  }
-
-  @Test
-  public void unlearning_word_removes_next_word_predictions_that_contain_it()
-  {
-    PersonalizationStore store = new PersonalizationStore(_prefs);
-    store.record_word("good");
-    store.record_word("morning");
-    store.record_word("good");
-    store.record_word("night");
-    store.record_word("good");
-    store.record_word("morning");
-
-    store.unlearn_word("morning");
-    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-    reloaded.reset_context();
-    reloaded.record_word("good");
-
-    assertEquals("Unlearning a word must remove persisted bigrams containing it so it no longer appears as a next-word prediction, while unrelated next words remain.",
-        Arrays.asList("night"),
-        reloaded.suggest_next_words(5));
-  }
-
-  @Test
-  public void clear_removes_persisted_word_and_bigram_learning()
-  {
-    PersonalizationStore store = new PersonalizationStore(_prefs);
-    store.record_word("cazoo");
-    store.record_word("good");
-    store.record_word("morning");
-
-    assertTrue("Fixture must create persisted personalization data before clear is exercised.",
-        PersonalizationStore.has_data(_prefs));
-
-    PersonalizationStore.clear(_prefs);
-    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-
-    assertFalse("Clearing learned typing-assistance data must remove both persisted word and bigram stores.",
-        PersonalizationStore.has_data(_prefs));
-    assertTrue("Cleared word counts must not produce learned prefix suggestions.",
-        reloaded.suggest_words("ca", 3).isEmpty());
-    reloaded.record_word("good");
-    assertTrue("Cleared bigram counts must not produce next-word suggestions for the previously learned pair.",
-        reloaded.suggest_next_words(3).isEmpty());
-  }
-
-  @Test
-  public void learnable_words_exclude_punctuation_technical_tokens_and_length_edges()
-  {
-    assertTrue("Plain alphabetic words are the only inputs eligible for the local typing model.",
-        PersonalizationStore.is_learnable("Keyboard"));
-
-    String[] rejected = {
-      null,
-      "",
-      "a",
-      "abcdefghijklmnopqrstuvwxyzabcdefg",
-      "hello!",
-      "can't",
-      "foo_bar",
-      "abc123",
-      "user@example.com",
-      "https://example.com"
-    };
-    for (String word : rejected)
-      assertFalse("The local typing model must reject non-word or unsafe token: " + word,
-          PersonalizationStore.is_learnable(word));
-  }
-
-  @Test
-  public void empty_store_records_suggests_and_clears_without_persistent_preferences()
+  public void next_word_predictions_expose_bigram_counts_in_deterministic_order()
   {
     PersonalizationStore store = PersonalizationStore.empty();
-
-    store.record_word("Cazoo");
-    store.record_word("cabin");
-    store.record_word("cazoo");
-
-    assertEquals("An empty/nonpersistent store must still learn in memory for the active keyboard session.",
-        Arrays.asList("cazoo", "cabin"),
-        store.suggest_words("CA", 3));
-
-    store.clear();
-    assertTrue("Clearing a nonpersistent store must remove in-memory learned words without requiring SharedPreferences.",
-        store.suggest_words("ca", 3).isEmpty());
-
-    store.record_word("good");
-    store.record_word("morning");
-    store.record_word("good");
-    store.record_word("night");
-    store.record_word("good");
-    store.record_word("morning");
+    pair(store, "good", "morning", 3);
+    pair(store, "good", "night", 2);
+    pair(store, "good", "noon", 2);
     store.reset_context();
     store.record_word("good");
 
-    assertEquals("A nonpersistent store must learn next-word pairs in memory for the active keyboard session.",
-        Arrays.asList("morning", "night"),
-        store.suggest_next_words(3));
+    Decoder.Result result = decode("", store, enabledConfig(), 1);
+    Decoder.Candidate[] words = result.words();
 
-    PersonalizationStore fresh = PersonalizationStore.empty();
-    assertTrue("A fresh nonpersistent store must not reload words learned by a previous empty() store.",
-        fresh.suggest_words("ca", 3).isEmpty());
+    assertEquals("Only the deterministic top three next words belong in the candidate strip.",
+        3, words.length);
+    assertEquals("The strongest learned phrase must be first.",
+        "morning", words[0].surface);
+    assertEquals("Equal-count next words must use stable lexical ordering.",
+        "night", words[1].surface);
+    assertEquals("Equal-count next words must use stable lexical ordering.",
+        "noon", words[2].surface);
+    assertEquals(3, words[0].bigramCount);
+    assertEquals(2, words[1].bigramCount);
+    assertEquals(Decoder.Role.NEXT_WORD, words[0].role);
   }
 
   @Test
-  public void disabled_suggestions_clear_stale_candidates_and_publish_empty_state()
-      throws Exception
+  public void decoder_keeps_literal_and_returns_the_same_top_three_every_time()
   {
-    Config config = testConfig(_prefs);
-    config.suggestions_enabled = true;
-    config.editor_config.should_show_candidates_view = true;
-    config.personalization = PersonalizationStore.empty();
-    config.personalization.record_word("cazoo");
+    PersonalizationStore store = PersonalizationStore.empty();
+    record(store, "cazoo", 5);
+    record(store, "cabin", 4);
+    record(store, "camel", 3);
+    record(store, "candle", 2);
 
-    RecordingCallback callback = new RecordingCallback();
-    Suggestions suggestions = new Suggestions(callback, config);
-    suggestions.started();
-    suggestions.currently_typed_word("ca", null);
-    assertEquals("Fixture must publish a learned candidate before suggestions are disabled.",
-        "cazoo", callback.suggestions[0]);
+    Decoder.Result first = decode("ca", store, enabledConfig(), 7);
+    List<String> expected = surfaces(first);
 
-    config.suggestions_enabled = false;
-    suggestions.started();
-    assertEquals("started() must clear any currently held suggestions when Config disables suggestion display.",
-        0, suggestions.count);
+    assertEquals("The visible decoder contract is exactly three deterministic word slots.",
+        3, expected.size());
+    assertTrue("The exact text the user typed must remain available even when learned completions compete for the top slots.",
+        expected.contains("ca"));
+    assertNotNull("Literal metadata must remain available for commit and learning decisions.",
+        first.literal);
+    assertEquals("ca", first.literal.surface);
+    assertEquals(Decoder.Role.ENTERED_LITERAL, first.literal.role);
 
-    suggestions.currently_typed_word("ca", null);
-
-    assertEquals("currently_typed_word() must publish the cleared state when Config disables suggestion display.",
-        2, callback.publish_count);
-    assertEquals("Disabled suggestions must not leave stale candidates visible.",
-        0, callback.count);
-    assertNull("Disabled suggestions must clear the first published candidate slot.",
-        callback.suggestions[0]);
+    for (int generation = 8; generation < 28; generation++)
+      assertEquals("Hash-map iteration or provider timing must never reshuffle the same top-three result.",
+          expected, surfaces(decode("ca", store, enabledConfig(), generation)));
   }
 
   @Test
-  public void qwerty_geometry_prefers_the_candidate_closer_to_the_typed_typo()
+  public void displayed_candidates_preserve_initial_case_without_mutating_canonical_text()
   {
-    List<String> candidates = new ArrayList<String>(Arrays.asList("cello", "hello"));
+    PersonalizationStore store = PersonalizationStore.empty();
+    record(store, "cazoo", 3);
 
-    TouchGeometry.rerank("gello", candidates);
+    Decoder.Result result = decode("Ca", store, enabledConfig(), 31);
+    Decoder.Candidate learned = find(result, "cazoo");
 
-    assertEquals("For the typo gello, h is geometrically closer to the touched g key than c, so hello must outrank the equal-edit-distance alternative cello.",
-        Arrays.asList("hello", "cello"), candidates);
-  }
-  @Test
-  public void active_layout_geometry_can_override_fixed_qwerty_reranking()
-      throws Exception
-  {
-    KeyboardData layout = KeyboardData.load_string_exn(
-        "<keyboard bottom_row=\"false\" width=\"4\">"
-        + "<row>"
-        + "<key c=\"g\"/>"
-        + "<key c=\"c\"/>"
-        + "<key c=\"x\"/>"
-        + "<key c=\"h\"/>"
-        + "</row>"
-        + "</keyboard>");
-    List<String> candidates = new ArrayList<String>(Arrays.asList("hello", "cello"));
-
-    TouchGeometry.rerank("gello", candidates, layout);
-
-    assertEquals("The active layout places c next to g and h far away, so layout-aware reranking must prefer cello even though fixed QWERTY prefers hello.",
-        Arrays.asList("cello", "hello"), candidates);
+    assertNotNull("A learned completion must remain visible for a capitalized prefix.",
+        learned);
+    assertEquals("Visible candidate casing must follow the user's initial capital.",
+        "Cazoo", learned.surface);
+    assertEquals("Ranking and personalization must continue using normalized canonical text.",
+        "cazoo", learned.canonical);
   }
 
   @Test
-  public void visible_suggestions_surface_exact_unknown_word_as_entered_text_for_learning()
-      throws Exception
+  public void disabled_or_unsafe_decoder_gates_publish_no_candidates_but_retain_literal()
   {
-    Config config = testConfig(_prefs);
-    config.suggestions_enabled = true;
-    config.editor_config.should_show_candidates_view = true;
-    config.personalization = PersonalizationStore.empty();
-    config.current_dictionary = null;
-    config.current_hunspell = null;
+    PersonalizationStore store = PersonalizationStore.empty();
+    record(store, "cazoo", 4);
+    Decoder.DecoderConfig disabled = new Decoder.DecoderConfig(
+        false, false, false, true);
+    Decoder.DecoderConfig unsafe = new Decoder.DecoderConfig(
+        true, true, true, false);
 
-    RecordingCallback callback = new RecordingCallback();
-    Suggestions suggestions = new Suggestions(callback, config);
-    suggestions.started();
-    suggestions.currently_typed_word("cazoo", null);
-
-    assertEquals("A learnable word that neither Hunspell nor the active dictionary recognizes must remain visible as the exact typed text so the candidate row can offer an explicit learn action.",
-        "cazoo", callback.suggestions[0]);
-    assertEquals("The exact typed unknown word must carry ENTERED_TEXT source metadata rather than pretending to be a learned, dictionary, or Hunspell suggestion.",
-        Suggestions.Source.ENTERED_TEXT, callback.sources[0]);
+    for (Decoder.DecoderConfig config : new Decoder.DecoderConfig[] {
+        disabled, unsafe })
+    {
+      Decoder.Result result = decode("Ca", store, config, 41);
+      assertEquals("Typing assistance gates must prevent stale or private-context candidates from being published.",
+          0, result.words().length);
+      assertNull("Typing assistance gates must prevent commit-boundary autocorrect.",
+          result.autocorrection);
+      assertEquals("Even when assistance is gated, the immutable result must retain the exact literal for safe fallback commit.",
+          "Ca", result.literal.surface);
+    }
   }
 
   @Test
-  public void exact_learned_word_remains_entered_text_source_for_unlearning()
-      throws Exception
+  public void correction_pairs_persist_and_reload_with_exact_counts()
   {
-    Config config = testConfig(_prefs);
-    config.suggestions_enabled = true;
-    config.editor_config.should_show_candidates_view = true;
-    config.personalization = PersonalizationStore.empty();
-    config.personalization.record_word("cazoo");
-    config.current_dictionary = null;
-    config.current_hunspell = null;
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    correction(store, "GELLO", "Hello", 3);
 
-    RecordingCallback callback = new RecordingCallback();
-    Suggestions suggestions = new Suggestions(callback, config);
-    suggestions.started();
-    suggestions.currently_typed_word("cazoo", null);
+    assertEquals("Correction evidence must be attached to the normalized source-target pair.",
+        3, store.correction_count("gello", "hello"));
 
-    assertEquals("Typing an already-learned word exactly must still surface that typed text so the same candidate-row action can unlearn it.",
-        "cazoo", callback.suggestions[0]);
-    assertEquals("Exact learned typed text must be marked ENTERED_TEXT, not LEARNED, so CandidatesView exposes the learn/unlearn action instead of a plain learned candidate.",
-        Suggestions.Source.ENTERED_TEXT, callback.sources[0]);
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    List<PersonalizationStore.ScoredCorrection> corrections =
+      reloaded.suggest_corrections_with_counts("GELLO",
+          Decoder.Geometry.from(null), 3);
+
+    assertEquals("Persisted correction evidence must survive a keyboard restart without creating unrelated targets.",
+        1, corrections.size());
+    assertEquals("hello", corrections.get(0).target);
+    assertEquals(3, corrections.get(0).exactCount);
+    assertEquals(0, corrections.get(0).relatedCount);
   }
 
   @Test
-  public void learn_action_label_keeps_typed_item_and_tap_routes_to_learning()
-      throws Exception
+  public void correction_only_evidence_survives_restart_and_can_fix_unknown_text()
   {
-    Context context = RuntimeEnvironment.getApplication();
-    RecordingHandler handler = new RecordingHandler();
-    Config config = testConfig(_prefs);
-    config.handler = handler;
-    setGlobalConfig(config);
-    CandidatesView view = new CandidatesView(context, null);
-    TextView middle = candidateTextView(context, R.id.candidates_middle);
-    TextView right = candidateTextView(context, R.id.candidates_right);
-    TextView left = candidateTextView(context, R.id.candidates_left);
-    TextView emoji = candidateTextView(context, R.id.candidates_emoji);
-    view.addView(middle);
-    view.addView(right);
-    view.addView(left);
-    view.addView(emoji);
-    view.onFinishInflate();
-    Suggestions published = new Suggestions(null, null);
-    published.count = 1;
-    published.suggestions[0] = "cazoo";
-    published.sources[0] = Suggestions.Source.ENTERED_TEXT;
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    for (int i = 0; i < 4; i++)
+      store.record_correction("thus", "this");
 
-    view.set_candidates(published);
-    left.performClick();
+    assertEquals("Editor-verified typo evidence must not teach every unrecognized target as an ordinary unigram.",
+        0, store.word_count("this"));
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("Correction-only evidence must survive restart without a separate learned-word row.",
+        4, reloaded.correction_count("thus", "this"));
 
-    assertEquals("The learn/unlearn action must render the compact unlearned book action label instead of committing the typed word text from the action slot.",
-        "📖+", left.getText().toString());
-    assertEquals("The learn/unlearn action must keep the typed word in accessibility text so users can tell which word will be toggled.",
-        "Learn or unlearn cazoo", left.getContentDescription().toString());
-    assertNull("Tapping the book action must not commit the label or typed word through suggestion_entered.",
-        handler.entered);
-    assertEquals("Tapping the book action must route the underlying typed word to suggestion_swiped_up so KeyEventHandler toggles personalization.",
-        "cazoo", handler.swiped);
+    Decoder.Result result = decode("thus", reloaded, enabledConfig(), 99);
+    Decoder.Candidate candidate = find(result, "this");
+    assertNotNull("Repeated correction-only evidence must create a usable target even when no dictionary recognizes it.",
+        candidate);
+    assertTrue("A correction target must be reversible through the learned-candidate affordance.",
+        candidate.learned);
+    assertNotNull("Four exact manual corrections must make the unknown target actionable at the next boundary.",
+        result.autocorrection);
+    assertEquals("this", result.autocorrection.canonical);
+
+    Decoder.Result related = decode("thos", reloaded, enabledConfig(), 100);
+    Decoder.Candidate relatedCandidate = find(related, "this");
+    assertNotNull("A same-index adjacent typo must inherit weaker evidence from the correction-only model.",
+        relatedCandidate);
+    assertEquals(0, relatedCandidate.exactCorrectionCount);
+    assertEquals(4, relatedCandidate.relatedCorrectionCount);
+    assertNotNull("Repeated exact learning must make the adjacent unknown typo actionable without a dictionary.",
+        related.autocorrection);
+    assertEquals("this", related.autocorrection.canonical);
   }
 
   @Test
-  public void dictionary_action_icon_reflects_learn_forgot_and_learned_feedback_states()
-      throws Exception
+  public void exact_user_corrections_ignore_geometry_and_allow_two_edits()
   {
-    Context context = RuntimeEnvironment.getApplication();
-    Config config = testConfig(_prefs);
-    config.personalization = PersonalizationStore.empty();
-    setGlobalConfig(config);
-    CandidatesView view = candidatesView(context);
-    TextView middle = view.findViewById(R.id.candidates_middle);
-    TextView left = view.findViewById(R.id.candidates_left);
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "thys", "this", 4);
 
-    view.set_candidates(singleSuggestion("cazoo", Suggestions.Source.ENTERED_TEXT));
-    assertEquals("Unlearned typed words must expose the learn affordance immediately in the dictionary action slot.",
-        "cazoo", middle.getText().toString());
-    assertEquals("Unlearned typed words must render the learn dictionary icon state.",
-        "📖+", left.getText().toString());
-    view.set_candidates(singleSuggestionWithFeedback("cazoo",
-          Suggestions.LearnFeedback.LEARNED));
-    assertEquals("A word learned through a keyboard-wide gesture must keep the typed word visible while the action slot confirms it is learned.",
-        "cazoo", middle.getText().toString());
-    assertEquals("A word learned through a keyboard-wide gesture must render learned feedback without waiting for another keystroke.",
-        "📖✓", left.getText().toString());
+    assertEquals("A repeated exact correction must be stored even when the substituted keys are not adjacent.",
+        4, store.correction_count("thys", "this"));
+    Decoder.Result distant = decode("thys", store, enabledConfig(), 101);
+    assertNotNull("Four explicit thys-to-this corrections must make this actionable without relying on key distance.",
+        distant.autocorrection);
+    assertEquals("this", distant.autocorrection.canonical);
+    assertEquals(4, distant.autocorrection.exactCorrectionCount);
 
-    view.set_candidates(singleSuggestionWithFeedback("cazoo",
-          Suggestions.LearnFeedback.FORGOT));
-    assertEquals("A word unlearned through a keyboard-wide gesture must keep the typed word visible while the action slot confirms it was forgotten.",
-        "cazoo", middle.getText().toString());
-    assertEquals("A word unlearned through a keyboard-wide gesture must render forgot feedback without waiting for another keystroke.",
-        "📖−", left.getText().toString());
+    correction(store, "thxz", "this", 4);
+    assertEquals("Editor-verified exact pairs may contain two bounded edits rather than only one substitution or transposition.",
+        4, store.correction_count("thxz", "this"));
+    Decoder.Result twoEdits = decode("thxz", store, enabledConfig(), 102);
+    Decoder.Candidate candidate = find(twoEdits, "this");
+    assertNotNull(candidate);
+    assertNotNull("Four exact two-edit corrections must become actionable, while ordinary unlearned two-edit guesses remain disabled.",
+        twoEdits.autocorrection);
+    assertEquals("this", twoEdits.autocorrection.canonical);
+
+    correction(store, "txxz", "this", 4);
+    assertEquals("Three-edit rewrites remain outside the bounded exact-correction model.",
+        0, store.correction_count("txxz", "this"));
+    assertNull("Rejected three-edit evidence must not leak through another source's correction target.",
+        find(decode("txxz", store, enabledConfig(), 103), "this"));
   }
 
   @Test
-  public void visible_candidate_labels_do_not_append_source_suffixes()
+  public void textual_correction_bound_covers_two_edit_combinations()
   {
-    Context context = RuntimeEnvironment.getApplication();
-    CandidatesView view = new CandidatesView(context, null);
-    TextView middle = candidateTextView(context, R.id.candidates_middle);
-    TextView right = candidateTextView(context, R.id.candidates_right);
-    TextView left = candidateTextView(context, R.id.candidates_left);
-    TextView emoji = candidateTextView(context, R.id.candidates_emoji);
-    view.addView(middle);
-    view.addView(right);
-    view.addView(left);
-    view.addView(emoji);
-    view.onFinishInflate();
-    Suggestions published = new Suggestions(null, null);
-    published.count = 3;
-    published.suggestions[0] = "cazoo";
-    published.sources[0] = Suggestions.Source.LEARNED;
-    published.suggestions[1] = "hello";
-    published.sources[1] = Suggestions.Source.HUNSPELL;
-    published.suggestions[2] = "cabin";
-    published.sources[2] = Suggestions.Source.DICTIONARY;
-    published.emoji_suggestion = "😄";
-
-    view.set_candidates(published);
-
-    assertEquals("Learned candidates must display as the candidate text only; source metadata is for behavior, not visible suffix labels.",
-        "cazoo", middle.getText().toString());
-    assertEquals("Hunspell candidates must display as the candidate text only; source metadata must not leak into the visible label.",
-        "hello", right.getText().toString());
-    assertEquals("Dictionary candidates must display as the candidate text only; source metadata must not leak into the visible label.",
-        "cabin", left.getText().toString());
-    assertEquals("Emoji candidates must display as the emoji only, without a source suffix.",
-        "😄", emoji.getText().toString());
+    assertTrue("Two substitutions are valid exact user evidence.",
+        PersonalizationStore.is_plausible_correction("thxz", "this"));
+    assertTrue("One substitution plus one insertion is valid exact user evidence.",
+        PersonalizationStore.is_plausible_correction("thx", "this"));
+    assertTrue("Two inserted letters are valid exact user evidence.",
+        PersonalizationStore.is_plausible_correction("th", "this"));
+    assertTrue("Two deleted letters are valid exact user evidence.",
+        PersonalizationStore.is_plausible_correction("thiiss", "this"));
+    assertTrue("The existing adjacent-transposition case remains one valid edit.",
+        PersonalizationStore.is_plausible_correction("htis", "this"));
+    assertFalse("Three substitutions remain too broad for automatic learning.",
+        PersonalizationStore.is_plausible_correction("txxz", "this"));
+    assertFalse("A three-letter length difference remains too broad.",
+        PersonalizationStore.is_plausible_correction("thisabc", "this"));
   }
 
   @Test
-  public void candidate_separators_track_visible_word_suggestion_boundaries()
+  public void unicode_correction_identity_survives_reload_and_lookup_folding()
   {
-    Context context = RuntimeEnvironment.getApplication();
-    CandidatesView view = candidatesViewWithSeparators(context);
-    View leftSeparator = view.findViewById(
-        requiredResourceId(context, "candidates_separator_left"));
-    View rightSeparator = view.findViewById(
-        requiredResourceId(context, "candidates_separator_right"));
+    _prefs.edit()
+      .putStringSet(PersonalizationStore.PREF_WORDS, setOf(
+            "re\u0301sume\u0301\t2", "résumé\t1"))
+      .putStringSet(PersonalizationStore.PREF_BIGRAMS, setOf(
+            "cafe\u0301 re\u0301sume\u0301\t3"))
+      .putStringSet(PersonalizationStore.PREF_CORRECTIONS, setOf(
+            "thy\u0301s\tthis\t4", "thýs\tthis\t3"))
+      .commit();
 
-    view.set_candidates(wordSuggestions("to", "do", "done"));
-    assertEquals("With three visible word suggestions, the separator between the third and primary word candidates must be visible.",
-        View.VISIBLE, leftSeparator.getVisibility());
-    assertEquals("With three visible word suggestions, the separator between the primary and second word candidates must be visible.",
-        View.VISIBLE, rightSeparator.getVisibility());
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertEquals("Reload must NFC-normalize equivalent learned-word rows without losing the stronger count.",
+        2, store.word_count("résumé"));
+    assertEquals("Reload must NFC-normalize both words in persisted bigram keys.",
+        3, store.bigram_count("café", "résumé"));
+    assertEquals("Equivalent decomposed and precomposed correction rows must merge without inflating observations.",
+        4, store.correction_count("thýs", "this"));
 
-    view.set_candidates(wordSuggestions("to", "do", null));
-    assertEquals("The third-word separator must hide when there is no third visible word candidate.",
-        View.GONE, leftSeparator.getVisibility());
-    assertEquals("The separator between the primary and second word candidates must remain visible for two visible word suggestions.",
-        View.VISIBLE, rightSeparator.getVisibility());
-
-    Suggestions oneWordAndEmoji = wordSuggestions("to", null, null);
-    oneWordAndEmoji.emoji_suggestion = "🙂";
-    view.set_candidates(oneWordAndEmoji);
-    assertEquals("Emoji candidates are not word suggestions, so they must not make the third-word separator visible.",
-        View.GONE, leftSeparator.getVisibility());
-    assertEquals("A single visible word candidate has no word boundary separator to show, even when an emoji candidate is visible.",
-        View.GONE, rightSeparator.getVisibility());
+    Decoder.Result result = decode("thýs", store, enabledConfig(), 104);
+    assertNotNull("The decoder must query exact corrections with the persisted source identity rather than its accent-folded dictionary key.",
+        result.autocorrection);
+    assertEquals("this", result.autocorrection.surface);
+    assertEquals(4, result.autocorrection.exactCorrectionCount);
   }
 
   @Test
-  public void long_visible_candidate_labels_stay_source_free_single_line_and_autosized()
-      throws Exception
+  public void exact_accent_target_remains_distinct_from_folded_literal()
   {
-    Context context = RuntimeEnvironment.getApplication();
-    CandidatesView view = candidatesView(context);
-    Config config = testConfig(_prefs);
-    view.set_sizes(config);
-    TextView middle = view.findViewById(R.id.candidates_middle);
-    TextView right = view.findViewById(R.id.candidates_right);
-    TextView left = view.findViewById(R.id.candidates_left);
-    int normalMaxTextSize = middle.getAutoSizeMaxTextSize();
-    String learned = "pneumonoultramicroscopicsilicovolcanoconiosis";
-    String hunspell = "antidisestablishmentarianism";
-    String dictionary = "floccinaucinihilipilification";
-    Suggestions published = new Suggestions(null, null);
-    published.count = 3;
-    published.suggestions[0] = learned;
-    published.sources[0] = Suggestions.Source.LEARNED;
-    published.suggestions[1] = hunspell;
-    published.sources[1] = Suggestions.Source.HUNSPELL;
-    published.suggestions[2] = dictionary;
-    published.sources[2] = Suggestions.Source.DICTIONARY;
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "resume", "re\u0301sume\u0301", 4);
 
-    view.set_candidates(published);
+    assertEquals("Correction storage must preserve the NFC target surface.",
+        4, store.correction_count("resume", "résumé"));
+    assertEquals("Dictionary lookup must retain compose-substitution folding.",
+        "resume", Decoder.normalize("résumé"));
 
-    assertLongCandidateLabel("Learned", middle, learned, normalMaxTextSize);
-    assertLongCandidateLabel("Hunspell", right, hunspell, normalMaxTextSize);
-    assertLongCandidateLabel("Dictionary", left, dictionary, normalMaxTextSize);
-    view.set_candidates(wordSuggestions("short", "tiny", "brief"));
-    assertEquals("Short candidate labels must restore the normal candidate text size after a long-word shrink.",
-        normalMaxTextSize, middle.getAutoSizeMaxTextSize());
+    Decoder.Result result = decode("resume", store, enabledConfig(), 105);
+    assertNotNull("Four exact accent-bearing corrections must remain actionable even when source and target share a folded lookup key.",
+        result.autocorrection);
+    assertEquals("The correction must emit the learned target surface rather than the typed literal.",
+        "résumé", result.autocorrection.surface);
+    assertEquals("Scoring still uses the folded canonical key.",
+        "resume", result.autocorrection.canonical);
+    assertEquals("Literal presentation must remain the exact entered text.",
+        "resume", result.literal.surface);
+
+    int foldedCandidates = 0;
+    for (Decoder.Candidate candidate : result.words())
+      if ("resume".equals(candidate.canonical))
+        foldedCandidates++;
+    assertEquals("Fold-equivalent providers must remain one ranked candidate rather than duplicate strip entries.",
+        1, foldedCandidates);
   }
 
   @Test
-  public void touch_trace_can_outrank_the_candidate_closer_to_the_literal_key()
+  public void malformed_and_duplicate_correction_rows_are_sanitized_on_reload()
   {
-    List<String> candidates = new ArrayList<String>(Arrays.asList("hello", "jello"));
-    TouchTrace touches = new TouchTrace();
-    touches.add(TouchTrace.entry(140f, 100f, 100f, 100f, 20f, 20f));
+    _prefs.edit()
+      .putStringSet(PersonalizationStore.PREF_WORDS, setOf("hello\t2"))
+      .putStringSet(PersonalizationStore.PREF_CORRECTIONS, setOf(
+            "gello\thello\t2",
+            "gello\thello\t1",
+            "broken",
+            "\thello\t2",
+            "gello\t\t2",
+            "gello\thello",
+            "gello\thello\t0",
+            "gello\thello\t16",
+            "gello\thello\t2\textra",
+            "Gello\thello\t2",
+            "wello\tjello\t5"))
+      .commit();
 
-    TouchGeometry.rerank("gello", candidates, touches, null);
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    List<PersonalizationStore.ScoredCorrection> corrections =
+      store.suggest_corrections_with_counts("gello",
+          Decoder.Geometry.from(null), 5);
 
-    assertEquals("Ignoring touch locations would prefer hello because h is closer to the literal g key; an actual tap near j must make jello rank first.",
-        Arrays.asList("jello", "hello"), candidates);
+    assertEquals("Only normalized, plausible rows with valid bounded counts may load.",
+        1, corrections.size());
+    assertEquals("hello", corrections.get(0).target);
+    assertEquals("Duplicate persisted rows must deterministically retain the strongest valid count.",
+        2, corrections.get(0).exactCount);
+    assertEquals("A valid editor-verified correction row must remain usable without a separate learned-word row.",
+        5, store.correction_count("wello", "jello"));
   }
 
   @Test
-  public void visible_suggestions_mark_learned_candidates_with_learned_source()
-      throws Exception
+  public void correction_counts_cap_and_the_513th_pair_evicts_a_weakest_pair()
   {
-    Config config = testConfig(_prefs);
-    config.suggestions_enabled = true;
-    config.editor_config.should_show_candidates_view = true;
-    config.personalization = PersonalizationStore.empty();
-    config.personalization.record_word("cazoo");
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    correction(store, "gello", "hello", 20);
+    assertEquals("A noisy typo pair must saturate instead of growing without bound.",
+        15, store.correction_count("gello", "hello"));
 
-    RecordingCallback callback = new RecordingCallback();
-    Suggestions suggestions = new Suggestions(callback, config);
-    suggestions.started();
-    suggestions.currently_typed_word("ca", null);
+    store.clear();
+    for (int i = 0; i < 512; i++)
+    {
+      String suffix = alphaSuffix(i);
+      correction(store, "m" + suffix, "n" + suffix, 1);
+    }
+    correction(store, "aaaa", "baaa", 2);
 
-    assertEquals("Fixture must surface the learned prefix candidate through the visible suggestion API.",
-        "cazoo", callback.suggestions[0]);
-    assertEquals("Visible learned candidates must carry LEARNED source metadata so CandidatesView can distinguish user-learned words from dictionary suggestions.",
-        Suggestions.Source.LEARNED, callback.sources[0]);
+    Set<String> persisted = _prefs.getStringSet(
+        PersonalizationStore.PREF_CORRECTIONS, null);
+    assertNotNull(persisted);
+    assertEquals("The persisted correction model must remain bounded to 512 source-target pairs.",
+        512, persisted.size());
+    assertEquals("A stronger new pair must survive bounded-model eviction.",
+        2, store.correction_count("aaaa", "baaa"));
+    assertEquals("Equal weakest pairs use deterministic lexical eviction rather than unbounded growth.",
+        0, store.correction_count("matr", "natr"));
+    assertEquals("Eviction must not erase unrelated pairs that precede the deterministic weakest entry.",
+        1, store.correction_count("maaa", "naaa"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("The bounded eviction result must survive reload.",
+        2, reloaded.correction_count("aaaa", "baaa"));
+    assertEquals(0, reloaded.correction_count("matr", "natr"));
   }
 
-
-  private static void setGlobalConfig(Config config)
-      throws Exception
+  @Test
+  public void unigram_repetition_does_not_become_global_pair_evidence()
   {
-    java.lang.reflect.Field field = Config.class.getDeclaredField("_globalConfig");
-    field.setAccessible(true);
-    field.set(null, config);
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "gello", "hello", 1);
+    record(store, "hello", 5);
+
+    assertEquals("Accepted target words continue to build independent unigram evidence.",
+        6, store.word_count("hello"));
+    assertEquals("Repeating the target literally must not inflate its typo-pair count.",
+        1, store.correction_count("gello", "hello"));
+    PersonalizationStore.ScoredCorrection exact =
+      store.suggest_corrections_with_counts("gello",
+          Decoder.Geometry.from(null), 3).get(0);
+    assertEquals(1, exact.exactCount);
+    assertTrue("Pair evidence must never be offered globally to an unrelated source.",
+        store.suggest_corrections_with_counts("teh",
+          Decoder.Geometry.from(null), 3).isEmpty());
   }
 
-  private static void resetGlobalConfig()
-      throws Exception
+  @Test
+  public void unlearning_removes_corrections_where_word_is_source_or_target()
   {
-    java.lang.reflect.Field field = Config.class.getDeclaredField("_globalConfig");
-    field.setAccessible(true);
-    field.set(null, null);
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    correction(store, "gello", "hello", 2);
+    correction(store, "hello", "jello", 2);
+    correction(store, "wrold", "world", 1);
+
+    assertTrue(store.unlearn_word("HELLO"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("Unlearning must remove pairs whose target is the selected word.",
+        0, reloaded.correction_count("gello", "hello"));
+    assertEquals("Unlearning must also remove pairs whose source is the selected word.",
+        0, reloaded.correction_count("hello", "jello"));
+    assertEquals("Unlearning one word must preserve unrelated typo evidence.",
+        1, reloaded.correction_count("wrold", "world"));
   }
 
-  private static Config testConfig(SharedPreferences prefs)
-      throws Exception
+  @Test
+  public void clear_removes_all_model_keys_and_resets_context()
   {
-    java.lang.reflect.Constructor<Config> ctor =
-      Config.class.getDeclaredConstructor(SharedPreferences.class,
-          Resources.class, Boolean.class,
-          juloo.keyboard2.dict.Dictionaries.class);
-    ctor.setAccessible(true);
-    return ctor.newInstance(prefs, testResources(), Boolean.FALSE, null);
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.record_word("alpha");
+    store.record_commit("beta", "beto");
+
+    assertTrue(_prefs.contains(PersonalizationStore.PREF_WORDS));
+    assertTrue(_prefs.contains(PersonalizationStore.PREF_BIGRAMS));
+    assertTrue(_prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
+    assertEquals("beta", store.previous_word());
+
+    store.clear();
+
+    assertFalse("Clear must remove learned words from persistent storage.",
+        _prefs.contains(PersonalizationStore.PREF_WORDS));
+    assertFalse("Clear must remove next-word pairs from persistent storage.",
+        _prefs.contains(PersonalizationStore.PREF_BIGRAMS));
+    assertFalse("Clear must remove typo pairs from persistent storage.",
+        _prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
+    assertNull("Clear must reset the active in-memory context as well as persisted data.",
+        store.previous_word());
+    assertFalse(PersonalizationStore.has_data(_prefs));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertFalse(reloaded.is_learned("alpha"));
+    assertTrue(reloaded.suggest_corrections_with_counts("beto",
+          Decoder.Geometry.from(null), 3).isEmpty());
+    assertNull(reloaded.previous_word());
   }
 
-  private static Resources testResources()
+  @Test
+  public void exact_pair_observations_one_through_four_raise_weight_and_rank_monotonically()
   {
-    Resources base = RuntimeEnvironment.getApplication().getResources();
-    return new TestResources(base);
+    PersonalizationStore store = PersonalizationStore.empty();
+    int previousScore = Integer.MAX_VALUE;
+    int previousRank = Integer.MAX_VALUE;
+    for (int count = 1; count <= 4; count++)
+    {
+      correction(store, "gello", "hello", 1);
+      Decoder.Result result =
+        decode("gello", store, enabledConfig(), 100 + count);
+      Decoder.Candidate candidate = find(result, "hello");
+      int rank = rank(result, "hello");
+
+      assertNotNull(candidate);
+      assertTrue("Every exact observation must keep or improve the target's visible rank.",
+          rank >= 0 && rank <= previousRank);
+      assertEquals("Exact correction metadata must expose the actual pair count.",
+          count, candidate.exactCorrectionCount);
+      assertEquals(0, candidate.relatedCorrectionCount);
+      assertEquals("Each exact observation contributes twice the related-evidence weight through the four-event threshold.",
+          count * 2, candidate.correctionWeight);
+      assertTrue("Every additional exact pair observation must strictly improve the target's deterministic score.",
+          candidate.totalQ8 < previousScore);
+      previousScore = candidate.totalQ8;
+      previousRank = rank;
+    }
+    assertEquals("Four exact observations must promote the correction target to the first visible rank.",
+        0, previousRank);
   }
 
-  private static CandidatesView candidatesView(Context context)
+  @Test
+  public void protected_learned_literal_changes_only_on_the_fourth_exact_pair()
   {
-    CandidatesView view = new CandidatesView(context, null);
-    view.setLayoutParams(new LinearLayout.LayoutParams(
-          LinearLayout.LayoutParams.MATCH_PARENT,
-          LinearLayout.LayoutParams.WRAP_CONTENT));
-    view.addView(candidateTextView(context, R.id.candidates_middle));
-    view.addView(candidateTextView(context, R.id.candidates_right));
-    view.addView(candidateTextView(context, R.id.candidates_left));
-    view.addView(candidateTextView(context, R.id.candidates_emoji));
-    view.onFinishInflate();
-    return view;
-  }
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("gello");
 
-  private static CandidatesView candidatesViewWithSeparators(Context context)
-  {
-    CandidatesView view = new CandidatesView(context, null);
-    view.setLayoutParams(new LinearLayout.LayoutParams(
-          LinearLayout.LayoutParams.MATCH_PARENT,
-          LinearLayout.LayoutParams.WRAP_CONTENT));
-    view.addView(candidateTextView(context, R.id.candidates_emoji));
-    view.addView(candidateTextView(context, R.id.candidates_left));
-    view.addView(candidateSeparatorView(context, "candidates_separator_left"));
-    view.addView(candidateTextView(context, R.id.candidates_middle));
-    view.addView(candidateSeparatorView(context, "candidates_separator_right"));
-    view.addView(candidateTextView(context, R.id.candidates_right));
-    view.onFinishInflate();
-    return view;
-  }
-
-  private static View candidateSeparatorView(Context context, String name)
-  {
-    View view = new View(context);
-    view.setId(requiredResourceId(context, name));
-    view.setVisibility(View.GONE);
-    return view;
-  }
-
-  private static int requiredResourceId(Context context, String name)
-  {
-    int id = context.getResources().getIdentifier(name, "id",
-        context.getPackageName());
-    if (id == 0 && "candidates_separator_left".equals(name))
-      id = R.id.candidates_separator_left;
-    if (id == 0 && "candidates_separator_right".equals(name))
-      id = R.id.candidates_separator_right;
-    assertTrue("CandidatesView separator contract requires R.id." + name
-        + " so optional separator children can be discovered without breaking candidate rows that omit them.",
-        id != 0);
-    return id;
-  }
-
-  private static Suggestions wordSuggestions(String first, String second,
-      String third)
-  {
-    Suggestions s = new Suggestions(null, null);
-    String[] words = { first, second, third };
-    for (int i = 0; i < words.length; i++)
-      if (words[i] != null)
+    for (int count = 1; count <= 4; count++)
+    {
+      correction(store, "gello", "hello", 1);
+      Decoder.Result result =
+        decode("gello", store, enabledConfig(), 300 + count);
+      if (count < 4)
       {
-        s.suggestions[s.count] = words[i];
-        s.sources[s.count] = Suggestions.Source.DICTIONARY;
-        s.count++;
+        assertNull("A learned literal must remain unchanged before four exact pair observations.",
+            result.autocorrection);
       }
-    return s;
-  }
-
-  private static Suggestions singleSuggestion(String text, Suggestions.Source source)
-  {
-    Suggestions s = new Suggestions(null, null);
-    s.count = 1;
-    s.suggestions[0] = text;
-    s.sources[0] = source;
-    return s;
-  }
-
-  private static Suggestions singleSuggestionWithFeedback(String text,
-      Suggestions.LearnFeedback feedback)
-  {
-    Suggestions s = singleSuggestion(text, Suggestions.Source.ENTERED_TEXT);
-    s.learn_feedback = feedback;
-    s.learn_feedback_word = text;
-    return s;
-  }
-
-  private static void assertLongCandidateLabel(String label, TextView view,
-      String expected, int normalMaxTextSize)
-  {
-    assertEquals(label + " candidate must display the source-free word itself; source metadata must not be appended as overflow-visible suffix text.",
-        expected, view.getText().toString());
-    assertEquals(label + " candidate labels must stay single-line so long suggestions shrink instead of wrapping into the keyboard row.",
-        1, view.getMaxLines());
-    assertEquals(label + " candidate labels must use uniform autosizing so long suggestions shrink inside the visible strip instead of overflowing.",
-        TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM, view.getAutoSizeTextType());
-    assertTrue(label + " candidate autosizing must use a smaller max size for words over ten letters instead of waiting for truncation.",
-        view.getAutoSizeMaxTextSize() < normalMaxTextSize);
-  }
-
-  private static TextView candidateTextView(Context context, int id)
-  {
-    TextView view = new TextView(context);
-    view.setId(id);
-    return view;
-  }
-
-  private static final class TestResources extends Resources
-  {
-    TestResources(Resources base)
-    {
-      super(base.getAssets(), base.getDisplayMetrics(), base.getConfiguration());
-    }
-
-    @Override
-    public float getDimension(int id)
-    {
-      return 1f;
+      else
+      {
+        assertNotNull("The fourth exact pair observation must unlock a decisive learned correction.",
+            result.autocorrection);
+        assertEquals("hello", result.autocorrection.canonical);
+        assertEquals(4, result.autocorrection.exactCorrectionCount);
+      }
     }
   }
 
-  private static final class RecordingHandler implements Config.IKeyEventHandler
+
+  @Test
+  public void only_same_index_adjacent_sources_share_weaker_related_evidence()
   {
-    String entered = null;
-    String swiped = null;
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "gello", "hello", 4);
+    Decoder.Geometry geometry = Decoder.Geometry.from(null);
 
-    public void key_down(KeyValue value, boolean is_swipe) {}
-    public void key_up(KeyValue value, Pointers.Modifiers mods, TouchTrace.Entry touch) {}
-    public void key_cancel(KeyValue value, Pointers.Modifiers mods) {}
-    public void key_hold(KeyValue value, Pointers.Modifiers mods, int hold_count) {}
-    public void mods_changed(Pointers.Modifiers mods) {}
+    PersonalizationStore.ScoredCorrection exact =
+      store.suggest_corrections_with_counts("gello", geometry, 3).get(0);
+    PersonalizationStore.ScoredCorrection related =
+      store.suggest_corrections_with_counts("jello", geometry, 3).get(0);
+    assertEquals(4, exact.exactCount);
+    assertEquals(0, exact.relatedCount);
+    assertEquals("A same-index adjacent variant may share the learned target only as weaker related evidence.",
+        0, related.exactCount);
+    assertEquals(4, related.relatedCount);
 
-    public void suggestion_entered(String text)
-    {
-      entered = text;
-    }
+    Decoder.Candidate exactCandidate = find(
+        decode("gello", store, enabledConfig(), 201), "hello");
+    Decoder.Candidate relatedCandidate = find(
+        decode("jello", store, enabledConfig(), 202), "hello");
+    assertNotNull(exactCandidate);
+    assertNotNull(relatedCandidate);
+    assertEquals(8, exactCandidate.correctionWeight);
+    assertEquals(4, relatedCandidate.correctionWeight);
+    assertTrue("Exact source evidence must outrank equally shaped related evidence.",
+        exactCandidate.totalQ8 < relatedCandidate.totalQ8);
 
-    public void suggestion_swiped_up(String text)
-    {
-      swiped = text;
-    }
-
-    public void keyboard_swiped_up() {}
-
-    public void keyboard_swiped_down() {}
+    assertTrue("A distant key at the learned index must not inherit correction evidence.",
+        store.suggest_corrections_with_counts("mello", geometry, 3).isEmpty());
+    assertTrue("An adjacent typo at a different character index must not inherit correction evidence.",
+        store.suggest_corrections_with_counts("helko", geometry, 3).isEmpty());
+    assertTrue("Related evidence requires current keyboard geometry rather than global string similarity.",
+        store.suggest_corrections_with_counts("jello", null, 3).isEmpty());
   }
 
-  private static final class RecordingCallback implements Suggestions.Callback
+  @Test
+  public void exact_source_recall_precedes_stronger_related_only_targets()
   {
-    int publish_count = 0;
-    int count = -1;
-    String[] suggestions = new String[Suggestions.MAX_COUNT];
-    Suggestions.Source[] sources = new Suggestions.Source[Suggestions.MAX_COUNT];
+    PersonalizationStore store = PersonalizationStore.empty();
+    String[][] relatedPairs = new String[][] {
+      { "jello", "hello" },
+      { "dello", "fello" },
+      { "rello", "tello" },
+      { "cello", "vello" },
+      { "gtllo", "grllo" },
+      { "uello", "yello" }
+    };
+    for (String[] pair : relatedPairs)
+      correction(store, pair[0], pair[1], 8);
+    correction(store, "gello", "xello", 1);
 
-    public void set_suggestions(Suggestions published)
+    List<PersonalizationStore.ScoredCorrection> all =
+      store.suggest_corrections_with_counts("gello",
+          Decoder.Geometry.from(null), 10);
+    assertEquals("The fixture must expose one exact target and six stronger related-only targets.",
+        7, all.size());
+    assertEquals("Any exact source observation must survive the bounded recall set ahead of even saturated related-only evidence.",
+        "xello", all.get(0).target);
+    assertEquals(1, all.get(0).exactCount);
+    assertEquals(0, all.get(0).relatedCount);
+  }
+
+  @Test
+  public void unlearning_removes_word_and_every_bigram_that_contains_it()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    pair(store, "good", "morning", 2);
+    pair(store, "good", "night", 1);
+
+    assertTrue(store.unlearn_word("MORNING"));
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    reloaded.reset_context();
+    reloaded.record_word("good");
+
+    assertFalse("Unlearning is case-insensitive and must remove the selected word itself.",
+        reloaded.is_learned("morning"));
+    assertEquals("Unlearning one word must remove phrases containing it without erasing unrelated next-word history.",
+        Arrays.asList("night"), reloaded.suggest_next_words(3));
+  }
+
+  private static Decoder.Result decode(String typed, PersonalizationStore store,
+      Decoder.DecoderConfig config, long generation)
+  {
+    Decoder.RequestKey key = new Decoder.RequestKey(
+        1, generation, generation, 1, 1, 1, 1);
+    Decoder.Request request = new Decoder.Request(key, typed,
+        (TouchTrace.Snapshot)null, Decoder.Geometry.from(null), config);
+    return new Decoder().decode(request, null, null, null, store, false);
+  }
+
+  private static Decoder.DecoderConfig enabledConfig()
+  {
+    return new Decoder.DecoderConfig(true, true, true, true);
+  }
+
+  private static Decoder.Candidate find(Decoder.Result result, String canonical)
+  {
+    for (Decoder.Candidate candidate : result.words())
+      if (canonical.equals(candidate.canonical))
+        return candidate;
+    return null;
+  }
+
+  private static int rank(Decoder.Result result, String canonical)
+  {
+    Decoder.Candidate[] words = result.words();
+    for (int i = 0; i < words.length; i++)
+      if (canonical.equals(words[i].canonical))
+        return i;
+    return -1;
+  }
+
+  private static List<String> surfaces(Decoder.Result result)
+  {
+    List<String> out = new ArrayList<String>();
+    for (Decoder.Candidate candidate : result.words())
+      out.add(candidate.surface);
+    return out;
+  }
+
+  private static void record(PersonalizationStore store, String word, int count)
+  {
+    for (int i = 0; i < count; i++)
     {
-      publish_count++;
-      count = published.count;
-      suggestions = Arrays.copyOf(published.suggestions,
-          published.suggestions.length);
-      sources = Arrays.copyOf(published.sources, published.sources.length);
+      store.reset_context();
+      store.record_word(word);
     }
   }
+
+  private static void pair(PersonalizationStore store, String first,
+      String second, int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      store.reset_context();
+      store.record_word(first);
+      store.record_word(second);
+    }
+  }
+
+  private static void correction(PersonalizationStore store, String source,
+      String target, int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      store.reset_context();
+      store.record_commit(target, source);
+    }
+  }
+
+  private static String alphaSuffix(int value)
+  {
+    char first = (char)('a' + (value / (26 * 26)) % 26);
+    char second = (char)('a' + (value / 26) % 26);
+    char third = (char)('a' + value % 26);
+    return new String(new char[] { first, second, third });
+  }
+
+  private static Set<String> setOf(String... values)
+  {
+    return new HashSet<String>(Arrays.asList(values));
+  }
+
 }

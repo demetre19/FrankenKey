@@ -10,6 +10,7 @@ type result = {
   prefix_node : node;
       (** Internal pointer used to list words starting with a prefix. *)
   original_index : index;  (** Index before alias resolution. *)
+  owner : ptr;  (** Runtime dictionary identity. *)
 }
 
 external of_string : string -> (string * t) array = "cdict_of_string_ocaml"
@@ -31,14 +32,6 @@ external suffixes : t -> result -> int -> index array = "cdict_suffixes_ocaml"
     even if [result.found] is false. The returned array cannot contain more than
     [len] elements but might be smaller. *)
 
-external distance : t -> string -> dist:int -> count:int -> index array
-  = "cdict_distance_ocaml"
-(** [distance dict word ~dist ~count] lists words that are a [dist] editions
-    away from the [word] according to Levenshtein distance. Adding suffixes of
-    any length is considered to be a single edition. Do not return words that
-    have a distance less than [dist]. The [count] most frequent words are
-    returned. The returned array cannot contain more than [count] elements but
-    might be smaller. *)
 
 external format_version : unit -> int = "cdict_format_version_ocaml"
 (** Version of the dictionary's format. Dictionaries built for a different

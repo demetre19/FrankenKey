@@ -4,6 +4,36 @@
 
 #ifndef _Included_juloo_cdict_Cdict
 #define _Included_juloo_cdict_Cdict
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_MAX_INPUT
+#define juloo_cdict_Cdict_CDICT_SPATIAL_MAX_INPUT 48L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_MAX_SYMBOLS
+#define juloo_cdict_Cdict_CDICT_SPATIAL_MAX_SYMBOLS 96L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_MAX_RESULTS
+#define juloo_cdict_Cdict_CDICT_SPATIAL_MAX_RESULTS 16L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_MAX_EDITS
+#define juloo_cdict_Cdict_CDICT_SPATIAL_MAX_EDITS 2L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_MAX_EXPANSIONS
+#define juloo_cdict_Cdict_CDICT_SPATIAL_MAX_EXPANSIONS 32768L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_COST_INF
+#define juloo_cdict_Cdict_CDICT_SPATIAL_COST_INF 1073741823L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_OK
+#define juloo_cdict_Cdict_CDICT_SPATIAL_OK 0L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_TRUNCATED
+#define juloo_cdict_Cdict_CDICT_SPATIAL_TRUNCATED 1L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_INVALID_ARGUMENT
+#define juloo_cdict_Cdict_CDICT_SPATIAL_INVALID_ARGUMENT 2L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_INVALID_UTF8
+#define juloo_cdict_Cdict_CDICT_SPATIAL_INVALID_UTF8 3L
+#undef juloo_cdict_Cdict_CDICT_SPATIAL_CORRUPT_DICTIONARY
+#define juloo_cdict_Cdict_CDICT_SPATIAL_CORRUPT_DICTIONARY 4L
+#undef juloo_cdict_Cdict_CDICT_EDIT_SUBSTITUTION
+#define juloo_cdict_Cdict_CDICT_EDIT_SUBSTITUTION 1L
+#undef juloo_cdict_Cdict_CDICT_EDIT_OMISSION
+#define juloo_cdict_Cdict_CDICT_EDIT_OMISSION 2L
+#undef juloo_cdict_Cdict_CDICT_EDIT_EXTRA_TAP
+#define juloo_cdict_Cdict_CDICT_EDIT_EXTRA_TAP 4L
+#undef juloo_cdict_Cdict_CDICT_EDIT_TRANSPOSITION
+#define juloo_cdict_Cdict_CDICT_EDIT_TRANSPOSITION 8L
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,11 +103,12 @@ JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
 
 /*
  * Class:     juloo_cdict_Cdict
- * Method:    distance_native
- * Signature: (JLjava/lang/String;II)[I
+ * Method:    spatial_native
+ * Signature: (JLjuloo/cdict/Cdict/SpatialQuery;)Ljuloo/cdict/Cdict/SpatialResult;
  */
-JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_distance_1native
-  (JNIEnv *, jclass, jlong, jstring, jint, jint);
+JNIEXPORT jobject JNICALL Java_juloo_cdict_Cdict_spatial_1native
+  (JNIEnv *, jclass, jlong, jobject);
+
 
 #ifdef __cplusplus
 }

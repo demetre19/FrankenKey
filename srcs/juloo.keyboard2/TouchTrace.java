@@ -1,9 +1,11 @@
 package juloo.keyboard2;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-/** Touch locations for the current typed word, one entry per typed character. */
+/** Touch locations for the current typed word, one nullable slot per code
+    point. */
 public final class TouchTrace
 {
   private final ArrayList<Entry> _entries = new ArrayList<Entry>();
@@ -18,9 +20,10 @@ public final class TouchTrace
     return _entries.get(index);
   }
 
+  /** Return a read-only copy of the current slots. */
   public List<Entry> entries()
   {
-    return _entries;
+    return Collections.unmodifiableList(new ArrayList<Entry>(_entries));
   }
 
   public void clear()
@@ -28,10 +31,21 @@ public final class TouchTrace
     _entries.clear();
   }
 
+  /** Append one slot. A null entry means that no touch was captured. */
   public void add(Entry entry)
   {
-    if (entry != null)
-      _entries.add(entry);
+    _entries.add(entry);
+  }
+
+  void addNulls(int count)
+  {
+    while (count-- > 0)
+      _entries.add(null);
+  }
+
+  void set(int index, Entry entry)
+  {
+    _entries.set(index, entry);
   }
 
   public void removeFrom(int index)
@@ -42,11 +56,31 @@ public final class TouchTrace
       _entries.remove(_entries.size() - 1);
   }
 
-  public TouchTrace copy()
+  /** Capture immutable touch slots for asynchronous decoding. */
+  public Snapshot snapshot()
   {
-    TouchTrace out = new TouchTrace();
-    out._entries.addAll(_entries);
-    return out;
+    return new Snapshot(_entries);
+  }
+
+  public static final class Snapshot
+  {
+    private final Entry[] _entries;
+
+    private Snapshot(List<Entry> entries)
+    {
+      _entries = entries.toArray(new Entry[entries.size()]);
+    }
+
+    public int size()
+    {
+      return _entries.length;
+    }
+
+    /** Return the nullable touch slot at [index]. */
+    public Entry get(int index)
+    {
+      return _entries[index];
+    }
   }
 
   public static Entry entry(float touchX, float touchY, float keyCenterX,

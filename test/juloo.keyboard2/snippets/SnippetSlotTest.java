@@ -12,8 +12,8 @@ public class SnippetSlotTest
   @Test
   public void empty_slot_label_is_one_based_index()
   {
-    assertEquals("1", SnippetSlot.of(0, "", "", false).getDisplayLabel());
-    assertEquals("7", SnippetSlot.of(6, "", "", false).getDisplayLabel());
+    assertEquals("1", SnippetSlot.of(0, "", "").getDisplayLabel());
+    assertEquals("7", SnippetSlot.of(6, "", "").getDisplayLabel());
   }
 
   @Test
@@ -30,17 +30,17 @@ public class SnippetSlotTest
   @Test
   public void custom_label_overrides_generated_label()
   {
-    assertEquals("mail", SnippetSlot.of(0, "email@example.com", "mail", false).getDisplayLabel());
-    assertEquals("★", SnippetSlot.of(4, "", "★", true).getDisplayLabel());
+    assertEquals("mail", SnippetSlot.of(0, "email@example.com", "mail").getDisplayLabel());
+    assertEquals("★", SnippetSlot.of(4, "", "★").getDisplayLabel());
   }
 
   @Test
   public void configured_state_follows_insertable_phrase()
   {
-    assertFalse(SnippetSlot.of(0, "", "", false).isConfigured());
-    assertFalse(SnippetSlot.of(1, "", "★", true).isConfigured());
-    assertTrue(SnippetSlot.of(2, "ok", "", false).isConfigured());
-    assertTrue(SnippetSlot.of(3, "\uD83D\uDE00", "face", true).isConfigured());
+    assertFalse(SnippetSlot.of(0, "", "").isConfigured());
+    assertFalse(SnippetSlot.of(1, "", "★").isConfigured());
+    assertTrue(SnippetSlot.of(2, "ok", "").isConfigured());
+    assertTrue(SnippetSlot.of(3, "\uD83D\uDE00", "face").isConfigured());
   }
 
   @Test
@@ -73,7 +73,7 @@ public class SnippetSlotTest
   {
     static void label(String phrase, String expected)
     {
-      assertEquals(phrase, expected, SnippetSlot.of(2, phrase, "", false).getDisplayLabel());
+      assertEquals(phrase, expected, SnippetSlot.of(2, phrase, "").getDisplayLabel());
     }
 
     static void pageCount(int slotCount, int expected)
@@ -95,7 +95,7 @@ public class SnippetSlotTest
     {
       ArrayList<SnippetSlot> slots = new ArrayList<>();
       for (int i = 0; i < count; ++i)
-        slots.add(SnippetSlot.of(i, "slot" + i, "", false));
+        slots.add(SnippetSlot.of(i, "slot" + i, ""));
       return slots;
     }
   }

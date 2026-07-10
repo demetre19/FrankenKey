@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import juloo.keyboard2.suggestions.Suggestions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -300,13 +299,17 @@ public class DeleteHoldBehaviorTest
     }
 
     @Override
+    public android.view.inputmethod.EditorInfo getCurrentInputEditorInfo()
+    {
+      return new android.view.inputmethod.EditorInfo();
+    }
+
+    @Override
     public Handler getHandler()
     {
       return handler;
     }
 
-    @Override
-    public void set_suggestions(Suggestions suggestions) {}
 
     final List<Boolean> selectionStates = new ArrayList<>();
 

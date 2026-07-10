@@ -1,12 +1,18 @@
 package juloo.keyboard2;
 
+import android.app.AlertDialog;
+import android.Manifest;
 import android.content.Intent;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.util.TypedValue;
 import android.database.DataSetObserver;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build.VERSION;
 import android.os.Bundle;
+import android.preference.CheckBoxPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.content.SharedPreferences;
@@ -22,6 +28,13 @@ import juloo.keyboard2.suggestions.PersonalizationStore;
 
 public class SettingsActivity extends PreferenceActivity
 {
+  private static final int REQUEST_SCREENSHOT_MEDIA_PERMISSION = 54;
+  private static final int REQUEST_EXPORT_SETTINGS_BACKUP = 55;
+  private static final int REQUEST_IMPORT_SETTINGS_BACKUP = 56;
+  private static final String SETTINGS_BACKUP_FILENAME =
+    "frankenkey-settings-backup.json";
+  static final String EXTRA_REQUEST_SCREENSHOT_PERMISSION =
+    "juloo.keyboard2.REQUEST_SCREENSHOT_PERMISSION";
   @Override
   public void onCreate(Bundle savedInstanceState)
   {
@@ -41,6 +54,9 @@ public class SettingsActivity extends PreferenceActivity
       dashboard.setIntent(new Intent(Intent.ACTION_VIEW,
             Uri.parse(GiphyClient.DASHBOARD_URL)));
     setupTypingAssistancePreferences();
+    setupClipboardPreferences();
+    setupBackupPreferences();
+    requestScreenshotPermissionFromIntent();
 
     boolean foldableDevice = FoldStateTracker.isFoldableDevice(this);
     findPreference("margin_bottom_portrait_unfolded").setEnabled(foldableDevice);
@@ -73,6 +89,109 @@ public class SettingsActivity extends PreferenceActivity
     super.onStop();
   }
 
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions,
+      int[] grantResults)
+  {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode != REQUEST_SCREENSHOT_MEDIA_PERMISSION)
+      return;
+    if (ClipboardHistoryService.hasScreenshotReadPermission(this))
+    {
+      ClipboardHistoryService.refresh_screenshot_observer();
+      return;
+    }
+    SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+    prefs.edit().putBoolean("clipboard_save_screenshots", false).apply();
+    Preference pref = findPreference("clipboard_save_screenshots");
+    if (pref instanceof CheckBoxPreference)
+      ((CheckBoxPreference)pref).setChecked(false);
+    Toast.makeText(this, R.string.pref_clipboard_screenshots_permission_denied,
+        Toast.LENGTH_SHORT).show();
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent data)
+  {
+    super.onActivityResult(requestCode, resultCode, data);
+    if (resultCode != RESULT_OK || data == null || data.getData() == null)
+      return;
+    if (requestCode == REQUEST_EXPORT_SETTINGS_BACKUP)
+    {
+      exportSettingsBackup(data.getData());
+      return;
+    }
+    if (requestCode == REQUEST_IMPORT_SETTINGS_BACKUP)
+      importSettingsBackup(data.getData());
+  }
+
+  private void setupBackupPreferences()
+  {
+    Preference export = findPreference("export_settings_backup");
+    if (export != null)
+      export.setOnPreferenceClickListener(preference -> {
+        startExportSettingsBackup();
+        return true;
+      });
+    Preference import_ = findPreference("import_settings_backup");
+    if (import_ != null)
+      import_.setOnPreferenceClickListener(preference -> {
+        startImportSettingsBackup();
+        return true;
+      });
+  }
+
+  private void startExportSettingsBackup()
+  {
+    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType("application/json");
+    intent.putExtra(Intent.EXTRA_TITLE, SETTINGS_BACKUP_FILENAME);
+    startActivityForResult(intent, REQUEST_EXPORT_SETTINGS_BACKUP);
+  }
+
+  private void startImportSettingsBackup()
+  {
+    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType("*/*");
+    startActivityForResult(intent, REQUEST_IMPORT_SETTINGS_BACKUP);
+  }
+
+  private void exportSettingsBackup(Uri uri)
+  {
+    try
+    {
+      SettingsBackup.exportToUri(this, uri,
+          getPreferenceManager().getSharedPreferences());
+      Toast.makeText(this, R.string.pref_export_settings_done,
+          Toast.LENGTH_SHORT).show();
+    }
+    catch (Exception _e)
+    {
+      Toast.makeText(this, R.string.pref_export_settings_failed,
+          Toast.LENGTH_LONG).show();
+    }
+  }
+
+  private void importSettingsBackup(Uri uri)
+  {
+    try
+    {
+      SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+      SettingsBackup.importFromUri(this, uri, prefs);
+      refreshTypingAssistanceStatus();
+      Toast.makeText(this, R.string.pref_import_settings_done,
+          Toast.LENGTH_SHORT).show();
+      recreate();
+    }
+    catch (Exception _e)
+    {
+      Toast.makeText(this, R.string.pref_import_settings_failed,
+          Toast.LENGTH_LONG).show();
+    }
+  }
+
 
   private void setupTypingAssistancePreferences()
   {
@@ -80,9 +199,56 @@ public class SettingsActivity extends PreferenceActivity
     Preference clear = findPreference("clear_typing_assistance_data");
     if (clear != null)
       clear.setOnPreferenceClickListener(preference -> {
-        clearTypingAssistanceData();
+        showClearTypingAssistanceDialog();
         return true;
       });
+  }
+
+  private void setupClipboardPreferences()
+  {
+    Preference screenshots = findPreference("clipboard_save_screenshots");
+    if (screenshots == null)
+      return;
+    screenshots.setOnPreferenceClickListener(preference -> {
+      requestScreenshotPermissionIfNeeded();
+      return false;
+    });
+  }
+
+  private void requestScreenshotPermissionFromIntent()
+  {
+    Intent intent = getIntent();
+    if (intent != null
+        && intent.getBooleanExtra(EXTRA_REQUEST_SCREENSHOT_PERMISSION, false))
+      getListView().post(() -> requestScreenshotPermissionIfNeeded());
+  }
+
+  private void requestScreenshotPermissionIfNeeded()
+  {
+    boolean enabled = getPreferenceManager().getSharedPreferences()
+      .getBoolean("clipboard_save_screenshots", true);
+    if (!enabled)
+      return;
+    if (ClipboardHistoryService.hasScreenshotReadPermission(this))
+    {
+      ClipboardHistoryService.refresh_screenshot_observer();
+      return;
+    }
+    if (VERSION.SDK_INT >= 23)
+      requestPermissions(screenshotMediaPermissions(),
+          REQUEST_SCREENSHOT_MEDIA_PERMISSION);
+  }
+
+  private String[] screenshotMediaPermissions()
+  {
+    if (VERSION.SDK_INT >= 34)
+      return new String[]{
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+      };
+    return new String[]{ VERSION.SDK_INT >= 33
+      ? Manifest.permission.READ_MEDIA_IMAGES
+      : Manifest.permission.READ_EXTERNAL_STORAGE };
   }
 
   private void refreshTypingAssistanceStatus()
@@ -95,6 +261,17 @@ public class SettingsActivity extends PreferenceActivity
     status.setSummary(getString(has_data
           ? R.string.pref_typing_assistance_status_with_learning
           : R.string.pref_typing_assistance_status_empty));
+  }
+
+  private void showClearTypingAssistanceDialog()
+  {
+    new AlertDialog.Builder(this)
+      .setTitle(R.string.pref_clear_typing_assistance_title)
+      .setMessage(R.string.pref_clear_typing_assistance_summary)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.pref_clear_typing_assistance_title,
+          (_dialog, _which) -> clearTypingAssistanceData())
+      .show();
   }
 
   private void clearTypingAssistanceData()
@@ -111,9 +288,8 @@ public class SettingsActivity extends PreferenceActivity
     catch (Exception _e) {}
     try
     {
-      Config config = Config.globalConfig();
-      if (config != null && config.personalization != null)
-        config.personalization.clear();
+      if (Config.globalConfig() != null && Config.globalConfig().handler != null)
+        Config.globalConfig().handler.typing_assistance_data_cleared();
     }
     catch (Exception _e) {}
     refreshTypingAssistanceStatus();
@@ -132,14 +308,17 @@ public class SettingsActivity extends PreferenceActivity
     list.setDividerHeight(0);
 
     ListAdapter adapter = getPreferenceScreen().getRootAdapter();
-    list.setAdapter(new SettingsListAdapter(adapter, isNightMode(), horizontal,
+    list.setAdapter(new SettingsListAdapter(adapter, isLightTheme(), horizontal,
           getResources().getDisplayMetrics().density));
   }
 
-  private boolean isNightMode()
+  private boolean isLightTheme()
   {
+    TypedValue value = new TypedValue();
+    if (getTheme().resolveAttribute(android.R.attr.isLightTheme, value, true))
+      return value.data != 0;
     return (getResources().getConfiguration().uiMode
-        & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        & Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_YES;
   }
 
   private int settingsSidePadding()
@@ -160,15 +339,15 @@ public class SettingsActivity extends PreferenceActivity
     private static final int DARK_SECTION_ALT = 0xff1f1f1f;
 
     private final ListAdapter _inner;
-    private final boolean _nightMode;
+    private final boolean _lightTheme;
     private final int _sidePadding;
     private final float _density;
 
-    SettingsListAdapter(ListAdapter inner, boolean nightMode, int sidePadding,
+    SettingsListAdapter(ListAdapter inner, boolean lightTheme, int sidePadding,
         float density)
     {
       _inner = inner;
-      _nightMode = nightMode;
+      _lightTheme = lightTheme;
       _sidePadding = sidePadding;
       _density = density;
     }
@@ -339,7 +518,7 @@ public class SettingsActivity extends PreferenceActivity
     private int sectionColor(int section)
     {
       boolean alternate = (section & 1) == 1;
-      if (_nightMode)
+      if (!_lightTheme)
         return alternate ? DARK_SECTION_ALT : DARK_SECTION;
       return alternate ? LIGHT_SECTION_ALT : LIGHT_SECTION;
     }

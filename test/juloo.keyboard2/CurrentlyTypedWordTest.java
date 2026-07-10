@@ -87,10 +87,15 @@ public class CurrentlyTypedWordTest
         "world", typedWord.get());
     assertEquals("The cursor is five characters before the end of the refreshed word.",
         -5, typedWord.cursor_relative());
-    assertEquals("Editor refresh has no per-key touch geometry and must not retain trace entries from the old typed word.",
-        0, typedWord.touch_trace().size());
+    TouchTrace.Snapshot refreshedTouches = typedWord.touch_trace();
+    assertEquals("Editor refresh must preserve one touch slot per code point so asynchronous spatial decoding keeps word/touch indexes aligned.",
+        typedWord.get().codePointCount(0, typedWord.get().length()),
+        refreshedTouches.size());
+    for (int i = 0; i < refreshedTouches.size(); i++)
+      assertNull("Editor-derived words have no per-key geometry; every aligned touch slot must be null rather than stale data from the old word.",
+          refreshedTouches.get(i));
     assertEquals(Arrays.asList("o", "ol", "old", "world"), callback.words);
-    assertEquals(Arrays.asList(1, 2, 3, 0), callback.traceSizes);
+    assertEquals(Arrays.asList(1, 2, 3, 5), callback.traceSizes);
   }
 
   private static CurrentlyTypedWord enabledTypedWord(RecordingCallback callback)
@@ -107,10 +112,10 @@ public class CurrentlyTypedWordTest
     final ArrayList<Integer> traceSizes = new ArrayList<Integer>();
 
     @Override
-    public void currently_typed_word(String word, TouchTrace touchTrace)
+    public void currently_typed_word(CurrentlyTypedWord.Snapshot snapshot)
     {
-      words.add(word);
-      traceSizes.add(touchTrace.size());
+      words.add(snapshot.word);
+      traceSizes.add(snapshot.touches.size());
     }
   }
 }

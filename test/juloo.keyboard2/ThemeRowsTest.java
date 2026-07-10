@@ -31,6 +31,48 @@ public class ThemeRowsTest
   }
 
   @Test
+  public void keyboard_theme_default_remains_system()
+      throws Exception
+  {
+    Element settings = parseXml("res/xml/settings.xml").getDocumentElement();
+    List<Element> themes = elementsWithAndroidKey(settings, "theme");
+
+    assertEquals("Settings must contain exactly one keyboard theme preference.",
+        1, themes.size());
+    assertEquals("Keyboard colors must continue following the system unless the user explicitly chooses another palette.",
+        "system", themes.get(0).getAttributeNS(ANDROID_NS, "defaultValue"));
+  }
+
+  @Test
+  public void launcher_and_settings_use_dark_material_without_darkening_dictionaries()
+      throws Exception
+  {
+    Document baseStyles = parseXml("res/values/styles.xml");
+    Document nightStyles = parseXml("res/values-night/styles.xml");
+    Document manifest = parseXml("AndroidManifest.xml");
+
+    assertEquals("Settings must use the dark platform Material theme.",
+        "@android:style/Theme.Material",
+        style(baseStyles, "settingsTheme").getAttribute("parent"));
+    assertEquals("The night Settings override must remain dark platform Material.",
+        "@android:style/Theme.Material",
+        style(nightStyles, "settingsTheme").getAttribute("parent"));
+    assertEquals("The welcome screen must use a dedicated dark theme.",
+        "@android:style/Theme.Material",
+        style(baseStyles, "launcherTheme").getAttribute("parent"));
+    assertEquals("@style/launcherTheme",
+        activity(manifest, "juloo.keyboard2.LauncherActivity")
+          .getAttributeNS(ANDROID_NS, "theme"));
+    assertEquals("@style/settingsTheme",
+        activity(manifest, "juloo.keyboard2.SettingsActivity")
+          .getAttributeNS(ANDROID_NS, "theme"));
+    assertEquals("Dictionaries must not inherit the welcome redesign.",
+        "@style/appTheme",
+        activity(manifest, "juloo.keyboard2.dict.DictionariesActivity")
+          .getAttributeNS(ANDROID_NS, "theme"));
+  }
+
+  @Test
   public void settings_xml_does_not_expose_exact_color_overrides()
       throws Exception
   {
@@ -316,6 +358,19 @@ public class ThemeRowsTest
         matches.add(element);
     }
     return matches;
+  }
+
+  private static Element activity(Document manifest, String name)
+  {
+    NodeList activities = manifest.getElementsByTagName("activity");
+    for (int i = 0; i < activities.getLength(); ++i)
+    {
+      Element activity = (Element)activities.item(i);
+      if (name.equals(activity.getAttributeNS(ANDROID_NS, "name")))
+        return activity;
+    }
+    fail("Expected activity " + name + " in AndroidManifest.xml.");
+    return null;
   }
 
   private static List<Element> directElementChildren(Element parent)

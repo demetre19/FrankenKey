@@ -1,7 +1,10 @@
 package juloo.keyboard2;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.content.res.Resources;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +34,7 @@ public class ClipboardHistoryServiceTest
         "clipboard_history_service_test", Context.MODE_PRIVATE);
     _prefs.edit().clear()
       .putBoolean("clipboard_history_enabled", true)
+      .putBoolean("clipboard_save_screenshots", true)
       .putString("clipboard_history_duration", "-1")
       .commit();
     installTestConfig();
@@ -81,6 +85,70 @@ public class ClipboardHistoryServiceTest
         1, Collections.frequency(history, clip(30)));
   }
 
+  @Test
+  public void image_clipdata_is_saved_as_image_entry_and_pasted_through_image_callback()
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    RecordingPasteCallback callback = new RecordingPasteCallback();
+    ClipboardHistoryService.on_startup(context, callback);
+    ClipboardManager clipboard = (ClipboardManager)context.getSystemService(
+        Context.CLIPBOARD_SERVICE);
+    Uri uri = Uri.parse("content://frankenkey.test/screenshot/42");
+    clipboard.setPrimaryClip(new ClipData("Samsung screenshot",
+        new String[]{"image/png"}, new ClipData.Item(uri)));
+    _service.clear_history();
+
+    _service.add_current_clip();
+
+    List<ClipboardHistoryService.ClipboardEntry> entries =
+      _service.clear_expired_and_get_entries();
+    assertEquals("A screenshot ClipData item must create one image history entry.",
+        1, entries.size());
+    ClipboardHistoryService.ClipboardEntry entry = entries.get(0);
+    assertTrue("Screenshot ClipData must be retained as an image entry, not coerced to URI text.",
+        entry.isImage());
+    assertEquals(uri.toString(), entry.uri);
+    assertEquals("image/png", entry.mimeType);
+    assertEquals("Samsung screenshot", entry.displayText());
+    assertTrue("Text-only history callers must not receive image entries as fake text clips.",
+        _service.clear_expired_and_get_history().isEmpty());
+
+    assertTrue("Pasting the current screenshot clipboard must route through the image callback.",
+        ClipboardHistoryService.paste_current_clip());
+    assertEquals(uri.toString(), callback.lastImageUri);
+    assertEquals("image/png", callback.lastImageMimeType);
+    assertEquals("Samsung screenshot", callback.lastImageDescription);
+    assertNull("Image paste must not also emit a text paste callback.",
+        callback.lastPasted);
+  }
+
+  @Test
+  public void startup_screenshot_history_entry_does_not_require_published_service()
+  {
+    ClipboardHistoryService._service = null;
+
+    ClipboardHistoryService.HistoryEntry entry =
+      new ClipboardHistoryService.HistoryEntry(
+          ClipboardHistoryService.ClipboardEntry.text("startup screenshot"));
+
+    assertEquals("Startup screenshot ingestion can happen inside the service constructor before the static service field is published; expiry must read Config directly instead of dereferencing the unpublished service.",
+        "startup screenshot", entry.content.text);
+  }
+
+  @Test
+  public void screenshot_media_store_filter_accepts_screenshot_paths_only()
+  {
+    assertTrue("Samsung-style screenshot display names must be accepted.",
+        ClipboardHistoryService.is_screenshot_candidate(
+          "Screenshot_20260708_101010.png", "Pictures/Screenshots/"));
+    assertTrue("Spaced screen-shot names must be accepted.",
+        ClipboardHistoryService.is_screenshot_candidate(
+          "Screen shot 2026-07-08.png", "Pictures/"));
+    assertFalse("Normal gallery images must not be added to clipboard history as screenshots.",
+        ClipboardHistoryService.is_screenshot_candidate(
+          "IMG_20260708_101010.jpg", "DCIM/Camera/"));
+  }
+
   private static List<String> clipsDescending(int newest, int oldest)
   {
     List<String> clips = new ArrayList<>();
@@ -92,6 +160,30 @@ public class ClipboardHistoryServiceTest
   private static String clip(int index)
   {
     return String.format("clip-%03d", index);
+  }
+
+  private static final class RecordingPasteCallback
+      implements ClipboardHistoryService.ClipboardPasteCallback
+  {
+    String lastPasted = null;
+    String lastImageUri = null;
+    String lastImageMimeType = null;
+    String lastImageDescription = null;
+
+    @Override
+    public void paste_from_clipboard_pane(String content)
+    {
+      lastPasted = content;
+    }
+
+    @Override
+    public void paste_image_from_clipboard_pane(String uri, String mimeType,
+        String description)
+    {
+      lastImageUri = uri;
+      lastImageMimeType = mimeType;
+      lastImageDescription = description;
+    }
   }
 
   private void installTestConfig()

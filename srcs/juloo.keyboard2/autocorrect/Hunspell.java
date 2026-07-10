@@ -33,11 +33,6 @@ public final class Hunspell implements AutoCloseable
     }
   }
 
-  @Override
-  protected void finalize() throws Throwable
-  {
-    close();
-  }
 
   private long _ptr;
 

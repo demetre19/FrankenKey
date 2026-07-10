@@ -2,14 +2,8 @@ package juloo.keyboard2;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.drawable.Animatable;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Build.VERSION;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -17,21 +11,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.TextView;
-import java.util.ArrayList;
-import java.util.List;
 import juloo.keyboard2.dict.DictionariesActivity;
 import juloo.keyboard2.R;
 
-public class LauncherActivity extends Activity implements Handler.Callback
+public class LauncherActivity extends Activity
 {
   /** Text is replaced when receiving key events. */
   TextView _tryhere_text;
   EditText _tryhere_area;
-  /** Periodically restart the animations. */
-  List<Animatable> _animations;
-  Handler _handler;
 
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -43,28 +31,6 @@ public class LauncherActivity extends Activity implements Handler.Callback
     if (VERSION.SDK_INT >= 28)
       _tryhere_area.addOnUnhandledKeyEventListener(
           this.new Tryhere_OnUnhandledKeyEventListener());
-    _handler = new Handler(getMainLooper(), this);
-  }
-
-  @Override
-  public void onStart()
-  {
-    super.onStart();
-    _animations = new ArrayList<Animatable>();
-    _animations.add(find_anim(R.id.launcher_anim_swipe));
-    _animations.add(find_anim(R.id.launcher_anim_round_trip));
-    _animations.add(find_anim(R.id.launcher_anim_circle));
-    _handler.removeMessages(0);
-    _handler.sendEmptyMessageDelayed(0, 500);
-  }
-
-  @Override
-  public boolean handleMessage(Message _msg)
-  {
-    for (Animatable anim : _animations)
-      anim.start();
-    _handler.sendEmptyMessageDelayed(0, 3000);
-    return true;
   }
 
   @Override
@@ -101,12 +67,6 @@ public class LauncherActivity extends Activity implements Handler.Callback
   public void launch_dictionaries_activity(View v)
   {
     startActivity(new Intent(this, DictionariesActivity.class));
-  }
-
-  Animatable find_anim(int id)
-  {
-    ImageView img = (ImageView)findViewById(id);
-    return (Animatable)img.getDrawable();
   }
 
   final class Tryhere_OnUnhandledKeyEventListener implements View.OnUnhandledKeyEventListener

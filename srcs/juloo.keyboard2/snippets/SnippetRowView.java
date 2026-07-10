@@ -71,7 +71,7 @@ public class SnippetRowView extends HorizontalScrollView
     for (int i = 0; i < SnippetPages.PAGE_SIZE; ++i)
     {
       SnippetSlot slot = i < slots.size() ? slots.get(i) :
-        SnippetSlot.of(pageIndex * SnippetPages.PAGE_SIZE + i, "", "", false);
+        SnippetSlot.of(pageIndex * SnippetPages.PAGE_SIZE + i, "", "");
       page.addView(makeSlotView(slot, listener));
     }
     return page;

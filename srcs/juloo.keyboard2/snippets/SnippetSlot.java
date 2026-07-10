@@ -7,23 +7,19 @@ public final class SnippetSlot
   private final int _index;
   private final String _phrase;
   private final String _customLabel;
-  private final boolean _iconLabel;
 
-  private SnippetSlot(int index, String phrase, String customLabel,
-      boolean iconLabel)
+  private SnippetSlot(int index, String phrase, String customLabel)
   {
     if (index < 0)
       throw new IllegalArgumentException("index must be non-negative");
     _index = index;
     _phrase = phrase == null ? "" : phrase;
     _customLabel = customLabel == null ? "" : customLabel;
-    _iconLabel = iconLabel;
   }
 
-  public static SnippetSlot of(int index, String phrase, String customLabel,
-      boolean iconLabel)
+  public static SnippetSlot of(int index, String phrase, String customLabel)
   {
-    return new SnippetSlot(index, phrase, customLabel, iconLabel);
+    return new SnippetSlot(index, phrase, customLabel);
   }
 
   public int getIndex()
@@ -39,11 +35,6 @@ public final class SnippetSlot
   public String getCustomLabel()
   {
     return _customLabel;
-  }
-
-  public boolean isIconLabel()
-  {
-    return _iconLabel;
   }
 
   public boolean isConfigured()

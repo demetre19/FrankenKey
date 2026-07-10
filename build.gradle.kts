@@ -22,8 +22,8 @@ android {
     applicationId = "dev.frankenkey.keyboard"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 63
-    versionName = "2.0.12"
+    versionCode = 76
+    versionName = "2.0.25"
   }
 
   sourceSets {
@@ -90,6 +90,10 @@ android {
       resValue("bool", "debug_logs", "true")
       signingConfig = signingConfigs["debug"]
     }
+  }
+
+  testOptions {
+    unitTests.isIncludeAndroidResources = true
   }
 
   compileOptions {

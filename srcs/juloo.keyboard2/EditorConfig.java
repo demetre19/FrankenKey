@@ -26,11 +26,13 @@ public final class EditorConfig
   public boolean should_move_cursor_force_fallback = false;
 
   /** Autocapitalisation. */
-  public int caps_mode; // Argument for [getCursorCapsMode()]
+  public int caps_mode; // Argument for [getCursorCapsMode()].
   // Whether caps state is on initially.
   public boolean caps_initially_enabled = false;
   // Whether caps state should be updated right away.
   public boolean caps_initially_updated = false;
+  /** Whether an exact standalone lowercase i may be rewritten to I. */
+  public boolean autocapitalise_standalone_i = true;
 
   /** CurrentlyTypedWord. */
   public CharSequence initial_text_before_cursor = null; // Might be [null].
@@ -96,8 +98,11 @@ public final class EditorConfig
     /* Autocapitalisation */
     caps_mode = info.inputType & (TextUtils.CAP_MODE_CHARACTERS |
         TextUtils.CAP_MODE_WORDS | TextUtils.CAP_MODE_SENTENCES);
+    if (caps_mode == 0 && should_fallback_sentence_caps(info))
+      caps_mode = TextUtils.CAP_MODE_SENTENCES;
     caps_initially_enabled = (info.initialCapsMode != 0);
     caps_initially_updated = caps_should_update_state(info);
+    autocapitalise_standalone_i = should_autocapitalise_standalone_i(info);
     /* CurrentlyTypedWord */
     if (VERSION.SDK_INT >= 30)
     {
@@ -135,6 +140,38 @@ public final class EditorConfig
         return true;
       default:
         return false;
+    }
+  }
+
+  /** Generic plain-text fields that omit caps flags still need sentence repair. */
+  static boolean should_fallback_sentence_caps(EditorInfo info)
+  {
+    if ((info.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT)
+      return false;
+    switch (info.inputType & InputType.TYPE_MASK_VARIATION)
+    {
+      case InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE:
+      case InputType.TYPE_TEXT_VARIATION_NORMAL:
+      case InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /** Keep the standalone-I convenience out of fields that hold secrets. */
+  static boolean should_autocapitalise_standalone_i(EditorInfo info)
+  {
+    if ((info.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT)
+      return false;
+    switch (info.inputType & InputType.TYPE_MASK_VARIATION)
+    {
+      case InputType.TYPE_TEXT_VARIATION_PASSWORD:
+      case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
+      case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
+        return false;
+      default:
+        return true;
     }
   }
 

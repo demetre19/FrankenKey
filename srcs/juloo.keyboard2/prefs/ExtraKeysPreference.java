@@ -399,6 +399,7 @@ public class ExtraKeysPreference extends PreferenceCategory
       setKey(pref_key_of_key_name(key_name));
       setDefaultValue(default_checked);
       setTitle(title);
+      setSummary(R.string.pref_extra_key_summary);
       if (VERSION.SDK_INT >= 26)
         setSingleLineTitle(false);
     }

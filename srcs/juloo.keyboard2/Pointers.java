@@ -190,7 +190,8 @@ public final class Pointers implements Handler.Callback
     {
       clearLatched();
       removePtr(ptr);
-      _handler.onPointerUp(ptr_value, ptr.modifiers, ptr.touch);
+      if (ptr.holdCount == 0 || !hasDedicatedRepeatInterval(ptr_value))
+        _handler.onPointerUp(ptr_value, ptr.modifiers, ptr.touch);
     }
   }
 
@@ -457,10 +458,58 @@ public final class Pointers implements Handler.Callback
 
   private long repeatInterval(Pointer ptr)
   {
-    long interval = _config.longPressInterval;
+    if (isPasteRepeatKey(ptr.value))
+      return Math.max(100, _config.pasteRepeatInterval);
+
+    long interval = isDeleteRepeatKey(ptr.value)
+      ? Math.max(35, _config.deleteRepeatInterval)
+      : _config.longPressInterval;
     for (int i = 1; i < ptr.holdCount && interval > 35; ++i)
       interval = Math.max(35, interval * 93 / 100);
     return interval;
+  }
+
+  private static boolean hasDedicatedRepeatInterval(KeyValue value)
+  {
+    return isPasteRepeatKey(value) || isDeleteRepeatKey(value);
+  }
+
+  private static boolean isPasteRepeatKey(KeyValue value)
+  {
+    if (value == null || value.getKind() != KeyValue.Kind.Editing)
+      return false;
+    switch (value.getEditing())
+    {
+      case PASTE:
+      case PASTE_PLAIN:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private static boolean isDeleteRepeatKey(KeyValue value)
+  {
+    if (value == null)
+      return false;
+    switch (value.getKind())
+    {
+      case Editing:
+        switch (value.getEditing())
+        {
+          case BACKSPACE:
+          case DELETE_WORD:
+          case FORWARD_DELETE_WORD:
+            return true;
+          default:
+            return false;
+        }
+      case Keyevent:
+        return value.getKeyevent() == android.view.KeyEvent.KEYCODE_DEL
+          || value.getKeyevent() == android.view.KeyEvent.KEYCODE_FORWARD_DEL;
+      default:
+        return false;
+    }
   }
 
   /** A pointer is long pressing. */
@@ -484,8 +533,9 @@ public final class Pointers implements Handler.Callback
       _handler.onPointerDown(kv, true);
       return;
     }
-    // Special keys
-    if (kv.hasFlagsAny(KeyValue.FLAG_SPECIAL))
+    // Special keys remain one-shot unless explicitly assigned a repeat policy.
+    if (kv.hasFlagsAny(KeyValue.FLAG_SPECIAL)
+        && !hasDedicatedRepeatInterval(kv))
       return;
     // For every other keys, key-repeat
     if (_config.keyrepeat_enabled)

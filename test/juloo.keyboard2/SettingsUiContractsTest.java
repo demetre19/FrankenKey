@@ -15,6 +15,69 @@ import static org.junit.Assert.*;
 public class SettingsUiContractsTest
 {
   @Test
+  public void every_static_settings_checkbox_has_approved_visible_summary()
+      throws Exception
+  {
+    Element root = settingsRoot();
+    NodeList checkboxes = root.getElementsByTagName("CheckBoxPreference");
+    String[][] contracts = new String[][] {
+      { "autocorrect", "pref_autocorrect_summary",
+        "Correct likely typos when you finish a word." },
+      { "suggestions", "pref_suggestions_summary",
+        "Show word suggestions while typing." },
+      { "clean_mode", "pref_clean_mode_summary",
+        "Use Fleksy layout; turn off for the computer/SSH layout." },
+      { "frankenkey_snippets_enabled", "pref_snippets_enabled_summary",
+        "Show your snippet buttons above the keyboard." },
+      { "keyrepeat_enabled", "pref_keyrepeat_enabled_summary",
+        "Repeat eligible keys while held." },
+      { "lock_double_tap", "pref_lock_double_tap_summary",
+        "Double-tap Shift to toggle Caps Lock." },
+      { "autocapitalisation", "pref_autocapitalisation_summary",
+        "Capitalise sentence starts and standalone “i”." },
+      { "vibrate_custom", "pref_vibrate_custom_summary",
+        "Use the custom vibration duration below." },
+      { "border_config", "pref_border_config_summary",
+        "Use custom corners and regular-key border width." },
+      { "clipboard_save_screenshots",
+        "pref_clipboard_save_screenshots_summary",
+        "Save image clips and recent screenshots to history." }
+    };
+
+    assertEquals("Settings must keep exactly the ten approved static checkbox rows.",
+        contracts.length, checkboxes.getLength());
+    for (String[] contract : contracts)
+    {
+      Element checkbox = preferenceWithKey(root, contract[0]);
+      assertNotNull(contract[0] + " checkbox must remain reachable.", checkbox);
+      assertEquals(contract[0] + " must remain a checkbox row.",
+          "CheckBoxPreference", checkbox.getTagName());
+      assertEquals(contract[0] + " must reference its localized summary.",
+          "@string/" + contract[1],
+          checkbox.getAttribute("android:summary"));
+      assertEquals(contract[0] + " summary must stay concise and accurate.",
+          contract[2], resourceString(contract[1]));
+    }
+  }
+
+  @Test
+  public void all_generated_extra_key_checkboxes_share_localized_summary()
+      throws Exception
+  {
+    assertEquals("The generated extra-key inventory must remain fully covered.",
+        104, juloo.keyboard2.prefs.ExtraKeysPreference.extra_keys.length);
+    String source = readSource(
+        "srcs/juloo.keyboard2/prefs/ExtraKeysPreference.java");
+    String constructor = methodBody(source,
+        "public ExtraKeyCheckBoxPreference(Context ctx, String key_name,");
+
+    assertTrue("Every generated extra-key checkbox must receive the shared localized summary in its common constructor.",
+        constructor.contains("setSummary(R.string.pref_extra_key_summary)"));
+    assertEquals("Add this key to layouts where it is not already present.",
+        resourceString("pref_extra_key_summary"));
+  }
+
+  @Test
   public void snippet_slots_settings_default_to_collapsed_accordion()
       throws Exception
   {
@@ -60,6 +123,52 @@ public class SettingsUiContractsTest
 
 
   @Test
+  public void screenshot_clipboard_permission_can_be_requested_from_keyboard_surface()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
+    String setup = methodBody(source, "private void setupClipboardPreferences()");
+    String request = methodBody(source,
+        "private void requestScreenshotPermissionIfNeeded()");
+    String fromIntent = methodBody(source,
+        "private void requestScreenshotPermissionFromIntent()");
+    String permissions = methodBody(source,
+        "private String[] screenshotMediaPermissions()");
+    String keyboard = readSource("srcs/juloo.keyboard2/Keyboard2.java");
+    String receiver = methodBody(keyboard, "public void handle_event_key(KeyValue.Event ev)");
+    String autoRequest = methodBody(keyboard,
+        "void request_screenshot_permission_if_needed()");
+    String clipboardService = readSource(
+        "srcs/juloo.keyboard2/ClipboardHistoryService.java");
+    String screenshotObserver = methodBody(clipboardService,
+        "private void start_screenshot_observer_if_allowed()");
+
+    assertTrue("Clipboard preference clicks and keyboard-surface launches must share the same permission request path.",
+        setup.contains("requestScreenshotPermissionIfNeeded()"));
+    assertTrue("SettingsActivity must honor the keyboard-surface extra and request permission automatically.",
+        fromIntent.contains("EXTRA_REQUEST_SCREENSHOT_PERMISSION")
+        && fromIntent.contains("requestScreenshotPermissionIfNeeded()"));
+    assertTrue("Screenshot permission request must include Android 14 selected-media access alongside READ_MEDIA_IMAGES.",
+        permissions.contains("READ_MEDIA_IMAGES")
+        && permissions.contains("READ_MEDIA_VISUAL_USER_SELECTED")
+        && request.contains("requestPermissions(screenshotMediaPermissions()"));
+    assertTrue("Opening the clipboard pane must trigger screenshot ingestion before showing history.",
+        receiver.contains("case SWITCH_CLIPBOARD:")
+        && receiver.contains("request_screenshot_permission_if_needed()"));
+    assertTrue("Keyboard-side screenshot handling must query MediaStore immediately when Android permission is already granted.",
+        autoRequest.contains("hasScreenshotReadPermission(this)")
+        && autoRequest.contains("ClipboardHistoryService.refresh_screenshot_observer()"));
+    assertTrue("Refreshing an already registered screenshot observer must still query MediaStore, because opening the clipboard pane is the user's explicit sync point.",
+        screenshotObserver.contains("if (_screenshotObserver != null)")
+        && screenshotObserver.contains("add_latest_screenshot_from_media_store()")
+        && screenshotObserver.indexOf("if (_screenshotObserver != null)")
+          < screenshotObserver.indexOf("registerContentObserver"));
+    assertTrue("Keyboard-side permission launch must still go through SettingsActivity because an IME service cannot show a runtime permission dialog itself.",
+        autoRequest.contains("SettingsActivity.class")
+        && autoRequest.contains("EXTRA_REQUEST_SCREENSHOT_PERMISSION"));
+  }
+
+  @Test
   public void settings_list_has_side_padding_and_alternating_section_backgrounds()
       throws Exception
   {
@@ -67,7 +176,6 @@ public class SettingsUiContractsTest
     String styleList = methodBody(source, "private void styleSettingsList()");
     String adapter = methodBody(source,
         "private static class SettingsListAdapter extends BaseAdapter");
-    String nightStyles = readSource("res/values-night/styles.xml");
     String compactStyleList = styleList.replaceAll("\\s+", " ");
     String getView = methodBody(adapter, "public View getView");
     String rowWrapper = methodBody(adapter, "private FrameLayout rowWrapper");
@@ -110,9 +218,22 @@ public class SettingsUiContractsTest
     assertTrue("Dark sections must alternate two dark backgrounds.",
         adapter.contains("DARK_SECTION = 0xff121212")
         && adapter.contains("DARK_SECTION_ALT = 0xff1f1f1f"));
-    assertTrue("Night mode settings must use a dark platform theme so text remains readable.",
-        nightStyles.contains("name=\"settingsTheme\"")
-        && nightStyles.contains("@android:style/Theme.Material"));
+  }
+
+  @Test
+  public void settings_palette_uses_theme_attribute_before_configuration_fallback()
+      throws Exception
+  {
+    String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
+    String styleList = methodBody(source, "private void styleSettingsList()");
+    String resolution = methodBody(source, "private boolean isLightTheme()");
+
+    assertTrue("The settings adapter must receive the resolved activity-theme palette rather than deriving its colors directly from daytime configuration.",
+        styleList.contains("new SettingsListAdapter(adapter, isLightTheme()"));
+    assertOrdered("A platform theme's isLightTheme attribute must win before day/night configuration fallback so the explicitly dark Settings theme stays dark during daytime.",
+        resolution.indexOf("resolveAttribute(android.R.attr.isLightTheme"),
+        resolution.indexOf("return value.data != 0"),
+        resolution.indexOf("getResources().getConfiguration().uiMode"));
   }
 
   @Test
@@ -311,6 +432,72 @@ public class SettingsUiContractsTest
   }
 
   @Test
+  public void paste_and_delete_repeat_settings_have_independent_safe_millisecond_contracts()
+      throws Exception
+  {
+    Element root = settingsRoot();
+    String config = readSource("srcs/juloo.keyboard2/Config.java");
+    String[][] contracts = new String[][] {
+      { "paste_repeat_interval", "pasteRepeatInterval", "500", "100", "1500",
+        "Paste" },
+      { "delete_repeat_interval", "deleteRepeatInterval", "65", "35", "500",
+        "Delete" }
+    };
+
+    for (String[] contract : contracts)
+    {
+      String key = contract[0];
+      String field = contract[1];
+      String expectedDefault = contract[2];
+      String expectedMin = contract[3];
+      String expectedMax = contract[4];
+      String label = contract[5];
+      Element preference = preferenceWithKey(root, key);
+
+      assertNotNull(label
+          + " repeat pacing must have its own exact persisted preference key.",
+          preference);
+      assertEquals(label
+          + " repeat pacing must use the integer slider so its value is stored as milliseconds.",
+          "juloo.keyboard2.prefs.IntSlideBarPreference",
+          preference.getTagName());
+      assertEquals(label
+          + " repeat pacing must display its unit explicitly in milliseconds.",
+          "%sms", preference.getAttribute("android:summary"));
+      assertEquals(label
+          + " repeat pacing is meaningful only while held-key repeat is enabled.",
+          "keyrepeat_enabled",
+          preference.getAttribute("android:dependency"));
+      assertEquals(label
+          + " repeat pacing must start from the reviewed safe default.",
+          expectedDefault,
+          preference.getAttribute("android:defaultValue"));
+      assertEquals(label
+          + " repeat pacing must keep the reviewed nonzero safety floor.",
+          expectedMin, preference.getAttribute("min"));
+      assertEquals(label
+          + " repeat pacing must keep the reviewed upper bound so an accidental extreme value cannot make the control unusable.",
+          expectedMax, preference.getAttribute("max"));
+
+      int defaultValue = Integer.parseInt(
+          preference.getAttribute("android:defaultValue"));
+      int min = Integer.parseInt(preference.getAttribute("min"));
+      int max = Integer.parseInt(preference.getAttribute("max"));
+      assertTrue(label
+          + " repeat default must remain inside its safe slider range.",
+          min <= defaultValue && defaultValue <= max);
+
+      String compactAssignment = assignmentStatement(config, field)
+        .replaceAll("\\s+", "");
+      assertEquals(label
+          + " repeat Config field must read the same exact key and fallback value that the settings slider writes.",
+          field + "=_prefs.getInt(\"" + key + "\"," + expectedDefault
+            + ");",
+          compactAssignment);
+    }
+  }
+
+  @Test
   public void typing_assistance_settings_split_suggestions_and_autocorrect()
       throws Exception
   {
@@ -368,52 +555,96 @@ public class SettingsUiContractsTest
       throws Exception
   {
     Element root = settingsRoot();
-    Element status = preferenceWithKey(root, "typing_assistance_status");
-    Element clear = preferenceWithKey(root, "clear_typing_assistance_data");
+    Element typingAssistance = directPreferenceCategoryWithTitle(root,
+        "@string/pref_category_typing_assistance");
+    Element status = directChildWithKey(typingAssistance,
+        "typing_assistance_status");
+    Element clear = directChildWithKey(typingAssistance,
+        "clear_typing_assistance_data");
 
     assertNotNull("Settings must expose a non-clickable typing-assistance status row.",
         status);
-    assertNotNull("Settings must expose a row that clears learned typing-assistance data.",
+    assertNotNull("Clear adaptive learning must be a standalone row in the typing-assistance category, not hidden in a nested settings manager.",
         clear);
+    assertEquals("Clear adaptive learning must remain a normal one-tap Preference row.",
+        "Preference", clear.getTagName());
     assertEquals("Typing-assistance status must use the status title resource.",
         "@string/pref_typing_assistance_status_title",
         status.getAttribute("android:title"));
     assertEquals("Typing-assistance status must be read-only, not an action row.",
         "false", status.getAttribute("android:selectable"));
-    assertEquals("Clear learned words must use the clear-action title resource.",
+    assertEquals("Clear adaptive learning must use the explicit clear-action title.",
         "@string/pref_clear_typing_assistance_title",
         clear.getAttribute("android:title"));
-    assertEquals("Clear learned words must explain it deletes local suggestion and next-word learning data.",
+    assertEquals("Clear adaptive learning must point to the copy covering every adaptive data type.",
         "@string/pref_clear_typing_assistance_summary",
         clear.getAttribute("android:summary"));
   }
 
   @Test
-  public void settings_clear_typing_assistance_data_clears_personalization_and_refreshes_status()
+  public void settings_clear_typing_assistance_data_requires_positive_confirmation()
       throws Exception
   {
     String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
     String setup = methodBody(source, "private void setupTypingAssistancePreferences()");
+    String dialog = methodBody(source,
+        "private void showClearTypingAssistanceDialog()");
     String clear = methodBody(source, "private void clearTypingAssistanceData()");
     String refresh = methodBody(source, "private void refreshTypingAssistanceStatus()");
 
-    assertTrue("SettingsActivity must wire the clear row to the learned-data clearing action.",
+    assertTrue("The standalone clear row must open a confirmation dialog instead of mutating adaptive data directly.",
         setup.contains("findPreference(\"clear_typing_assistance_data\")")
         && setup.contains("setOnPreferenceClickListener")
-        && setup.contains("clearTypingAssistanceData()"));
-    assertTrue("SettingsActivity must render status from PersonalizationStore.has_data so the row reflects whether learned words or bigrams exist.",
+        && setup.contains("showClearTypingAssistanceDialog()"));
+    assertFalse("Opening the clear row must not invoke the destructive method before confirmation.",
+        setup.contains("clearTypingAssistanceData()")
+        || setup.contains("PersonalizationStore.clear"));
+    assertTrue("The destructive confirmation must provide a real Cancel path.",
+        dialog.contains("new AlertDialog.Builder(this)")
+        && dialog.contains(".setNegativeButton(android.R.string.cancel, null)"));
+    assertOrdered("Only the AlertDialog positive callback may invoke adaptive-data clearing.",
+        dialog.indexOf("new AlertDialog.Builder(this)"),
+        dialog.indexOf(".setPositiveButton"),
+        dialog.indexOf("clearTypingAssistanceData()"),
+        dialog.indexOf(".show()"));
+    assertFalse("Constructing or cancelling the confirmation dialog must not clear persistence.",
+        dialog.substring(0, dialog.indexOf(".setPositiveButton"))
+          .contains("PersonalizationStore.clear"));
+    assertTrue("SettingsActivity must render status from all PersonalizationStore data, including correction-only persistence.",
         refresh.contains("findPreference(\"typing_assistance_status\")")
         && refresh.contains("PersonalizationStore.has_data(prefs)")
         && refresh.contains("pref_typing_assistance_status_with_learning")
         && refresh.contains("pref_typing_assistance_status_empty"));
-    assertOrdered("Clearing learned data must remove PersonalizationStore data from settings preferences before refreshing the status row and showing completion feedback.",
+    assertOrdered("Confirmed clearing must remove primary PersonalizationStore data before refreshing status and showing completion feedback.",
         clear.indexOf("getPreferenceManager().getSharedPreferences()"),
         clear.indexOf("PersonalizationStore.clear(prefs)"),
         clear.indexOf("refreshTypingAssistanceStatus()"),
         clear.indexOf("pref_clear_typing_assistance_done"));
-    assertTrue("Clearing learned data must also clear device-protected preferences when a distinct Direct Boot store is available.",
+    assertTrue("Confirmed clearing must also clear device-protected preferences when that store is distinct.",
         clear.contains("DirectBootAwarePreferences.get_shared_preferences(this)")
         && clear.contains("PersonalizationStore.clear(protected_prefs)"));
+  }
+
+  @Test
+  public void adaptive_learning_status_and_clear_copy_name_every_deleted_data_type()
+      throws Exception
+  {
+    for (String resource : new String[] {
+          "pref_typing_assistance_status_empty",
+          "pref_typing_assistance_status_with_learning",
+          "pref_clear_typing_assistance_summary",
+          "pref_clear_typing_assistance_done"
+        })
+    {
+      String copy = resourceString(resource)
+        .toLowerCase(java.util.Locale.US);
+      assertTrue(resource + " must name remembered-word data.",
+          copy.contains("remembered words"));
+      assertTrue(resource + " must name next-word memory.",
+          copy.contains("next-word memory"));
+      assertTrue(resource + " must name learned typo-correction weights.",
+          copy.contains("typo-correction weights"));
+    }
   }
 
   @Test
@@ -443,9 +674,10 @@ public class SettingsUiContractsTest
     assertFalse("Suggestions copy must not describe completion.",
         suggestionsCopy.contains("complete")
         || suggestionsCopy.contains("completion"));
-    assertTrue("Autocorrect summary must describe spelling correction behavior.",
+    assertTrue("Autocorrect summary must describe typo correction behavior.",
         autocorrectSummaryCopy.contains("spell")
-        || autocorrectSummaryCopy.contains("mistake"));
+        || autocorrectSummaryCopy.contains("mistake")
+        || autocorrectSummaryCopy.contains("typo"));
   }
 
   @Test
@@ -515,6 +747,35 @@ public class SettingsUiContractsTest
       if (key.equals(preference.getAttribute("android:key")))
         return preference;
     }
+    return null;
+  }
+
+  private static Element directPreferenceCategoryWithTitle(Element root,
+      String title)
+  {
+    NodeList children = root.getChildNodes();
+    for (int i = 0; i < children.getLength(); ++i)
+      if (children.item(i) instanceof Element)
+      {
+        Element child = (Element)children.item(i);
+        if ("PreferenceCategory".equals(child.getTagName())
+            && title.equals(child.getAttribute("android:title")))
+          return child;
+      }
+    fail("Missing direct PreferenceCategory: " + title);
+    return null;
+  }
+
+  private static Element directChildWithKey(Element parent, String key)
+  {
+    NodeList children = parent.getChildNodes();
+    for (int i = 0; i < children.getLength(); ++i)
+      if (children.item(i) instanceof Element)
+      {
+        Element child = (Element)children.item(i);
+        if (key.equals(child.getAttribute("android:key")))
+          return child;
+      }
     return null;
   }
 

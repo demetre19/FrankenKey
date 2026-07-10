@@ -16,7 +16,6 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import juloo.keyboard2.dict.Dictionaries;
 import java.util.List;
-import juloo.keyboard2.suggestions.Suggestions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import android.widget.FrameLayout;
@@ -114,17 +113,20 @@ public class GifSearchKeyTest
   }
 
   @Test
-  public void normal_bottom_row_keeps_voice_on_spacebar_and_gif_on_action_corner()
+  public void normal_bottom_row_keeps_gif_on_spacebar_and_voice_on_done_enter()
       throws Exception
   {
     Element spacebar = keyByRole("res/xml/bottom_row.xml", "space_bar");
+    Element doneEnter = bottomRightKey("res/xml/bottom_row.xml");
 
-    assertEquals("Normal bottom-row spacebar southeast corner must open voice typing.",
-        "voice_typing", spacebar.getAttribute("key4"));
-    assertEquals("Normal bottom-right action key southeast corner must remain GIF.",
-        "gif", bottomRightKey("res/xml/bottom_row.xml").getAttribute("key4"));
+    assertEquals("Normal bottom-row spacebar southeast gesture must open GIF search.",
+        "gif", spacebar.getAttribute("key4"));
+    assertEquals("The far-right Done/Enter key must remain the Enter action rather than becoming a GIF key.",
+        "enter", doneEnter.getAttribute("key0"));
+    assertEquals("Voice typing must remain on the far-right Done/Enter top-left gesture.",
+        "loc voice_typing", doneEnter.getAttribute("key1"));
     KeyValue voice = KeyValue.getSpecialKeyByName("voice_typing");
-    assertNotNull("The spacebar voice corner must resolve to a special key.", voice);
+    assertNotNull("The Done/Enter voice gesture must resolve to a special key.", voice);
     assertEquals(KeyValue.Kind.Event, voice.getKind());
     assertEquals(KeyValue.Event.SWITCH_VOICE_TYPING, voice.getEvent());
     KeyValue legacyChooser = KeyValue.getSpecialKeyByName("voice_typing_chooser");
@@ -185,7 +187,10 @@ public class GifSearchKeyTest
   {
     SharedPreferences prefs = RuntimeEnvironment.getApplication()
       .getSharedPreferences("gif_numeric_switch_test", Context.MODE_PRIVATE);
-    prefs.edit().clear().putBoolean("clean_mode", true).commit();
+    prefs.edit().clear()
+      .putBoolean("clean_mode", true)
+      .putString("number_entry_layout", "number")
+      .commit();
     try
     {
       Resources resources = layoutResources();
@@ -219,6 +224,16 @@ public class GifSearchKeyTest
       assertNotNull("The embedded numeric layout must offer ABC to return to GIF search text typing.",
           embedded.lastLayout.findKeyWithValue(KeyValue.getSpecialKeyByName("switch_text")));
       assertNull("Pressing 123 in the GIF pane must not switch the hidden main keyboard instead.",
+          keyboard.hiddenMainLayout);
+
+      embedded.lastLayout = textLayout;
+      keyboard.hiddenMainLayout = null;
+
+      receiver.handle_event_key(KeyValue.Event.SWITCH_NUMBER_ENTRY);
+
+      assertSame("The dedicated number-entry shortcut must use the configured numeric-only field layout.",
+          numericLayout, embedded.lastLayout);
+      assertNull("The number-entry shortcut in GIF search must not switch the hidden main keyboard.",
           keyboard.hiddenMainLayout);
     }
     finally
@@ -367,13 +382,17 @@ public class GifSearchKeyTest
     }
 
     @Override
+    public EditorInfo getCurrentInputEditorInfo()
+    {
+      return new EditorInfo();
+    }
+
+    @Override
     public Handler getHandler()
     {
       return new Handler();
     }
 
-    @Override
-    public void set_suggestions(Suggestions suggestions) {}
 
   }
 

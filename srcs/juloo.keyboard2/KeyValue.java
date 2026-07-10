@@ -10,7 +10,9 @@ public final class KeyValue implements Comparable<KeyValue>
     CONFIG,
     SWITCH_TEXT,
     SWITCH_NUMERIC,
+    SWITCH_NUMBER_ENTRY,
     SWITCH_CLEAN_SYMBOLS,
+    TOGGLE_CLEAN_MODE,
     SWITCH_EMOJI,
     SWITCH_BACK_EMOJI,
     SWITCH_CLIPBOARD,
@@ -645,6 +647,9 @@ public final class KeyValue implements Comparable<KeyValue>
       case "config": return CONFIG;
       case "switch_text": return eventKey("ABC", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
       case "switch_numeric": return eventKey("123", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "switch_number_entry": return eventKey("No.", Event.SWITCH_NUMBER_ENTRY, FLAG_SMALLER_FONT);
+      case "switch_number": return eventKey("No.", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "toggle_clean_mode": return eventKey("⚙", Event.TOGGLE_CLEAN_MODE, FLAG_SMALLER_FONT);
       case "switch_clean_text": return eventKey("abc", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
       case "switch_clean_numeric": return eventKey("123", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
       case "switch_clean_symbols": return eventKey("=<", Event.SWITCH_CLEAN_SYMBOLS, FLAG_SMALLER_FONT);

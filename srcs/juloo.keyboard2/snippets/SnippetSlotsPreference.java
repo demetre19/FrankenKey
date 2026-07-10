@@ -11,7 +11,6 @@ import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -107,7 +106,7 @@ public class SnippetSlotsPreference extends PreferenceCategory
 
   private void clear_slot(SnippetSlot slot)
   {
-    change_slot(SnippetSlot.of(slot.getIndex(), "", "", false));
+    change_slot(SnippetSlot.of(slot.getIndex(), "", ""));
   }
 
   private void add_page()
@@ -213,24 +212,17 @@ public class SnippetSlotsPreference extends PreferenceCategory
     customLabel.setSingleLine(true);
     content.addView(customLabel, match_wrap());
 
-    final CheckBox iconLabel = new CheckBox(getContext());
-    iconLabel.setText(R.string.pref_snippets_icon_label);
-    iconLabel.setChecked(slot.isIconLabel());
-    content.addView(iconLabel, match_wrap());
-
     TextWatcher watcher = new TextWatcher() {
       public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
       public void onTextChanged(CharSequence s, int start, int before, int count)
       {
-        refresh_preview(preview, slot.getIndex(), phrase, customLabel, iconLabel);
+        refresh_preview(preview, slot.getIndex(), phrase, customLabel);
       }
       public void afterTextChanged(Editable s) {}
     };
     phrase.addTextChangedListener(watcher);
     customLabel.addTextChangedListener(watcher);
-    iconLabel.setOnCheckedChangeListener((_button, _checked) ->
-        refresh_preview(preview, slot.getIndex(), phrase, customLabel, iconLabel));
-    refresh_preview(preview, slot.getIndex(), phrase, customLabel, iconLabel);
+    refresh_preview(preview, slot.getIndex(), phrase, customLabel);
 
     new AlertDialog.Builder(getContext())
       .setTitle(getContext().getString(R.string.pref_snippets_edit_title,
@@ -241,8 +233,7 @@ public class SnippetSlotsPreference extends PreferenceCategory
         {
           change_slot(SnippetSlot.of(slot.getIndex(),
                 phrase.getText().toString(),
-                customLabel.getText().toString(),
-                iconLabel.isChecked()));
+                customLabel.getText().toString()));
         }
       })
       .setNeutralButton(R.string.pref_snippets_clear, new DialogInterface.OnClickListener() {
@@ -256,11 +247,10 @@ public class SnippetSlotsPreference extends PreferenceCategory
   }
 
   private void refresh_preview(TextView preview, int index, EditText phrase,
-      EditText customLabel, CheckBox iconLabel)
+      EditText customLabel)
   {
     SnippetSlot draft = SnippetSlot.of(index,
-        phrase.getText().toString(), customLabel.getText().toString(),
-        iconLabel.isChecked());
+        phrase.getText().toString(), customLabel.getText().toString());
     preview.setText(getContext().getString(R.string.pref_snippets_preview,
           draft.getDisplayLabel()));
   }

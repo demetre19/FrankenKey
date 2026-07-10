@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" style="@style/clipboardCard" android:orientation="horizontal">
-  <TextView android:text="📋" style="@style/clipboardCardIcon"/>
-  <TextView android:id="@+id/clipboard_entry_text" style="@style/clipboardEntry"/>
-  <LinearLayout style="@style/clipboardEntryButtons">
-    <View android:id="@+id/clipboard_entry_paste" style="@style/clipboardEntryButton" android:background="@drawable/ic_clipboard_paste"/>
-    <View android:id="@+id/clipboard_entry_addpin" style="@style/clipboardEntryButton" android:background="@drawable/ic_clipboard_save"/>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" style="@style/clipboardGridCard">
+  <ImageView android:id="@+id/clipboard_entry_image" style="@style/clipboardGridImage" android:visibility="gone" android:contentDescription="@string/clipboard_image_label"/>
+  <TextView android:id="@+id/clipboard_entry_text" style="@style/clipboardGridText"/>
+  <LinearLayout style="@style/clipboardGridButtons">
+    <View android:id="@+id/clipboard_entry_paste" style="@style/clipboardGridButton" android:background="@drawable/ic_clipboard_paste"/>
+    <View android:id="@+id/clipboard_entry_addpin" style="@style/clipboardGridButton" android:background="@drawable/ic_clipboard_save"/>
   </LinearLayout>
-</LinearLayout>
+</FrameLayout>

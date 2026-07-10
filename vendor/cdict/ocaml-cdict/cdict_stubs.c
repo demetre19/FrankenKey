@@ -26,11 +26,12 @@ static value alloc_result(cdict_result_t const *r)
 {
   CAMLparam0();
   CAMLlocal1(v);
-  v = caml_alloc_tuple(4);
+  v = caml_alloc_tuple(5);
   Store_field(v, 0, Val_bool(r->found));
   Store_field(v, 1, Val_int(r->index));
   Store_field(v, 2, caml_copy_nativeint(r->prefix_ptr));
   Store_field(v, 3, Val_int(r->original_index));
+  Store_field(v, 4, caml_copy_nativeint((intnat)r->owner));
   CAMLreturn(v);
 }
 
@@ -41,6 +42,7 @@ static void result_of_value(value v, cdict_result_t *dst)
   dst->index = Int_val(Field(v, 1));
   dst->prefix_ptr = Nativeint_val(Field(v, 2));
   dst->original_index = Int_val(Field(v, 3));
+  dst->owner = (void const*)Nativeint_val(Field(v, 4));
 }
 
 value cdict_of_string_ocaml(value str)
@@ -111,7 +113,9 @@ value cdict_suffixes_ocaml(value dict, value result, value length)
   CAMLparam3(dict, result, length);
   CAMLlocal1(array);
   int dst_len = Int_val(length);
-  int dst[dst_len];
+  if (dst_len < 1 || dst_len > CDICT_SPATIAL_MAX_RESULTS)
+    caml_invalid_argument("suffix count must be in 1..16");
+  int dst[CDICT_SPATIAL_MAX_RESULTS];
   cdict_result_t r;
   result_of_value(result, &r);
   int final_len = cdict_suffixes(CDICT_VAL(dict), &r, dst, dst_len);
@@ -121,17 +125,3 @@ value cdict_suffixes_ocaml(value dict, value result, value length)
   CAMLreturn(array);
 }
 
-value cdict_distance_ocaml(value dict, value word, value dist, value count)
-{
-  CAMLparam4(dict, word, dist, count);
-  CAMLlocal1(array);
-  int dst_len = Int_val(count);
-  int dst[dst_len];
-  int final_len =
-    cdict_distance(CDICT_VAL(dict), String_val(word), caml_string_length(word),
-        Int_val(dist), dst, dst_len);
-  array = caml_alloc_tuple(final_len);
-  for (int i = 0; i < final_len; i++)
-    Store_field(array, i, Val_int(dst[i]));
-  CAMLreturn(array);
-}

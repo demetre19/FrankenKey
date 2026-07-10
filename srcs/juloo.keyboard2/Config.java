@@ -8,14 +8,11 @@ import android.util.TypedValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import juloo.cdict.Cdict;
 import juloo.keyboard2.dict.Dictionaries;
-import juloo.keyboard2.autocorrect.Hunspell;
-import juloo.keyboard2.lang.LanguagePack;
 import juloo.keyboard2.prefs.CustomExtraKeysPreference;
+import juloo.keyboard2.suggestions.Decoder;
 import juloo.keyboard2.prefs.ExtraKeysPreference;
 import juloo.keyboard2.prefs.LayoutsPreference;
-import juloo.keyboard2.suggestions.PersonalizationStore;
 
 public final class Config
 {
@@ -56,6 +53,8 @@ public final class Config
   public long longPressTimeout;
   public long longPressInterval;
   public long deleteWordsInterval;
+  public long pasteRepeatInterval;
+  public long deleteRepeatInterval;
   public boolean keyrepeat_enabled;
   public float margin_bottom;
   public int keyboard_rows_height_pixels;
@@ -79,6 +78,7 @@ public final class Config
   public int circle_sensitivity;
   public boolean clipboard_history_enabled;
   public int clipboard_history_duration;
+  public boolean clipboard_save_screenshots;
   public boolean autocorrect_enabled;
   public boolean physical_keyboard_hide;
 
@@ -90,12 +90,6 @@ public final class Config
   public Map<KeyValue, KeyboardData.PreferredPos> extra_keys_param;
   public Map<KeyValue, KeyboardData.PreferredPos> extra_keys_custom;
   public DeviceLocales device_locales = null;
-  public Cdict current_dictionary = null; // Might be 'null'.
-  public Cdict emoji_dictionary = null; // Might be 'null'.
-  public LanguagePack current_language_pack = null; // Might be 'null'.
-  public Hunspell current_hunspell = null; // Might be 'null'.
-  public PersonalizationStore personalization;
-  public KeyboardData current_layout_geometry = null; // Might be 'null'.
   public IKeyEventHandler handler;
   public boolean orientation_landscape = false;
   public boolean foldable_unfolded = false;
@@ -112,7 +106,6 @@ public final class Config
   {
     _prefs = prefs;
     editor_config = new EditorConfig();
-    personalization = PersonalizationStore.empty();
     // static values
     marginTop = res.getDimension(R.dimen.margin_top);
     keyPadding = res.getDimension(R.dimen.key_padding);
@@ -171,6 +164,8 @@ public final class Config
     longPressTimeout = _prefs.getInt("longpress_timeout", 600);
     longPressInterval = _prefs.getInt("longpress_interval", 65);
     deleteWordsInterval = _prefs.getInt("delete_words_interval", 250);
+    pasteRepeatInterval = _prefs.getInt("paste_repeat_interval", 500);
+    deleteRepeatInterval = _prefs.getInt("delete_repeat_interval", 65);
     keyrepeat_enabled = _prefs.getBoolean("keyrepeat_enabled", true);
     margin_bottom = get_dip_pref_oriented(dm, "margin_bottom", 7, 3);
     key_vertical_margin = get_dip_pref(dm, "key_vertical_margin", 1.5f) / 100;
@@ -209,6 +204,7 @@ public final class Config
     circle_sensitivity = Integer.valueOf(_prefs.getString("circle_sensitivity", "2"));
     clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", true);
     clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "-1"));
+    clipboard_save_screenshots = _prefs.getBoolean("clipboard_save_screenshots", true);
     autocorrect_enabled = _prefs.getBoolean("autocorrect", true);
     physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "show").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
@@ -357,8 +353,9 @@ public final class Config
     public void key_cancel(KeyValue value, Pointers.Modifiers mods);
     public void key_hold(KeyValue value, Pointers.Modifiers mods, int hold_count);
     public void mods_changed(Pointers.Modifiers mods);
-    public void suggestion_entered(String text);
-    public void suggestion_swiped_up(String text);
+    public void suggestion_entered(Decoder.RequestKey key, String text);
+    public void suggestion_swiped_up(Decoder.RequestKey key, String text);
+    public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();
   }

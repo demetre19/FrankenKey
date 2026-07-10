@@ -1,5 +1,6 @@
 package juloo.keyboard2;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,14 +30,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.autocorrect.Hunspell;
 import juloo.keyboard2.dict.Dictionaries;
 import juloo.keyboard2.dict.DictionariesActivity;
+import juloo.keyboard2.lang.LanguagePack;
 import juloo.keyboard2.lang.LanguagePackManager;
 import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
-import juloo.keyboard2.suggestions.Suggestions;
-import juloo.keyboard2.suggestions.PersonalizationStore;
+import juloo.keyboard2.suggestions.Decoder;
+import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
 
 public class Keyboard2 extends InputMethodService
@@ -47,8 +48,15 @@ public class Keyboard2 extends InputMethodService
   private Keyboard2View _keyboard_layout_view;
   private CandidatesView _candidates_view;
   private SnippetRowView _snippet_row_view;
-  private Suggestions _suggestions;
+  private SharedDecoder _decoder;
   private KeyEventHandler _keyeventhandler;
+  private long _decoder_session = 0;
+  private SharedDecoder.ResourceSpec _resource_spec =
+    SharedDecoder.ResourceSpec.empty("none:0");
+  private SharedDecoder.PersonalizationSpec _personalization_spec =
+    SharedDecoder.PersonalizationSpec.empty("locked");
+  private String _resource_name = null;
+  private long _resource_generation = 0;
   /** If not 'null', the layout to use instead of [_config.current_layout]. */
   private KeyboardData _currentSpecialLayout;
   /** Layout associated with the currently selected locale. Not 'null'. */
@@ -59,6 +67,7 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _emojiPane = null;
   private ViewGroup _clipboard_pane = null;
   private ViewGroup _gif_pane = null;
+  private boolean _requestedScreenshotPermission = false;
   private boolean _emojiPaneCommitting = false;
   private Handler _handler;
   private SharedPreferences _prefs;
@@ -89,15 +98,22 @@ public class Keyboard2 extends InputMethodService
     KeyboardData layout = _currentSpecialLayout != null
       ? _currentSpecialLayout
       : LayoutModifier.modify_layout(current_layout_unmodified());
-    _config.current_layout_geometry = layout;
     return layout;
+  }
+
+  /** Install the visible typing layout and the decoder's matching geometry. */
+  private void apply_layout(KeyboardData layout)
+  {
+    _keyboard_layout_view.setKeyboard(layout);
+    if (_decoder_session != 0)
+      _decoder.update_layout(_decoder_session, layout);
   }
 
   void setTextLayout(int l)
   {
     _config.set_current_layout(l);
     _currentSpecialLayout = null;
-    _keyboard_layout_view.setKeyboard(current_layout());
+    apply_layout(current_layout());
   }
 
   void incrTextLayout(int delta)
@@ -109,7 +125,7 @@ public class Keyboard2 extends InputMethodService
   void setSpecialLayout(KeyboardData l)
   {
     _currentSpecialLayout = l;
-    _keyboard_layout_view.setKeyboard(l);
+    apply_layout(l);
   }
 
   KeyboardData loadLayout(int layout_id)
@@ -140,6 +156,21 @@ public class Keyboard2 extends InputMethodService
     return KeyboardData.load(getResources(), R.xml.clean_numeric);
   }
 
+  KeyboardData selectedNumberEntryLayout()
+  {
+    switch (_config.selected_number_layout)
+    {
+      case PIN:
+        return loadPinentry(_config.orientation_landscape ?
+            R.xml.pin_landscape : R.xml.pin);
+      case NUMBER:
+        return _config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout();
+      case NORMAL:
+      default:
+        return null;
+    }
+  }
+
   KeyboardData loadCleanSymbolsLayout()
   {
     return KeyboardData.load(getResources(), R.xml.clean_symbols);
@@ -163,25 +194,34 @@ public class Keyboard2 extends InputMethodService
     Config.initGlobalConfig(_prefs, getResources(),
         _foldStateTracker.isUnfolded(), _dictionaries);
     _config = Config.globalConfig();
-    _config.personalization = create_personalization_store();
     Receiver recvr = this.new Receiver();
-    _suggestions = new Suggestions(recvr, _config);
-    _keyeventhandler = new KeyEventHandler(recvr, _suggestions);
+    _decoder = new SharedDecoder(_handler, recvr);
+    _keyeventhandler = new KeyEventHandler(recvr, _decoder);
     KeyValue.Stateful._handler = recvr;
     _config.handler = _keyeventhandler;
     _prefs.registerOnSharedPreferenceChangeListener(this);
     Logs.set_debug_logs(getResources().getBoolean(R.bool.debug_logs));
     refreshSubtypeImm();
+    refresh_current_dictionary(true);
+    _personalization_spec = create_personalization_spec();
+    _decoder.prewarm(_resource_spec, _personalization_spec);
     create_keyboard_view();
     ClipboardHistoryService.on_startup(this, _keyeventhandler);
-    _foldStateTracker.setChangedCallback(() -> { refresh_config(); });
+    _foldStateTracker.setChangedCallback(() -> {
+        refresh_config();
+        apply_layout(current_layout());
+      });
   }
 
   @Override
-  public void onDestroy() {
-    super.onDestroy();
-
+  public void onDestroy()
+  {
+    _prefs.unregisterOnSharedPreferenceChangeListener(this);
+    _keyeventhandler.finished();
+    _decoder_session = 0;
+    _decoder.close();
     _foldStateTracker.close();
+    super.onDestroy();
   }
 
   private void create_keyboard_view()
@@ -214,48 +254,55 @@ public class Keyboard2 extends InputMethodService
     _localeTextLayout = default_layout;
   }
 
-  private PersonalizationStore create_personalization_store()
+  private SharedDecoder.PersonalizationSpec create_personalization_spec()
   {
     if (VERSION.SDK_INT >= 24)
     {
       UserManager user = (UserManager)getSystemService(USER_SERVICE);
       if (user != null && !user.isUserUnlocked())
-        return PersonalizationStore.empty();
+        return SharedDecoder.PersonalizationSpec.empty("locked");
     }
-    return new PersonalizationStore(
+    return new SharedDecoder.PersonalizationSpec("credential",
         PreferenceManager.getDefaultSharedPreferences(this));
   }
 
-  private void refresh_current_dictionary()
+  private boolean refresh_current_dictionary(boolean force)
   {
-    _config.current_dictionary = null;
-    _config.emoji_dictionary = null;
-    _config.current_language_pack = null;
-    if (_config.current_hunspell != null)
-    {
-      _config.current_hunspell.close();
-      _config.current_hunspell = null;
-    }
-    if (_config.device_locales.default_ == null)
-      return;
-    String current = _config.device_locales.default_.dictionary;
+    String current = _config.device_locales.default_ == null
+      ? null : _config.device_locales.default_.dictionary;
+    if (!force && (current == null ? _resource_name == null
+          : current.equals(_resource_name)))
+      return false;
+
+    _resource_name = current;
+    _resource_generation++;
     if (current == null)
-      return;
-    _config.current_language_pack = _language_pack_manager.find(current);
-    if (_config.current_language_pack != null)
-      try
-      {
-        _config.current_hunspell = Hunspell.load(_config.current_language_pack);
-      }
-      catch (Hunspell.ConstructionError e)
-      {
-        Logs.exn("", e);
-      }
-    Cdict[] dicts = _dictionaries.load(current);
-    if (dicts == null)
-      return;
-    _config.current_dictionary = Dictionaries.find_by_name(dicts, "main");
-    _config.emoji_dictionary = Dictionaries.find_by_name(dicts, "emoji");
+    {
+      _resource_spec = SharedDecoder.ResourceSpec.empty(
+          "none:" + _resource_generation);
+      return true;
+    }
+
+    LanguagePack languagePack = _language_pack_manager.find(current);
+    Cdict[] dictionaries = _dictionaries.load(current);
+    Cdict main = dictionaries == null ? null
+      : Dictionaries.find_by_name(dictionaries, "main");
+    Cdict emoji = dictionaries == null ? null
+      : Dictionaries.find_by_name(dictionaries, "emoji");
+    _resource_spec = new SharedDecoder.ResourceSpec(
+        current + ":" + _resource_generation, dictionaries, main, emoji,
+        languagePack);
+    return true;
+  }
+
+  private Decoder.DecoderConfig decoder_config()
+  {
+    return new Decoder.DecoderConfig(
+        _config.suggestions_enabled,
+        _config.autocorrect_enabled,
+        _config.editor_config.should_show_candidates_view
+          && !_config.split_layout,
+        _config.editor_config.should_use_typing_assistance);
   }
 
   private void refresh_candidates_view()
@@ -265,7 +312,9 @@ public class Keyboard2 extends InputMethodService
       && _config.editor_config.should_show_candidates_view
       && !_config.split_layout;
     if (should_show)
-      _candidates_view.refresh_config(_config);
+      _candidates_view.refresh_config(_config,
+          _resource_spec.mainDictionary != null);
+    _candidates_view.set_decoder_state(_decoder.current_presentation());
     _candidates_view.setVisibility(should_show ? View.VISIBLE : View.GONE);
   }
 
@@ -275,8 +324,12 @@ public class Keyboard2 extends InputMethodService
   {
     int prev_theme = _config.theme;
     _config.refresh(getResources(), _foldStateTracker.isUnfolded(), _dictionaries);
-    _config.personalization = create_personalization_store();
-    refresh_current_dictionary();
+    boolean resources_changed = refresh_current_dictionary(false);
+    SharedDecoder.PersonalizationSpec personalization =
+      create_personalization_spec();
+    boolean personalization_changed = !_personalization_spec.key.equals(
+        personalization.key);
+    _personalization_spec = personalization;
     // Refreshing the theme config requires re-creating the views
     if (prev_theme != _config.theme)
     {
@@ -295,20 +348,26 @@ public class Keyboard2 extends InputMethodService
         _config.editor_config.should_show_snippet_row,
         slot -> _keyeventhandler.snippet_entered(slot.getPhrase()));
     refresh_candidates_view();
+    if (_decoder_session != 0)
+    {
+      _decoder.update_config(_decoder_session, decoder_config());
+      if (resources_changed)
+        _decoder.update_resources(_decoder_session, _resource_spec);
+      if (personalization_changed)
+        _decoder.update_personalization(_decoder_session,
+            _personalization_spec);
+    }
+    else if (resources_changed || personalization_changed)
+      _decoder.prewarm(_resource_spec, _personalization_spec);
   }
 
   private KeyboardData refresh_special_layout()
   {
     if (_config.editor_config.numeric_layout)
     {
-      switch (_config.selected_number_layout)
-      {
-        case PIN:
-          return loadPinentry(_config.orientation_landscape ?
-              R.xml.pin_landscape : R.xml.pin);
-        case NUMBER:
-          return _config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout();
-      }
+      KeyboardData numberEntryLayout = selectedNumberEntryLayout();
+      if (numberEntryLayout != null)
+        return numberEntryLayout;
     }
     return null;
   }
@@ -316,11 +375,17 @@ public class Keyboard2 extends InputMethodService
   @Override
   public void onStartInputView(EditorInfo info, boolean restarting)
   {
+    _keyeventhandler.finished();
+    _decoder_session = 0;
     _config.editor_config.refresh(info, getResources());
     refresh_config();
     _currentSpecialLayout = refresh_special_layout();
-    _keyboard_layout_view.setKeyboard(current_layout());
-    _keyeventhandler.started(_config);
+    KeyboardData layout = current_layout();
+    apply_layout(layout);
+    _decoder_session = _decoder.start_session(decoder_config(),
+        _resource_spec, layout, _personalization_spec);
+    _keyeventhandler.started(_config, _decoder_session);
+    refresh_candidates_view();
     setInputView(_keyboard_container_view);
     Logs.debug_startup_input_view(info, _config);
   }
@@ -433,10 +498,15 @@ public class Keyboard2 extends InputMethodService
   public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype)
   {
     refreshSubtypeImm();
-    refresh_current_dictionary();
+    if (refresh_current_dictionary(true))
+    {
+      if (_decoder_session != 0)
+        _decoder.update_resources(_decoder_session, _resource_spec);
+      else
+        _decoder.prewarm(_resource_spec, _personalization_spec);
+    }
     refresh_candidates_view();
-    _keyboard_layout_view.setKeyboard(current_layout());
-    _keyeventhandler.ime_subtype_changed();
+    apply_layout(current_layout());
   }
 
   @Override
@@ -448,18 +518,34 @@ public class Keyboard2 extends InputMethodService
       _keyboard_layout_view.set_selection_state(newSelStart != newSelEnd);
   }
 
+  private void finish_input_session()
+  {
+    _keyeventhandler.finished();
+    _decoder_session = 0;
+    if (_candidates_view != null)
+      _candidates_view.set_decoder_state(_decoder.current_presentation());
+  }
+
   @Override
   public void onFinishInputView(boolean finishingInput)
   {
     super.onFinishInputView(finishingInput);
+    finish_input_session();
     _keyboard_layout_view.reset();
+  }
+
+  @Override
+  public void onFinishInput()
+  {
+    super.onFinishInput();
+    finish_input_session();
   }
 
   @Override
   public void onSharedPreferenceChanged(SharedPreferences _prefs, String _key)
   {
     refresh_config();
-    _keyboard_layout_view.setKeyboard(current_layout());
+    apply_layout(current_layout());
   }
 
   @Override
@@ -498,9 +584,27 @@ public class Keyboard2 extends InputMethodService
     startActivity(intent);
   }
 
+  void request_screenshot_permission_if_needed()
+  {
+    if (!Config.globalConfig().clipboard_save_screenshots)
+      return;
+    if (ClipboardHistoryService.hasScreenshotReadPermission(this))
+    {
+      ClipboardHistoryService.refresh_screenshot_observer();
+      return;
+    }
+    if (_requestedScreenshotPermission)
+      return;
+    _requestedScreenshotPermission = true;
+    Intent intent = new Intent(this, SettingsActivity.class);
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    intent.putExtra(SettingsActivity.EXTRA_REQUEST_SCREENSHOT_PERMISSION, true);
+    startActivity(intent);
+  }
+
   /** Not static */
   public class Receiver implements KeyEventHandler.IReceiver,
-         KeyValue.Stateful.Symbol_provider
+         KeyValue.Stateful.Symbol_provider, SharedDecoder.Callback
   {
     public void handle_event_key(KeyValue.Event ev)
     {
@@ -517,7 +621,7 @@ public class Keyboard2 extends InputMethodService
             break;
           }
           _currentSpecialLayout = null;
-          _keyboard_layout_view.setKeyboard(current_layout());
+          apply_layout(current_layout());
           break;
 
         case SWITCH_NUMERIC:
@@ -530,6 +634,32 @@ public class Keyboard2 extends InputMethodService
           setSpecialLayout(numericLayout);
           break;
 
+        case SWITCH_NUMBER_ENTRY:
+          KeyboardData numberEntryLayout = selectedNumberEntryLayout();
+          if (numberEntryLayout == null)
+            numberEntryLayout = _config.clean_mode ? loadCleanNumericLayout() : loadNumericLayout();
+          if (isGifPaneOpen())
+          {
+            ((GifSearchView)_gif_pane).setTypingKeyboard(numberEntryLayout);
+            break;
+          }
+          setSpecialLayout(numberEntryLayout);
+          break;
+
+        case TOGGLE_CLEAN_MODE:
+          boolean cleanMode = !_config.clean_mode;
+          _prefs.edit().putBoolean("clean_mode", cleanMode).commit();
+          try
+          {
+            PreferenceManager.getDefaultSharedPreferences(Keyboard2.this)
+              .edit().putBoolean("clean_mode", cleanMode).apply();
+          }
+          catch (Exception _e) {}
+          refresh_config();
+          _currentSpecialLayout = null;
+          apply_layout(current_layout());
+          break;
+
         case SWITCH_EMOJI:
           if (_emojiPane == null)
             _emojiPane = (ViewGroup)inflate_view(R.layout.emoji_pane);
@@ -539,6 +669,7 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case SWITCH_CLIPBOARD:
+          request_screenshot_permission_if_needed();
           if (_clipboard_pane == null)
             _clipboard_pane = (ViewGroup)inflate_view(R.layout.clipboard_pane);
           setInputView(_clipboard_pane);
@@ -645,6 +776,26 @@ public class Keyboard2 extends InputMethodService
       _keyboard_layout_view.set_selection_state(selection_is_ongoing);
     }
 
+    public void confirm_unlearn_word(String word, final Runnable positive_action)
+    {
+      if (word == null || positive_action == null
+          || _keyboard_container_view == null)
+        return;
+      IBinder token = _keyboard_container_view.getWindowToken();
+      if (token == null)
+        return;
+      AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(
+            Keyboard2.this, _config.theme))
+        .setTitle(getString(R.string.adaptive_unlearn_confirm_title, word))
+        .setMessage(R.string.adaptive_unlearn_confirm_message)
+        .setNegativeButton(android.R.string.cancel, null)
+        .setPositiveButton(R.string.adaptive_unlearn_confirm_positive,
+            (_dialog, _which) -> positive_action.run())
+        .create();
+      dialog.setCanceledOnTouchOutside(true);
+      Utils.show_dialog_on_ime(dialog, token);
+    }
+
     public InputConnection getCurrentInputConnection()
     {
       if (isEmojiPaneOpen() && !_emojiPaneCommitting)
@@ -654,24 +805,40 @@ public class Keyboard2 extends InputMethodService
       return Keyboard2.this.getCurrentInputConnection();
     }
 
+    public EditorInfo getCurrentInputEditorInfo()
+    {
+      return Keyboard2.this.getCurrentInputEditorInfo();
+    }
+
     public Handler getHandler()
     {
       return _handler;
     }
 
-    public void set_suggestions(Suggestions suggestions)
+    public void decoder_state_changed(SharedDecoder.Presentation state)
     {
-      _candidates_view.set_candidates(suggestions);
+      if (_candidates_view != null)
+        _candidates_view.set_decoder_state(state);
     }
 
     public String provide_stateful_key_symbol(KeyValue.Stateful q)
     {
+      SharedDecoder.Presentation presentation = _decoder.current_presentation();
+      if (presentation.state != SharedDecoder.Presentation.State.READY
+          || presentation.result == null)
+        return "";
+      Decoder.Candidate[] words = presentation.result.words();
       switch (q)
       {
-        case Complete_first: return _suggestions.suggestions[0];
-        case Complete_second: return _suggestions.suggestions[1];
-        case Complete_third: return _suggestions.suggestions[2];
-        case Complete_emoji: return _suggestions.emoji_suggestion;
+        case Complete_first:
+          return words.length > 0 ? words[0].surface : "";
+        case Complete_second:
+          return words.length > 1 ? words[1].surface : "";
+        case Complete_third:
+          return words.length > 2 ? words[2].surface : "";
+        case Complete_emoji:
+          return presentation.result.emoji == null
+            ? "" : presentation.result.emoji;
       }
       return "";
     }

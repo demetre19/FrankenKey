@@ -8,7 +8,8 @@ the query and contain transitions to the next nodes.
 Transitions are made of:
 - a pointer, a relative signed offset to the next node,
 - a number, used to compute the word index and
-- a final flag, that signals that we reached the end of a word.
+- a final flag, that signals that we reached the end of a word. In a canonical
+  UTF-8 dictionary it can only occur after a completed Unicode scalar.
 
 All integers are in big-endian order.
 */
@@ -80,15 +81,22 @@ static inline int sized_int_array_unsigned(uint8_t const *ar, format_t fmt, int 
 static inline int sized_int_array_signed(uint8_t const *ar, format_t fmt, int i)
 {
   if (fmt == FORMAT_8_BITS)
-    return (int)(int8_t)ar[i];
+    return (ar[i] & 0x80) ? (int)ar[i] - 0x100 : ar[i];
   ar = ar + FORMAT_ARRAY_INDEX(fmt, i);
   uint8_t ar0 = ar[0];
   if (fmt == FORMAT_4_BITS)
-    return (i & 1) ? ((int8_t)ar0) >> 4 :
-      (ar0 & 0x8) ? (int)ar0 | ~0xF : ar0 & 0x7;
+  {
+    unsigned int value = (i & 1) ? ar0 >> 4 : ar0 & 0xF;
+    return (value & 0x8) ? (int)value - 0x10 : (int)value;
+  }
   if (fmt == FORMAT_16_BITS)
-    return ((int)((int8_t)ar0 << 8) | ar[1]);
-  return (int)(((int8_t)ar0 << 16) | (ar[1] << 8) | ar[2]);
+  {
+    unsigned int value = ((unsigned int)ar0 << 8) | ar[1];
+    return (value & 0x8000) ? (int)value - 0x10000 : (int)value;
+  }
+  unsigned int value = ((unsigned int)ar0 << 16) |
+    ((unsigned int)ar[1] << 8) | ar[2];
+  return (value & 0x800000) ? (int)value - 0x1000000 : (int)value;
 }
 
 /** BRANCHES nodes (size = 2 bytes + (1 + X + Y) * n_branches)
@@ -145,8 +153,9 @@ typedef struct
 /** PREFIX nodes (size = 4 bytes + prefix length)
 
 A node consuming a prefix of the query, which can have a size from 1 to
-PREFIX_MAX_LENGTH.
-The node contains a single transition that have the 'number' field equal to 0.
+PREFIX_MAX_LENGTH. Spatial traversal may stop inside the byte run, but only a
+completed UTF-8 scalar is a scoring or final-word boundary.
+The node contains a single transition that has the 'number' field equal to 0.
 The length cannot be 0.
 */
 
@@ -158,8 +167,8 @@ typedef struct
 } prefix_t;
 
 #define PREFIX_LENGTH_OFFSET NODE_KIND_BIT_LENGTH
-#define PREFIX_MAX_LENGTH ((int)(uint8_t)(0xFFu << PREFIX_LENGTH_OFFSET))
-
+/** Seven header bits encode the prefix length: 1..127. */
+#define PREFIX_MAX_LENGTH ((int)(UINT8_MAX >> PREFIX_LENGTH_OFFSET))
 /** Length of the [prefix] array. */
 #define PREFIX_LENGTH(P) ((P)->header >> PREFIX_LENGTH_OFFSET)
 

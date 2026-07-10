@@ -27,19 +27,19 @@ public class SnippetStoreTest
       throws Exception
   {
     List<SnippetSlot> slots = Arrays.asList(
-        SnippetSlot.of(0, "alpha", "", false),
-        SnippetSlot.of(1, "", "", false),
-        SnippetSlot.of(2, "bravo", "B", true),
-        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face", false));
+        SnippetSlot.of(0, "alpha", ""),
+        SnippetSlot.of(1, "", ""),
+        SnippetSlot.of(2, "bravo", "B"),
+        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face"));
 
     List<SnippetSlot> loaded = SnippetStore.loadSlots(
         SnippetStore.saveSlots(slots), 0);
 
     assertSlots(loaded,
-        SnippetSlot.of(0, "alpha", "", false),
-        SnippetSlot.of(1, "", "", false),
-        SnippetSlot.of(2, "bravo", "B", true),
-        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face", false));
+        SnippetSlot.of(0, "alpha", ""),
+        SnippetSlot.of(1, "", ""),
+        SnippetSlot.of(2, "bravo", "B"),
+        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face"));
   }
 
   @Test
@@ -48,12 +48,12 @@ public class SnippetStoreTest
   {
     String phrase = "Hello there 😀 — normal text";
     String encoded = SnippetStore.saveSlots(Arrays.asList(
-        SnippetSlot.of(0, phrase, "👋", true)));
+        SnippetSlot.of(0, phrase, "👋")));
 
     assertFalse("Snippet storage must not URL-encode spaces as %20.",
         encoded.contains("%20"));
     assertSlots(SnippetStore.loadSlots(encoded, 1),
-        SnippetSlot.of(0, phrase, "👋", true));
+        SnippetSlot.of(0, phrase, "👋"));
   }
 
   @Test
@@ -63,6 +63,16 @@ public class SnippetStoreTest
     assertEmptySlots(SnippetStore.loadSlots("not json", 4), 4);
     assertEmptySlots(SnippetStore.loadSlots("{\"slots\": true}", 4), 4);
     assertEmptySlots(SnippetStore.loadSlots("[1, 2, 3]", 4), 4);
+  }
+
+  @Test
+  public void load_accepts_legacy_icon_label_field_without_losing_snippet_data()
+  {
+    String legacy = "[{\"index\":0,\"phrase\":\"kept phrase\","
+      + "\"label\":\"★\",\"iconLabel\":true}]";
+
+    assertSlots(SnippetStore.loadSlots(legacy, 1),
+        SnippetSlot.of(0, "kept phrase", "★"));
   }
 
   @Test
@@ -76,15 +86,15 @@ public class SnippetStoreTest
   public void replace_slot_updates_matching_index_without_reordering()
   {
     List<SnippetSlot> replaced = SnippetStore.replaceSlot(Arrays.asList(
-        SnippetSlot.of(0, "zero", "", false),
-        SnippetSlot.of(1, "one", "old", false),
-        SnippetSlot.of(2, "two", "", true)),
-        SnippetSlot.of(1, "updated", "new", true));
+        SnippetSlot.of(0, "zero", ""),
+        SnippetSlot.of(1, "one", "old"),
+        SnippetSlot.of(2, "two", "")),
+        SnippetSlot.of(1, "updated", "new"));
 
     assertSlots(replaced,
-        SnippetSlot.of(0, "zero", "", false),
-        SnippetSlot.of(1, "updated", "new", true),
-        SnippetSlot.of(2, "two", "", true));
+        SnippetSlot.of(0, "zero", ""),
+        SnippetSlot.of(1, "updated", "new"),
+        SnippetSlot.of(2, "two", ""));
   }
 
   @Test
@@ -92,14 +102,14 @@ public class SnippetStoreTest
   {
     List<SnippetSlot> loaded = SnippetStore.loadSlots(SnippetStore.saveSlots(
         Arrays.asList(
-          SnippetSlot.of(0, "", "", false),
-          SnippetSlot.of(1, "filled", "", false),
-          SnippetSlot.of(2, "", "", false))), 3);
+          SnippetSlot.of(0, "", ""),
+          SnippetSlot.of(1, "filled", ""),
+          SnippetSlot.of(2, "", ""))), 3);
 
     assertSlots(loaded,
-        SnippetSlot.of(0, "", "", false),
-        SnippetSlot.of(1, "filled", "", false),
-        SnippetSlot.of(2, "", "", false));
+        SnippetSlot.of(0, "", ""),
+        SnippetSlot.of(1, "filled", ""),
+        SnippetSlot.of(2, "", ""));
   }
 
   @Test
@@ -107,16 +117,18 @@ public class SnippetStoreTest
       throws Exception
   {
     String encoded = SnippetStore.saveSlots(Arrays.asList(
-        SnippetSlot.of(0, "short text", "label", true),
-        SnippetSlot.of(1, "plain phrase", "", false)));
+        SnippetSlot.of(0, "short text", "label"),
+        SnippetSlot.of(1, "plain phrase", "")));
 
     JSONArray slots = new JSONArray(encoded);
     Set<String> allowedSlotFields = new HashSet<>(Arrays.asList(
-        "index", "phrase", "label", "customLabel", "iconLabel"));
+        "index", "phrase", "label", "customLabel"));
     Set<String> disallowedRemoteFields = new HashSet<>(Arrays.asList(
         "url", "uri", "endpoint", "host", "server", "network", "sync",
         "cloud", "account", "user", "userid", "user_id", "email",
         "token", "auth", "analytics", "permission", "file", "path"));
+    assertFalse("New snippet data must not retain the removed no-op icon-label field.",
+        encoded.contains("\"iconLabel\""));
 
     for (int i = 0; i < slots.length(); ++i)
     {
@@ -324,15 +336,13 @@ public class SnippetStoreTest
     assertEquals(message + " phrase", expected.getPhrase(), actual.getPhrase());
     assertEquals(message + " custom label", expected.getCustomLabel(),
         actual.getCustomLabel());
-    assertEquals(message + " icon label", expected.isIconLabel(),
-        actual.isIconLabel());
   }
 
   private static void assertEmptySlots(List<SnippetSlot> slots, int expectedCount)
   {
     assertEquals("slot count", expectedCount, slots.size());
     for (int i = 0; i < expectedCount; ++i)
-      assertSlot("slot offset " + i, SnippetSlot.of(i, "", "", false),
+      assertSlot("slot offset " + i, SnippetSlot.of(i, "", ""),
           slots.get(i));
   }
 }

@@ -66,6 +66,16 @@ public final class SnippetStore
     catch (IOException _e) {}
   }
 
+  public static String exportSlots(Context context)
+  {
+    return saveSlots(loadSlots(context));
+  }
+
+  public static void importSlots(Context context, String encoded)
+  {
+    saveSlots(context, loadSlots(encoded, DEFAULT_SLOT_COUNT));
+  }
+
   private static List<SnippetSlot> loadDirectBootSlots(Context context)
   {
     try
@@ -145,9 +155,7 @@ public final class SnippetStore
         if (index < 0)
           continue;
         slots = replaceSlot(slots, SnippetSlot.of(index,
-              obj.optString("phrase", ""),
-              obj.optString("label", ""),
-              obj.optBoolean("iconLabel", false)));
+              obj.optString("phrase", ""), obj.optString("label", "")));
       }
       return withMinimumSlots(slots, minimumSlots);
     }
@@ -170,7 +178,6 @@ public final class SnippetStore
         obj.put("index", slot.getIndex());
         obj.put("phrase", slot.getPhrase());
         obj.put("label", slot.getCustomLabel());
-        obj.put("iconLabel", slot.isIconLabel());
         arr.put(obj);
       }
       catch (JSONException _e) {}
@@ -279,6 +286,6 @@ public final class SnippetStore
 
   private static SnippetSlot emptySlot(int index)
   {
-    return SnippetSlot.of(index, "", "", false);
+    return SnippetSlot.of(index, "", "");
   }
 }

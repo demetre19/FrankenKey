@@ -65,8 +65,32 @@ public class CleanModeFleksyLayoutTest
     assertEquals("Clean text bottom row must be Fleksy's 123/Fn/space/punctuation/enter row with no Ctrl or arrow cluster.",
         Arrays.asList("switch_numeric", "fn", "space", ".", "enter"),
         primaryNames(directKeys(rows.get(3))));
+    assertEquals("Fleksy 123 top-left swipe must retain the numeric-page action without rendering a secondary legend.",
+        "hide switch_number", directKeys(rows.get(3)).get(0).getAttribute("key1"));
+    assertEquals("Fleksy p top-right swipe must retain the clean-mode toggle without rendering a cog legend.",
+        "hide toggle_clean_mode", key(rows.get(0), "p").getAttribute("key2"));
+    assertEquals("Q top-left swipe must retain Settings access without rendering a secondary legend.",
+        "hide config", key(rows.get(0), "q").getAttribute("key1"));
+    assertEquals("D right swipe must retain Escape without rendering a secondary legend.",
+        "hide esc", key(rows.get(1), "d").getAttribute("key4"));
+    assertEquals("F right swipe must retain input-method selection without rendering a secondary legend.",
+        "hide change_method", key(rows.get(1), "f").getAttribute("key4"));
+    assertEquals("G right swipe must retain Compose without rendering a secondary legend.",
+        "hide compose", key(rows.get(1), "g").getAttribute("key4"));
+    assertEquals("H right swipe must retain Alt without rendering a secondary legend.",
+        "hide alt", key(rows.get(1), "h").getAttribute("key4"));
+    assertEquals("J right swipe must retain Meta without rendering a secondary legend.",
+        "hide meta", key(rows.get(1), "j").getAttribute("key4"));
+    assertEquals("Backspace left swipe must retain word deletion without rendering a secondary legend.",
+        "hide delete_word", key(rows.get(2), "backspace").getAttribute("key3"));
+    assertEquals("The hidden number-page gesture must open the normal numeric page from the Fleksy 123 key.",
+        KeyValue.Event.SWITCH_NUMERIC,
+        KeyValue.getSpecialKeyByName("switch_number").getEvent());
+    assertEquals("The hidden clean-mode gesture must still toggle between Fleksy and FrankenKey layouts.",
+        KeyValue.Event.TOGGLE_CLEAN_MODE,
+        KeyValue.getSpecialKeyByName("toggle_clean_mode").getEvent());
 
-    assertCleanLetterKey(rows.get(0), "q");
+    assertCleanLetterKey(rows.get(0), "q", "key1");
     assertCleanLetterKey(rows.get(0), "w");
     assertCleanLetterKey(rows.get(0), "e");
     assertCleanLetterKey(rows.get(0), "r");
@@ -75,14 +99,14 @@ public class CleanModeFleksyLayoutTest
     assertCleanLetterKey(rows.get(0), "u");
     assertCleanLetterKey(rows.get(0), "i");
     assertCleanLetterKey(rows.get(0), "o");
-    assertCleanLetterKey(rows.get(0), "p");
+    assertCleanLetterKey(rows.get(0), "p", "key2");
     assertCleanLetterKey(rows.get(1), "a", "key5");
     assertCleanLetterKey(rows.get(1), "s", "key5");
-    assertCleanLetterKey(rows.get(1), "d", "key5");
-    assertCleanLetterKey(rows.get(1), "f", "key5");
-    assertCleanLetterKey(rows.get(1), "g", "key5");
-    assertCleanLetterKey(rows.get(1), "h", "key5");
-    assertCleanLetterKey(rows.get(1), "j", "key5");
+    assertCleanLetterKey(rows.get(1), "d", "key4", "key5");
+    assertCleanLetterKey(rows.get(1), "f", "key4", "key5");
+    assertCleanLetterKey(rows.get(1), "g", "key4", "key5");
+    assertCleanLetterKey(rows.get(1), "h", "key4", "key5");
+    assertCleanLetterKey(rows.get(1), "j", "key4", "key5");
     assertCleanLetterKey(rows.get(1), "k", "key5");
     assertCleanLetterKey(rows.get(1), "l", "key5");
     assertCleanLetterKey(rows.get(2), "z", "key1");
@@ -125,6 +149,39 @@ public class CleanModeFleksyLayoutTest
     assertEquals("FrankenKey numeric switch must render with Fleksy's compact 123 label.",
         "123", switchNumeric.getString());
   }
+
+  @Test
+  public void frankenkey_bottom_row_exposes_number_entry_and_layout_toggle_shortcuts()
+      throws Exception
+  {
+    Element row = parseLayout(BOTTOM_ROW).getDocumentElement();
+    Element ctrl = key(row, "ctrl");
+    Element space = key(row, "space");
+
+    assertEquals("FrankenKey Ctrl/123 key must offer the configured numeric-only field layout on upward swipe while preserving 123 on lower-right.",
+        "switch_number_entry", ctrl.getAttribute("key7"));
+    assertEquals("FrankenKey spacebar top-right swipe must toggle back to the Fleksy layout.",
+        "toggle_clean_mode", space.getAttribute("key2"));
+    assertNotNull("switch_number_entry must resolve to a visible event key.",
+        KeyValue.getSpecialKeyByName("switch_number_entry"));
+    assertNotNull("toggle_clean_mode must resolve to a visible event key.",
+        KeyValue.getSpecialKeyByName("toggle_clean_mode"));
+  }
+
+  @Test
+  public void numeric_only_field_layout_setting_is_easy_to_find_under_layout()
+      throws Exception
+  {
+    Document settings = parseLayout("res/xml/settings.xml");
+    Element layout = preferenceCategory(settings, "@string/pref_category_layout");
+    Element behavior = preferenceCategory(settings, "@string/pref_category_behavior");
+
+    assertEquals("number_entry_layout",
+        directElementChildren(layout).get(2).getAttributeNS(ANDROID_NS, "key"));
+    assertEquals("The numeric-only field layout setting must not stay buried under Behavior.",
+        -1, indexOfDirectPreference(behavior, "number_entry_layout"));
+  }
+
 
   @Test
   public void clean_text_bottom_row_matches_frankenkey_voice_emoji_and_gif_corner_positions()
@@ -468,6 +525,25 @@ public class CleanModeFleksyLayoutTest
       if (tagName.equals(elements.get(i).getTagName()))
         return i;
     fail("Missing direct child " + tagName);
+    return -1;
+  }
+
+  private static Element preferenceCategory(Document settings, String title)
+  {
+    List<Element> categories = directElementChildren(settings.getDocumentElement());
+    for (Element category : categories)
+      if (title.equals(category.getAttributeNS(ANDROID_NS, "title")))
+        return category;
+    fail("Missing preference category " + title);
+    return null;
+  }
+
+  private static int indexOfDirectPreference(Element parent, String key)
+  {
+    List<Element> children = directElementChildren(parent);
+    for (int i = 0; i < children.size(); i++)
+      if (key.equals(children.get(i).getAttributeNS(ANDROID_NS, "key")))
+        return i;
     return -1;
   }
 
