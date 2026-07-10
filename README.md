@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="logo.png" alt="FrankenKey logo" width="170" />
+  <img width="512" height="512" alt="FrankenKey-logo" src="https://github.com/user-attachments/assets/bdc854bf-3b8f-4ef7-9745-e02358b72008" />
+
 </p>
 
 <h1 align="center">FrankenKey</h1>
