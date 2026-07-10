@@ -80,6 +80,7 @@ Default section order:
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md.
 - Every FrankenKey build intended for user testing must replace `/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/FrankenKey-installable-release.apk` with the verified final APK; proving a separate build output without updating that exact path is incomplete delivery.
 - FrankenKey updates are published as GitHub Releases tagged `v<versionName>-vc<versionCode>` with `FrankenKey-installable-release.apk` attached and the user-visible changelog in the release body. Keep download, package/version, hash, and signer metadata consistent with the exact delivery APK.
+- Each Android release must also carry `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` in the source branch with user-facing content consistent with the GitHub Release body.
 
 ## Project Context
 
@@ -88,6 +89,10 @@ When the user requests a durable behavior change, record it here or in the relev
 - `../FrankenKey-autobuild-autocorrect/AGENTS.md` owns the Android source checkout DOX tree; read it before touching source, resources, tests, build files, or store metadata there.
 - Keep `FrankenKey-installable-release.apk` as the current installable build path used for testing and delivery.
 - When adding a new release APK backup, update `apk-backups/manifest.json` in the same change.
+
+## Verification
+
+- Live updater baseline: installed `2.0.26`/code `77` detected `2.0.27`/code `78`, displayed `Test update`, authenticated the public APK, and completed an in-place Android update. Repeat this device path when updater or release-delivery contracts change.
 
 ## Child DOX Index
 
