@@ -21,6 +21,8 @@ public class SettingsUiContractsTest
     Element root = settingsRoot();
     NodeList checkboxes = root.getElementsByTagName("CheckBoxPreference");
     String[][] contracts = new String[][] {
+      { "update_automatic_checks", "pref_update_automatic_checks_summary",
+        "Check GitHub Releases at most once a day. Updates are never downloaded or installed without asking." },
       { "autocorrect", "pref_autocorrect_summary",
         "Correct likely typos when you finish a word." },
       { "suggestions", "pref_suggestions_summary",
@@ -44,7 +46,7 @@ public class SettingsUiContractsTest
         "Save image clips and recent screenshots to history." }
     };
 
-    assertEquals("Settings must keep exactly the ten approved static checkbox rows.",
+    assertEquals("Settings must keep exactly the eleven approved static checkbox rows.",
         contracts.length, checkboxes.getLength());
     for (String[] contract : contracts)
     {

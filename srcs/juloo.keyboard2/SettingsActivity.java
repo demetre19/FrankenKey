@@ -35,6 +35,7 @@ public class SettingsActivity extends PreferenceActivity
     "frankenkey-settings-backup.json";
   static final String EXTRA_REQUEST_SCREENSHOT_PERMISSION =
     "juloo.keyboard2.REQUEST_SCREENSHOT_PERMISSION";
+  private ReleaseUpdater _releaseUpdater;
   @Override
   public void onCreate(Bundle savedInstanceState)
   {
@@ -49,6 +50,7 @@ public class SettingsActivity extends PreferenceActivity
     }
     catch (Exception _e) { fallbackEncrypted(); return; }
     addPreferencesFromResource(R.xml.settings);
+    setupUpdaterPreferences();
     Preference dashboard = findPreference("giphy_api_dashboard");
     if (dashboard != null)
       dashboard.setIntent(new Intent(Intent.ACTION_VIEW,
@@ -72,8 +74,28 @@ public class SettingsActivity extends PreferenceActivity
   protected void onResume()
   {
     super.onResume();
+    if (_releaseUpdater != null)
+      _releaseUpdater.onResume();
+    refreshUpdateStatus();
     getListView().post(() -> styleSettingsList());
   }
+
+  @Override
+  protected void onPause()
+  {
+    if (_releaseUpdater != null)
+      _releaseUpdater.onPause();
+    super.onPause();
+  }
+
+  @Override
+  protected void onDestroy()
+  {
+    if (_releaseUpdater != null)
+      _releaseUpdater.destroy();
+    super.onDestroy();
+  }
+
 
   void fallbackEncrypted()
   {
@@ -123,6 +145,33 @@ public class SettingsActivity extends PreferenceActivity
     }
     if (requestCode == REQUEST_IMPORT_SETTINGS_BACKUP)
       importSettingsBackup(data.getData());
+  }
+
+  private void setupUpdaterPreferences()
+  {
+    SharedPreferences preferences =
+      getPreferenceManager().getSharedPreferences();
+    _releaseUpdater = new ReleaseUpdater(this, preferences,
+        () -> refreshUpdateStatus());
+    Preference current = findPreference("update_current_version");
+    if (current != null)
+      current.setSummary(getString(R.string.pref_update_current_version_summary,
+            BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
+    refreshUpdateStatus();
+    _releaseUpdater.checkAutomatically();
+    Preference manual = findPreference("check_for_updates");
+    if (manual != null)
+      manual.setOnPreferenceClickListener(preference -> {
+        _releaseUpdater.checkManually();
+        return true;
+      });
+  }
+
+  private void refreshUpdateStatus()
+  {
+    Preference status = findPreference("update_status");
+    if (status != null && _releaseUpdater != null)
+      status.setSummary(_releaseUpdater.statusSummary());
   }
 
   private void setupBackupPreferences()

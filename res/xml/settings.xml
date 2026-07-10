@@ -6,6 +6,13 @@
     <Preference android:key="typing_assistance_status" android:title="@string/pref_typing_assistance_status_title" android:selectable="false"/>
     <Preference android:key="clear_typing_assistance_data" android:title="@string/pref_clear_typing_assistance_title" android:summary="@string/pref_clear_typing_assistance_summary"/>
   </PreferenceCategory>
+  <PreferenceCategory android:title="@string/pref_category_updates">
+    <CheckBoxPreference android:key="update_automatic_checks" android:title="@string/pref_update_automatic_checks_title" android:summary="@string/pref_update_automatic_checks_summary" android:defaultValue="true"/>
+    <ListPreference android:key="update_delivery" android:title="@string/pref_update_delivery_title" android:summary="%s" android:defaultValue="in_app" android:entries="@array/pref_update_delivery_entries" android:entryValues="@array/pref_update_delivery_values"/>
+    <Preference android:key="update_current_version" android:title="@string/pref_update_current_version_title" android:selectable="false"/>
+    <Preference android:key="update_status" android:title="@string/pref_update_status_title" android:selectable="false"/>
+    <Preference android:key="check_for_updates" android:title="@string/pref_check_for_updates_title" android:summary="@string/pref_check_for_updates_summary"/>
+  </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_backup_restore">
     <Preference android:key="export_settings_backup" android:title="@string/pref_export_settings_title" android:summary="@string/pref_export_settings_summary"/>
     <Preference android:key="import_settings_backup" android:title="@string/pref_import_settings_title" android:summary="@string/pref_import_settings_summary"/>

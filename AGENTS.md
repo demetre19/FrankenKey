@@ -18,6 +18,8 @@
 - Current installable APK must be copied to `../FrankenKey/FrankenKey-installable-release.apk` before asking the user to test a build.
 - When producing release APKs, update `../FrankenKey/apk-backups/manifest.json` and archive a backup when the release should be preserved.
 - Android source/resource changes must preserve both clean Fleksy-style everyday mode and optional dense FrankenKey mode unless the user explicitly narrows scope.
+- In-app update checks use the public GitHub latest-release API only from unlocked launcher/settings activities. Releases use tag `v<versionName>-vc<versionCode>`, attach `FrankenKey-installable-release.apk`, and place user-visible changelog text in the release body.
+- Automatic update checks default on, but download and installer handoff always require explicit user acceptance. Update APKs must match the package, a higher version code, the declared SHA-256/size, and the persistent release signer before Android receives them.
 - Treat clipboard/snippets/personalization data as user data; preserve privacy and avoid unnecessary persistence.
 - Suggestion display and autocorrect share one bounded asynchronous decoder; never perform dictionary/Hunspell decoding or wait for results on the IME main thread.
 

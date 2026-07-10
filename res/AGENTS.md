@@ -21,6 +21,7 @@
 - Launcher welcome UI uses a dedicated dark theme; its Spacebar tutorial must mirror the live clean-layout clipboard, mode, emoji, and GIF corner labels and directions.
 - Every user-visible Settings checkbox must have a concise, accurate summary; generated extra-key checkboxes use the shared extra-key summary.
 - Adaptive-learning clear and individual word-forget copy must accurately describe the destructive scope and remain wired to explicit platform confirmation dialogs.
+- Settings exposes default-on automatic update checks, in-app or GitHub delivery, current update status, and a manual check. Update notices must show release changelog text and require explicit acceptance or rejection.
 
 ## Work Guidance
 

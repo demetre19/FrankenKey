@@ -2,8 +2,10 @@ package juloo.keyboard2;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build.VERSION;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -20,6 +22,7 @@ public class LauncherActivity extends Activity
   /** Text is replaced when receiving key events. */
   TextView _tryhere_text;
   EditText _tryhere_area;
+  private ReleaseUpdater _releaseUpdater;
 
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -31,6 +34,37 @@ public class LauncherActivity extends Activity
     if (VERSION.SDK_INT >= 28)
       _tryhere_area.addOnUnhandledKeyEventListener(
           this.new Tryhere_OnUnhandledKeyEventListener());
+    if (ReleaseUpdater.isUserUnlocked(this))
+    {
+      SharedPreferences preferences =
+        PreferenceManager.getDefaultSharedPreferences(this);
+      _releaseUpdater = new ReleaseUpdater(this, preferences, null);
+      _releaseUpdater.checkAutomatically();
+    }
+  }
+
+  @Override
+  protected void onResume()
+  {
+    super.onResume();
+    if (_releaseUpdater != null)
+      _releaseUpdater.onResume();
+  }
+
+  @Override
+  protected void onPause()
+  {
+    if (_releaseUpdater != null)
+      _releaseUpdater.onPause();
+    super.onPause();
+  }
+
+  @Override
+  protected void onDestroy()
+  {
+    if (_releaseUpdater != null)
+      _releaseUpdater.destroy();
+    super.onDestroy();
   }
 
   @Override

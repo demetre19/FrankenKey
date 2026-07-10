@@ -4,6 +4,7 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
@@ -17,6 +18,10 @@
     </service>
 
     <provider android:name="juloo.keyboard2.GifContentProvider" android:authorities="${applicationId}.gifcontent" android:exported="false" android:grantUriPermissions="true"/>
+    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
+      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_file_paths"/>
+    </provider>
+
 
     <activity android:name="juloo.keyboard2.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>

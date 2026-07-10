@@ -21,6 +21,7 @@
 - Adaptive learning records editor-verified typo corrections through prepare-before-mutation commit tokens whenever Suggestions or Autocorrect is active; repeated exact pairs may cover up to two textual edits. Immediate verified correction undo rejects the changed target; if that change followed a manual correction, undo preserves the prior manual evidence instead of losing both.
 - Destructive learning controls require explicit confirmation: Settings clear-all uses an activity dialog, and live candidate/keyboard word-unlearn actions use an IME-attached dialog whose delayed positive action revalidates the exact request.
 - `SettingsActivity` uses the dark platform Material theme by default independently of the keyboard theme preference, which remains system-controlled unless explicitly changed.
+- Release update checks run only from unlocked launcher/settings activities, never the IME. They default to daily checks, show the GitHub Release changelog, require explicit accept/reject, authenticate the APK before installer handoff, and never clear or migrate keyboard user data.
 
 ## Work Guidance
 
