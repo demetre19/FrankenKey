@@ -22,7 +22,7 @@
 
 FrankenKey keeps its adaptive typing data on your device. Remembered words, word pairs, typo corrections, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
-Optional online GIF search is the one network-backed feature. If you add your own free GIPHY API key, GIF searches and the key are sent to GIPHY's API. Without a key, FrankenKey still shows its built-in GIF collection.
+Optional online GIF search is the one network-backed feature. If you add your own free GIPHY API key, GIF searches and the key are sent to GIPHY's API.
 
 ## Adaptive learning
 
