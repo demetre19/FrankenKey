@@ -161,13 +161,19 @@ Current release:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.25
-Version code: 76
-SHA-256: 7c10826fbd02caded816b973c715963a915b671fdc189d0fd76e7714fd7d2d3e
+Version: 2.0.27
+Version code: 78
+SHA-256: bc35b648e6a580120fa8bfc9d430afed383a95e96c97ac1fad44714918369d85
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
 Android may require one uninstall before installation if an older FrankenKey APK was signed with a different key. Builds signed with the current FrankenKey release key update normally after that.
+
+## Updates
+
+Automatic update checks are enabled by default and run at most once every 24 hours when FrankenKey's app or Settings screen is opened. When a newer signed release is available, FrankenKey shows its changelog. Tap **Download and install** to continue, or **Not now** to suppress that release during automatic checks; a manual check can show it again.
+
+Settings offers verified in-app APK delivery or manual download from the official GitHub Release page. Android always asks for confirmation before installation. Because updates keep the same package and signing certificate, keyboard settings, snippets, learned words, clipboard preferences, and other app data remain in place.
 
 ## Credits
 

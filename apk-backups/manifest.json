@@ -47,6 +47,30 @@
       "sha256": "e63da23f0ff9810b2684ded7bb811892cc8840d2de7b61a18ce1e248cd839fda",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release with subtle snippets/suggestions divider and smaller long suggestion labels."
+    },
+    {
+      "label": "consent-based-github-updater-release",
+      "file": "FrankenKey-2.0.26-vc77-new-release-key-9fdb3633-bd183263.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "77",
+      "versionName": "2.0.26",
+      "size": 4195783,
+      "sha256": "bd1832635ec74dfb6255396c9ce97aa83f803a5fc2586f581253dd7a14364c4c",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release adding default-on update checks, changelog consent, verified in-app APK delivery, manual GitHub delivery, and in-place installation that preserves user data."
+    },
+    {
+      "label": "test-update-release",
+      "file": "FrankenKey-2.0.27-vc78-new-release-key-9fdb3633-bc35b648.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "78",
+      "versionName": "2.0.27",
+      "size": 4195801,
+      "sha256": "bc35b648e6a580120fa8bfc9d430afed383a95e96c97ac1fad44714918369d85",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Test update for verifying FrankenKey update announcements and authenticated in-app delivery."
     }
   ]
 }
