@@ -14,6 +14,7 @@
 - Do not overwrite store icon/screenshots unless the user explicitly requests store asset changes.
 - Keep metadata truthful to the shipped APK behavior and version.
 - Preserve upstream/Fleksy attribution language where present.
+- Every release adds `metadata/android/en-US/changelogs/<versionCode>.txt`; its user-visible message must agree with the corresponding GitHub Release body.
 
 ## Work Guidance
 

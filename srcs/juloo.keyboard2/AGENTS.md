@@ -33,6 +33,7 @@
 
 - Run focused tests for touched behavior under `test/juloo.keyboard2`.
 - For release-visible behavior, build release and copy the APK to the delivery root before asking for device testing.
+- Updater logic changes must satisfy the source-root version-to-version device verification.
 
 ## Child DOX Index
 

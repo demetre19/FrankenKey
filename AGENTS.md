@@ -19,6 +19,7 @@
 - When producing release APKs, update `../FrankenKey/apk-backups/manifest.json` and archive a backup when the release should be preserved.
 - Android source/resource changes must preserve both clean Fleksy-style everyday mode and optional dense FrankenKey mode unless the user explicitly narrows scope.
 - In-app update checks use the public GitHub latest-release API only from unlocked launcher/settings activities. Releases use tag `v<versionName>-vc<versionCode>`, attach `FrankenKey-installable-release.apk`, and place user-visible changelog text in the release body.
+- Every published version must include `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`; keep its user-facing message consistent with the GitHub Release body.
 - Automatic update checks default on, but download and installer handoff always require explicit user acceptance. Update APKs must match the package, a higher version code, the declared SHA-256/size, and the persistent release signer before Android receives them.
 - Treat clipboard/snippets/personalization data as user data; preserve privacy and avoid unnecessary persistence.
 - Suggestion display and autocorrect share one bounded asynchronous decoder; never perform dictionary/Hunspell decoding or wait for results on the IME main thread.
@@ -38,6 +39,7 @@
 - Release build: load release signing env without echoing secrets, then run `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleRelease`.
 - Verify release APK with Android build tools when relevant: package/version via `aapt2`, signature via `apksigner`, and SHA-256 via `shasum -a 256`.
 - Local emulator AVD is `FrankenKeyParity`; emulator binary is `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk/emulator/emulator`.
+- When updater or release-delivery contracts change, repeat an installed-old-version to published-new-version device test covering announcement, authenticated download, Android installer handoff, and successful in-place update.
 
 ## Child DOX Index
 
