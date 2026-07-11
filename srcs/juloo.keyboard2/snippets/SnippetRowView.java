@@ -16,6 +16,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.List;
+import juloo.keyboard2.Theme;
 import juloo.keyboard2.R;
 
 public class SnippetRowView extends HorizontalScrollView
@@ -28,15 +29,17 @@ public class SnippetRowView extends HorizontalScrollView
   private static class CenteredIconTextView extends TextView
   {
     private Drawable _icon;
+    private int _icon_color;
 
     CenteredIconTextView(Context context)
     {
       super(context);
     }
 
-    void setIcon(Drawable icon)
+    void setIcon(Drawable icon, int color)
     {
       _icon = icon;
+      _icon_color = color;
       invalidate();
     }
 
@@ -110,10 +113,16 @@ public class SnippetRowView extends HorizontalScrollView
     return page;
   }
 
+  static int foregroundColor(Context context)
+  {
+    Theme theme = new Theme(context, null);
+    return theme.labelColorForKeyboardBackground();
+  }
+
   private TextView makeSlotView(final SnippetSlot slot,
       final OnSnippetClickListener listener)
   {
-    int color = themeColor(R.attr.colorLabel);
+    int color = foregroundColor(getContext());
     SnippetIcons.Icon icon = SnippetIcons.find(slot.getIconId());
     TextView v = icon == null ? new TextView(getContext()) :
       new CenteredIconTextView(getContext());
@@ -124,7 +133,7 @@ public class SnippetRowView extends HorizontalScrollView
       Drawable drawable = SnippetIcons.drawable(getContext(), icon.id, color);
       if (drawable != null)
         drawable.setBounds(0, 0, dp(15), dp(15));
-      ((CenteredIconTextView)v).setIcon(drawable);
+      ((CenteredIconTextView)v).setIcon(drawable, color);
       v.setContentDescription(icon.title + " snippet");
     }
     v.setGravity(Gravity.CENTER);

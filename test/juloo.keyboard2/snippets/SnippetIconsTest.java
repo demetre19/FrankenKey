@@ -1,13 +1,16 @@
 package juloo.keyboard2.snippets;
 
 import android.content.Context;
+import android.view.ContextThemeWrapper;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
 import android.widget.TextView;
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.util.HashSet;
+import juloo.keyboard2.R;
 import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,6 +49,62 @@ public class SnippetIconsTest
     assertNull(SnippetIcons.find(""));
     assertNull(SnippetIcons.find("not-an-icon"));
     assertNull(SnippetIcons.drawable(context, "not-an-icon", 0xffeeeeee));
+  }
+
+  @Test
+  public void icon_and_text_foregrounds_follow_light_and_dark_keyboard_themes()
+      throws Exception
+  {
+    assertThemeForeground(R.style.Light, 0xff202328);
+    assertThemeForeground(R.style.Dark, 0xffffffff);
+  }
+
+  private void assertThemeForeground(int themeStyle, int expectedColor)
+      throws Exception
+  {
+    Context context = new ContextThemeWrapper(
+        RuntimeEnvironment.getApplication(), themeStyle);
+    assertEquals("Foreground selection must contrast with the keyboard background.",
+        expectedColor, SnippetRowView.foregroundColor(context));
+    SnippetRowView row = new SnippetRowView(context, null);
+    Method makeSlotView = SnippetRowView.class.getDeclaredMethod(
+        "makeSlotView", SnippetSlot.class,
+        SnippetRowView.OnSnippetClickListener.class);
+    makeSlotView.setAccessible(true);
+
+    TextView textView = (TextView)makeSlotView.invoke(row,
+        SnippetSlot.of(0, "hello", "Hi"), null);
+    assertEquals("Snippet text must use the theme-aware foreground.",
+        expectedColor, textView.getCurrentTextColor());
+
+    TextView iconView = (TextView)makeSlotView.invoke(row,
+        SnippetSlot.of(1, "secret", "Key", "key"), null);
+    Field iconField = iconView.getClass().getDeclaredField("_icon");
+    iconField.setAccessible(true);
+    Drawable icon = (Drawable)iconField.get(iconView);
+    assertNotNull("Snippet icons must retain theme-tinted artwork.",
+        icon);
+    Field iconColorField = iconView.getClass().getDeclaredField("_icon_color");
+    iconColorField.setAccessible(true);
+    assertEquals("Snippet icons and text must use the identical theme foreground.",
+        expectedColor, iconColorField.getInt(iconView));
+
+    int iconSize = Math.round(15
+        * context.getResources().getDisplayMetrics().density);
+    ColorDrawable renderedIcon = new ColorDrawable(expectedColor);
+    renderedIcon.setBounds(0, 0, iconSize, iconSize);
+    iconField.set(iconView, renderedIcon);
+    int viewWidth = Math.round(100
+        * context.getResources().getDisplayMetrics().density);
+    int viewHeight = Math.round(34
+        * context.getResources().getDisplayMetrics().density);
+    iconView.layout(0, 0, viewWidth, viewHeight);
+    Bitmap renderedButton = Bitmap.createBitmap(
+        viewWidth, viewHeight, Bitmap.Config.ARGB_8888);
+    iconView.draw(new Canvas(renderedButton));
+    assertEquals("The centered icon renderer must paint the resolved theme foreground.",
+        expectedColor & 0x00ffffff,
+        renderedButton.getPixel(viewWidth / 2, viewHeight / 2) & 0x00ffffff);
   }
 
   @Test

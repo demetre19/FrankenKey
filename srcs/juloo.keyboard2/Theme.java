@@ -130,6 +130,11 @@ public class Theme
     keyBorderColorBottom = keyBorderColorBottom_;
   }
 
+  public int labelColorForKeyboardBackground()
+  {
+    return ensureTextContrast(labelColor, colorKeyboard);
+  }
+
   private static boolean isCustomTheme(Context context)
   {
     try
