@@ -143,6 +143,18 @@
       "sha256": "0fa0550483e8e067a3c71e028b98f4deb2bf2b012a2fb933099aec0146a5a6dd",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release applying contrast-safe theme foregrounds to snippet icons and text."
+    },
+    {
+      "label": "binary-snippet-foreground-release",
+      "file": "FrankenKey-2.0.34-vc85-new-release-key-9fdb3633-3652e0f5.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "85",
+      "versionName": "2.0.34",
+      "size": 4242300,
+      "sha256": "3652e0f539aef22047652ef023333138efe464bbf26f23b782e7e42d18bf6a04",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release forcing pure white snippet foregrounds on dark themes and pure black on light themes."
     }
   ]
 }
