@@ -119,6 +119,18 @@
       "sha256": "5dcb123487d54d677d9e9246bb2a1f79cad1060519e31f1fa2cdc6cf69f0d04e",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Correction release centering compact snippet icons within their keyboard buttons."
+    },
+    {
+      "label": "two-axis-centered-snippet-icons-release",
+      "file": "FrankenKey-2.0.32-vc83-new-release-key-9fdb3633-5af017f5.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "83",
+      "versionName": "2.0.32",
+      "size": 4244222,
+      "sha256": "5af017f5d1055b857a1478bb8a514a5e08a6d1fb65e0c9f9910cc5fc5f4f3c6d",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Correction release geometrically centering compact snippet icons on both axes."
     }
   ]
 }
