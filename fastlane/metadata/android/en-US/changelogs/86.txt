@@ -1,0 +1,1 @@
+Restored the original visible 20dp snippet icons and standard Android rendering used before the sizing changes.

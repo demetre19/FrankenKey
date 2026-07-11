@@ -2,7 +2,6 @@ package juloo.keyboard2.snippets;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.drawable.Drawable;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -16,7 +15,6 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.List;
-import juloo.keyboard2.Theme;
 import juloo.keyboard2.R;
 
 public class SnippetRowView extends HorizontalScrollView
@@ -24,40 +22,6 @@ public class SnippetRowView extends HorizontalScrollView
   public interface OnSnippetClickListener
   {
     void onSnippetClicked(SnippetSlot slot);
-  }
-
-  private static class CenteredIconTextView extends TextView
-  {
-    private Drawable _icon;
-    private int _icon_color;
-
-    CenteredIconTextView(Context context)
-    {
-      super(context);
-    }
-
-    void setIcon(Drawable icon, int color)
-    {
-      _icon = icon;
-      _icon_color = color;
-      invalidate();
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas)
-    {
-      super.onDraw(canvas);
-      if (_icon == null)
-        return;
-      int width = _icon.getBounds().width();
-      int height = _icon.getBounds().height();
-      int contentWidth = getWidth() - getPaddingLeft() - getPaddingRight();
-      int contentHeight = getHeight() - getPaddingTop() - getPaddingBottom();
-      int left = getPaddingLeft() + (contentWidth - width) / 2;
-      int top = getPaddingTop() + (contentHeight - height) / 2;
-      _icon.setBounds(left, top, left + width, top + height);
-      _icon.draw(canvas);
-    }
   }
 
   private LinearLayout _pages;
@@ -113,27 +77,21 @@ public class SnippetRowView extends HorizontalScrollView
     return page;
   }
 
-  static int foregroundColor(Context context)
-  {
-    Theme theme = new Theme(context, null);
-    return theme.labelColorForKeyboardBackground();
-  }
-
   private TextView makeSlotView(final SnippetSlot slot,
       final OnSnippetClickListener listener)
   {
-    int color = foregroundColor(getContext());
+    TextView v = new TextView(getContext());
+    int color = themeColor(R.attr.colorLabel);
     SnippetIcons.Icon icon = SnippetIcons.find(slot.getIconId());
-    TextView v = icon == null ? new TextView(getContext()) :
-      new CenteredIconTextView(getContext());
     if (icon == null)
       v.setText(slot.getDisplayLabel());
     else
     {
-      Drawable drawable = SnippetIcons.drawable(getContext(), icon.id, color);
+      android.graphics.drawable.Drawable drawable =
+        SnippetIcons.drawable(getContext(), icon.id, color);
       if (drawable != null)
-        drawable.setBounds(0, 0, dp(15), dp(15));
-      ((CenteredIconTextView)v).setIcon(drawable, color);
+        drawable.setBounds(0, 0, dp(20), dp(20));
+      v.setCompoundDrawables(null, null, drawable, null);
       v.setContentDescription(icon.title + " snippet");
     }
     v.setGravity(Gravity.CENTER);
