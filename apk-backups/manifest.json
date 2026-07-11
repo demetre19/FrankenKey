@@ -107,6 +107,18 @@
       "sha256": "78cc8f47d9f893722d65c57c8cb4a2519f01f6c75217fc3a33a8f279bca75728",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release reducing snippet-row icons by 25 percent for a cleaner keyboard balance."
+    },
+    {
+      "label": "centered-snippet-icons-release",
+      "file": "FrankenKey-2.0.31-vc82-new-release-key-9fdb3633-5dcb1234.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "82",
+      "versionName": "2.0.31",
+      "size": 4244078,
+      "sha256": "5dcb123487d54d677d9e9246bb2a1f79cad1060519e31f1fa2cdc6cf69f0d04e",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Correction release centering compact snippet icons within their keyboard buttons."
     }
   ]
 }
