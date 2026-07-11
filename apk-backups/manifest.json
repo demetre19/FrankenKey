@@ -155,6 +155,18 @@
       "sha256": "3652e0f539aef22047652ef023333138efe464bbf26f23b782e7e42d18bf6a04",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release forcing pure white snippet foregrounds on dark themes and pure black on light themes."
+    },
+    {
+      "label": "restore-original-snippet-icons-release",
+      "file": "FrankenKey-2.0.35-vc86-new-release-key-9fdb3633-754587ad.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "86",
+      "versionName": "2.0.35",
+      "size": 4244074,
+      "sha256": "754587adebe32f7b505bb8a66703b16fc93d8cc41489ce06db2340e75916d49f",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Rollback release restoring the original visible 20dp snippet icons and standard Android rendering."
     }
   ]
 }
