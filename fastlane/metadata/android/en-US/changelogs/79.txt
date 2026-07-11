@@ -1,0 +1,1 @@
+Fixed Backspace, suggestions, and autocorrect in Termux.

@@ -70,6 +70,53 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void termux_autocorrect_and_candidate_tap_use_raw_del_events()
+      throws Exception
+  {
+    for (boolean candidateTap : new boolean[] { false, true })
+    {
+      Harness harness = harness("teh", true, true, 0, true);
+      installCorrection(harness.decoder, harness.key, "teh", "the");
+      harness.receiver.input.rejectSurroundingReplacement = true;
+
+      if (candidateTap)
+        harness.handler.suggestion_entered(harness.key, "the");
+      else
+        harness.handler.handle_space_bar();
+
+      String origin = candidateTap ? "candidate tap" : "autocorrect";
+      assertEquals("Termux " + origin
+          + " must replace the tracked typo and commit its separator.",
+          "the ", harness.receiver.input.text.toString());
+      assertEquals("Termux " + origin
+          + " must not use unsupported surrounding-text deletion.",
+          0, harness.receiver.input.deleteSurroundingCalls);
+      assertEquals("Replacing teh through " + origin
+          + " must send one raw DEL key-down per code point.",
+          3, harness.receiver.input.delKeyDowns);
+      assertEquals("The corrected word and separator must be one text commit.",
+          1, harness.receiver.input.commitTextCalls);
+      assertCountsRemain(harness.prefs, "the", "teh", 0, 0);
+    }
+  }
+
+  @Test
+  public void termux_pending_undo_requires_unchanged_local_word_state()
+      throws Exception
+  {
+    Harness harness = harness("teh", true, true, 0, true);
+    installCorrection(harness.decoder, harness.key, "teh", "the");
+    harness.handler.handle_space_bar();
+    harness.receiver.input.commitText("x", 1);
+    harness.handler._typedword.typed("x");
+
+    harness.handler.handle_backspace();
+
+    assertEquals("A later Termux Backspace must delete only the current character, not blindly rewrite an older correction.",
+        "the ", harness.receiver.input.text.toString());
+  }
+
+  @Test
   public void changed_candidate_and_autocorrect_undo_before_learning()
       throws Exception
   {
@@ -473,6 +520,13 @@ public class KeyEventHandlerAutocorrectContractTest
       boolean safeEditor, int capsMode)
       throws Exception
   {
+    return harness(text, autocorrect, safeEditor, capsMode, false);
+  }
+
+  private Harness harness(String text, boolean autocorrect,
+      boolean safeEditor, int capsMode, boolean termux)
+      throws Exception
+  {
     Context context = RuntimeEnvironment.getApplication();
     SharedPreferences prefs = context.getSharedPreferences(
         "key_event_autocorrect_" + _decoders.size(), Context.MODE_PRIVATE);
@@ -491,12 +545,18 @@ public class KeyEventHandlerAutocorrectContractTest
     config.editor_config.caps_initially_updated = false;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
+    config.editor_config.should_use_personalization = !termux;
     config.editor_config.initial_text_before_cursor = text;
     config.editor_config.initial_text_after_cursor = "";
     config.editor_config.initial_sel_start = text.length();
     config.editor_config.initial_sel_end = text.length();
 
     RecordingReceiver receiver = new RecordingReceiver(text);
+    if (termux)
+    {
+      receiver.editorInfo.inputType = android.text.InputType.TYPE_NULL;
+      receiver.editorInfo.packageName = "com.termux";
+    }
     SharedDecoder decoder = new SharedDecoder(receiver.handler,
         new SharedDecoder.Callback()
         {
@@ -738,6 +798,7 @@ public class KeyEventHandlerAutocorrectContractTest
   {
     final Handler handler = new Handler(Looper.getMainLooper());
     final RecordingInputConnection input;
+    final EditorInfo editorInfo = new EditorInfo();
     boolean shiftState;
     int shiftStateCalls;
 
@@ -765,7 +826,7 @@ public class KeyEventHandlerAutocorrectContractTest
     }
     @Override public EditorInfo getCurrentInputEditorInfo()
     {
-      return new EditorInfo();
+      return editorInfo;
     }
     @Override public Handler getHandler()
     {
@@ -784,6 +845,7 @@ public class KeyEventHandlerAutocorrectContractTest
     int commitTextCalls;
     int deleteSurroundingCalls;
     boolean rejectSurroundingReplacement;
+    int delKeyDowns;
 
     RecordingInputConnection(String initial)
     {
@@ -875,7 +937,20 @@ public class KeyEventHandlerAutocorrectContractTest
     @Override public boolean beginBatchEdit() { return true; }
     @Override public boolean endBatchEdit() { return true; }
     @Override public boolean finishComposingText() { return true; }
-    @Override public boolean sendKeyEvent(KeyEvent event) { return true; }
+    @Override public boolean sendKeyEvent(KeyEvent event)
+    {
+      if (event.getKeyCode() == KeyEvent.KEYCODE_DEL
+          && event.getAction() == KeyEvent.ACTION_DOWN && cursor > 0)
+      {
+        delKeyDowns++;
+        int start = text.offsetByCodePoints(cursor, -1);
+        text.delete(start, cursor);
+        cursor = start;
+        selectionStart = cursor;
+        selectionEnd = cursor;
+      }
+      return true;
+    }
   }
 
   private static final class TestResources extends Resources

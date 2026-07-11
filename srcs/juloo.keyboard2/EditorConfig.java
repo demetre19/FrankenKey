@@ -46,6 +46,8 @@ public final class EditorConfig
   public boolean should_show_snippet_row;
   /** Whether autocorrect and local learning are safe for this editor. */
   public boolean should_use_typing_assistance;
+  /** Whether suggestions may read or write persistent learned words. */
+  public boolean should_use_personalization = true;
 
   public EditorConfig() {}
 
@@ -111,8 +113,11 @@ public final class EditorConfig
     }
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
-    should_show_candidates_view = CandidatesView.should_show(info);
+    boolean termux_raw_editor = is_termux_raw_editor(info);
+    should_show_candidates_view =
+      CandidatesView.should_show(info) || termux_raw_editor;
     should_use_typing_assistance = should_use_typing_assistance(info);
+    should_use_personalization = !termux_raw_editor;
     should_show_snippet_row = should_show_snippet_row(info);
   }
 
@@ -121,8 +126,17 @@ public final class EditorConfig
     return true;
   }
 
+  static boolean is_termux_raw_editor(EditorInfo info)
+  {
+    return info != null
+      && (info.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_NULL
+      && "com.termux".equals(info.packageName);
+  }
+
   static boolean should_use_typing_assistance(EditorInfo info)
   {
+    if (is_termux_raw_editor(info))
+      return true;
     int class_ = info.inputType & InputType.TYPE_MASK_CLASS;
     int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
     int flags = info.inputType & InputType.TYPE_MASK_FLAGS;

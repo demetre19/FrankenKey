@@ -26,8 +26,8 @@ android {
     applicationId = "dev.frankenkey.keyboard"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 78
-    versionName = "2.0.27"
+    versionCode = 79
+    versionName = "2.0.28"
   }
 
   sourceSets {

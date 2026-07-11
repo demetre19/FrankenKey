@@ -295,6 +295,13 @@ public class Keyboard2 extends InputMethodService
     return true;
   }
 
+  private SharedDecoder.PersonalizationSpec session_personalization_spec()
+  {
+    if (_config.editor_config.should_use_personalization)
+      return _personalization_spec;
+    return SharedDecoder.PersonalizationSpec.empty("termux-stateless");
+  }
+
   private Decoder.DecoderConfig decoder_config()
   {
     return new Decoder.DecoderConfig(
@@ -383,7 +390,7 @@ public class Keyboard2 extends InputMethodService
     KeyboardData layout = current_layout();
     apply_layout(layout);
     _decoder_session = _decoder.start_session(decoder_config(),
-        _resource_spec, layout, _personalization_spec);
+        _resource_spec, layout, session_personalization_spec());
     _keyeventhandler.started(_config, _decoder_session);
     refresh_candidates_view();
     setInputView(_keyboard_container_view);

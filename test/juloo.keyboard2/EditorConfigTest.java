@@ -72,6 +72,31 @@ public class EditorConfigTest
   }
 
   @Test
+  public void termux_raw_editor_allows_stateless_typing_assistance()
+  {
+    EditorInfo termux = editor(InputType.TYPE_NULL);
+    termux.packageName = "com.termux";
+    EditorConfig config = new EditorConfig();
+
+    config.refresh(termux, null);
+
+    assertTrue("Termux TYPE_NULL editors must show dictionary suggestions.",
+        config.should_show_candidates_view);
+    assertTrue("Termux TYPE_NULL editors must allow suggestions and autocorrect.",
+        config.should_use_typing_assistance);
+    assertFalse("Terminal input can contain hidden passwords, so it must not use persistent personalization.",
+        config.should_use_personalization);
+    assertTrue("The official Termux package must use raw key events for Backspace.",
+        EditorConfig.is_termux_raw_editor(termux));
+
+    EditorInfo otherRawEditor = editor(InputType.TYPE_NULL);
+    assertFalse("Unknown TYPE_NULL editors must keep the conservative typing-assistance policy.",
+        EditorConfig.should_use_typing_assistance(otherRawEditor));
+    assertFalse("Raw-event behavior must be scoped to the official Termux package.",
+        EditorConfig.is_termux_raw_editor(otherRawEditor));
+  }
+
+  @Test
   public void caps_mode_keeps_all_editor_requested_capitalisation_modes()
   {
     EditorConfig config = new EditorConfig();

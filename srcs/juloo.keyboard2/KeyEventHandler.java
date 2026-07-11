@@ -70,11 +70,12 @@ public final class KeyEventHandler
     final String separator;
     final InputConnection connection;
     final int cursor;
+    final long typedWordRevision;
 
     PendingReplacement(SharedDecoder.CommitToken token_,
         SharedDecoder.CommitToken undo_token_, String source_,
         String target_, String separator_, InputConnection connection_,
-        int cursor_)
+        int cursor_, long typed_word_revision_)
     {
       token = token_;
       undoToken = undo_token_;
@@ -83,6 +84,7 @@ public final class KeyEventHandler
       separator = separator_;
       connection = connection_;
       cursor = cursor_;
+      typedWordRevision = typed_word_revision_;
     }
   }
 
@@ -308,11 +310,15 @@ public final class KeyEventHandler
     String corrected_from = plausible_correction_source(snapshot.word, text);
     if (corrected_from == null)
       corrected_from = manual_correction_source(snapshot, text);
-    SharedDecoder.CommitToken token = _decoder.prepare_commit(
-        _decoder_session, key, text, corrected_from);
-    SharedDecoder.CommitToken undo_token = text.equals(snapshot.word)
-      ? null : _decoder.prepare_commit(_decoder_session, key, snapshot.word,
-          manual_correction_source(snapshot, snapshot.word));
+    boolean should_record = should_use_personalization();
+    SharedDecoder.CommitToken token = should_record
+      ? _decoder.prepare_commit(_decoder_session, key, text, corrected_from)
+      : null;
+    SharedDecoder.CommitToken undo_token =
+      should_record && !text.equals(snapshot.word)
+      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word,
+          manual_correction_source(snapshot, snapshot.word))
+      : null;
     if (!commit_correction(text, " "))
       return;
     if (text.equals(snapshot.word))
@@ -358,7 +364,7 @@ public final class KeyEventHandler
 
   boolean can_change_learning(String word)
   {
-    return _config != null
+    return should_use_personalization()
       && _decoder_session != 0
       && _config.suggestions_enabled
       && _config.editor_config.should_use_typing_assistance
@@ -408,13 +414,22 @@ public final class KeyEventHandler
       _decoder.learn_word(_decoder_session, word);
   }
 
+  private boolean should_use_personalization()
+  {
+    return _config != null
+      && _config.editor_config.should_use_personalization;
+  }
+
   boolean commit_correction(String text, String separator)
   {
     String old = _typedword.get();
     int cur_rel = _typedword.cursor_relative();
     int remove_before = old.length() + cur_rel;
     String replacement = text + separator;
-    if (!replace_surrounding_text(remove_before, -cur_rel, replacement))
+    boolean replaced = uses_termux_raw_events()
+      ? cur_rel == 0 && replace_termux_suffix(old, replacement)
+      : replace_surrounding_text(remove_before, -cur_rel, replacement);
+    if (!replaced)
       return false;
     _autocap.text_replaced(remove_before, replacement);
     _typedword.typed(separator);
@@ -589,7 +604,7 @@ public final class KeyEventHandler
     int cursor = et != null && et.selectionStart == et.selectionEnd
       ? et.selectionStart : -1;
     _pending_replacement = new PendingReplacement(token, undoToken, source,
-        target, separator, conn, cursor);
+        target, separator, conn, cursor, _typedword.snapshot().revision);
   }
 
   private boolean pending_cursor_matches(PendingReplacement pending)
@@ -693,6 +708,38 @@ public final class KeyEventHandler
       _autocap.event_sent(eventCode, metaState);
       _typedword.event_sent(eventCode, metaState);
     }
+  }
+
+  private boolean uses_termux_raw_events()
+  {
+    return EditorConfig.is_termux_raw_editor(
+        _recv.getCurrentInputEditorInfo());
+  }
+
+  private boolean send_untracked_key_down_up(int keyCode)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    boolean down = conn.sendKeyEvent(new KeyEvent(1, 1, KeyEvent.ACTION_DOWN,
+          keyCode, 0, _meta_state, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+          KeyEvent.FLAG_SOFT_KEYBOARD | KeyEvent.FLAG_KEEP_TOUCH_MODE));
+    boolean up = conn.sendKeyEvent(new KeyEvent(1, 1, KeyEvent.ACTION_UP,
+          keyCode, 0, _meta_state, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+          KeyEvent.FLAG_SOFT_KEYBOARD | KeyEvent.FLAG_KEEP_TOUCH_MODE));
+    return down && up;
+  }
+
+  private boolean replace_termux_suffix(String expected, String replacement)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null || expected.length() == 0)
+      return false;
+    int delete_count = expected.codePointCount(0, expected.length());
+    for (int i = 0; i < delete_count; ++i)
+      if (!send_untracked_key_down_up(KeyEvent.KEYCODE_DEL))
+        return false;
+    return SnippetInserter.insert(conn, replacement);
   }
 
   boolean send_text(String text)
@@ -1213,6 +1260,11 @@ public final class KeyEventHandler
       && _typedword.cursor_relative() == 0;
   }
 
+  private boolean should_record_personalization()
+  {
+    return should_commit_typed_word() && should_use_personalization();
+  }
+
   void handle_word_separator(String separator)
   {
     if (_manual_correction != null
@@ -1223,7 +1275,7 @@ public final class KeyEventHandler
     Decoder.Result result = key == null ? null : _decoder.current_result(key);
     Decoder.Candidate correction = should_try_autocorrect() && result != null
       ? result.autocorrection : null;
-    boolean should_record = should_commit_typed_word() && key != null;
+    boolean should_record = should_record_personalization() && key != null;
     String literal_corrected_from = manual_correction_source(snapshot,
         snapshot.word);
     SharedDecoder.CommitToken literal_token = should_record
@@ -1285,6 +1337,15 @@ public final class KeyEventHandler
 
   void send_backspace()
   {
+    if (uses_termux_raw_events())
+    {
+      if (send_untracked_key_down_up(KeyEvent.KEYCODE_DEL))
+      {
+        _autocap.event_sent(KeyEvent.KEYCODE_DEL, 0);
+        _typedword.raw_backspace();
+      }
+      return;
+    }
     InputConnection conn = _recv.getCurrentInputConnection();
     boolean deleted = false;
     if (conn != null)
@@ -1389,8 +1450,13 @@ public final class KeyEventHandler
     {
       String expected = pending.target + pending.separator;
       String replacement = pending.source + pending.separator;
-      if (pending_cursor_matches(pending)
-          && replace_recent_text(expected, replacement))
+      boolean restored = uses_termux_raw_events()
+        ? pending.connection == _recv.getCurrentInputConnection()
+          && pending.typedWordRevision == _typedword.snapshot().revision
+          && replace_termux_suffix(expected, replacement)
+        : pending_cursor_matches(pending)
+          && replace_recent_text(expected, replacement);
+      if (restored)
       {
         _autocap.text_replaced(expected.length(), replacement);
         _typedword.typed(pending.separator);

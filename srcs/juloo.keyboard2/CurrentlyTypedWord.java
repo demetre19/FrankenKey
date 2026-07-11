@@ -172,6 +172,31 @@ public final class CurrentlyTypedWord
     delayed_refresh();
   }
 
+  /** Update local word state after a raw terminal DEL event. */
+  public void raw_backspace()
+  {
+    if (!_enabled)
+      return;
+    cancel_delayed_refresh();
+    if (_has_selection || _w_cursor != 0)
+    {
+      _w.setLength(0);
+      _touch_trace.clear();
+      _w_cursor = 0;
+      publish_transition();
+      return;
+    }
+    if (_w.length() > 0)
+    {
+      int delete_at = _w.offsetByCodePoints(_w.length(), -1);
+      _w.delete(delete_at, _w.length());
+      _touch_trace.removeFrom(_w.codePointCount(0, _w.length()));
+      if (_cursor > 0)
+        --_cursor;
+    }
+    publish_transition();
+  }
+
   void publish_transition()
   {
     ++_revision;

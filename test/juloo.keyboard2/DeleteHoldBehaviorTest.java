@@ -19,6 +19,7 @@ import org.robolectric.RuntimeEnvironment;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
+@org.robolectric.annotation.Config(sdk = 35)
 public class DeleteHoldBehaviorTest
 {
   @Test
@@ -125,6 +126,26 @@ public class DeleteHoldBehaviorTest
     assertEquals(KeyEvent.KEYCODE_DEL, receiver.input.keyEvents.get(0).getKeyCode());
     assertEquals(KeyEvent.ACTION_UP, receiver.input.keyEvents.get(1).getAction());
     assertEquals(KeyEvent.KEYCODE_DEL, receiver.input.keyEvents.get(1).getKeyCode());
+  }
+
+  @Test
+  public void termux_backspace_uses_del_key_without_trusting_semantic_deletion()
+  {
+    FakeReceiver receiver = new FakeReceiver("ab");
+    receiver.editorInfo.inputType = android.text.InputType.TYPE_NULL;
+    receiver.editorInfo.packageName = "com.termux";
+    receiver.input.codePointDeleteMutatesText = false;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+
+    handler.handle_backspace();
+
+    assertEquals("Termux Backspace must visibly delete through its raw DEL event contract.",
+        "a", receiver.input.text.toString());
+    assertEquals("Termux must bypass semantic deletion methods that acknowledge without mutating.",
+        0, receiver.input.codePointDeleteCalls);
+    assertEquals(0, receiver.input.deleteSurroundingTextCalls);
+    assertEquals("One Termux Backspace must send exactly DEL down and DEL up.",
+        2, receiver.input.keyEvents.size());
   }
 
   @Test
@@ -268,6 +289,8 @@ public class DeleteHoldBehaviorTest
   private static class FakeReceiver implements KeyEventHandler.IReceiver
   {
     final RecordingInputConnection input = new RecordingInputConnection();
+    final android.view.inputmethod.EditorInfo editorInfo =
+      new android.view.inputmethod.EditorInfo();
     FakeReceiver() {}
 
 
@@ -301,7 +324,7 @@ public class DeleteHoldBehaviorTest
     @Override
     public android.view.inputmethod.EditorInfo getCurrentInputEditorInfo()
     {
-      return new android.view.inputmethod.EditorInfo();
+      return editorInfo;
     }
 
     @Override
