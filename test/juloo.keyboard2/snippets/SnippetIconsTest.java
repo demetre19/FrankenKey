@@ -1,8 +1,12 @@
 package juloo.keyboard2.snippets;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.widget.TextView;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.Test;
@@ -61,16 +65,35 @@ public class SnippetIconsTest
 
     assertEquals("An icon selection replaces the visible text label.", "",
         iconView.getText().toString());
-    assertNotNull("The selected icon must render in the horizontally centered top slot.",
-        iconView.getCompoundDrawables()[1]);
-    assertNull("Icon-only buttons must not use the right slot, which offsets small icons.",
-        iconView.getCompoundDrawables()[2]);
-    int expectedIconSize = Math.round(15
-        * context.getResources().getDisplayMetrics().density);
-    assertEquals("Keyboard-row icons stay compact beside text snippets.",
-        expectedIconSize, iconView.getCompoundDrawables()[1].getBounds().width());
-    assertEquals("Keyboard-row icons retain a square aspect ratio.",
-        expectedIconSize, iconView.getCompoundDrawables()[1].getBounds().height());
+    for (Drawable compound : iconView.getCompoundDrawables())
+      assertNull("Exact centering must not depend on a TextView compound slot.",
+          compound);
+    Field iconField = iconView.getClass().getDeclaredField("_icon");
+    iconField.setAccessible(true);
+    Drawable centeredIcon = (Drawable)iconField.get(iconView);
+    assertNotNull("The icon-only view must retain its centered artwork.",
+        centeredIcon);
+    float density = context.getResources().getDisplayMetrics().density;
+    int expectedIconSize = Math.round(15 * density);
+    int viewWidth = Math.round(100 * density);
+    int viewHeight = Math.round(34 * density);
+    iconView.layout(0, 0, viewWidth, viewHeight);
+    iconView.draw(new Canvas(Bitmap.createBitmap(
+          viewWidth, viewHeight, Bitmap.Config.ARGB_8888)));
+    int expectedLeft = iconView.getPaddingLeft()
+      + (viewWidth - iconView.getPaddingLeft() - iconView.getPaddingRight()
+          - expectedIconSize) / 2;
+    int expectedTop = iconView.getPaddingTop()
+      + (viewHeight - iconView.getPaddingTop() - iconView.getPaddingBottom()
+          - expectedIconSize) / 2;
+    assertEquals("Icon artwork must be horizontally centered in its button.",
+        expectedLeft, centeredIcon.getBounds().left);
+    assertEquals("Icon artwork must be vertically centered in its button.",
+        expectedTop, centeredIcon.getBounds().top);
+    assertEquals("Keyboard-row icons stay 15dp wide.",
+        expectedIconSize, centeredIcon.getBounds().width());
+    assertEquals("Keyboard-row icons stay 15dp high.",
+        expectedIconSize, centeredIcon.getBounds().height());
     assertEquals("Accessibility identifies the button without speaking its secret phrase.",
         "Password or key snippet", iconView.getContentDescription().toString());
     assertFalse("Private snippet phrases must not leak into accessibility text.",

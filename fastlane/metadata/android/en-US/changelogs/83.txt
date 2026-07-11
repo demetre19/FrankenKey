@@ -1,0 +1,1 @@
+Small snippet icons are centered both vertically and horizontally within their keyboard buttons.
