@@ -155,7 +155,8 @@ public final class SnippetStore
         if (index < 0)
           continue;
         slots = replaceSlot(slots, SnippetSlot.of(index,
-              obj.optString("phrase", ""), obj.optString("label", "")));
+              obj.optString("phrase", ""), obj.optString("label", ""),
+              obj.optString("icon", "")));
       }
       return withMinimumSlots(slots, minimumSlots);
     }
@@ -178,6 +179,8 @@ public final class SnippetStore
         obj.put("index", slot.getIndex());
         obj.put("phrase", slot.getPhrase());
         obj.put("label", slot.getCustomLabel());
+        if (!slot.getIconId().isEmpty())
+          obj.put("icon", slot.getIconId());
         arr.put(obj);
       }
       catch (JSONException _e) {}

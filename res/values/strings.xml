@@ -49,7 +49,9 @@
     <string name="pref_snippets_edit_title">Snippet %1$d</string>
     <string name="pref_snippets_preview">Preview: %1$s</string>
     <string name="pref_snippets_phrase_hint">Phrase to insert</string>
-    <string name="pref_snippets_label_hint">Optional label or icon</string>
+    <string name="pref_snippets_label_hint">Optional text label</string>
+    <string name="pref_snippets_icon_title">Button icon</string>
+    <string name="pref_snippets_no_icon">No icon — use text label</string>
     <string name="pref_snippets_clear">Clear</string>
     <string name="pref_snippets_add_page">Add 7 more snippet slots</string>
     <string name="pref_snippets_add_page_summary">Create another horizontal snippet page</string>

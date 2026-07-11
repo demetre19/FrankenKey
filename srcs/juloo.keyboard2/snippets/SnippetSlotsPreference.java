@@ -3,17 +3,26 @@ package juloo.keyboard2.snippets;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import java.util.ArrayList;
 import java.util.List;
 import juloo.keyboard2.R;
 
@@ -184,21 +193,29 @@ public class SnippetSlotsPreference extends PreferenceCategory
 
   private String slot_title(SnippetSlot slot)
   {
+    SnippetIcons.Icon icon = SnippetIcons.find(slot.getIconId());
+    String label = icon == null ? slot.getDisplayLabel() : icon.title;
     return getContext().getString(R.string.pref_snippets_slot_title,
-        slot.getIndex() + 1, slot.getDisplayLabel());
+        slot.getIndex() + 1, label);
   }
-
 
   private void show_editor(final SnippetSlot slot)
   {
+    final String[] selectedIcon = {
+      SnippetIcons.find(slot.getIconId()) == null ? "" : slot.getIconId()
+    };
+    final ScrollView scroll = new ScrollView(getContext());
     final LinearLayout content = new LinearLayout(getContext());
     content.setOrientation(LinearLayout.VERTICAL);
     int pad = dp(20);
-    content.setPadding(pad, pad / 2, pad, 0);
+    content.setPadding(pad, pad / 2, pad, pad);
+    scroll.addView(content, match_wrap());
 
     final TextView preview = new TextView(getContext());
     preview.setTextSize(20);
-    content.addView(preview, match_wrap());
+    preview.setGravity(Gravity.CENTER_VERTICAL);
+    preview.setCompoundDrawablePadding(dp(4));
+    content.addView(preview, wrap_wrap());
 
     final EditText phrase = new EditText(getContext());
     phrase.setHint(R.string.pref_snippets_phrase_hint);
@@ -212,28 +229,76 @@ public class SnippetSlotsPreference extends PreferenceCategory
     customLabel.setSingleLine(true);
     content.addView(customLabel, match_wrap());
 
+    final TextView iconTitle = new TextView(getContext());
+    iconTitle.setText(R.string.pref_snippets_icon_title);
+    iconTitle.setPadding(0, dp(12), 0, dp(4));
+    content.addView(iconTitle, match_wrap());
+
+    final Button noIcon = new Button(getContext());
+    noIcon.setText(R.string.pref_snippets_no_icon);
+    noIcon.setAllCaps(false);
+    content.addView(noIcon, match_wrap());
+
+    final GridLayout iconGrid = new GridLayout(getContext());
+    iconGrid.setColumnCount(SnippetSlot.PAGE_SIZE);
+    iconGrid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+    iconGrid.setUseDefaultMargins(false);
+    content.addView(iconGrid, match_wrap());
+
+    final ArrayList<ImageButton> iconButtons = new ArrayList<>();
+    for (final SnippetIcons.Icon icon : SnippetIcons.all())
+    {
+      ImageButton button = new ImageButton(getContext());
+      button.setTag(icon.id);
+      button.setContentDescription(icon.title);
+      button.setPadding(dp(9), dp(9), dp(9), dp(9));
+      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+      lp.width = dp(40);
+      lp.height = dp(40);
+      lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+      button.setLayoutParams(lp);
+      button.setOnClickListener(_view -> {
+        selectedIcon[0] = icon.id;
+        refresh_icon_buttons(iconButtons, noIcon, selectedIcon[0]);
+        refresh_preview(preview, slot.getIndex(), phrase, customLabel,
+            selectedIcon[0]);
+      });
+      iconButtons.add(button);
+      iconGrid.addView(button);
+    }
+    noIcon.setOnClickListener(_view -> {
+      selectedIcon[0] = "";
+      refresh_icon_buttons(iconButtons, noIcon, selectedIcon[0]);
+      refresh_preview(preview, slot.getIndex(), phrase, customLabel,
+          selectedIcon[0]);
+    });
+
     TextWatcher watcher = new TextWatcher() {
       public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
       public void onTextChanged(CharSequence s, int start, int before, int count)
       {
-        refresh_preview(preview, slot.getIndex(), phrase, customLabel);
+        refresh_preview(preview, slot.getIndex(), phrase, customLabel,
+            selectedIcon[0]);
       }
       public void afterTextChanged(Editable s) {}
     };
     phrase.addTextChangedListener(watcher);
     customLabel.addTextChangedListener(watcher);
-    refresh_preview(preview, slot.getIndex(), phrase, customLabel);
+    refresh_icon_buttons(iconButtons, noIcon, selectedIcon[0]);
+    refresh_preview(preview, slot.getIndex(), phrase, customLabel,
+        selectedIcon[0]);
 
     new AlertDialog.Builder(getContext())
       .setTitle(getContext().getString(R.string.pref_snippets_edit_title,
             slot.getIndex() + 1))
-      .setView(content)
+      .setView(scroll)
       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
         public void onClick(DialogInterface dialog, int which)
         {
           change_slot(SnippetSlot.of(slot.getIndex(),
                 phrase.getText().toString(),
-                customLabel.getText().toString()));
+                customLabel.getText().toString(),
+                selectedIcon[0]));
         }
       })
       .setNeutralButton(R.string.pref_snippets_clear, new DialogInterface.OnClickListener() {
@@ -246,18 +311,85 @@ public class SnippetSlotsPreference extends PreferenceCategory
       .show();
   }
 
+  private void refresh_icon_buttons(List<ImageButton> buttons, Button noIcon,
+      String selectedId)
+  {
+    int accent = theme_color(android.R.attr.colorAccent, 0xff7bb7ff);
+    int normal = theme_color(android.R.attr.textColorPrimary, 0xffeeeeee);
+    for (ImageButton button : buttons)
+    {
+      String id = (String)button.getTag();
+      boolean selected = id.equals(selectedId);
+      button.setBackground(icon_button_background(selected, accent, normal));
+      button.setImageDrawable(SnippetIcons.drawable(getContext(), id,
+            selected ? accent : normal));
+      button.setSelected(selected);
+    }
+    noIcon.setAlpha(selectedId.isEmpty() ? 1.0f : 0.65f);
+  }
+
+  private GradientDrawable icon_button_background(boolean selected, int accent,
+      int normal)
+  {
+    GradientDrawable background = new GradientDrawable();
+    background.setShape(GradientDrawable.RECTANGLE);
+    background.setCornerRadius(dp(6));
+    background.setColor(selected ? ((accent & 0x00ffffff) | 0x22000000) :
+        0x00000000);
+    background.setStroke(dp(selected ? 2 : 1),
+        selected ? accent : ((normal & 0x00ffffff) | 0x44000000));
+    return background;
+  }
+
   private void refresh_preview(TextView preview, int index, EditText phrase,
-      EditText customLabel)
+      EditText customLabel, String iconId)
   {
     SnippetSlot draft = SnippetSlot.of(index,
-        phrase.getText().toString(), customLabel.getText().toString());
-    preview.setText(getContext().getString(R.string.pref_snippets_preview,
-          draft.getDisplayLabel()));
+        phrase.getText().toString(), customLabel.getText().toString(), iconId);
+    SnippetIcons.Icon icon = SnippetIcons.find(iconId);
+    if (icon == null)
+    {
+      preview.setCompoundDrawables(null, null, null, null);
+      preview.setText(getContext().getString(R.string.pref_snippets_preview,
+            draft.getDisplayLabel()));
+      preview.setContentDescription(null);
+      return;
+    }
+    int color = theme_color(android.R.attr.textColorPrimary, 0xffeeeeee);
+    Drawable drawable = SnippetIcons.drawable(getContext(), icon.id, color);
+    if (drawable != null)
+    {
+      int iconSize = Math.round(preview.getTextSize());
+      drawable.setBounds(0, 0, iconSize, iconSize);
+    }
+    preview.setCompoundDrawables(drawable, null, null, null);
+    preview.setText(getContext().getString(R.string.pref_snippets_preview, ""));
+    preview.setContentDescription(getContext().getString(
+          R.string.pref_snippets_preview, icon.title));
+  }
+
+  private int theme_color(int attr, int fallback)
+  {
+    TypedArray colors = getContext().obtainStyledAttributes(new int[] { attr });
+    try
+    {
+      return colors.getColor(0, fallback);
+    }
+    finally
+    {
+      colors.recycle();
+    }
   }
 
   private LinearLayout.LayoutParams match_wrap()
   {
     return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.WRAP_CONTENT);
+  }
+
+  private LinearLayout.LayoutParams wrap_wrap()
+  {
+    return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
         ViewGroup.LayoutParams.WRAP_CONTENT);
   }
 

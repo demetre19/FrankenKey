@@ -29,8 +29,8 @@ public class SnippetStoreTest
     List<SnippetSlot> slots = Arrays.asList(
         SnippetSlot.of(0, "alpha", ""),
         SnippetSlot.of(1, "", ""),
-        SnippetSlot.of(2, "bravo", "B"),
-        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face"));
+        SnippetSlot.of(2, "bravo", "B", "briefcase"),
+        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face", "heart"));
 
     List<SnippetSlot> loaded = SnippetStore.loadSlots(
         SnippetStore.saveSlots(slots), 0);
@@ -38,8 +38,8 @@ public class SnippetStoreTest
     assertSlots(loaded,
         SnippetSlot.of(0, "alpha", ""),
         SnippetSlot.of(1, "", ""),
-        SnippetSlot.of(2, "bravo", "B"),
-        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face"));
+        SnippetSlot.of(2, "bravo", "B", "briefcase"),
+        SnippetSlot.of(3, "emoji \uD83D\uDE00", "face", "heart"));
   }
 
   @Test
@@ -122,7 +122,7 @@ public class SnippetStoreTest
 
     JSONArray slots = new JSONArray(encoded);
     Set<String> allowedSlotFields = new HashSet<>(Arrays.asList(
-        "index", "phrase", "label", "customLabel"));
+        "index", "phrase", "label", "customLabel", "icon"));
     Set<String> disallowedRemoteFields = new HashSet<>(Arrays.asList(
         "url", "uri", "endpoint", "host", "server", "network", "sync",
         "cloud", "account", "user", "userid", "user_id", "email",
@@ -336,6 +336,8 @@ public class SnippetStoreTest
     assertEquals(message + " phrase", expected.getPhrase(), actual.getPhrase());
     assertEquals(message + " custom label", expected.getCustomLabel(),
         actual.getCustomLabel());
+    assertEquals(message + " icon id", expected.getIconId(),
+        actual.getIconId());
   }
 
   private static void assertEmptySlots(List<SnippetSlot> slots, int expectedCount)

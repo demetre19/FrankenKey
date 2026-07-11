@@ -22,6 +22,7 @@
 - Every user-visible Settings checkbox must have a concise, accurate summary; generated extra-key checkboxes use the shared extra-key summary.
 - Adaptive-learning clear and individual word-forget copy must accurately describe the destructive scope and remain wired to explicit platform confirmation dialogs.
 - Settings exposes default-on automatic update checks, in-app or GitHub delivery, current update status, and a manual check. Update notices must show release changelog text and require explicit acceptance or rejection.
+- Snippet icon drawables are the curated Lucide set mapped by stable IDs in `SnippetIcons`; preserve their shared 24×24 stroke treatment and the packaged Lucide/Feather license notice.
 
 ## Work Guidance
 

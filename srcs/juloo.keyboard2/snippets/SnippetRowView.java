@@ -81,11 +81,23 @@ public class SnippetRowView extends HorizontalScrollView
       final OnSnippetClickListener listener)
   {
     TextView v = new TextView(getContext());
-    v.setText(slot.getDisplayLabel());
+    int color = themeColor(R.attr.colorLabel);
+    SnippetIcons.Icon icon = SnippetIcons.find(slot.getIconId());
+    if (icon == null)
+      v.setText(slot.getDisplayLabel());
+    else
+    {
+      android.graphics.drawable.Drawable drawable =
+        SnippetIcons.drawable(getContext(), icon.id, color);
+      if (drawable != null)
+        drawable.setBounds(0, 0, dp(20), dp(20));
+      v.setCompoundDrawables(null, null, drawable, null);
+      v.setContentDescription(icon.title + " snippet");
+    }
     v.setGravity(Gravity.CENTER);
     v.setSingleLine(true);
     v.setEllipsize(TextUtils.TruncateAt.END);
-    v.setTextColor(themeColor(R.attr.colorLabel));
+    v.setTextColor(color);
     v.setBackgroundResource(R.drawable.suggestions_item_background);
     v.setAlpha(slot.isConfigured() ? 1.0f : 0.45f);
     int margin = dp(2);

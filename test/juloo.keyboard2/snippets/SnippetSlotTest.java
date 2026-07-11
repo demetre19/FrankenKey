@@ -35,6 +35,16 @@ public class SnippetSlotTest
   }
 
   @Test
+  public void icon_id_is_optional_and_does_not_destroy_text_fallback()
+  {
+    SnippetSlot iconSlot = SnippetSlot.of(
+        0, "name@example.com", "Email", "mail");
+    assertEquals("mail", iconSlot.getIconId());
+    assertEquals("Email", iconSlot.getDisplayLabel());
+    assertEquals("", SnippetSlot.of(1, "hello", "").getIconId());
+  }
+
+  @Test
   public void configured_state_follows_insertable_phrase()
   {
     assertFalse(SnippetSlot.of(0, "", "").isConfigured());

@@ -13,6 +13,7 @@
 
 - Preserve source image assets unless explicitly replacing them.
 - Language pack assets are user-facing typing data; changes require focused verification of lookup/loading behavior.
+- Third-party assets must keep their applicable license notice under `assets/licenses/`; the Lucide snippet icons require the packaged ISC/MIT notice.
 
 ## Work Guidance
 
