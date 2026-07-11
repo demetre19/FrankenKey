@@ -131,6 +131,18 @@
       "sha256": "5af017f5d1055b857a1478bb8a514a5e08a6d1fb65e0c9f9910cc5fc5f4f3c6d",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Correction release geometrically centering compact snippet icons on both axes."
+    },
+    {
+      "label": "theme-aware-snippet-foreground-release",
+      "file": "FrankenKey-2.0.33-vc84-new-release-key-9fdb3633-0fa05504.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "84",
+      "versionName": "2.0.33",
+      "size": 4244515,
+      "sha256": "0fa0550483e8e067a3c71e028b98f4deb2bf2b012a2fb933099aec0146a5a6dd",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release applying contrast-safe theme foregrounds to snippet icons and text."
     }
   ]
 }
