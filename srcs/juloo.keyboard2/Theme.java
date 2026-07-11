@@ -132,7 +132,7 @@ public class Theme
 
   public int labelColorForKeyboardBackground()
   {
-    return ensureTextContrast(labelColor, colorKeyboard);
+    return contrastTextColor(colorKeyboard);
   }
 
   private static boolean isCustomTheme(Context context)

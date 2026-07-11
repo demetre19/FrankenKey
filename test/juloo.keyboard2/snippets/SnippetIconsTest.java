@@ -52,11 +52,16 @@ public class SnippetIconsTest
   }
 
   @Test
-  public void icon_and_text_foregrounds_follow_light_and_dark_keyboard_themes()
+  public void icon_and_text_foregrounds_are_binary_across_keyboard_themes()
       throws Exception
   {
-    assertThemeForeground(R.style.Light, 0xff202328);
+    assertThemeForeground(R.style.Light, 0xff000000);
+    assertThemeForeground(R.style.FleksyRowsLight, 0xff000000);
     assertThemeForeground(R.style.Dark, 0xffffffff);
+    assertThemeForeground(R.style.FleksyRowsDark, 0xffffffff);
+    assertThemeForeground(R.style.Forest, 0xffffffff);
+    assertThemeForeground(R.style.Blue, 0xffffffff);
+    assertThemeForeground(R.style.Gray, 0xffffffff);
   }
 
   private void assertThemeForeground(int themeStyle, int expectedColor)
@@ -84,6 +89,8 @@ public class SnippetIconsTest
     Drawable icon = (Drawable)iconField.get(iconView);
     assertNotNull("Snippet icons must retain theme-tinted artwork.",
         icon);
+    assertNotNull("Snippet icon vectors must have an explicit SRC_IN color filter.",
+        icon.getColorFilter());
     Field iconColorField = iconView.getClass().getDeclaredField("_icon_color");
     iconColorField.setAccessible(true);
     assertEquals("Snippet icons and text must use the identical theme foreground.",

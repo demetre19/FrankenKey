@@ -1,0 +1,1 @@
+Snippet icons and text are now pure white on dark keyboard backgrounds and pure black on light backgrounds.

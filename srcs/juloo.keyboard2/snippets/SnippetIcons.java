@@ -1,9 +1,9 @@
 package juloo.keyboard2.snippets;
 
 import android.content.Context;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -122,8 +122,8 @@ public final class SnippetIcons
     Drawable drawable = ContextCompat.getDrawable(context, icon._drawable);
     if (drawable == null)
       return null;
-    drawable = DrawableCompat.wrap(drawable).mutate();
-    DrawableCompat.setTint(drawable, color);
+    drawable = drawable.mutate();
+    drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
     return drawable;
   }
 }
