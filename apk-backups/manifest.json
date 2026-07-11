@@ -95,6 +95,18 @@
       "sha256": "06c08165136fe96b3e593c05c3e1597e5da8560282f30d7626ac15ce1d9d8d6b",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release adding a 56-icon Lucide picker and themed icon rendering for snippet buttons."
+    },
+    {
+      "label": "compact-snippet-icons-release",
+      "file": "FrankenKey-2.0.30-vc81-new-release-key-9fdb3633-78cc8f47.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "81",
+      "versionName": "2.0.30",
+      "size": 4244078,
+      "sha256": "78cc8f47d9f893722d65c57c8cb4a2519f01f6c75217fc3a33a8f279bca75728",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release reducing snippet-row icons by 25 percent for a cleaner keyboard balance."
     }
   ]
 }
