@@ -61,14 +61,16 @@ public class SnippetIconsTest
 
     assertEquals("An icon selection replaces the visible text label.", "",
         iconView.getText().toString());
-    assertNotNull("The selected icon must render on the keyboard button.",
+    assertNotNull("The selected icon must render in the horizontally centered top slot.",
+        iconView.getCompoundDrawables()[1]);
+    assertNull("Icon-only buttons must not use the right slot, which offsets small icons.",
         iconView.getCompoundDrawables()[2]);
     int expectedIconSize = Math.round(15
         * context.getResources().getDisplayMetrics().density);
     assertEquals("Keyboard-row icons stay compact beside text snippets.",
-        expectedIconSize, iconView.getCompoundDrawables()[2].getBounds().width());
+        expectedIconSize, iconView.getCompoundDrawables()[1].getBounds().width());
     assertEquals("Keyboard-row icons retain a square aspect ratio.",
-        expectedIconSize, iconView.getCompoundDrawables()[2].getBounds().height());
+        expectedIconSize, iconView.getCompoundDrawables()[1].getBounds().height());
     assertEquals("Accessibility identifies the button without speaking its secret phrase.",
         "Password or key snippet", iconView.getContentDescription().toString());
     assertFalse("Private snippet phrases must not leak into accessibility text.",

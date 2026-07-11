@@ -1,0 +1,1 @@
+Small snippet icons are centered correctly within their keyboard buttons.
