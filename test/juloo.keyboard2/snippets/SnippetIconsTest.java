@@ -9,9 +9,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public class SnippetIconsTest
 {
   @Test
@@ -61,6 +63,12 @@ public class SnippetIconsTest
         iconView.getText().toString());
     assertNotNull("The selected icon must render on the keyboard button.",
         iconView.getCompoundDrawables()[2]);
+    int expectedIconSize = Math.round(15
+        * context.getResources().getDisplayMetrics().density);
+    assertEquals("Keyboard-row icons stay compact beside text snippets.",
+        expectedIconSize, iconView.getCompoundDrawables()[2].getBounds().width());
+    assertEquals("Keyboard-row icons retain a square aspect ratio.",
+        expectedIconSize, iconView.getCompoundDrawables()[2].getBounds().height());
     assertEquals("Accessibility identifies the button without speaking its secret phrase.",
         "Password or key snippet", iconView.getContentDescription().toString());
     assertFalse("Private snippet phrases must not leak into accessibility text.",

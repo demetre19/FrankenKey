@@ -1,0 +1,1 @@
+Snippet button icons are now 25% smaller for a cleaner, better-balanced keyboard row.

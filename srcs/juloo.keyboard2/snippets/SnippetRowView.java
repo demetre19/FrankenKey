@@ -90,7 +90,7 @@ public class SnippetRowView extends HorizontalScrollView
       android.graphics.drawable.Drawable drawable =
         SnippetIcons.drawable(getContext(), icon.id, color);
       if (drawable != null)
-        drawable.setBounds(0, 0, dp(20), dp(20));
+        drawable.setBounds(0, 0, dp(15), dp(15));
       v.setCompoundDrawables(null, null, drawable, null);
       v.setContentDescription(icon.title + " snippet");
     }
