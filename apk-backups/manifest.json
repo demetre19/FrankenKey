@@ -167,6 +167,18 @@
       "sha256": "754587adebe32f7b505bb8a66703b16fc93d8cc41489ce06db2340e75916d49f",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Rollback release restoring the original visible 20dp snippet icons and standard Android rendering."
+    },
+    {
+      "label": "centered-snippet-icons-release",
+      "file": "FrankenKey-2.0.36-vc87-new-release-key-9fdb3633-73ddcc8d.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "87",
+      "versionName": "2.0.36",
+      "size": 4244094,
+      "sha256": "73ddcc8d69c1b6f3f3fbb5a37ec5ed06546d1257dbd28bf84f22b1f55b6444a6",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release centering visible 20dp snippet icons within their slots while preserving theme tint."
     }
   ]
 }
