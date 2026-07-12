@@ -1,0 +1,1 @@
+Restored the production FrankenKey name and launcher logo for in-app updates, and added a release gate that rejects debug-branded APKs.

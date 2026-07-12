@@ -15,6 +15,7 @@
 
 - Package is `dev.frankenkey.keyboard`.
 - Release builds use the persistent local release key loaded from `/Users/apple/.android/frankenkey-release-signing/frankenkey-release.env`; do not print secret values.
+- Never deliver, copy to the release root, commit as the installable artifact, attach, publish, or offer a debug/dev APK. Delivery must come from the signed `assembleRelease` output and pass `verifyReleaseIdentity`; the internal update-compatible package remains `dev.frankenkey.keyboard`, while every user-facing label and launcher icon must be the production FrankenKey identity.
 - Current installable APK must be copied to `../FrankenKey/FrankenKey-installable-release.apk` before asking the user to test a build.
 - When producing release APKs, update `../FrankenKey/apk-backups/manifest.json` and archive a backup when the release should be preserved.
 - Android source/resource changes must preserve both clean Fleksy-style everyday mode and optional dense FrankenKey mode unless the user explicitly narrows scope.
@@ -36,7 +37,7 @@
 ## Verification
 
 - Focused tests: `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache testDebugUnitTest --tests <TestClass>`.
-- Release build: load release signing env without echoing secrets, then run `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleRelease`.
+- Release build: load release signing env without echoing secrets, then run `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleRelease`; its mandatory `verifyReleaseIdentity` finalizer must pass.
 - Verify release APK with Android build tools when relevant: package/version via `aapt2`, signature via `apksigner`, and SHA-256 via `shasum -a 256`.
 - Local emulator AVD is `FrankenKeyParity`; emulator binary is `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk/emulator/emulator`.
 - When updater or release-delivery contracts change, repeat an installed-old-version to published-new-version device test covering announcement, authenticated download, Android installer handoff, and successful in-place update.

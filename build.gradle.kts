@@ -1,5 +1,6 @@
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import java.io.FileOutputStream
+import java.security.MessageDigest
 
 plugins {
   id("com.android.application") version "8.13.2"
@@ -26,8 +27,8 @@ android {
     applicationId = "dev.frankenkey.keyboard"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 87
-    versionName = "2.0.36"
+    versionCode = 88
+    versionName = "2.0.37"
   }
 
   sourceSets {
@@ -81,7 +82,7 @@ android {
         "proguard-rules.pro")
       isShrinkResources = true
       isDebuggable = false
-      resValue("string", "app_name", "@string/app_name_release")
+      resValue("string", "app_name", "FrankenKey")
       signingConfig = signingConfigs["release"]
     }
 
@@ -90,7 +91,7 @@ android {
       isShrinkResources = false
       isDebuggable = true
       applicationIdSuffix = ".debug"
-      resValue("string", "app_name", "@string/app_name_debug")
+      resValue("string", "app_name", "FrankenKey (Debug)")
       resValue("bool", "debug_logs", "true")
       signingConfig = signingConfigs["debug"]
     }
@@ -205,4 +206,72 @@ tasks.named("preBuild") {
   // checked in the repository that don't need to be updated during regular
   // builds.
   mustRunAfter(genEmojis, genLayoutsList, compileComposeSequences, genMethodXml)
+}
+
+val productionIconHashes = mapOf(
+  "res/mipmap-mdpi/ic_launcher.png" to
+    "00a0c38113a17e7fcc04d9414f9a14f58c62220125db364526365821166593db",
+  "res/mipmap-mdpi/ic_launcher_foreground.png" to
+    "26b1c594103d708789ba3c859e27a5b4ea1a66291e4d46ee6e9b015f2cfa3dcd",
+  "res/mipmap-hdpi/ic_launcher.png" to
+    "2a66f5bf89bded3bc233d84e359e8e04e77c6653a26239e819bb40887e310e21",
+  "res/mipmap-hdpi/ic_launcher_foreground.png" to
+    "e6d5f8cd1b46a4ec6aada52c3c3b67b3c5d3dc1704fcac6701d043f5515d5526",
+  "res/mipmap-xhdpi/ic_launcher.png" to
+    "c88eedc85104cf40787a1608b9b08c937fae1c877af8156d0273890c7211be10",
+  "res/mipmap-xhdpi/ic_launcher_foreground.png" to
+    "27ff40b4940a9a1b657f70eb18c75a7ea8bdc4d648c8dcb2070ae6b99d4900a3",
+  "res/mipmap-xxhdpi/ic_launcher.png" to
+    "605d70c6c5ab1cb27bec0a84440eaafc967a7586a3883fe954ce060421a690b2",
+  "res/mipmap-xxhdpi/ic_launcher_foreground.png" to
+    "ee3b89b071b24f891816ce71da11bf31fe9290812ac2cfc669ec75264c69a625",
+  "res/mipmap-xxxhdpi/ic_launcher.png" to
+    "afeed6d8e2acf6e295b00c2852d2cd0f97809d248321e7f2a944cd57df50fa92",
+  "res/mipmap-xxxhdpi/ic_launcher_foreground.png" to
+    "c124589f6c3514cd9c24568d55bc56eaf1ef8e8bd41aac713f00767dcb5ca8db")
+
+fun sha256(file: File): String =
+  MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+    .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+
+val verifyReleaseIdentity by tasks.registering {
+  group = "verification"
+  description = "Rejects debug or incorrectly branded APKs from release delivery."
+  doLast {
+    val overrideApk = providers.gradleProperty("releaseApk").orNull
+    val apk = if (overrideApk == null)
+      layout.buildDirectory.file(
+          "outputs/apk/release/FrankenKey-release.apk").get().asFile
+    else
+      file(overrideApk)
+    if (!apk.isFile)
+      throw GradleException("Release APK not found: $apk")
+    val aapt2 = android.sdkDirectory.resolve(
+        "build-tools/${android.buildToolsVersion}/aapt2")
+    if (!aapt2.isFile)
+      throw GradleException("aapt2 not found: $aapt2")
+    val badging = providers.exec {
+      commandLine(aapt2, "dump", "badging", apk)
+    }.standardOutput.asText.get()
+    if (!badging.contains("package: name='dev.frankenkey.keyboard'") ||
+        !badging.contains("application-label:'FrankenKey'") ||
+        !Regex("application-icon-\\d+:'[^']+'").containsMatchIn(badging) ||
+        badging.contains("application-debuggable") ||
+        badging.contains("FrankenKey (Debug)") ||
+        badging.contains("name='dev.frankenkey.keyboard.debug'"))
+      throw GradleException(
+          "Release identity check failed; refusing a debug or incorrectly branded APK.")
+    for ((path, expectedHash) in productionIconHashes)
+    {
+      val icon = file(path)
+      if (!icon.isFile || sha256(icon) != expectedHash)
+        throw GradleException(
+            "Production launcher icon check failed: $path")
+    }
+  }
+}
+
+tasks.configureEach {
+  if (name == "assembleRelease")
+    finalizedBy(verifyReleaseIdentity)
 }
