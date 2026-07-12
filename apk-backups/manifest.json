@@ -179,6 +179,18 @@
       "sha256": "73ddcc8d69c1b6f3f3fbb5a37ec5ed06546d1257dbd28bf84f22b1f55b6444a6",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release centering visible 20dp snippet icons within their slots while preserving theme tint."
+    },
+    {
+      "label": "production-identity-release",
+      "file": "FrankenKey-2.0.37-vc88-new-release-key-9fdb3633-70cd1df8.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "88",
+      "versionName": "2.0.37",
+      "size": 4243569,
+      "sha256": "70cd1df8807586b39ae4c199c34ba631533b989df97bc4a006981207a4d35d10",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release restoring explicit production name and launcher identity with a mandatory debug-artifact rejection gate."
     }
   ]
 }

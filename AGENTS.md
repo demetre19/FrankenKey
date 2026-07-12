@@ -81,6 +81,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Every FrankenKey build intended for user testing must replace `/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/FrankenKey-installable-release.apk` with the verified final APK; proving a separate build output without updating that exact path is incomplete delivery.
 - FrankenKey updates are published as GitHub Releases tagged `v<versionName>-vc<versionCode>` with `FrankenKey-installable-release.apk` attached and the user-visible changelog in the release body. Keep download, package/version, hash, and signer metadata consistent with the exact delivery APK.
 - Each Android release must also carry `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` in the source branch with user-facing content consistent with the GitHub Release body.
+- Never put a debug/dev APK in the live repository or updater path. The internal Android package ID `dev.frankenkey.keyboard` is retained only for update compatibility; every delivered APK must be the signed release variant, display `FrankenKey`, use the production launcher logo, and pass the source checkout's `verifyReleaseIdentity` gate before publication.
 
 ## Project Context
 
