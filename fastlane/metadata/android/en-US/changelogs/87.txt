@@ -1,0 +1,1 @@
+Centered snippet icons in their slots while preserving the original visible 20dp size and theme tint.

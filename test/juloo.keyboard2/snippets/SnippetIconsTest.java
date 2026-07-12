@@ -1,6 +1,7 @@
 package juloo.keyboard2.snippets;
 
 import android.content.Context;
+import android.widget.ImageView;
 import android.widget.TextView;
 import java.lang.reflect.Method;
 import java.util.HashSet;
@@ -56,13 +57,20 @@ public class SnippetIconsTest
     makeSlotView.setAccessible(true);
 
     String secret = "correct horse battery staple";
-    TextView iconView = (TextView)makeSlotView.invoke(row,
+    ImageView iconView = (ImageView)makeSlotView.invoke(row,
         SnippetSlot.of(0, secret, "Password", "key"), null);
 
-    assertEquals("An icon selection replaces the visible text label.", "",
-        iconView.getText().toString());
     assertNotNull("The selected icon must render on the keyboard button.",
-        iconView.getCompoundDrawables()[2]);
+        iconView.getDrawable());
+    assertEquals("CENTER_INSIDE keeps icon artwork centered on both axes.",
+        ImageView.ScaleType.CENTER_INSIDE, iconView.getScaleType());
+    int expectedIconSize = (int)(20 *
+        context.getResources().getDisplayMetrics().density + 0.5f);
+    assertEquals("Vertical inset must leave exactly 20dp for icon artwork.",
+        expectedIconSize, iconView.getLayoutParams().height -
+        iconView.getPaddingTop() - iconView.getPaddingBottom());
+    assertEquals("Equal vertical insets center the icon.",
+        iconView.getPaddingTop(), iconView.getPaddingBottom());
     assertEquals("Accessibility identifies the button without speaking its secret phrase.",
         "Password or key snippet", iconView.getContentDescription().toString());
     assertFalse("Private snippet phrases must not leak into accessibility text.",

@@ -10,8 +10,10 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.List;
@@ -23,6 +25,7 @@ public class SnippetRowView extends HorizontalScrollView
   {
     void onSnippetClicked(SnippetSlot slot);
   }
+
 
   private LinearLayout _pages;
   private final Paint _divider_paint = new Paint();
@@ -77,27 +80,33 @@ public class SnippetRowView extends HorizontalScrollView
     return page;
   }
 
-  private TextView makeSlotView(final SnippetSlot slot,
+  private View makeSlotView(final SnippetSlot slot,
       final OnSnippetClickListener listener)
   {
-    TextView v = new TextView(getContext());
     int color = themeColor(R.attr.colorLabel);
     SnippetIcons.Icon icon = SnippetIcons.find(slot.getIconId());
+    View v;
     if (icon == null)
-      v.setText(slot.getDisplayLabel());
+    {
+      TextView label = new TextView(getContext());
+      label.setText(slot.getDisplayLabel());
+      label.setGravity(Gravity.CENTER);
+      label.setSingleLine(true);
+      label.setEllipsize(TextUtils.TruncateAt.END);
+      label.setTextColor(color);
+      v = label;
+    }
     else
     {
-      android.graphics.drawable.Drawable drawable =
-        SnippetIcons.drawable(getContext(), icon.id, color);
-      if (drawable != null)
-        drawable.setBounds(0, 0, dp(20), dp(20));
-      v.setCompoundDrawables(null, null, drawable, null);
-      v.setContentDescription(icon.title + " snippet");
+      ImageView image = new ImageView(getContext());
+      image.setImageDrawable(
+          SnippetIcons.drawable(getContext(), icon.id, color));
+      image.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+      int verticalInset = dp(7);
+      image.setPadding(0, verticalInset, 0, verticalInset);
+      image.setContentDescription(icon.title + " snippet");
+      v = image;
     }
-    v.setGravity(Gravity.CENTER);
-    v.setSingleLine(true);
-    v.setEllipsize(TextUtils.TruncateAt.END);
-    v.setTextColor(color);
     v.setBackgroundResource(R.drawable.suggestions_item_background);
     v.setAlpha(slot.isConfigured() ? 1.0f : 0.45f);
     int margin = dp(2);

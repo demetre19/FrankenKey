@@ -15,6 +15,7 @@
 - Direct-boot behavior must not leak raw snippet phrases into inappropriate protected preferences.
 - Everyday and FrankenKey modes share snippet capability.
 - Snippet buttons may store a stable Lucide icon ID or use their text-label/phrase fallback. Keep the curated picker at 56 unique, locally packaged icons in eight seven-icon groups; never serialize build-specific drawable IDs.
+- Icon-backed snippet buttons use the keyboard theme's label tint and center 20dp artwork on both axes within each slot.
 - Legacy serialized `iconLabel` fields remain readable but ignored. Icon accessibility labels must describe the icon without speaking the saved phrase, which may contain passwords or other secrets.
 
 ## Work Guidance
