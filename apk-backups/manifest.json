@@ -191,6 +191,18 @@
       "sha256": "70cd1df8807586b39ae4c199c34ba631533b989df97bc4a006981207a4d35d10",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release restoring explicit production name and launcher identity with a mandatory debug-artifact rejection gate."
+    },
+    {
+      "label": "nonblocking-autocorrect-parity-release",
+      "file": "FrankenKey-2.0.40-vc91-new-release-key-9fdb3633-b6c612ff.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "91",
+      "versionName": "2.0.40",
+      "size": 4253780,
+      "sha256": "b6c612ff0de0706bcd482a03b31b18c3dd85843cfc5ed2e3eef836bc19a3f9bc",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release with nonblocking late-boundary autocorrect, platform correction highlights, safer short-word ranking, and the consolidated safe-field correction improvements."
     }
   ]
 }
