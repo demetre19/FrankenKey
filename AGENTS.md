@@ -80,8 +80,11 @@ Default section order:
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md.
 - Every FrankenKey build intended for user testing must replace `/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/FrankenKey-installable-release.apk` with the verified final APK; proving a separate build output without updating that exact path is incomplete delivery.
 - FrankenKey updates are published as GitHub Releases tagged `v<versionName>-vc<versionCode>` with `FrankenKey-installable-release.apk` attached and the user-visible changelog in the release body. Keep download, package/version, hash, and signer metadata consistent with the exact delivery APK.
+- Keep test candidates local until the user explicitly confirms full testing is complete and approves publication; before that approval, do not push release commits, create a GitHub Release, or upload the APK.
 - Each Android release must also carry `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` in the source branch with user-facing content consistent with the GitHub Release body.
 - Never put a debug/dev APK in the live repository or updater path. The internal Android package ID `dev.frankenkey.keyboard` is retained only for update compatibility; every delivered APK must be the signed release variant, display `FrankenKey`, use the production launcher logo, and pass the source checkout's `verifyReleaseIdentity` gate before publication.
+- When a supplied reference APK, package, binary, or artifact defines parity, inspect and execute that artifact before editing the port; derive the observable behavior and package/runtime architecture first.
+- Follow the global programmatic-first rule: use APIs, commands, direct service/data operations, and automated harnesses instead of UI whenever they can achieve the same result. Use UI only for UI-specific verification or when no programmatic surface exists. `AUTOBUILD-AGENT-PROGRAMMATIC-FIRST.md` is the standalone AutoBuild skill-agent handoff copy of this rule.
 
 ## Project Context
 

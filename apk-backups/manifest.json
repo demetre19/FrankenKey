@@ -49,6 +49,198 @@
       "note": "Release with subtle snippets/suggestions divider and smaller long suggestion labels."
     },
     {
+      "label": "layout-toggle-number-entry-shortcuts-release",
+      "file": "FrankenKey-2.0.12-vc63-new-release-key-9fdb3633-a3e8d9c2.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "63",
+      "versionName": "2.0.12",
+      "size": 5953948,
+      "sha256": "a3e8d9c2760011a5a2ec538796716aab6fc7770d2b238c383c0495445d7e430f",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release with Spacebar swipe to toggle Fleksy/FrankenKey mode and number-entry shortcuts/settings polish."
+    },
+    {
+      "label": "samsung-gboard-clipboard-parity-release",
+      "file": "FrankenKey-2.0.12-vc63-new-release-key-9fdb3633-82f3e3d1.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "63",
+      "versionName": "2.0.12",
+      "size": 5959444,
+      "sha256": "82f3e3d1e669d36c9a9c7f2ca882bcb92384766a778b26bc37027732ca488e52",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release with Samsung-style compact expandable editable clipboard cards and Gboard-style screenshot/image clipboard save/pin/paste support."
+    },
+    {
+      "label": "debug-deep-clipboard-numpad-cog-release",
+      "file": "FrankenKey-2.0.12-vc63-new-release-key-9fdb3633-50a12881.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "63",
+      "versionName": "2.0.12",
+      "size": 5960664,
+      "sha256": "50a12881c0b5b57b19ab59e056b41fe100bbb4061c00545a293683eb224bc9cf",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Debug-deep release with MediaStore-backed recent screenshot capture permission flow, fixed-size ellipsized clipboard cards, q top-left cog toggle, and No. number-entry shortcut on the 123 key."
+    },
+    {
+      "label": "debug-deep-screenshot-permission-p-cog-no-release",
+      "file": "FrankenKey-2.0.13-vc64-new-release-key-9fdb3633-fa319080.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "64",
+      "versionName": "2.0.13",
+      "size": 5960920,
+      "sha256": "fa319080084050b8ab60a3480af05faa1812b372185a99c376c61db65eab2a06",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Debug-deep release with automatic screenshot media permission request from the clipboard surface, Android 14 selected-visual-media permission, cog moved to p top-right, and No. on 123 opening the numeric page directly."
+    },
+    {
+      "label": "debug-deep-screenshot-refresh-release",
+      "file": "FrankenKey-2.0.14-vc65-new-release-key-9fdb3633-6a0be794.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "65",
+      "versionName": "2.0.14",
+      "size": 5960937,
+      "sha256": "6a0be79455a3150e82c294a0ec00652bcd906d55bfa0908ee17f4e62a51eca20",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Debug-deep release with clipboard-open MediaStore screenshot refresh when permission is already granted and observer refresh queries latest screenshot."
+    },
+    {
+      "label": "debug-deep-screenshot-startup-crash-release",
+      "file": "FrankenKey-2.0.15-vc66-new-release-key-9fdb3633-11242988.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "66",
+      "versionName": "2.0.15",
+      "size": 5960959,
+      "sha256": "11242988d109fd9919e07569a3101ddda2ab2a67b89f197fdb75d0d8d485ed8e",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Debug-deep release fixing startup crash when MediaStore screenshot refresh adds an image history entry before ClipboardHistoryService._service is published."
+    },
+    {
+      "label": "settings-backup-restore-release",
+      "file": "FrankenKey-2.0.16-vc67-new-release-key-9fdb3633-f911032a.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "67",
+      "versionName": "2.0.16",
+      "size": 5965304,
+      "sha256": "f911032a07a2a87c76055882fc3e76f1fbe12d68b65ff6e08ed4171eff59d6a6",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release adding complete Settings backup/restore export and import for default settings, direct-boot runtime preferences, named stores, snippets, dictionaries, emoji recents, and pinned clipboard data."
+    },
+    {
+      "label": "settings-backup-restore-top-release",
+      "file": "FrankenKey-2.0.17-vc68-new-release-key-9fdb3633-666a7eca.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "68",
+      "versionName": "2.0.17",
+      "size": 5965308,
+      "sha256": "666a7eca3307faf6c713853c999b9bc386df89b8fc054a8773dbe1544a44a5df",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release moving complete Settings backup/restore controls to the top of Settings so Export all settings and Import all settings are immediately visible after reinstall."
+    },
+    {
+      "label": "clean-key-legends-release",
+      "file": "FrankenKey-2.0.18-vc69-new-release-key-9fdb3633-d2d5d393.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "69",
+      "versionName": "2.0.18",
+      "size": 5966093,
+      "sha256": "d2d5d3935c61d426d5e1384fb11d42f868614ea25ab1cd43c5f8c597cee91699",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release hiding the requested clean-layout secondary gesture legends on Q, P, D, F, G, H, J, 123, and Backspace while retaining their swipe actions."
+    },
+    {
+      "label": "shared-spatial-decoder-release",
+      "file": "FrankenKey-2.0.19-vc70-new-release-key-443d7cb8.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "70",
+      "versionName": "2.0.19",
+      "size": 6011389,
+      "sha256": "443d7cb8f8d6db1babd98ca13c9d83a0f0f0981e2956038af4f12f22dd7ee3c7",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release replacing synchronous duplicate suggestion/autocorrect paths with one bounded spatial decoder, stale-result protection, contextual personalization, and the requested spacebar clipboard/emoji/GIF gestures."
+    },
+    {
+      "label": "first-pass-prewarm-and-safe-repeat-release",
+      "file": "FrankenKey-2.0.20-vc71-new-release-key-9fdb3633-24b085f1.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "71",
+      "versionName": "2.0.20",
+      "size": 6012436,
+      "sha256": "24b085f1abfda479e5997f433bfe4c22f5569c0c9820a422471bbfee737affe8",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release prewarming and reusing suggestion resources for first-pass results, plus independent safe repeat intervals for paste and destructive delete actions."
+    },
+    {
+      "label": "autocapitalisation-repair-release",
+      "file": "FrankenKey-2.0.21-vc72-new-release-key-9fdb3633-01922916.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "72",
+      "versionName": "2.0.21",
+      "size": 6013206,
+      "sha256": "01922916d04d9f7742bd69d01a5cd1b62ba6af5e0851c2dae5f2f971fd71ecfa",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release repairing standalone i capitalization, delayed sentence-start casing, and autocap state after corrected replacements."
+    },
+    {
+      "label": "field-capitalisation-compatibility-release",
+      "file": "FrankenKey-2.0.22-vc73-new-release-key-9fdb3633-a20eb11d.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "73",
+      "versionName": "2.0.22",
+      "size": 6013396,
+      "sha256": "a20eb11db2ef227956a69c0a688abe292fb2f442f2cf9d76a493ebb544e1d59a",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release adding sentence-capitalization fallback for generic text fields and verified standalone-I handling across URI/plain editors without affecting password fields."
+    },
+    {
+      "label": "adaptive-correction-learning-release",
+      "file": "FrankenKey-2.0.23-vc74-new-release-key-9fdb3633-08d269de.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "74",
+      "versionName": "2.0.23",
+      "size": 6017267,
+      "sha256": "08d269de0771a436ce8f2f07ea7cf97ecd22415e011f6137f771abae5dc04fc3",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release adding bounded weighted typo-to-target learning with adjacent-typo generalization, undo-safe commit tokens, confirmed clear/forget actions, and dark-default Settings."
+    },
+    {
+      "label": "adaptive-learning-delivered-behavior-fix-release",
+      "file": "FrankenKey-2.0.24-vc75-new-release-key-9fdb3633-c47ff4c7.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "75",
+      "versionName": "2.0.24",
+      "size": 6017367,
+      "sha256": "c47ff4c76a474931fc762b342dc07433bd6bba0e6f9e8f6fa5badbf597b475ff",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release fixing adaptive learning with hidden suggestions, fast manual corrections, correction-only targets, exact recall priority, and undo-safe evidence."
+    },
+    {
+      "label": "two-edit-exact-correction-learning-release",
+      "file": "FrankenKey-2.0.25-vc76-new-release-key-9fdb3633-c111dd2c.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "76",
+      "versionName": "2.0.25",
+      "size": 6017732,
+      "sha256": "c111dd2ca0f46da590def4c7a2c321ccd85ddd1278388774a8bf9701ea49f9d1",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release making repeated exact corrections override nearer guesses, supporting bounded two-edit textual pairs, and preserving Unicode correction identities and surfaces without widening ordinary or related autocorrect."
+    },
+    {
       "label": "consent-based-github-updater-release",
       "file": "FrankenKey-2.0.26-vc77-new-release-key-9fdb3633-bd183263.apk",
       "source": "FrankenKey-installable-release.apk",
@@ -193,6 +385,30 @@
       "note": "Release restoring explicit production name and launcher identity with a mandatory debug-artifact rejection gate."
     },
     {
+      "label": "swiftkey-parity-correction-voice-release",
+      "file": "FrankenKey-2.0.38-vc89-new-release-key-9fdb3633-2aa29bd0.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "89",
+      "versionName": "2.0.38",
+      "size": 4252821,
+      "sha256": "2aa29bd053aac1162386658d10abb86eb1459879ad8cace76902d070a04f472a",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Test release with broader safe-field correction, opt-in system grammar, in-process multimodal voice typing, and cleaner settings."
+    },
+    {
+      "label": "search-omnibox-correction-release",
+      "file": "FrankenKey-2.0.39-vc90-new-release-key-9fdb3633-a2c6b299.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "90",
+      "versionName": "2.0.39",
+      "size": 4252858,
+      "sha256": "a2c6b2990e6d33e1da997614f36e4c18d41dee270932f5437ed2878a7211e3b2",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Test release enabling stateless suggestions and autocorrect in Google Search and browser URL/search fields, with the privacy card first."
+    },
+    {
       "label": "nonblocking-autocorrect-parity-release",
       "file": "FrankenKey-2.0.40-vc91-new-release-key-9fdb3633-b6c612ff.apk",
       "source": "FrankenKey-installable-release.apk",
@@ -203,6 +419,18 @@
       "sha256": "b6c612ff0de0706bcd482a03b31b18c3dd85843cfc5ed2e3eef836bc19a3f9bc",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release with nonblocking late-boundary autocorrect, platform correction highlights, safer short-word ranking, and the consolidated safe-field correction improvements."
+    },
+    {
+      "label": "space-autocorrection-release",
+      "file": "FrankenKey-2.0.42-vc93-new-release-key-9fdb3633-1624891d.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "93",
+      "versionName": "2.0.42",
+      "size": 6835353,
+      "sha256": "1624891d3002223c571a1ab64022fc73ca9ad2197402d6a0e0ae1170bbfb7077",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Release making shown autocorrection candidates apply reliably on Space while preserving immediate Backspace undo."
     }
   ]
 }
