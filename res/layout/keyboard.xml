@@ -8,6 +8,7 @@
     <TextView android:id="@+id/candidates_separator_right" style="@style/candidates_separator"/>
     <TextView android:id="@+id/candidates_right" style="@style/candidates_item"/>
   </juloo.keyboard2.suggestions.CandidatesView>
+  <include layout="@layout/assistant_strip"/>
   <juloo.keyboard2.snippets.SnippetRowView android:id="@+id/snippet_row" android:layout_width="match_parent" android:layout_height="wrap_content"/>
   <juloo.keyboard2.Keyboard2View android:id="@+id/keyboard_view" android:layout_width="match_parent" android:layout_height="wrap_content"/>
 </LinearLayout>

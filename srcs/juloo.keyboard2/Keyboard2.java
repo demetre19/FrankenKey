@@ -1,9 +1,11 @@
 package juloo.keyboard2;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.inputmethodservice.InputMethodService;
@@ -27,6 +29,7 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.List;
 import java.util.Set;
 import juloo.cdict.Cdict;
@@ -48,6 +51,12 @@ public class Keyboard2 extends InputMethodService
   private Keyboard2View _keyboard_layout_view;
   private CandidatesView _candidates_view;
   private SnippetRowView _snippet_row_view;
+  private AssistantStripView _assistant_strip;
+  private SystemGrammarChecker _grammar_checker;
+  private SystemGrammarChecker.Correction _grammar_correction;
+  private MultimodalVoiceInput _voice_input;
+  private int _selection_start = -1;
+  private int _selection_end = -1;
   private SharedDecoder _decoder;
   private KeyEventHandler _keyeventhandler;
   private long _decoder_session = 0;
@@ -188,6 +197,26 @@ public class Keyboard2 extends InputMethodService
     super.onCreate();
     _prefs = DirectBootAwarePreferences.get_shared_preferences(this);
     _handler = new Handler(getMainLooper());
+    _grammar_checker = new SystemGrammarChecker(this, _handler,
+        correction -> grammar_correction_changed(correction));
+    _voice_input = new MultimodalVoiceInput(this, _handler,
+        new MultimodalVoiceInput.Callback()
+        {
+          @Override public void on_listening(String partialText)
+          {
+            show_voice_listening(partialText);
+          }
+
+          @Override public void on_text(String text)
+          {
+            commit_voice_text(text);
+          }
+
+          @Override public void on_stopped(int errorCode)
+          {
+            voice_input_stopped(errorCode);
+          }
+        });
     _foldStateTracker = new FoldStateTracker(this);
     _dictionaries = Dictionaries.instance(this);
     _language_pack_manager = new LanguagePackManager(this);
@@ -221,6 +250,8 @@ public class Keyboard2 extends InputMethodService
     _decoder_session = 0;
     _decoder.close();
     _foldStateTracker.close();
+    _grammar_checker.close();
+    _voice_input.close();
     super.onDestroy();
   }
 
@@ -230,6 +261,8 @@ public class Keyboard2 extends InputMethodService
     _keyboard_layout_view = (Keyboard2View)_keyboard_container_view.findViewById(R.id.keyboard_view);
     _candidates_view = (CandidatesView)_keyboard_container_view.findViewById(R.id.candidates_view);
     _snippet_row_view = (SnippetRowView)_keyboard_container_view.findViewById(R.id.snippet_row);
+    _assistant_strip = (AssistantStripView)_keyboard_container_view
+      .findViewById(R.id.assistant_strip);
   }
 
   InputMethodManager get_imm()
@@ -317,12 +350,130 @@ public class Keyboard2 extends InputMethodService
     boolean should_show =
       _config.suggestions_enabled
       && _config.editor_config.should_show_candidates_view
-      && !_config.split_layout;
+      && !_config.split_layout
+      && !_assistant_strip.is_showing();
     if (should_show)
       _candidates_view.refresh_config(_config,
           _resource_spec.mainDictionary != null);
     _candidates_view.set_decoder_state(_decoder.current_presentation());
     _candidates_view.setVisibility(should_show ? View.VISIBLE : View.GONE);
+  }
+
+  private void grammar_correction_changed(
+      SystemGrammarChecker.Correction correction)
+  {
+    _grammar_correction = correction;
+    if (_voice_input.is_active())
+      return;
+    show_grammar_correction();
+  }
+
+  private void show_grammar_correction()
+  {
+    if (_grammar_correction == null)
+      _assistant_strip.clear();
+    else
+      _assistant_strip.show(
+          getString(R.string.assistant_grammar_message,
+            _grammar_correction.replacement),
+          getString(R.string.assistant_apply),
+          () -> apply_grammar_correction(),
+          () -> dismiss_grammar_correction());
+    refresh_candidates_view();
+  }
+
+  private void show_voice_listening(String partialText)
+  {
+    String message = partialText == null || partialText.length() == 0
+      ? getString(R.string.assistant_voice_listening)
+      : getString(R.string.assistant_voice_partial, partialText);
+    _assistant_strip.show(message, getString(R.string.assistant_voice_stop),
+        () -> _voice_input.stop(), null);
+    refresh_candidates_view();
+  }
+
+  private void commit_voice_text(String text)
+  {
+    InputConnection connection = getCurrentInputConnection();
+    if (connection == null)
+      return;
+    CharSequence before = connection.getTextBeforeCursor(1, 0);
+    String committed = MultimodalVoiceInput.text_to_commit(before, text);
+    if (committed.length() > 0)
+      connection.commitText(committed, 1);
+  }
+
+  private void voice_input_stopped(int errorCode)
+  {
+    show_grammar_correction();
+    if (errorCode != 0)
+      Toast.makeText(this, R.string.voice_typing_unavailable,
+          Toast.LENGTH_SHORT).show();
+  }
+
+  private void start_voice_typing()
+  {
+    if (_voice_input.is_active())
+    {
+      _voice_input.stop();
+      return;
+    }
+    if (!_config.editor_config.should_use_sentence_assistance)
+    {
+      Toast.makeText(this, R.string.voice_typing_unavailable,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    if (!_config.multimodal_voice_typing_enabled
+        || (VERSION.SDK_INT >= 23
+          && checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED))
+    {
+      Intent intent = new Intent(this, SettingsActivity.class);
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      intent.putExtra(SettingsActivity.EXTRA_REQUEST_VOICE_PERMISSION, true);
+      startActivity(intent);
+      return;
+    }
+    if (_voice_input.start(current_locale()))
+      return;
+    Toast.makeText(this, R.string.voice_typing_unavailable,
+        Toast.LENGTH_SHORT).show();
+  }
+
+  private void apply_grammar_correction()
+  {
+    SystemGrammarChecker.Correction correction = _grammar_correction;
+    InputConnection connection = getCurrentInputConnection();
+    if (correction != null)
+      correction.apply(connection, _selection_start);
+    dismiss_grammar_correction();
+  }
+
+  private void dismiss_grammar_correction()
+  {
+    _grammar_correction = null;
+    _assistant_strip.clear();
+    refresh_candidates_view();
+  }
+
+  private void start_grammar_checker()
+  {
+    boolean enabled = _config.grammar_corrections_enabled
+      && _config.editor_config.should_use_sentence_assistance;
+    _grammar_checker.start(current_locale(), enabled);
+    if (enabled)
+      _grammar_checker.request(getCurrentInputConnection(),
+          _selection_start, _selection_end);
+  }
+
+  private Locale current_locale()
+  {
+    if (_config.device_locales != null
+        && _config.device_locales.default_ != null)
+      return Locale.forLanguageTag(
+          _config.device_locales.default_.lang_tag);
+    return Locale.getDefault();
   }
 
   /** Might re-create the keyboard view. [_keyboard_layout_view.setKeyboard()] and
@@ -351,6 +502,7 @@ public class Keyboard2 extends InputMethodService
     bg.setAlpha(_config.keyboardOpacity);
     _keyboard_container_view.setBackground(bg);
     _keyboard_layout_view.reset();
+    _assistant_strip.refresh_config(_config);
     _snippet_row_view.refresh_config(_prefs,
         _config.editor_config.should_show_snippet_row,
         slot -> _keyeventhandler.snippet_entered(slot.getPhrase()));
@@ -393,6 +545,9 @@ public class Keyboard2 extends InputMethodService
         _resource_spec, layout, session_personalization_spec());
     _keyeventhandler.started(_config, _decoder_session);
     refresh_candidates_view();
+    _selection_start = info.initialSelStart;
+    _selection_end = info.initialSelEnd;
+    start_grammar_checker();
     setInputView(_keyboard_container_view);
     Logs.debug_startup_input_view(info, _config);
   }
@@ -523,6 +678,10 @@ public class Keyboard2 extends InputMethodService
     _keyeventhandler.selection_updated(oldSelStart, newSelStart, newSelEnd);
     if ((oldSelStart == oldSelEnd) != (newSelStart == newSelEnd))
       _keyboard_layout_view.set_selection_state(newSelStart != newSelEnd);
+    _selection_start = newSelStart;
+    _selection_end = newSelEnd;
+    _grammar_checker.request(getCurrentInputConnection(),
+        newSelStart, newSelEnd);
   }
 
   private void finish_input_session()
@@ -531,6 +690,11 @@ public class Keyboard2 extends InputMethodService
     _decoder_session = 0;
     if (_candidates_view != null)
       _candidates_view.set_decoder_state(_decoder.current_presentation());
+    _voice_input.stop();
+    _grammar_checker.start(null, false);
+    _grammar_correction = null;
+    if (_assistant_strip != null)
+      _assistant_strip.clear();
   }
 
   @Override
@@ -552,7 +716,12 @@ public class Keyboard2 extends InputMethodService
   public void onSharedPreferenceChanged(SharedPreferences _prefs, String _key)
   {
     refresh_config();
+    if (!_config.multimodal_voice_typing_enabled
+        && _voice_input.is_active())
+      _voice_input.stop();
     apply_layout(current_layout());
+    if (_decoder_session != 0)
+      start_grammar_checker();
   }
 
   @Override
@@ -757,9 +926,7 @@ public class Keyboard2 extends InputMethodService
           break;
 
         case SWITCH_VOICE_TYPING:
-          if (!VoiceImeSwitcher.switch_to_voice_ime(Keyboard2.this, get_imm(),
-                Config.globalPrefs()))
-            _config.shouldOfferVoiceTyping = false;
+          start_voice_typing();
           break;
 
         case HIDE_SELF:
@@ -824,8 +991,18 @@ public class Keyboard2 extends InputMethodService
 
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {
+      Decoder.Result completed = state.key == null
+        ? null : _decoder.current_result(state.key);
+      if (completed != null)
+        _handler.post(new Runnable()
+            {
+              @Override public void run()
+              {
+                _keyeventhandler.decoder_result_ready(completed);
+              }
+            });
       if (_candidates_view != null)
-        _candidates_view.set_decoder_state(state);
+        _candidates_view.set_decoder_state(_decoder.current_presentation());
     }
 
     public String provide_stateful_key_symbol(KeyValue.Stateful q)

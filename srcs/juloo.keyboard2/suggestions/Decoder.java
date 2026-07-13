@@ -48,14 +48,16 @@ public final class Decoder
   private static final int MAX_CORRECTION_RESULTS = 6;
 
   private static final int Q8 = 256;
-  private static final int OMISSION_COST_Q8 = 24 * Q8;
-  private static final int EXTRA_TAP_COST_Q8 = 24 * Q8;
+  private static final int OMISSION_COST_Q8 = 6 * Q8;
+  private static final int EXTRA_TAP_COST_Q8 = 6 * Q8;
   private static final int TRANSPOSITION_COST_Q8 = 2 * Q8;
   private static final int UNKNOWN_SUBSTITUTION_COST_Q8 = 12 * Q8;
   private static final int MAX_SUBSTITUTION_COST_Q8 = 64 * Q8;
   private static final int BEAM_COST_Q8 = 48 * Q8;
+  private static final double TOUCH_SUBSTITUTION_COST_SCALE = 2.0;
   private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 4 * Q8;
   private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = 2 * Q8;
+  private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
   private static final int SCORE_LIMIT = 0x3fffffff;
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
@@ -462,19 +464,25 @@ public final class Decoder
     boolean protectedLiteral = literal.recognized || literal.learned;
     Candidate best = null;
     Candidate runner = null;
+    Candidate closestSpatial = null;
     for (Candidate candidate : ranked)
     {
       if (!is_autocorrection_candidate_text(candidate, literal)
           || candidate.editCount != 1)
         continue;
+      if (closestSpatial == null
+          || candidate.spatialQ8 < closestSpatial.spatialQ8)
+        closestSpatial = candidate;
       if (best == null)
         best = candidate;
-      else
-      {
+      else if (runner == null)
         runner = candidate;
-        break;
-      }
     }
+    if (best != null && request.codePointCount == 3
+        && closestSpatial != null && closestSpatial != best
+        && (long)best.spatialQ8 - closestSpatial.spatialQ8
+          >= AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8)
+      return null;
     if (best == null
         || (long)literal.totalQ8 - best.totalQ8
           < AUTOCORRECT_LITERAL_MARGIN_Q8
@@ -1047,7 +1055,8 @@ public final class Decoder
         float sigmaY = Math.max(touch.keyHeight * 0.55f, 1f);
         float dx = (touch.touchX - candidateCenterX) / sigmaX;
         float dy = (touch.touchY - candidateCenterY) / sigmaY;
-        return round_q8(Math.min(64.0, 10.0 * (dx * dx + dy * dy)));
+        return round_q8(Math.min(64.0,
+            TOUCH_SUBSTITUTION_COST_SCALE * (dx * dx + dy * dy)));
       }
 
       float dx = _x[typedPosition] - _x[candidatePosition];

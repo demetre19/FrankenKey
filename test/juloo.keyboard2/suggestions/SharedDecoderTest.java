@@ -764,8 +764,9 @@ public class SharedDecoderTest
           || onStartInputView.contains("_resource_generation++"));
     assertTrue("The editor-start refresh path must compare the selected language instead of force-generating a new resource key.",
         refreshConfig.contains("refresh_current_dictionary(false)"));
-    assertTrue("The first editor session must receive the exact descriptors prepared during IME creation.",
-        onStartInputView.contains("_resource_spec, layout, _personalization_spec"));
+    assertTrue("The first editor session must reuse the prewarmed resource descriptor while selecting the privacy-safe personalization descriptor for that editor.",
+        onStartInputView.contains(
+          "_resource_spec, layout, session_personalization_spec()"));
     assertTrue("A subtype change must update an active editor, but passively prewarm the replacement resources when no editor session exists.",
         subtypeChanged.replaceAll("\\s+", "").contains(
           "if(_decoder_session!=0)_decoder.update_resources(_decoder_session,_resource_spec);else_decoder.prewarm(_resource_spec,_personalization_spec);"));

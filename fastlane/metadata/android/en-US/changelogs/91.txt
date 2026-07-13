@@ -1,0 +1,5 @@
+Autocorrect stays responsive: separators appear immediately, late corrections apply only when the exact word and cursor are unchanged, and corrected words use Android's standard highlight.
+
+Improved repeated-key, omitted-letter, transposition, and adjacent-key repairs while protecting short ambiguous words, passwords, and terminal input.
+
+Suggestions now work in more safe search/browser fields without private learning. Added optional system grammar correction and in-keyboard voice typing.

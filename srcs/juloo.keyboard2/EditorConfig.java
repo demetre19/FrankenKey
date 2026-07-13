@@ -5,7 +5,6 @@ import android.os.Build.VERSION;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.inputmethod.EditorInfo;
-import juloo.keyboard2.suggestions.CandidatesView;
 
 public final class EditorConfig
 {
@@ -46,6 +45,8 @@ public final class EditorConfig
   public boolean should_show_snippet_row;
   /** Whether autocorrect and local learning are safe for this editor. */
   public boolean should_use_typing_assistance;
+  /** Whether sentence-level grammar and voice assistance fit this editor. */
+  public boolean should_use_sentence_assistance;
   /** Whether suggestions may read or write persistent learned words. */
   public boolean should_use_personalization = true;
 
@@ -114,10 +115,13 @@ public final class EditorConfig
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
     boolean termux_raw_editor = is_termux_raw_editor(info);
-    should_show_candidates_view =
-      CandidatesView.should_show(info) || termux_raw_editor;
     should_use_typing_assistance = should_use_typing_assistance(info);
-    should_use_personalization = !termux_raw_editor;
+    should_use_sentence_assistance = should_use_typing_assistance
+      && !is_structured_text_editor(info);
+    should_show_candidates_view =
+      should_use_typing_assistance || termux_raw_editor;
+    should_use_personalization = should_use_personalization(info)
+      && !termux_raw_editor && !is_structured_text_editor(info);
     should_show_snippet_row = should_show_snippet_row(info);
   }
 
@@ -133,28 +137,56 @@ public final class EditorConfig
       && "com.termux".equals(info.packageName);
   }
 
-  static boolean should_use_typing_assistance(EditorInfo info)
+  public static boolean should_use_typing_assistance(EditorInfo info)
   {
     if (is_termux_raw_editor(info))
       return true;
-    int class_ = info.inputType & InputType.TYPE_MASK_CLASS;
-    int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
-    int flags = info.inputType & InputType.TYPE_MASK_FLAGS;
-    if (class_ != InputType.TYPE_CLASS_TEXT)
+    if (info == null
+        || (info.inputType & InputType.TYPE_MASK_CLASS)
+          != InputType.TYPE_CLASS_TEXT)
       return false;
-    if ((flags & InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0)
-      return false;
-    switch (variation)
+    switch (info.inputType & InputType.TYPE_MASK_VARIATION)
     {
-      case InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE:
       case InputType.TYPE_TEXT_VARIATION_NORMAL:
-      case InputType.TYPE_TEXT_VARIATION_PERSON_NAME:
+      case InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE:
       case InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE:
+      case InputType.TYPE_TEXT_VARIATION_PERSON_NAME:
+      case InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS:
       case InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT:
+      case InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT:
+      case InputType.TYPE_TEXT_VARIATION_FILTER:
+      case InputType.TYPE_TEXT_VARIATION_PHONETIC:
+      case InputType.TYPE_TEXT_VARIATION_URI:
+      case InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
+      case InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
         return true;
       default:
         return false;
     }
+  }
+
+  static boolean is_structured_text_editor(EditorInfo info)
+  {
+    if (info == null
+        || (info.inputType & InputType.TYPE_MASK_CLASS)
+          != InputType.TYPE_CLASS_TEXT)
+      return false;
+    switch (info.inputType & InputType.TYPE_MASK_VARIATION)
+    {
+      case InputType.TYPE_TEXT_VARIATION_URI:
+      case InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
+      case InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static boolean should_use_personalization(EditorInfo info)
+  {
+    return info != null
+      && (info.imeOptions
+          & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
   }
 
   /** Generic plain-text fields that omit caps flags still need sentence repair. */

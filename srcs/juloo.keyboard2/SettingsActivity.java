@@ -8,12 +8,11 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.util.TypedValue;
 import android.database.DataSetObserver;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build.VERSION;
 import android.os.Bundle;
-import android.preference.CheckBoxPreference;
 import android.preference.Preference;
+import android.preference.TwoStatePreference;
 import android.preference.PreferenceActivity;
 import android.content.SharedPreferences;
 import android.preference.PreferenceCategory;
@@ -31,10 +30,13 @@ public class SettingsActivity extends PreferenceActivity
   private static final int REQUEST_SCREENSHOT_MEDIA_PERMISSION = 54;
   private static final int REQUEST_EXPORT_SETTINGS_BACKUP = 55;
   private static final int REQUEST_IMPORT_SETTINGS_BACKUP = 56;
+  private static final int REQUEST_RECORD_AUDIO_PERMISSION = 57;
   private static final String SETTINGS_BACKUP_FILENAME =
     "frankenkey-settings-backup.json";
   static final String EXTRA_REQUEST_SCREENSHOT_PERMISSION =
     "juloo.keyboard2.REQUEST_SCREENSHOT_PERMISSION";
+  static final String EXTRA_REQUEST_VOICE_PERMISSION =
+    "juloo.keyboard2.REQUEST_VOICE_PERMISSION";
   private ReleaseUpdater _releaseUpdater;
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -56,9 +58,11 @@ public class SettingsActivity extends PreferenceActivity
       dashboard.setIntent(new Intent(Intent.ACTION_VIEW,
             Uri.parse(GiphyClient.DASHBOARD_URL)));
     setupTypingAssistancePreferences();
+    setupVoiceTypingPreference();
     setupClipboardPreferences();
     setupBackupPreferences();
     requestScreenshotPermissionFromIntent();
+    requestVoicePermissionFromIntent();
 
     boolean foldableDevice = FoldStateTracker.isFoldableDevice(this);
     findPreference("margin_bottom_portrait_unfolded").setEnabled(foldableDevice);
@@ -116,6 +120,16 @@ public class SettingsActivity extends PreferenceActivity
       int[] grantResults)
   {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION)
+    {
+      boolean granted = grantResults.length > 0
+        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+      setMultimodalVoiceTypingEnabled(granted);
+      if (!granted)
+        Toast.makeText(this, R.string.voice_typing_permission_denied,
+            Toast.LENGTH_SHORT).show();
+      return;
+    }
     if (requestCode != REQUEST_SCREENSHOT_MEDIA_PERMISSION)
       return;
     if (ClipboardHistoryService.hasScreenshotReadPermission(this))
@@ -126,8 +140,8 @@ public class SettingsActivity extends PreferenceActivity
     SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
     prefs.edit().putBoolean("clipboard_save_screenshots", false).apply();
     Preference pref = findPreference("clipboard_save_screenshots");
-    if (pref instanceof CheckBoxPreference)
-      ((CheckBoxPreference)pref).setChecked(false);
+    if (pref instanceof TwoStatePreference)
+      ((TwoStatePreference)pref).setChecked(false);
     Toast.makeText(this, R.string.pref_clipboard_screenshots_permission_denied,
         Toast.LENGTH_SHORT).show();
   }
@@ -253,6 +267,73 @@ public class SettingsActivity extends PreferenceActivity
       });
   }
 
+  private void setupVoiceTypingPreference()
+  {
+    Preference preference = findPreference("multimodal_voice_typing");
+    if (preference == null)
+      return;
+    preference.setOnPreferenceChangeListener((_preference, value) -> {
+        if (!Boolean.TRUE.equals(value) || hasRecordAudioPermission())
+          return true;
+        showVoicePermissionDisclosure();
+        return false;
+      });
+  }
+
+  private void requestVoicePermissionFromIntent()
+  {
+    Intent intent = getIntent();
+    if (intent != null
+        && intent.getBooleanExtra(EXTRA_REQUEST_VOICE_PERMISSION, false))
+      getListView().post(() -> requestVoicePermissionIfNeeded());
+  }
+
+  private void requestVoicePermissionIfNeeded()
+  {
+    if (hasRecordAudioPermission())
+    {
+      setMultimodalVoiceTypingEnabled(true);
+      return;
+    }
+    showVoicePermissionDisclosure();
+  }
+
+  private void showVoicePermissionDisclosure()
+  {
+    new AlertDialog.Builder(this)
+      .setTitle(R.string.voice_typing_permission_title)
+      .setMessage(R.string.voice_typing_permission_message)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.voice_typing_permission_continue,
+          (_dialog, _which) -> requestRecordAudioPermission())
+      .show();
+  }
+
+  private boolean hasRecordAudioPermission()
+  {
+    return VERSION.SDK_INT < 23
+      || checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+        == PackageManager.PERMISSION_GRANTED;
+  }
+
+  private void requestRecordAudioPermission()
+  {
+    if (VERSION.SDK_INT >= 23)
+      requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},
+          REQUEST_RECORD_AUDIO_PERMISSION);
+    else
+      setMultimodalVoiceTypingEnabled(true);
+  }
+
+  private void setMultimodalVoiceTypingEnabled(boolean enabled)
+  {
+    getPreferenceManager().getSharedPreferences().edit()
+      .putBoolean("multimodal_voice_typing", enabled).apply();
+    Preference preference = findPreference("multimodal_voice_typing");
+    if (preference instanceof TwoStatePreference)
+      ((TwoStatePreference)preference).setChecked(enabled);
+  }
+
   private void setupClipboardPreferences()
   {
     Preference screenshots = findPreference("clipboard_save_screenshots");
@@ -349,15 +430,17 @@ public class SettingsActivity extends PreferenceActivity
   private void styleSettingsList()
   {
     ListView list = getListView();
+    boolean lightTheme = isLightTheme();
     int horizontal = settingsSidePadding();
     list.setPadding(0, list.getPaddingTop(), 0,
         list.getPaddingBottom());
     list.setClipToPadding(false);
     list.setDivider(null);
     list.setDividerHeight(0);
+    list.setBackgroundColor(lightTheme ? 0xfff4f5f7 : 0xff0b0d10);
 
     ListAdapter adapter = getPreferenceScreen().getRootAdapter();
-    list.setAdapter(new SettingsListAdapter(adapter, isLightTheme(), horizontal,
+    list.setAdapter(new SettingsListAdapter(adapter, lightTheme, horizontal,
           getResources().getDisplayMetrics().density));
   }
 
@@ -382,10 +465,10 @@ public class SettingsActivity extends PreferenceActivity
 
   private static class SettingsListAdapter extends BaseAdapter
   {
-    private static final int LIGHT_SECTION = 0xffffffff;
-    private static final int LIGHT_SECTION_ALT = 0xfff4f5f7;
-    private static final int DARK_SECTION = 0xff121212;
-    private static final int DARK_SECTION_ALT = 0xff1f1f1f;
+    private static final int LIGHT_PAGE = 0xfff4f5f7;
+    private static final int LIGHT_SURFACE = 0xffffffff;
+    private static final int DARK_PAGE = 0xff0b0d10;
+    private static final int DARK_SURFACE = 0xff15181c;
 
     private final ListAdapter _inner;
     private final boolean _lightTheme;
@@ -429,15 +512,16 @@ public class SettingsActivity extends PreferenceActivity
       card.removeAllViews();
 
       View view = _inner.getView(position, innerConvert, parent);
-      card.setBackground(sectionBackground(position));
-      card.setPadding(_sidePadding, topPaddingFor(position),
-          _sidePadding, bottomPaddingFor(position));
+      card.setBackgroundColor(surfaceColor());
+      card.setPadding(_sidePadding, 0, _sidePadding, 0);
       card.setTag(null);
       card.addView(view, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT));
 
-      wrapper.setPadding(0, 0, 0, 0);
+      wrapper.setBackgroundColor(pageColor());
+      wrapper.setPadding(0, topPaddingFor(position), 0,
+          bottomPaddingFor(position));
       wrapper.setTag(view);
       wrapper.addView(card, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
@@ -504,14 +588,14 @@ public class SettingsActivity extends PreferenceActivity
     private int topPaddingFor(int position)
     {
       if (isSectionStart(position))
-        return _sidePadding;
+        return dp(12);
       return 0;
     }
 
     private int bottomPaddingFor(int position)
     {
       if (isSectionEnd(position))
-        return _sidePadding;
+        return dp(12);
       return 0;
     }
 
@@ -526,11 +610,14 @@ public class SettingsActivity extends PreferenceActivity
           || getItem(position + 1) instanceof PreferenceCategory;
     }
 
-    private GradientDrawable sectionBackground(int position)
+    private int pageColor()
     {
-      GradientDrawable background = new GradientDrawable();
-      background.setColor(sectionColor(sectionFor(position)));
-      return background;
+      return _lightTheme ? LIGHT_PAGE : DARK_PAGE;
+    }
+
+    private int surfaceColor()
+    {
+      return _lightTheme ? LIGHT_SURFACE : DARK_SURFACE;
     }
 
 
@@ -555,22 +642,6 @@ public class SettingsActivity extends PreferenceActivity
       }
     }
 
-    private int sectionFor(int position)
-    {
-      int section = -1;
-      for (int i = 0; i <= position; ++i)
-        if (getItem(i) instanceof PreferenceCategory)
-          ++section;
-      return Math.max(0, section);
-    }
-
-    private int sectionColor(int section)
-    {
-      boolean alternate = (section & 1) == 1;
-      if (!_lightTheme)
-        return alternate ? DARK_SECTION_ALT : DARK_SECTION;
-      return alternate ? LIGHT_SECTION_ALT : LIGHT_SECTION;
-    }
   }
 
 }

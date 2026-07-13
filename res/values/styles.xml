@@ -333,5 +333,8 @@
     <!-- Setting this in the activity theme so it propagate to nested
          preference screens. -->
     <item name="android:fitsSystemWindows">true</item>
+    <item name="android:colorAccent">#55D6BE</item>
+    <item name="android:navigationBarColor">#0B0D10</item>
+    <item name="android:windowBackground">#0B0D10</item>
   </style>
 </resources>

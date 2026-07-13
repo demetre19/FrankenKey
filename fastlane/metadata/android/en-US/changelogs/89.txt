@@ -1,0 +1,5 @@
+Autocorrect and suggestions now work across more safe text fields while staying off in passwords and structured inputs.
+
+Added optional system grammar corrections and multimodal voice typing that keeps FrankenKey visible while you dictate and type.
+
+Refined Settings with clearer switches, consistent surfaces, and explicit privacy disclosures for grammar and microphone access.

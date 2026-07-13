@@ -17,9 +17,11 @@
 - Preserve launcher/store icons unless the user explicitly requests icon changes; adaptive/circular foreground tweaks should target `ic_launcher_foreground` assets.
 - Strings and settings keys are behavioral contracts; update tests when changing them.
 - Typing settings expose separate millisecond repeat intervals for paste and destructive delete actions; both remain dependent on the global key-repeat toggle.
-- Settings uses a dark platform Material activity theme by default without changing the keyboard theme preference or unrelated activities.
+- Settings uses a dark platform Material activity theme by default without changing the keyboard theme preference or unrelated activities. Rows use platform switches, one consistent inset surface per theme, and restrained category spacing rather than alternating section colors.
 - Launcher welcome UI uses a dedicated dark theme; its Spacebar tutorial must mirror the live clean-layout clipboard, mode, emoji, and GIF corner labels and directions.
-- Every user-visible Settings checkbox must have a concise, accurate summary; generated extra-key checkboxes use the shared extra-key summary.
+- The launcher/settings home screen presents the `Private by design` card as its first content block, ahead of introductory copy and setup controls.
+- Every user-visible Settings switch must have a concise, accurate summary; generated extra-key checkboxes use the shared extra-key summary.
+- System grammar and multimodal voice settings default off. Their summaries/disclosures must identify the Android service boundary; the compact assistant strip may replace candidates temporarily but must leave the keyboard layout visible.
 - Adaptive-learning clear and individual word-forget copy must accurately describe the destructive scope and remain wired to explicit platform confirmation dialogs.
 - Settings exposes default-on automatic update checks, in-app or GitHub delivery, current update status, and a manual check. Update notices must show release changelog text and require explicit acceptance or rejection.
 - Snippet icon drawables are the curated Lucide set mapped by stable IDs in `SnippetIcons`; preserve their shared 24×24 stroke treatment and the packaged Lucide/Feather license notice.

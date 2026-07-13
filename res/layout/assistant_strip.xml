@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<juloo.keyboard2.AssistantStripView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/assistant_strip" style="@style/candidates_view" android:visibility="gone">
+  <TextView android:id="@+id/assistant_message" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="start|center_vertical" android:ellipsize="end" android:maxLines="1" android:paddingHorizontal="12dp" android:textColor="?attr/colorLabel"/>
+  <TextView android:id="@+id/assistant_primary" android:layout_width="wrap_content" android:layout_height="match_parent" android:minWidth="48dp" android:gravity="center" android:paddingHorizontal="12dp" android:textStyle="bold" android:textColor="?attr/colorLabel"/>
+  <TextView android:id="@+id/assistant_dismiss" android:layout_width="48dp" android:layout_height="match_parent" android:gravity="center" android:text="×" android:textSize="24sp" android:textColor="?attr/colorLabel" android:contentDescription="@string/assistant_dismiss"/>
+</juloo.keyboard2.AssistantStripView>

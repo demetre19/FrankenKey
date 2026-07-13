@@ -1,0 +1,5 @@
+Suggestions and autocorrect now work in Google Search, browser URL/search bars, and other non-secret text fields that suppress keyboard suggestions.
+
+URL and email-address text stays out of adaptive learning, while password fields remain excluded.
+
+Moved the Private by design card to the top of the FrankenKey home/settings screen.

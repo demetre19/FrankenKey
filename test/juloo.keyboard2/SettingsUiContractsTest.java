@@ -15,11 +15,11 @@ import static org.junit.Assert.*;
 public class SettingsUiContractsTest
 {
   @Test
-  public void every_static_settings_checkbox_has_approved_visible_summary()
+  public void every_static_settings_switch_has_approved_visible_summary()
       throws Exception
   {
     Element root = settingsRoot();
-    NodeList checkboxes = root.getElementsByTagName("CheckBoxPreference");
+    NodeList switches = root.getElementsByTagName("SwitchPreference");
     String[][] contracts = new String[][] {
       { "update_automatic_checks", "pref_update_automatic_checks_summary",
         "Check GitHub Releases at most once a day. Updates are never downloaded or installed without asking." },
@@ -27,6 +27,10 @@ public class SettingsUiContractsTest
         "Correct likely typos when you finish a word." },
       { "suggestions", "pref_suggestions_summary",
         "Show word suggestions while typing." },
+      { "grammar_corrections", "pref_grammar_corrections_summary",
+        "Show sentence-level fixes from Android’s selected grammar service. Text leaves FrankenKey only when you enable this." },
+      { "multimodal_voice_typing", "pref_multimodal_voice_summary",
+        "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "frankenkey_snippets_enabled", "pref_snippets_enabled_summary",
@@ -46,17 +50,17 @@ public class SettingsUiContractsTest
         "Save image clips and recent screenshots to history." }
     };
 
-    assertEquals("Settings must keep exactly the eleven approved static checkbox rows.",
-        contracts.length, checkboxes.getLength());
+    assertEquals("Settings must keep exactly the approved static switch rows.",
+        contracts.length, switches.getLength());
     for (String[] contract : contracts)
     {
-      Element checkbox = preferenceWithKey(root, contract[0]);
-      assertNotNull(contract[0] + " checkbox must remain reachable.", checkbox);
-      assertEquals(contract[0] + " must remain a checkbox row.",
-          "CheckBoxPreference", checkbox.getTagName());
+      Element preference = preferenceWithKey(root, contract[0]);
+      assertNotNull(contract[0] + " switch must remain reachable.", preference);
+      assertEquals(contract[0] + " must remain a switch row.",
+          "SwitchPreference", preference.getTagName());
       assertEquals(contract[0] + " must reference its localized summary.",
           "@string/" + contract[1],
-          checkbox.getAttribute("android:summary"));
+          preference.getAttribute("android:summary"));
       assertEquals(contract[0] + " summary must stay concise and accurate.",
           contract[2], resourceString(contract[1]));
     }
@@ -171,7 +175,7 @@ public class SettingsUiContractsTest
   }
 
   @Test
-  public void settings_list_has_side_padding_and_alternating_section_backgrounds()
+  public void settings_list_has_side_padding_and_consistent_surface_sections()
       throws Exception
   {
     String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
@@ -198,28 +202,26 @@ public class SettingsUiContractsTest
     assertFalse("The inner preference row itself must not be the side-padding target; custom preference rows can draw their own child content flush.",
         getView.contains("applySidePadding(view)")
         || getView.contains("view.setPadding(Math.max(view.getPaddingLeft(), _sidePadding)"));
-    assertFalse("The row wrapper must not paint section backgrounds edge-to-edge.",
-        getView.contains("wrapper.setBackgroundColor")
-        || getView.contains("wrapper.setBackground(sectionBackground(")
-        || getView.contains("wrapper.setBackgroundDrawable(sectionBackground("));
-    assertFalse("The inner preference row must not own the rounded section background; custom row children need an adapter-owned padded card between themselves and the card background.",
-        getView.contains("view.setBackground(sectionBackground(")
-        || getView.contains("view.setBackgroundDrawable(sectionBackground(")
-        || getView.contains("applySectionBackground(view, position)")
-        || getView.contains("setSectionBackground(view, position)"));
-    assertFalse("The inner preference row must be attached inside the card/content container, not directly to the outer wrapper.",
+    assertTrue("The row wrapper must paint the consistent page background around inset surfaces.",
+        getView.contains("wrapper.setBackgroundColor(pageColor())"));
+    assertFalse("The inner preference row must not own the section surface; custom row children need an adapter-owned padded container.",
+        getView.contains("view.setBackground(")
+        || getView.contains("view.setBackgroundDrawable("));
+    assertFalse("The inner preference row must be attached directly to the outer wrapper.",
         getView.contains("wrapper.addView(view,"));
-    assertTrue("The settings list must render through the section styling adapter.",
+    assertTrue("The settings list must render through the styling adapter.",
         styleList.contains("new SettingsListAdapter"));
-    assertTrue("Rows must be grouped by PreferenceCategory so each section shares one background.",
+    assertTrue("Category boundaries must create restrained vertical section spacing.",
         adapter.contains("instanceof PreferenceCategory")
-        && adapter.contains("sectionColor(sectionFor(position))"));
-    assertTrue("Light sections must alternate white and light gray.",
-        adapter.contains("LIGHT_SECTION = 0xffffffff")
-        && adapter.contains("LIGHT_SECTION_ALT = 0xfff4f5f7"));
-    assertTrue("Dark sections must alternate two dark backgrounds.",
-        adapter.contains("DARK_SECTION = 0xff121212")
-        && adapter.contains("DARK_SECTION_ALT = 0xff1f1f1f"));
+        && adapter.contains("topPaddingFor(position)")
+        && adapter.contains("bottomPaddingFor(position)"));
+    assertTrue("Light and dark themes must each use one page color and one content surface.",
+        adapter.contains("LIGHT_PAGE = 0xfff4f5f7")
+        && adapter.contains("LIGHT_SURFACE = 0xffffffff")
+        && adapter.contains("DARK_PAGE = 0xff0b0d10")
+        && adapter.contains("DARK_SURFACE = 0xff15181c"));
+    assertFalse("Sections must not alternate unrelated backgrounds.",
+        adapter.contains("SECTION_ALT"));
   }
 
   @Test
@@ -231,7 +233,8 @@ public class SettingsUiContractsTest
     String resolution = methodBody(source, "private boolean isLightTheme()");
 
     assertTrue("The settings adapter must receive the resolved activity-theme palette rather than deriving its colors directly from daytime configuration.",
-        styleList.contains("new SettingsListAdapter(adapter, isLightTheme()"));
+        styleList.contains("boolean lightTheme = isLightTheme()")
+        && styleList.contains("new SettingsListAdapter(adapter, lightTheme,"));
     assertOrdered("A platform theme's isLightTheme attribute must win before day/night configuration fallback so the explicitly dark Settings theme stays dark during daytime.",
         resolution.indexOf("resolveAttribute(android.R.attr.isLightTheme"),
         resolution.indexOf("return value.data != 0"),
@@ -239,7 +242,7 @@ public class SettingsUiContractsTest
   }
 
   @Test
-  public void settings_sections_use_square_card_backgrounds()
+  public void settings_sections_use_consistent_square_surfaces()
       throws Exception
   {
     String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
@@ -248,27 +251,23 @@ public class SettingsUiContractsTest
     String getView = methodBody(adapter, "public View getView");
     String compactGetView = getView.replaceAll("\\s+", " ");
 
-    assertFalse("Settings sections must use a Drawable/Card background; direct setBackgroundColor paints full-width blocks.",
-        compactGetView.contains(".setBackgroundColor(sectionColor("));
-    assertFalse("Settings sections must not assign the section background directly to the inner preference row.",
-        getView.contains("view.setBackground(sectionBackground(")
-        || getView.contains("view.setBackgroundDrawable(sectionBackground(")
-        || getView.contains("applySectionBackground(view, position)")
-        || getView.contains("setSectionBackground(view, position)"));
-    assertTrue("Settings sections must assign the square background to the adapter-owned card/content container.",
-        cardBackgroundApplicationIndex(getView) >= 0
-        && adapter.contains("GradientDrawable"));
-    assertFalse("Settings section backgrounds must be square: no rounded corner radius helper or corner radii assignment.",
-        adapter.contains("sectionCornerRadius")
+    assertTrue("Settings sections must paint the adapter-owned card with the resolved surface color.",
+        compactGetView.contains("card.setBackgroundColor(surfaceColor())"));
+    assertFalse("Settings sections must not assign the surface directly to the inner preference row.",
+        getView.contains("view.setBackground(")
+        || getView.contains("view.setBackgroundDrawable("));
+    assertFalse("Settings surfaces must stay square without rounded drawable allocation.",
+        adapter.contains("GradientDrawable")
         || adapter.contains("setCornerRadii")
         || adapter.contains("setCornerRadius"));
-    assertTrue("Rows must still be grouped by PreferenceCategory so each section shares one color.",
+    assertTrue("Rows must use category boundaries for section spacing.",
         adapter.contains("instanceof PreferenceCategory")
-        && adapter.contains("sectionColor(sectionFor(position))"));
+        && adapter.contains("isSectionStart")
+        && adapter.contains("isSectionEnd"));
   }
 
   @Test
-  public void square_section_cards_have_no_external_section_gap()
+  public void square_section_surfaces_have_restrained_external_spacing()
       throws Exception
   {
     String source = readSource("srcs/juloo.keyboard2/SettingsActivity.java");
@@ -280,10 +279,12 @@ public class SettingsUiContractsTest
         contentSidePaddingIndex(getView) >= 0);
     assertFalse("The row wrapper must not take horizontal side padding.",
         wrapperTakesSidePadding(getView));
-    assertTrue("Square adjacent section cards must remove the external 10dp section gap; wrappers stay flush and only the card owns internal row padding.",
-        getView.contains("wrapper.setPadding(0, 0, 0, 0)"));
-    assertFalse("No wrapper padding or card layout margin should create vertical gaps between square sections.",
-        externalSectionGapIndex(getView) >= 0);
+    assertTrue("Category boundaries must add a restrained 12dp gap without changing row heights.",
+        getView.contains("topPaddingFor(position)")
+        && getView.contains("bottomPaddingFor(position)")
+        && adapter.contains("return dp(12)"));
+    assertFalse("Card layout margins must not create hidden spacing.",
+        getView.contains("setMargins("));
   }
 
 
@@ -513,10 +514,10 @@ public class SettingsUiContractsTest
         autocorrect);
     assertNotSame("Suggestions and Autocorrect must be separate preference rows, not aliases for one combined setting.",
         suggestions, autocorrect);
-    assertEquals("Suggestions must remain a visible checkbox toggle.",
-        "CheckBoxPreference", suggestions.getTagName());
-    assertEquals("Autocorrect must be a visible checkbox toggle.",
-        "CheckBoxPreference", autocorrect.getTagName());
+    assertEquals("Suggestions must remain a visible switch toggle.",
+        "SwitchPreference", suggestions.getTagName());
+    assertEquals("Autocorrect must be a visible switch toggle.",
+        "SwitchPreference", autocorrect.getTagName());
     assertEquals("Suggestions must have suggestion-specific title text.",
         "@string/pref_suggestions_title",
         suggestions.getAttribute("android:title"));

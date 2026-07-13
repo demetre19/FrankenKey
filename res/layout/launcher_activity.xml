@@ -10,6 +10,10 @@
       android:layout_height="wrap_content"
       android:orientation="vertical"
       android:paddingBottom="24dp">
+    <LinearLayout style="@style/launcher_privacy_card" android:orientation="vertical">
+      <TextView style="@style/launcher_card_title" android:text="@string/launcher_privacy_title" android:textColor="#8CE9D7"/>
+      <TextView style="@style/launcher_card_body" android:text="@string/launcher_privacy_summary"/>
+    </LinearLayout>
     <TextView style="@style/launcher_intro" android:text="@string/launcher_description"/>
 
     <juloo.keyboard2.ResponsiveSetupLayout
@@ -81,10 +85,6 @@
         android:hint="@string/launcher_tryhere_hint"
         android:importantForAutofill="no"/>
 
-    <LinearLayout style="@style/launcher_privacy_card" android:orientation="vertical">
-      <TextView style="@style/launcher_card_title" android:text="@string/launcher_privacy_title" android:textColor="#8CE9D7"/>
-      <TextView style="@style/launcher_card_body" android:text="@string/launcher_privacy_summary"/>
-    </LinearLayout>
     <TextView style="@style/launcher_source" android:text="@string/launcher_sourcecode"/>
     <TextView style="@style/launcher_source" android:text="@string/launcher_repo_url" android:autoLink="web" android:linksClickable="true"/>
   </LinearLayout>

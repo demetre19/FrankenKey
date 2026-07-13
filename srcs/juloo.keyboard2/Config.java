@@ -46,6 +46,8 @@ public final class Config
   public float swipe_dist_px;
   public float slide_step_px;
   public boolean suggestions_enabled;
+  public boolean grammar_corrections_enabled;
+  public boolean multimodal_voice_typing_enabled;
   // Let the system handle vibration when false.
   public boolean vibrate_custom;
   // Control the vibration if [vibrate_custom] is true.
@@ -149,6 +151,10 @@ public final class Config
     number_row_symbols = number_row.equals("symbols");
     clean_mode = _prefs.getBoolean("clean_mode", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
+    grammar_corrections_enabled =
+      _prefs.getBoolean("grammar_corrections", false);
+    multimodal_voice_typing_enabled =
+      _prefs.getBoolean("multimodal_voice_typing", false);
     // The baseline for the swipe distance correspond to approximately the
     // width of a key in portrait mode, as most layouts have 10 columns.
     // Multipled by the DPI ratio because most swipes are made in the diagonals.

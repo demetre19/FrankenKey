@@ -14,6 +14,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import juloo.keyboard2.EditorConfig;
 import juloo.keyboard2.Config;
 import juloo.keyboard2.R;
 
@@ -353,36 +354,9 @@ public class CandidatesView extends LinearLayout
     return 24.f * getResources().getDisplayMetrics().density;
   }
 
-  /** Whether the candidates view should be shown for a given editor. */
+  /** Whether typing assistance should be shown for a given editor. */
   public static boolean should_show(EditorInfo info)
   {
-    int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
-    int flags = info.inputType & InputType.TYPE_MASK_FLAGS;
-    switch (info.inputType & InputType.TYPE_MASK_CLASS)
-    {
-      case InputType.TYPE_CLASS_TEXT:
-        switch (variation)
-        {
-          case InputType.TYPE_TEXT_VARIATION_PASSWORD:
-          case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
-          case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
-            return false;
-          default:
-            /* Editor requested that we don't show suggestions. Enable
-               suggestions anyway when the flags [NO_SUGGESTIONS] and
-               [AUTO_CORRECT] are present at the same time. This happens with
-               Google Keep. */
-            if ((flags &
-                  (InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-                   | InputType.TYPE_TEXT_FLAG_AUTO_CORRECT))
-                == InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
-              return false;
-            return true;
-        }
-      case InputType.TYPE_CLASS_NUMBER:
-        // Beware of TYPE_NUMBER_VARIATION_PASSWORD
-        return false;
-      default: return false;
-    }
+    return EditorConfig.should_use_typing_assistance(info);
   }
 }

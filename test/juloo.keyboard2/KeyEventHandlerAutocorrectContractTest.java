@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.CorrectionInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
@@ -25,6 +26,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
@@ -70,6 +72,200 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void automatic_correction_reports_editor_metadata_for_platform_flash()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    harness.receiver.input.extractedStartOffset = 100;
+    installCorrection(harness.decoder, harness.key, "teh", "the");
+
+    harness.handler.handle_space_bar();
+
+    assertEquals("Autocorrection must still replace only the active word and append its separator.",
+        "prefix the ", harness.receiver.input.text.toString());
+    assertEquals("A changed automatic correction must notify the editor exactly once so Android can render its standard corrected-range fade.",
+        1, harness.receiver.input.commitCorrectionCalls);
+    CorrectionInfo info = harness.receiver.input.correctionInfo;
+    assertNotNull("The editor notification must carry correction metadata.", info);
+    assertEquals("The correction offset must be absolute, including ExtractedText.startOffset, so the editor highlights the replaced word.",
+        107, info.getOffset());
+    assertEquals("The correction metadata must identify the exact text replaced by autocorrect.",
+        "teh", info.getOldText().toString());
+    assertEquals("The correction metadata must exclude the separator and identify only the corrected word.",
+        "the", info.getNewText().toString());
+  }
+
+  @Test
+  public void pending_separator_correction_applies_only_when_exact_result_arrives()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    harness.receiver.input.extractedStartOffset = 100;
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+
+    assertEquals("A slow decoder must never block the separator; the literal word and space must appear immediately.",
+        "prefix teh ", harness.receiver.input.text.toString());
+    assertTrue("The exact completed-word request must remain current while its nonblocking boundary correction is pending.",
+        harness.decoder.is_current(harness.key));
+
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    assertEquals("The exact late READY result must safely replace the unchanged word boundary.",
+        "prefix the ", harness.receiver.input.text.toString());
+    assertEquals("A late automatic correction must emit one platform correction notification for the editor fade.",
+        1, harness.receiver.input.commitCorrectionCalls);
+    assertEquals("Late correction metadata must preserve the absolute pre-separator word offset.",
+        107, harness.receiver.input.correctionInfo.getOffset());
+    assertFalse("Resolving the boundary must invalidate its completed-word request before the next word.",
+        harness.decoder.is_current(harness.key));
+
+    harness.handler.handle_backspace();
+
+    assertEquals("Immediate Backspace after a late correction must retain the normal correction-undo contract.",
+        "prefix teh ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void stale_replacement_selection_callbacks_preserve_live_correction_undo()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    harness.handler.selection_updated(11, 0, 0);
+    harness.handler.selection_updated(0, 11, 11);
+    harness.handler.handle_backspace();
+
+    assertEquals("Delayed selection callbacks from the editor's internal replacement must not settle an otherwise exact correction before immediate Backspace can restore the literal.",
+        "prefix teh ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void pointer_up_modifier_refresh_preserves_live_correction_undo()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    harness.handler.mods_changed(Pointers.Modifiers.EMPTY);
+    harness.handler.handle_backspace();
+
+    assertEquals("The neutral pointer-up modifier refresh is not a new editing action and must not settle correction undo.",
+        "prefix teh ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void verified_stale_pre_separator_selection_callback_keeps_late_result_safe()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    harness.handler.mods_changed(Pointers.Modifiers.EMPTY);
+
+    harness.handler.selection_updated(9, 0, 0);
+    harness.handler.selection_updated(10, 11, 11);
+    harness.handler.currently_typed_word(snapshot(999, "", false));
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    assertEquals("A delayed pre-separator selection notification must not cancel correction when the live editor still proves the exact post-separator cursor and suffix.",
+        "prefix the ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void next_key_cancels_pending_separator_correction_before_editor_mutation()
+      throws Exception
+  {
+    Harness harness = harness("teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    Decoder.Result late = correctionResult(harness.key, "teh", "the");
+
+    harness.handler.key_down(KeyValue.getKeyByName("x"), false);
+    installResult(harness.decoder, late);
+    harness.handler.decoder_result_ready(late);
+
+    assertEquals("Any later key action must freeze the already-visible literal boundary rather than rewrite text behind the cursor.",
+        "teh ", harness.receiver.input.text.toString());
+    assertEquals("A cancelled late result must not report correction metadata.",
+        0, harness.receiver.input.commitCorrectionCalls);
+  }
+
+  @Test
+  public void editor_change_rejects_pending_separator_correction()
+      throws Exception
+  {
+    Harness moved = harness("teh", true, true);
+    clearResult(moved.decoder);
+    moved.handler.handle_space_bar();
+    Decoder.Result movedLate = correctionResult(moved.key, "teh", "the");
+    moved.receiver.input.setSelection(0, 0);
+    installResult(moved.decoder, movedLate);
+    moved.handler.decoder_result_ready(movedLate);
+
+    assertEquals("A moved cursor must prevent a late decoder result from rewriting the old boundary.",
+        "teh ", moved.receiver.input.text.toString());
+
+    Harness changed = harness("teh", true, true);
+    clearResult(changed.decoder);
+    changed.handler.handle_space_bar();
+    Decoder.Result changedLate = correctionResult(changed.key, "teh", "the");
+    changed.receiver.input.commitText("x", 1);
+    installResult(changed.decoder, changedLate);
+    changed.handler.decoder_result_ready(changedLate);
+
+    assertEquals("A changed editor suffix must prevent stale late correction even when the captured request itself completed.",
+        "teh x", changed.receiver.input.text.toString());
+    assertEquals("Rejected late results must not emit misleading editor correction metadata.",
+        0, changed.receiver.input.commitCorrectionCalls);
+  }
+
+  @Test
+  public void termux_never_stages_late_separator_correction()
+      throws Exception
+  {
+    Harness harness = harness("teh", true, true, 0, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    Decoder.Result late = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, late);
+    harness.handler.decoder_result_ready(late);
+
+    assertEquals("TYPE_NULL terminal input must keep its immediate literal boundary when no result was READY at separator time.",
+        "teh ", harness.receiver.input.text.toString());
+    assertEquals("Termux must never receive late editor correction metadata.",
+        0, harness.receiver.input.commitCorrectionCalls);
+  }
+
+  @Test
+  public void explicit_candidate_tap_does_not_report_automatic_correction()
+      throws Exception
+  {
+    Harness harness = harness("teh", true, true);
+    installCorrection(harness.decoder, harness.key, "teh", "the");
+
+    harness.handler.suggestion_entered(harness.key, "the");
+
+    assertEquals("A deliberate candidate selection must not masquerade as automatic editor feedback.",
+        0, harness.receiver.input.commitCorrectionCalls);
+  }
+
+  @Test
   public void termux_autocorrect_and_candidate_tap_use_raw_del_events()
       throws Exception
   {
@@ -96,6 +292,8 @@ public class KeyEventHandlerAutocorrectContractTest
           3, harness.receiver.input.delKeyDowns);
       assertEquals("The corrected word and separator must be one text commit.",
           1, harness.receiver.input.commitTextCalls);
+      assertEquals("Termux raw-event replacement must not invoke editor correction metadata that its terminal InputConnection cannot honor.",
+          0, harness.receiver.input.commitCorrectionCalls);
       assertCountsRemain(harness.prefs, "the", "teh", 0, 0);
     }
   }
@@ -557,12 +755,24 @@ public class KeyEventHandlerAutocorrectContractTest
       receiver.editorInfo.inputType = android.text.InputType.TYPE_NULL;
       receiver.editorInfo.packageName = "com.termux";
     }
+    final SharedDecoder[] decoder_ref = new SharedDecoder[1];
+    final KeyEventHandler[] handler_ref = new KeyEventHandler[1];
     SharedDecoder decoder = new SharedDecoder(receiver.handler,
         new SharedDecoder.Callback()
         {
           @Override
-          public void decoder_state_changed(SharedDecoder.Presentation state) {}
+          public void decoder_state_changed(SharedDecoder.Presentation state)
+          {
+            SharedDecoder active_decoder = decoder_ref[0];
+            KeyEventHandler active_handler = handler_ref[0];
+            Decoder.Result completed = active_decoder == null
+              || state.key == null
+              ? null : active_decoder.current_result(state.key);
+            if (completed != null && active_handler != null)
+              active_handler.decoder_result_ready(completed);
+          }
         });
+    decoder_ref[0] = decoder;
     _decoders.add(decoder);
     long session = decoder.start_session(
         new Decoder.DecoderConfig(true, autocorrect, true, safeEditor),
@@ -570,6 +780,7 @@ public class KeyEventHandlerAutocorrectContractTest
         new SharedDecoder.PersonalizationSpec(
           "test-" + _decoders.size(), prefs));
     KeyEventHandler handler = new KeyEventHandler(receiver, decoder);
+    handler_ref[0] = handler;
     config.handler = handler;
     handler.started(config, session);
 
@@ -584,8 +795,8 @@ public class KeyEventHandlerAutocorrectContractTest
     return new Harness(config, receiver, prefs, decoder, handler, session, key);
   }
 
-  private static void installCorrection(SharedDecoder decoder,
-      Decoder.RequestKey key, String queried, String corrected)
+  private static Decoder.Result correctionResult(Decoder.RequestKey key,
+      String queried, String corrected)
       throws Exception
   {
     Decoder.Candidate literal = candidate(Decoder.normalize(queried), queried,
@@ -594,9 +805,15 @@ public class KeyEventHandlerAutocorrectContractTest
     Decoder.Candidate correction = candidate(Decoder.normalize(corrected),
         corrected, Decoder.SOURCE_CDICT_SPATIAL, 0, 1,
         Decoder.EDIT_TRANSPOSITION, true, false, Decoder.Role.WORD);
-    installResult(decoder, result(key, queried,
-          new Decoder.Candidate[] { correction, literal }, literal,
-          correction));
+    return result(key, queried,
+        new Decoder.Candidate[] { correction, literal }, literal, correction);
+  }
+
+  private static void installCorrection(SharedDecoder decoder,
+      Decoder.RequestKey key, String queried, String corrected)
+      throws Exception
+  {
+    installResult(decoder, correctionResult(key, queried, corrected));
   }
 
   private static void installLiteral(SharedDecoder decoder,
@@ -636,6 +853,18 @@ public class KeyEventHandlerAutocorrectContractTest
       field.set(decoder, result);
     }
   }
+  private static void clearResult(SharedDecoder decoder)
+      throws Exception
+  {
+    for (String fieldName : new String[] {
+        "_acceptedResult", "_lastCompletedResult" })
+    {
+      Field field = SharedDecoder.class.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      field.set(decoder, null);
+    }
+  }
+
 
   private static Decoder.Candidate candidate(String canonical, String surface,
       int sourceMask, int totalQ8, int editCount, int editMask,
@@ -672,6 +901,7 @@ public class KeyEventHandlerAutocorrectContractTest
     long deadline = System.nanoTime() + 3_000_000_000L;
     do
     {
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
       Decoder.Result result = decoder.current_result(key);
       if (result != null)
         return result;
@@ -689,6 +919,7 @@ public class KeyEventHandlerAutocorrectContractTest
     long deadline = System.nanoTime() + 3_000_000_000L;
     do
     {
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
       if (wordCount(prefs, target) == expectedWordCount
           && correctionCount(prefs, source, target) == expectedCorrectionCount)
         return;
@@ -709,6 +940,7 @@ public class KeyEventHandlerAutocorrectContractTest
     long deadline = System.nanoTime() + 100_000_000L;
     do
     {
+      Shadows.shadowOf(Looper.getMainLooper()).idle();
       assertEquals("The accepted target count must remain stable.",
           expectedWordCount, wordCount(prefs, target));
       assertEquals("The typo-pair count must remain stable.",
@@ -841,9 +1073,12 @@ public class KeyEventHandlerAutocorrectContractTest
     int cursor;
     int selectionStart;
     int selectionEnd;
+    int extractedStartOffset;
     int cursorCapsMode;
     int commitTextCalls;
     int deleteSurroundingCalls;
+    int commitCorrectionCalls;
+    CorrectionInfo correctionInfo;
     boolean rejectSurroundingReplacement;
     int delKeyDowns;
 
@@ -862,7 +1097,7 @@ public class KeyEventHandlerAutocorrectContractTest
     {
       ExtractedText out = new ExtractedText();
       out.text = text.toString();
-      out.startOffset = 0;
+      out.startOffset = extractedStartOffset;
       out.selectionStart = selectionStart;
       out.selectionEnd = selectionEnd;
       return out;
@@ -931,6 +1166,14 @@ public class KeyEventHandlerAutocorrectContractTest
       cursor = start + value.length();
       selectionStart = cursor;
       selectionEnd = cursor;
+      return true;
+    }
+
+    @Override
+    public boolean commitCorrection(CorrectionInfo info)
+    {
+      commitCorrectionCalls++;
+      correctionInfo = info;
       return true;
     }
 

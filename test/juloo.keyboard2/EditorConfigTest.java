@@ -41,34 +41,112 @@ public class EditorConfigTest
   }
 
   @Test
-  public void typing_assistance_only_runs_in_safe_text_editors()
+  public void typing_assistance_runs_in_every_safe_text_editor()
   {
     int[] safeInputTypes = {
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PERSON_NAME,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT,
-    };
-    for (int inputType : safeInputTypes)
-      assertTrue("Typing assistance should be enabled for safe editor inputType " + inputType,
-          EditorConfig.should_use_typing_assistance(editor(inputType)));
-
-    int[] unsafeInputTypes = {
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_FILTER,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PHONETIC,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+    };
+    for (int inputType : safeInputTypes)
+      assertTrue("Non-secret text fields must keep autocorrect even when apps suppress suggestions or use structured variations: " + inputType,
+          EditorConfig.should_use_typing_assistance(editor(inputType)));
+
+    int[] unsafeInputTypes = {
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
-      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
       InputType.TYPE_CLASS_NUMBER,
       InputType.TYPE_CLASS_PHONE,
       InputType.TYPE_NULL,
     };
     for (int inputType : unsafeInputTypes)
-      assertFalse("Typing assistance must stay disabled for unsafe editor inputType " + inputType,
+      assertFalse("Credentials and non-text fields must not be rewritten: " + inputType,
           EditorConfig.should_use_typing_assistance(editor(inputType)));
+  }
+
+  @Test
+  public void no_personalized_learning_keeps_correction_but_disables_learning()
+  {
+    EditorInfo info = editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_NORMAL
+        | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    info.imeOptions |= EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
+    EditorConfig config = new EditorConfig();
+
+    config.refresh(info, null);
+
+    assertTrue("An editor may suppress its own suggestions without disabling FrankenKey correction.",
+        config.should_use_typing_assistance);
+    assertTrue("Safe fields must show FrankenKey candidates consistently with the correction backend.",
+        config.should_show_candidates_view);
+    assertFalse("Fields that prohibit personalized learning must never read or write learned text.",
+        config.should_use_personalization);
+  }
+
+  @Test
+  public void structured_address_fields_correct_without_learning_or_sentence_tools()
+  {
+    int[] structuredInputTypes = {
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+    };
+    for (int inputType : structuredInputTypes)
+    {
+      EditorConfig config = new EditorConfig();
+      config.refresh(editor(inputType), null);
+
+      assertTrue("URL and address fields must show suggestions like SwiftKey.",
+          config.should_show_candidates_view);
+      assertTrue("URL and address fields must run autocorrect like SwiftKey.",
+          config.should_use_typing_assistance);
+      assertFalse("URLs and email addresses must not enter persistent adaptive learning.",
+          config.should_use_personalization);
+      assertFalse("Structured fields must not run sentence grammar or multimodal dictation.",
+          config.should_use_sentence_assistance);
+    }
+  }
+
+  @Test
+  public void google_search_and_browser_omnibox_keep_candidates_and_autocorrect()
+  {
+    EditorInfo googleSearch = editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_NORMAL
+        | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    googleSearch.packageName = "com.google.android.googlequicksearchbox";
+    EditorConfig googleConfig = new EditorConfig();
+    googleConfig.refresh(googleSearch, null);
+
+    assertTrue("Google search must show FrankenKey candidates even when the app suppresses suggestions.",
+        googleConfig.should_show_candidates_view);
+    assertTrue("Google search must run the same autocorrect path as normal text.",
+        googleConfig.should_use_typing_assistance);
+
+    EditorInfo omnibox = editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_VARIATION_URI
+        | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    omnibox.packageName = "com.android.chrome";
+    omnibox.imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
+    EditorConfig omniboxConfig = new EditorConfig();
+    omniboxConfig.refresh(omnibox, null);
+
+    assertTrue("Browser URL/search bars must show FrankenKey candidates.",
+        omniboxConfig.should_show_candidates_view);
+    assertTrue("Browser URL/search bars must run FrankenKey autocorrect.",
+        omniboxConfig.should_use_typing_assistance);
+    assertFalse("Browser URL/search text must never enter persistent learning.",
+        omniboxConfig.should_use_personalization);
   }
 
   @Test

@@ -12,6 +12,7 @@ import static org.junit.Assert.*;
 
 public class AutocorrectScoringTest
 {
+  private static final int UNKNOWN_LITERAL_TOTAL_Q8 = 12 * 256;
   @Test
   public void scorer_identifies_transposition_omission_extra_tap_and_substitution()
       throws Exception
@@ -44,6 +45,46 @@ public class AutocorrectScoringTest
 
     assertTrue("An actual first tap near J must override the literal G-key neighborhood and rank jello ahead of hello.",
         touchedJello.spatialQ8 < touchedHello.spatialQ8);
+  }
+
+  @Test
+  public void swiftkey_parity_accepts_clear_single_edit_word_repairs()
+      throws Exception
+  {
+    assertClearHunspellCorrection("helllo", "hello",
+        Decoder.EDIT_EXTRA_TAP,
+        "A repeated key must not outweigh a complete dictionary repair when it is the clear one-edit winner.");
+    assertClearHunspellCorrection("corrextion", "correction",
+        Decoder.EDIT_SUBSTITUTION,
+        "A centered tap on the adjacent wrong key must still allow a decisive lexical correction.");
+    assertClearHunspellCorrection("definitly", "definitely",
+        Decoder.EDIT_OMISSION,
+        "A single omitted letter must be correctable without prior personalization.");
+    assertClearHunspellCorrection("neccessary", "necessary",
+        Decoder.EDIT_EXTRA_TAP,
+        "A single extra letter must be correctable without prior personalization.");
+  }
+
+  @Test
+  public void swiftkey_parity_keeps_unlearned_multi_edit_noise_literal()
+      throws Exception
+  {
+    String typed = "kybiard";
+    String target = "keyboard";
+    Score score = score(typed, target, centeredTouches(typed));
+    assertTrue("The noisy control must require multiple edits so it cannot accidentally weaken the ordinary one-edit safety boundary.",
+        score.editCount > 1);
+
+    Decoder.Request request = request(typed);
+    Decoder.Candidate literal = candidate(typed, typed, Decoder.SOURCE_LITERAL,
+        UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate rewrite = candidate(target, target,
+        Decoder.SOURCE_HUNSPELL, 0, score.editCount, score.editMask,
+        true, false, true, Decoder.Role.WORD);
+    assertNull("An unlearned multi-edit rewrite must remain literal even when its synthetic rank is otherwise decisive.",
+        choose(request, Arrays.asList(rewrite, literal), literal, true,
+          Decoder.Failure.NONE));
   }
 
   @Test
@@ -80,6 +121,25 @@ public class AutocorrectScoringTest
     assertNull("A resource failure must disable automatic replacement rather than guessing from incomplete evidence.",
         choose(request, Arrays.asList(winner, literal), literal, true,
           Decoder.Failure.RESOURCE));
+  }
+
+  @Test
+  public void short_word_frequency_cannot_override_a_clearly_closer_edit()
+      throws Exception
+  {
+    Decoder.Request request = request("teh");
+    Decoder.Candidate literal = candidate("teh", "teh", Decoder.SOURCE_LITERAL,
+        8192, 0, 0, false, false, true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate frequentButDistant = spatialCandidate("tech", "tech",
+        Decoder.SOURCE_CDICT_SPATIAL, -2560, 6 * 256, 1,
+        Decoder.EDIT_OMISSION, true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate closerAlternative = spatialCandidate("the", "the",
+        Decoder.SOURCE_CDICT_SPATIAL, 512, 2 * 256, 1,
+        Decoder.EDIT_TRANSPOSITION, true, false, true, Decoder.Role.WORD);
+
+    assertNull("A short ambiguous word must remain literal when dictionary frequency ranks a geometrically worse edit above a clearly closer alternative.",
+        choose(request, Arrays.asList(frequentButDistant, closerAlternative,
+              literal), literal, true, Decoder.Failure.NONE));
   }
 
   @Test
@@ -120,7 +180,7 @@ public class AutocorrectScoringTest
   {
     Decoder.Request thysRequest = request("thys");
     Decoder.Candidate thysLiteral = candidate("thys", "thys",
-        Decoder.SOURCE_LITERAL, 12 * 256, 0, 0, false, false, true,
+        Decoder.SOURCE_LITERAL, UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false, true,
         Decoder.Role.ENTERED_LITERAL);
     Decoder.Candidate nearerThus = candidate("thus", "thus",
         Decoder.SOURCE_CDICT_SPATIAL, -16 * 256, 1,
@@ -136,7 +196,7 @@ public class AutocorrectScoringTest
 
     Decoder.Request twoEditRequest = request("thxz");
     Decoder.Candidate twoEditLiteral = candidate("thxz", "thxz",
-        Decoder.SOURCE_LITERAL, 12 * 256, 0, 0, false, false, true,
+        Decoder.SOURCE_LITERAL, UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false, true,
         Decoder.Role.ENTERED_LITERAL);
     Decoder.Candidate ordinaryOneEdit = candidate("thez", "thez",
         Decoder.SOURCE_CDICT_SPATIAL, -16 * 256, 1,
@@ -225,6 +285,36 @@ public class AutocorrectScoringTest
     assertEquals(message, expectedMask, score.editMask);
   }
 
+  private static void assertClearHunspellCorrection(String typed,
+      String target, int expectedMask, String message)
+      throws Exception
+  {
+    Score score = score(typed, target, centeredTouches(typed));
+    assertEquals(message, 1, score.editCount);
+    assertEquals(message, expectedMask, score.editMask);
+
+    Decoder.Request request = request(typed);
+    Decoder.Candidate literal = candidate(typed, typed, Decoder.SOURCE_LITERAL,
+        UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate repair = candidate(target, target,
+        Decoder.SOURCE_HUNSPELL, score.spatialQ8 + 256, score.editCount,
+        score.editMask, true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate chosen = choose(request,
+        Arrays.asList(repair, literal), literal, true, Decoder.Failure.NONE);
+    assertNotNull(message, chosen);
+    assertEquals(message, target, chosen.canonical);
+  }
+
+  private static TouchTrace.Snapshot centeredTouches(String typed)
+  {
+    TouchTrace touches = new TouchTrace();
+    int count = typed.codePointCount(0, typed.length());
+    for (int i = 0; i < count; i++)
+      touches.add(TouchTrace.entry(100f, 100f, 100f, 100f, 20f, 20f));
+    return touches.snapshot();
+  }
+
   private static Score score(String typed, String candidate,
       TouchTrace.Snapshot touches)
       throws Exception
@@ -296,6 +386,24 @@ public class AutocorrectScoringTest
         learned ? 1 : 0, 0, exactCorrectionCount, relatedCorrectionCount,
         correctionWeight, 0, editCount, editMask, totalQ8, role, recognized,
         learned, completeEvidence);
+  }
+
+  private static Decoder.Candidate spatialCandidate(String canonical,
+      String surface, int sourceMask, int totalQ8, int spatialQ8,
+      int editCount, int editMask, boolean recognized, boolean learned,
+      boolean completeEvidence, Decoder.Role role)
+      throws Exception
+  {
+    Constructor<Decoder.Candidate> constructor =
+      Decoder.Candidate.class.getDeclaredConstructor(String.class,
+          String.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, Decoder.Role.class, boolean.class,
+          boolean.class, boolean.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(canonical, surface, sourceMask, -1, 0, 0,
+        learned ? 1 : 0, 0, 0, 0, 0, spatialQ8, editCount, editMask, totalQ8,
+        role, recognized, learned, completeEvidence);
   }
 
   private static Decoder.Request request(String typed)
