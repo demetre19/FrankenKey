@@ -1,0 +1,1074 @@
+[
+  {
+    "category": "nearby1",
+    "typed": "gello",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "gello",
+      "hello",
+      "yellow"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "hrllo",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "hrllo",
+      "hello",
+      "jello"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "hwllo",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "hwillo",
+      "hello",
+      "hallo"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "hellp",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "hellp",
+      "hello",
+      "help"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "keybiard",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keybiard",
+      "keyboard",
+      "keyboards"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "keybpard",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keybpard",
+      "keyboard",
+      "keyboards"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "wprd",
+    "intended": "word",
+    "swiftFinal": "word",
+    "swiftSuggestions": [
+      "woprd",
+      "word",
+      "words"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "wkrd",
+    "intended": "word",
+    "swiftFinal": "word",
+    "swiftSuggestions": [
+      "wkrd",
+      "word",
+      "words"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "wirld",
+    "intended": "world",
+    "swiftFinal": "world",
+    "swiftSuggestions": [
+      "world",
+      "world",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "wprld",
+    "intended": "world",
+    "swiftFinal": "world",
+    "swiftSuggestions": [
+      "world",
+      "world",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "tjis",
+    "intended": "this",
+    "swiftFinal": "this",
+    "swiftSuggestions": [
+      "this",
+      "this",
+      "is"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "thos",
+    "intended": "this",
+    "swiftFinal": "this",
+    "swiftSuggestions": [
+      "this",
+      "this",
+      "is"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "hime",
+    "intended": "home",
+    "swiftFinal": "home",
+    "swiftSuggestions": [
+      "hime",
+      "home",
+      "hike"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "hone",
+    "intended": "home",
+    "swiftFinal": "hone",
+    "swiftSuggestions": [
+      "home",
+      "hone",
+      "bone"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "messagd",
+    "intended": "message",
+    "swiftFinal": "message",
+    "swiftSuggestions": [
+      "message",
+      "message",
+      "me"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "messagr",
+    "intended": "message",
+    "swiftFinal": "message",
+    "swiftSuggestions": [
+      "message",
+      "message",
+      "me"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "becaise",
+    "intended": "because",
+    "swiftFinal": "because",
+    "swiftSuggestions": [
+      "becaise",
+      "because",
+      "because"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "becauae",
+    "intended": "because",
+    "swiftFinal": "because",
+    "swiftSuggestions": [
+      "becauae",
+      "because",
+      "because"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "friemd",
+    "intended": "friend",
+    "swiftFinal": "friend",
+    "swiftSuggestions": [
+      "friend",
+      "friend",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "froend",
+    "intended": "friend",
+    "swiftFinal": "friend",
+    "swiftSuggestions": [
+      "friend",
+      "friend",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "corrextion",
+    "intended": "correction",
+    "swiftFinal": "correction",
+    "swiftSuggestions": [
+      "corrextion",
+      "correction",
+      "corrections"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "corrdction",
+    "intended": "correction",
+    "swiftFinal": "correction",
+    "swiftSuggestions": [
+      "corrdction",
+      "correction",
+      "corrections"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "responsove",
+    "intended": "responsive",
+    "swiftFinal": "responsive",
+    "swiftSuggestions": [
+      "responsove",
+      "responsive",
+      "responsiveness"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "languagd",
+    "intended": "language",
+    "swiftFinal": "language",
+    "swiftSuggestions": [
+      "languagd",
+      "language",
+      "languages"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "governnent",
+    "intended": "government",
+    "swiftFinal": "government",
+    "swiftSuggestions": [
+      "governnent",
+      "government",
+      "governments"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "sepsrate",
+    "intended": "separate",
+    "swiftFinal": "separate",
+    "swiftSuggestions": [
+      "sepsrate",
+      "separate",
+      "separated"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "qddress",
+    "intended": "address",
+    "swiftFinal": "address",
+    "swiftSuggestions": [
+      "qddress",
+      "address",
+      "addresses"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "receove",
+    "intended": "receive",
+    "swiftFinal": "receive",
+    "swiftSuggestions": [
+      "receive",
+      "receive",
+      "your"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "occurrwd",
+    "intended": "occurred",
+    "swiftFinal": "occurred",
+    "swiftSuggestions": [
+      "occurred",
+      "occurred",
+      "to"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "definitelt",
+    "intended": "definitely",
+    "swiftFinal": "definitely",
+    "swiftSuggestions": [
+      "definitelt",
+      "definitely"
+    ]
+  },
+  {
+    "category": "nearby1",
+    "typed": "necessart",
+    "intended": "necessary",
+    "swiftFinal": "necessary",
+    "swiftSuggestions": [
+      "necessart",
+      "necessary",
+      "necessarily"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "gwllo",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "gwilo",
+      "hello",
+      "hallo"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "hrllp",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "hrllp",
+      "hello",
+      "help"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "keyviard",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keyviard",
+      "keyboard",
+      "keyboards"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "wkrle",
+    "intended": "world",
+    "swiftFinal": "world",
+    "swiftSuggestions": [
+      "world",
+      "world",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "wprls",
+    "intended": "world",
+    "swiftFinal": "world",
+    "swiftSuggestions": [
+      "woprls",
+      "world",
+      "works"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "tjks",
+    "intended": "this",
+    "swiftFinal": "this",
+    "swiftSuggestions": [
+      "this",
+      "this",
+      "is"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "thow",
+    "intended": "this",
+    "swiftFinal": "this",
+    "swiftSuggestions": [
+      "this",
+      "this",
+      "is"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "hine",
+    "intended": "home",
+    "swiftFinal": "hone",
+    "swiftSuggestions": [
+      "hine",
+      "hone",
+      "home"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "nessagd",
+    "intended": "message",
+    "swiftFinal": "message",
+    "swiftSuggestions": [
+      "message",
+      "message",
+      "me"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "vecaise",
+    "intended": "because",
+    "swiftFinal": "because",
+    "swiftSuggestions": [
+      "vecaise",
+      "because",
+      "because"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "frornd",
+    "intended": "friend",
+    "swiftFinal": "friend",
+    "swiftSuggestions": [
+      "friend",
+      "friend",
+      "of"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "cirrectipn",
+    "intended": "correction",
+    "swiftFinal": "correction",
+    "swiftSuggestions": [
+      "cirrectipn",
+      "correction",
+      "corrections"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "reslinsive",
+    "intended": "responsive",
+    "swiftFinal": "responsive",
+    "swiftSuggestions": [
+      "reslinsive",
+      "responsive",
+      "responsiveness"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "langiagd",
+    "intended": "language",
+    "swiftFinal": "language",
+    "swiftSuggestions": [
+      "langiagd",
+      "language",
+      "languages"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "gkvernkent",
+    "intended": "government",
+    "swiftFinal": "government",
+    "swiftSuggestions": [
+      "gkvernkent",
+      "government",
+      "governments"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "seosrate",
+    "intended": "separate",
+    "swiftFinal": "separate",
+    "swiftSuggestions": [
+      "seosrate",
+      "separate",
+      "separated"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "qddresw",
+    "intended": "address",
+    "swiftFinal": "address",
+    "swiftSuggestions": [
+      "qddresw",
+      "address",
+      "addresses"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "receovd",
+    "intended": "receive",
+    "swiftFinal": "receive",
+    "swiftSuggestions": [
+      "receive",
+      "receive",
+      "your"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "defonitelt",
+    "intended": "definitely",
+    "swiftFinal": "definitely",
+    "swiftSuggestions": [
+      "defonitelt",
+      "definitely"
+    ]
+  },
+  {
+    "category": "nearby2",
+    "typed": "necwssart",
+    "intended": "necessary",
+    "swiftFinal": "necessary",
+    "swiftSuggestions": [
+      "necwssart",
+      "necessary",
+      "necessarily"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "helo",
+    "intended": "hello",
+    "swiftFinal": "help",
+    "swiftSuggestions": [
+      "help",
+      "help",
+      "me"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "wrld",
+    "intended": "world",
+    "swiftFinal": "weld",
+    "swiftSuggestions": [
+      "wrld",
+      "weld",
+      "world"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "kyboard",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keyboard",
+      "my",
+      "board"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "keybord",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keybord",
+      "keyboard",
+      "keynote"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "corection",
+    "intended": "correction",
+    "swiftFinal": "correction",
+    "swiftSuggestions": [
+      "corection",
+      "correction",
+      "corrections"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "mesage",
+    "intended": "message",
+    "swiftFinal": "message",
+    "swiftSuggestions": [
+      "message",
+      "message",
+      "me"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "langage",
+    "intended": "language",
+    "swiftFinal": "language",
+    "swiftSuggestions": [
+      "langage",
+      "language",
+      "languages"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "responsve",
+    "intended": "responsive",
+    "swiftFinal": "responsive",
+    "swiftSuggestions": [
+      "responsve",
+      "responsive",
+      "response"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "goverment",
+    "intended": "government",
+    "swiftFinal": "government",
+    "swiftSuggestions": [
+      "goverment",
+      "government",
+      "governments"
+    ]
+  },
+  {
+    "category": "omission",
+    "typed": "adress",
+    "intended": "address",
+    "swiftFinal": "address",
+    "swiftSuggestions": [
+      "address",
+      "a",
+      "dress"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "helllo",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "hello",
+      "he'll",
+      "look"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "goood",
+    "intended": "good",
+    "swiftFinal": "good",
+    "swiftSuggestions": [
+      "good",
+      "good",
+      "morning"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "comming",
+    "intended": "coming",
+    "swiftFinal": "coming",
+    "swiftSuggestions": [
+      "coming",
+      "coming",
+      "to"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "untill",
+    "intended": "until",
+    "swiftFinal": "until",
+    "swiftSuggestions": [
+      "untill",
+      "until",
+      "until"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "occurrred",
+    "intended": "occurred",
+    "swiftFinal": "occurred",
+    "swiftSuggestions": [
+      "occurred",
+      "occurred",
+      "to"
+    ]
+  },
+  {
+    "category": "extra",
+    "typed": "adddress",
+    "intended": "address",
+    "swiftFinal": "address",
+    "swiftSuggestions": [
+      "address",
+      "add",
+      "dress"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "teh",
+    "intended": "the",
+    "swiftFinal": "teh",
+    "swiftSuggestions": [
+      "the",
+      "teh",
+      "try"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "thsi",
+    "intended": "this",
+    "swiftFinal": "thai",
+    "swiftSuggestions": [
+      "thsi",
+      "thal",
+      "this"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "taht",
+    "intended": "that",
+    "swiftFinal": "that",
+    "swiftSuggestions": [
+      "taht",
+      "that",
+      "taut"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "whcih",
+    "intended": "which",
+    "swiftFinal": "which",
+    "swiftSuggestions": [
+      "which",
+      "which",
+      "is"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "shoudl",
+    "intended": "should",
+    "swiftFinal": "should",
+    "swiftSuggestions": [
+      "shoudl",
+      "should",
+      "should"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "woudl",
+    "intended": "would",
+    "swiftFinal": "would",
+    "swiftSuggestions": [
+      "would",
+      "would",
+      "you"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "coudl",
+    "intended": "could",
+    "swiftFinal": "could",
+    "swiftSuggestions": [
+      "could",
+      "could",
+      "you"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "keybaord",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keybaord",
+      "keyboard",
+      "keyword"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "langauge",
+    "intended": "language",
+    "swiftFinal": "language",
+    "swiftSuggestions": [
+      "langauge",
+      "language",
+      "languages"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "freind",
+    "intended": "friend",
+    "swiftFinal": "friend",
+    "swiftSuggestions": [
+      "friend",
+      "friend",
+      "of"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "recieve",
+    "intended": "receive",
+    "swiftFinal": "receive",
+    "swiftSuggestions": [
+      "receive",
+      "receive",
+      "your"
+    ]
+  },
+  {
+    "category": "transpose",
+    "typed": "quikc",
+    "intended": "quick",
+    "swiftFinal": "quikc",
+    "swiftSuggestions": [
+      "quick",
+      "quikc",
+      "quickly"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "hello",
+    "intended": "hello",
+    "swiftFinal": "hello",
+    "swiftSuggestions": [
+      "jello",
+      "hello",
+      "he'll"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "keyboard",
+    "intended": "keyboard",
+    "swiftFinal": "keyboard",
+    "swiftSuggestions": [
+      "keyboards",
+      "keyboard",
+      "keyboardist"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "world",
+    "intended": "world",
+    "swiftFinal": "world",
+    "swiftSuggestions": [
+      "world",
+      "world",
+      "of"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "this",
+    "intended": "this",
+    "swiftFinal": "this",
+    "swiftSuggestions": [
+      "this",
+      "this",
+      "is"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "home",
+    "intended": "home",
+    "swiftFinal": "home",
+    "swiftSuggestions": [
+      "joke",
+      "home",
+      "bone"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "message",
+    "intended": "message",
+    "swiftFinal": "message",
+    "swiftSuggestions": [
+      "message",
+      "message",
+      "me"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "because",
+    "intended": "because",
+    "swiftFinal": "because",
+    "swiftSuggestions": [
+      "because",
+      "because",
+      "because"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "friend",
+    "intended": "friend",
+    "swiftFinal": "friend",
+    "swiftSuggestions": [
+      "friend",
+      "friend",
+      "of"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "correction",
+    "intended": "correction",
+    "swiftFinal": "correction",
+    "swiftSuggestions": [
+      "corrections",
+      "correction",
+      "correctional"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "responsive",
+    "intended": "responsive",
+    "swiftFinal": "responsive",
+    "swiftSuggestions": [
+      "y",
+      "responsiveness",
+      "responsive"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "language",
+    "intended": "language",
+    "swiftFinal": "language",
+    "swiftSuggestions": [
+      "languages",
+      "language"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "government",
+    "intended": "government",
+    "swiftFinal": "government",
+    "swiftSuggestions": [
+      "governments",
+      "government",
+      "government's"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "separate",
+    "intended": "separate",
+    "swiftFinal": "separate",
+    "swiftSuggestions": [
+      "separated",
+      "separate",
+      "separately"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "address",
+    "intended": "address",
+    "swiftFinal": "address",
+    "swiftSuggestions": [
+      "addresses",
+      "address",
+      "addressing"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "receive",
+    "intended": "receive",
+    "swiftFinal": "receive",
+    "swiftSuggestions": [
+      "receive",
+      "receive",
+      "your"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "definitely",
+    "intended": "definitely",
+    "swiftFinal": "definitely",
+    "swiftSuggestions": [
+      "definitely"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "necessary",
+    "intended": "necessary",
+    "swiftFinal": "necessary",
+    "swiftSuggestions": [
+      "necessarily",
+      "necessary"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "jello",
+    "intended": "jello",
+    "swiftFinal": "jello",
+    "swiftSuggestions": [
+      "hello",
+      "jello",
+      "bello"
+    ]
+  },
+  {
+    "category": "literal",
+    "typed": "were",
+    "intended": "were",
+    "swiftFinal": "we're",
+    "swiftSuggestions": [
+      "were",
+      "we're",
+      "where"
+    ]
+  }
+]

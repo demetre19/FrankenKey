@@ -39,7 +39,9 @@ public class Cdict
     private Result()
     { found = false; index = -1; prefix_ptr = 0; original_index = -1; owner = 0; }
   }
-  /** Immutable, bounded coordinate-first native query. */
+  /** Immutable, bounded coordinate-first native query.
+      A Q8 edit cost of {@code 0xffff} disables that substitution or edit
+      transition instead of merely making it expensive. */
   public static final class SpatialQuery
   {
     public final long sequence;

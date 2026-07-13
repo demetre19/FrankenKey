@@ -1,0 +1,3 @@
+Autocorrect now handles clear two-edit and nearby-key misspellings, keeps the committed correction as the primary visible suggestion, and favours same-length repairs such as “hello” over shorter alternatives.
+
+Australian and UK English typing data and dictionaries are now included, so en-AU and en-GB correction works immediately without a separate dictionary download.

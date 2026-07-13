@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -92,6 +93,10 @@ public final class Dictionaries
   static Dictionaries _instance = null;
 
   static final String PREF_INSTALLED_DICTS = "installed";
+  static final String PREF_BUNDLED_ENGLISH_SEEDED =
+    "bundled_english_au_gb_v1_seeded";
+  static final String[] BUNDLED_ENGLISH_DICTIONARIES =
+    { "en_AU", "en_GB" };
 
   Dictionaries(Context ctx)
   {
@@ -99,6 +104,7 @@ public final class Dictionaries
     _installed_dictionaries = new HashSet();
     _loaded_dictionaries = new TreeMap<String, Cdict[]>();
     load_prefs();
+    seed_bundled_english_dictionaries();
   }
 
   void load_prefs()
@@ -116,6 +122,43 @@ public final class Dictionaries
     {
       Logs.exn("", e);
     }
+  }
+
+  void seed_bundled_english_dictionaries()
+  {
+    if (_shared_prefs == null
+        || _shared_prefs.getBoolean(PREF_BUNDLED_ENGLISH_SEEDED, false))
+      return;
+
+    for (String name : BUNDLED_ENGLISH_DICTIONARIES)
+    {
+      if (_installed_dictionaries.contains(name)
+          && get_install_location(name).isFile())
+        continue;
+      InputStream input = null;
+      try
+      {
+        input = _context.getAssets().open("dictionaries/" + dict_file_name(name));
+        install(name, Utils.read_all_bytes(input));
+      }
+      catch (IOException e)
+      {
+        Logs.exn("Unable to seed bundled dictionary " + name, e);
+        return;
+      }
+      finally
+      {
+        if (input != null)
+        {
+          try { input.close(); }
+          catch (IOException e) { Logs.exn("", e); }
+        }
+      }
+    }
+
+    _shared_prefs.edit()
+      .putBoolean(PREF_BUNDLED_ENGLISH_SEEDED, true)
+      .commit();
   }
 
   Cdict[] load_uncached(String dict_name)

@@ -1,0 +1,19 @@
+Bundled English (Australia) and English (United Kingdom) Cdict files
+===================================================================
+
+Files:
+- assets/dictionaries/en_AU.dict
+  SHA-256 f58af12ce85b4198362d5a06ccaa6505df3428930feea1a1a661b9df9ca45757
+- assets/dictionaries/en_GB.dict
+  SHA-256 3d37df320280c2511010abc9a14ce0c4b14c2167c0a10133a7c6c08fe1c97ef6
+
+The files are byte-for-byte decompressed copies of the gzip-compressed Cdict
+artifacts published by Unexpected Keyboard Dictionaries at commit
+c71e034c3fd70024ffa90c9fbfebb686503ff771, format v1:
+https://github.com/Julow/Unexpected-Keyboard-dictionaries/tree/c71e034c3fd70024ffa90c9fbfebb686503ff771/v1
+
+That project builds the dictionaries from Helium314/aosp-dictionaries:
+https://codeberg.org/Helium314/aosp-dictionaries
+
+The upstream project is licensed under GNU GPL version 3. The complete licence
+is included in assets/licenses/aosp-dictionaries-gpl3.txt.

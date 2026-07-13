@@ -1,0 +1,5 @@
+Autocorrection suggestions now apply reliably when Space is pressed, including late dictionary results, while immediate Backspace still restores the original word.
+
+Clear nearby-key and two-edit misspellings are handled more accurately, the committed correction remains the primary visible suggestion, and same-length repairs such as “hello” are favoured over shorter alternatives.
+
+Australian and UK English typing data and dictionaries are now included, so en-AU and en-GB correction works immediately without a separate dictionary download.

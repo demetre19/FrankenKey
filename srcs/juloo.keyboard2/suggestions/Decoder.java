@@ -24,7 +24,7 @@ public final class Decoder
 {
   public static final int MAX_WORD_CODEPOINTS = 48;
   public static final int MAX_NATIVE_RESULTS = 16;
-  public static final int MAX_MERGED_CANDIDATES = 38;
+  public static final int MAX_MERGED_CANDIDATES = 80;
   public static final int MAX_VISIBLE_WORDS = 3;
 
   public static final int SOURCE_LITERAL = 1;
@@ -55,9 +55,14 @@ public final class Decoder
   private static final int MAX_SUBSTITUTION_COST_Q8 = 64 * Q8;
   private static final int BEAM_COST_Q8 = 48 * Q8;
   private static final double TOUCH_SUBSTITUTION_COST_SCALE = 2.0;
-  private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 4 * Q8;
-  private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = 2 * Q8;
+  private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 2 * Q8;
+  private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = Q8 / 2;
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
+  private static final int LENGTH_DELTA_RANKING_PENALTY_Q8 = 4 * Q8;
+  private static final int NEARBY_SUBSTITUTION_COST_Q8 = 8 * Q8;
+  private static final int UNKNOWN_LITERAL_LENGTH_THRESHOLD = 5;
+  private static final int UNKNOWN_LITERAL_LENGTH_PENALTY_Q8 = 3 * Q8 / 2;
+  private static final int NEARBY_SPATIAL_EXPANSIONS = 4096;
   private static final int SCORE_LIMIT = 0x3fffffff;
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
@@ -160,20 +165,6 @@ public final class Decoder
           literal.hunspellSurface = request.typed;
           literal.hunspellRank = 0;
         }
-        else if (generateCandidates)
-        {
-          String[] suggestions = hunspell.suggest(request.normalized,
-              MAX_HUNSPELL_RESULTS);
-          int count = Math.min(suggestions.length, MAX_HUNSPELL_RESULTS);
-          for (int i = 0; i < count; i++)
-          {
-            Accumulator candidate = accumulator_for(merged, suggestions[i]);
-            if (candidate == null)
-              continue;
-            candidate.sourceMask |= SOURCE_HUNSPELL;
-            candidate.set_hunspell(suggestions[i], i);
-          }
-        }
       }
       catch (RuntimeException e)
       {
@@ -238,6 +229,69 @@ public final class Decoder
       }
     }
 
+    List<Candidate> ranked = rank_candidates(request, merged, costs,
+        personalization, previousWord, failure);
+    Candidate literalCandidate = candidate_for_canonical(ranked,
+        request.normalized);
+    Candidate autocorrection = choose_autocorrection(request, ranked,
+        literalCandidate, autocorrectEnabled, failure.failure);
+    if (autocorrection == null && dictionary != null && costs != null
+        && literalCandidate != null && !literalCandidate.recognized)
+    {
+      try
+      {
+        Cdict.SpatialResult nearby = dictionary.spatial(
+            costs.nearby_spatial_query(request.key.requestGeneration));
+        collect_spatial(dictionary, nearby, request, merged, failure);
+      }
+      catch (IllegalStateException e)
+      {
+        failure.corrupt();
+      }
+      catch (RuntimeException e)
+      {
+        failure.resource();
+      }
+      ranked = rank_candidates(request, merged, costs, personalization,
+          previousWord, failure);
+      literalCandidate = candidate_for_canonical(ranked, request.normalized);
+      autocorrection = choose_autocorrection(request, ranked,
+          literalCandidate, autocorrectEnabled, failure.failure);
+    }
+    if (autocorrection == null && hunspell != null && generateCandidates
+        && literalCandidate != null && !literalCandidate.recognized)
+    {
+      try
+      {
+        collect_hunspell_suggestions(hunspell, request.normalized, merged);
+      }
+      catch (RuntimeException e)
+      {
+        failure.resource();
+      }
+      ranked = rank_candidates(request, merged, costs, personalization,
+          previousWord, failure);
+      literalCandidate = candidate_for_canonical(ranked, request.normalized);
+      autocorrection = choose_autocorrection(request, ranked,
+          literalCandidate, autocorrectEnabled, failure.failure);
+    }
+    String emoji = displayEnabled && boundedInput
+      ? query_emoji(emojiDictionary, request.normalized, failure) : null;
+    if (autocorrection != null)
+      promote_candidate(ranked, autocorrection.canonical);
+    Candidate[] words = displayEnabled && inputLength >= 2
+      ? visible_words(ranked, request) : new Candidate[0];
+
+    return new Result(request.key, request.typed, words, emoji,
+        present_candidate(literalCandidate, request, false), autocorrection,
+        failure.complete(), failure.failure);
+  }
+
+  private static List<Candidate> rank_candidates(Request request,
+      Map<String, Accumulator> merged, CostTable costs,
+      PersonalizationStore personalization, String previousWord,
+      FailureState failure)
+  {
     Scorer scorer = costs == null ? null : new Scorer(costs);
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
     for (Accumulator accumulator : merged.values())
@@ -253,20 +307,8 @@ public final class Decoder
         score = scorer.score(accumulator.codePoints);
       ranked.add(accumulator.to_candidate(score));
     }
-    Collections.sort(ranked, CANDIDATE_COMPARATOR);
-
-    Candidate literalCandidate = candidate_for_canonical(ranked,
-        request.normalized);
-    String emoji = displayEnabled && boundedInput
-      ? query_emoji(emojiDictionary, request.normalized, failure) : null;
-    Candidate autocorrection = choose_autocorrection(request, ranked,
-        literalCandidate, autocorrectEnabled, failure.failure);
-    Candidate[] words = displayEnabled && inputLength >= 2
-      ? visible_words(ranked, request) : new Candidate[0];
-
-    return new Result(request.key, request.typed, words, emoji,
-        present_candidate(literalCandidate, request, false), autocorrection,
-        failure.complete(), failure.failure);
+    sort_candidates_for_request(request, ranked);
+    return ranked;
   }
 
   private static Result decode_next_words(Request request,
@@ -331,6 +373,21 @@ public final class Decoder
     }
   }
 
+  private static void collect_hunspell_suggestions(Hunspell hunspell,
+      String normalized, Map<String, Accumulator> merged)
+  {
+    String[] suggestions = hunspell.suggest(normalized, MAX_HUNSPELL_RESULTS);
+    int count = Math.min(suggestions.length, MAX_HUNSPELL_RESULTS);
+    for (int i = 0; i < count; i++)
+    {
+      Accumulator candidate = accumulator_for(merged, suggestions[i]);
+      if (candidate == null)
+        continue;
+      candidate.sourceMask |= SOURCE_HUNSPELL;
+      candidate.set_hunspell(suggestions[i], i);
+    }
+  }
+
   private static void collect_spatial(Cdict dictionary,
       Cdict.SpatialResult result, Request request,
       Map<String, Accumulator> merged, FailureState failure)
@@ -373,6 +430,8 @@ public final class Decoder
           nativeCandidate.frequency, completeEvidence);
     }
   }
+
+
 
   private static Accumulator accumulator_for(Map<String, Accumulator> merged,
       String surface)
@@ -468,7 +527,7 @@ public final class Decoder
     for (Candidate candidate : ranked)
     {
       if (!is_autocorrection_candidate_text(candidate, literal)
-          || candidate.editCount != 1)
+          || !is_safe_autocorrection_edit(candidate))
         continue;
       if (closestSpatial == null
           || candidate.spatialQ8 < closestSpatial.spatialQ8)
@@ -486,13 +545,22 @@ public final class Decoder
     if (best == null
         || (long)literal.totalQ8 - best.totalQ8
           < AUTOCORRECT_LITERAL_MARGIN_Q8
-        || (runner != null && (long)runner.totalQ8 - best.totalQ8
+        || (runner != null && ranking_total_q8(request, runner)
+            - ranking_total_q8(request, best)
           < AUTOCORRECT_RUNNER_MARGIN_Q8))
       return null;
     if (protectedLiteral
         && best.exactCorrectionCount < PROTECTED_LITERAL_EXACT_EVENTS)
       return null;
     return present_candidate(best, request, true);
+  }
+
+  private static boolean is_safe_autocorrection_edit(Candidate candidate)
+  {
+    if (candidate.editCount == 1)
+      return true;
+    return candidate.editCount == 2 && candidate.recognized
+      && candidate.completeEvidence;
   }
 
   private static boolean is_repeated_exact_correction(Request request,
@@ -517,7 +585,8 @@ public final class Decoder
       && candidate.canonical.codePointCount(0, candidate.canonical.length())
         >= 3
       && is_plain_word(candidate.canonical)
-      && ((candidate.recognized && candidate.completeEvidence)
+      && ((candidate.recognized
+          && (candidate.editCount == 1 || candidate.completeEvidence))
         || candidate.learned);
   }
 
@@ -737,6 +806,56 @@ public final class Decoder
         return code_point_compare(a.surface, b.surface);
       }
     };
+
+  private static void sort_candidates_for_request(Request request,
+      List<Candidate> ranked)
+  {
+    for (int i = 1; i < ranked.size(); i++)
+    {
+      Candidate candidate = ranked.get(i);
+      int j = i - 1;
+      while (j >= 0
+          && candidate_compare_for_request(request, candidate, ranked.get(j))
+            < 0)
+      {
+        ranked.set(j + 1, ranked.get(j));
+        j--;
+      }
+      ranked.set(j + 1, candidate);
+    }
+  }
+
+  private static int candidate_compare_for_request(Request request,
+      Candidate a, Candidate b)
+  {
+    int result = Long.compare(ranking_total_q8(request, a),
+        ranking_total_q8(request, b));
+    return result != 0 ? result : CANDIDATE_COMPARATOR.compare(a, b);
+  }
+
+  private static long ranking_total_q8(Request request, Candidate candidate)
+  {
+    int candidateLength = candidate.canonical.codePointCount(
+        0, candidate.canonical.length());
+    int lengthDelta = Math.abs(candidateLength - request.normalizedCodePointCount);
+    return (long)candidate.totalQ8
+      + (long)LENGTH_DELTA_RANKING_PENALTY_Q8 * lengthDelta;
+  }
+
+  private static void promote_candidate(List<Candidate> ranked,
+      String canonical)
+  {
+    for (int i = 1; i < ranked.size(); i++)
+    {
+      Candidate candidate = ranked.get(i);
+      if (!candidate.canonical.equals(canonical))
+        continue;
+      for (int j = i; j > 0; j--)
+        ranked.set(j, ranked.get(j - 1));
+      ranked.set(0, candidate);
+      return;
+    }
+  }
 
   public static final class RequestKey
   {
@@ -1156,6 +1275,19 @@ public final class Decoder
           UNKNOWN_SUBSTITUTION_COST_Q8, BEAM_COST_Q8,
           Cdict.CDICT_SPATIAL_MAX_EXPANSIONS);
     }
+
+    Cdict.SpatialQuery nearby_spatial_query(long sequence)
+    {
+      int[] nearbySubstitutions = substitutions.clone();
+      for (int i = 0; i < nearbySubstitutions.length; i++)
+        if (nearbySubstitutions[i] > NEARBY_SUBSTITUTION_COST_Q8)
+          nearbySubstitutions[i] = 0xffff;
+      return new Cdict.SpatialQuery(sequence, typed, symbols,
+          nearbySubstitutions, Cdict.CDICT_SPATIAL_MAX_EDITS,
+          MAX_NATIVE_RESULTS, 0xffff, 0xffff, 0xffff, 0xffff,
+          2 * NEARBY_SUBSTITUTION_COST_Q8 + Q8,
+          NEARBY_SPATIAL_EXPANSIONS);
+    }
   }
 
   /** Allocation-bounded three-row optimal-string-alignment scorer. */
@@ -1384,8 +1516,14 @@ public final class Decoder
           | SOURCE_CDICT_PREFIX | SOURCE_HUNSPELL)) != 0 || learnedEvidence
         || spatialComplete;
       int sourcePenalty = source_penalty();
-      int unknownLiteralPenalty = literal && !recognized && !learnedEvidence
-        ? UNKNOWN_SUBSTITUTION_COST_Q8 : 0;
+      int unknownLiteralPenalty = 0;
+      if (literal && !recognized && !learnedEvidence)
+      {
+        int excessLength = Math.max(0,
+            codePoints.length - UNKNOWN_LITERAL_LENGTH_THRESHOLD);
+        unknownLiteralPenalty = UNKNOWN_SUBSTITUTION_COST_Q8
+          + excessLength * UNKNOWN_LITERAL_LENGTH_PENALTY_Q8;
+      }
       int correctionWeight = Math.min(MAX_CORRECTION_WEIGHT,
           exactCorrectionCount * 2 + relatedCorrectionCount);
       long total = (long)score.spatialQ8 + sourcePenalty

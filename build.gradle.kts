@@ -13,6 +13,8 @@ dependencies {
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20240303")
   testImplementation("org.robolectric:robolectric:4.15.1")
+  androidTestImplementation("androidx.test:runner:1.7.0")
+  androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
 
 android {
@@ -27,8 +29,9 @@ android {
     applicationId = "dev.frankenkey.keyboard"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 91
-    versionName = "2.0.40"
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    versionCode = 93
+    versionName = "2.0.42"
   }
 
   sourceSets {
@@ -41,6 +44,11 @@ android {
 
     named("test") {
       java.srcDirs("test")
+    }
+
+    named("androidTest") {
+      java.srcDirs("androidTest")
+      assets.srcDirs("androidTest/assets")
     }
   }
 

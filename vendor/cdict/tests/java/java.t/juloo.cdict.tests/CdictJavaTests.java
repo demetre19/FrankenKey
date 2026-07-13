@@ -143,6 +143,33 @@ public class CdictJavaTests
     System.out.println("spatial immutable bounds and validation: passed");
   }
 
+  static void assert_disabled_edit_costs_prune_transitions(Cdict dict)
+  {
+    String literal = "tyqes";
+    int[] codePoints = literal.codePoints().toArray();
+    int[] costs = new int[codePoints.length * SYMBOLS.length];
+    for (int i = 0; i < codePoints.length; i++)
+      for (int j = 0; j < SYMBOLS.length; j++)
+        costs[i * SYMBOLS.length + j] =
+          codePoints[i] == SYMBOLS[j] ? 0 : 0xffff;
+    int p = "abcdefghijklmnopqrstuvwxyz".indexOf('p');
+    costs[2 * SYMBOLS.length + p] = SUBSTITUTION_COST_Q8;
+    Cdict.SpatialQuery query = new Cdict.SpatialQuery(300, codePoints,
+        SYMBOLS, costs, 2, Cdict.CDICT_SPATIAL_MAX_RESULTS, 0xffff,
+        0xffff, 0xffff, 0xffff, 64 * 256,
+        Cdict.CDICT_SPATIAL_MAX_EXPANSIONS);
+
+    Cdict.SpatialResult result = dict.spatial(query);
+    require(result.status == Cdict.CDICT_SPATIAL_OK,
+        "disabled edit transitions must complete without truncation");
+    Cdict.SpatialCandidate candidate = require_candidate(dict, result,
+        "types");
+    require(candidate.editCount == 1
+        && candidate.editMask == Cdict.CDICT_EDIT_SUBSTITUTION,
+        "the sole enabled substitution must remain searchable");
+    System.out.println("spatial disabled edit transitions: passed");
+  }
+
   static void require(boolean condition, String message)
   {
     if (!condition)
@@ -163,5 +190,6 @@ public class CdictJavaTests
         Cdict.CDICT_EDIT_TRANSPOSITION, "transposition");
     assert_deterministic_bounded_ordering(dict);
     assert_query_defensive_copy_and_validation();
+    assert_disabled_edit_costs_prune_transitions(dict);
   }
 }

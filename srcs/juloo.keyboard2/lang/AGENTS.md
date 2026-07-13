@@ -13,6 +13,7 @@
 
 - Language-pack loading must stay deterministic and local.
 - Missing or malformed packs should fail loud enough for tests/users, not silently corrupt suggestions.
+- The advertised `en_AU` and `en_GB` subtypes must each resolve to their matching bundled Hunspell pack; do not fall back to US spelling data.
 
 ## Work Guidance
 

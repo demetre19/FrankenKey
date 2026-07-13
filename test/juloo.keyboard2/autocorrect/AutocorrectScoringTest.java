@@ -66,14 +66,14 @@ public class AutocorrectScoringTest
   }
 
   @Test
-  public void swiftkey_parity_keeps_unlearned_multi_edit_noise_literal()
+  public void swiftkey_parity_accepts_clear_two_edit_word_repairs()
       throws Exception
   {
     String typed = "kybiard";
     String target = "keyboard";
     Score score = score(typed, target, centeredTouches(typed));
-    assertTrue("The noisy control must require multiple edits so it cannot accidentally weaken the ordinary one-edit safety boundary.",
-        score.editCount > 1);
+    assertEquals("The SwiftKey reference repairs this bounded two-edit misspelling.",
+        2, score.editCount);
 
     Decoder.Request request = request(typed);
     Decoder.Candidate literal = candidate(typed, typed, Decoder.SOURCE_LITERAL,
@@ -82,9 +82,38 @@ public class AutocorrectScoringTest
     Decoder.Candidate rewrite = candidate(target, target,
         Decoder.SOURCE_HUNSPELL, 0, score.editCount, score.editMask,
         true, false, true, Decoder.Role.WORD);
-    assertNull("An unlearned multi-edit rewrite must remain literal even when its synthetic rank is otherwise decisive.",
-        choose(request, Arrays.asList(rewrite, literal), literal, true,
-          Decoder.Failure.NONE));
+    assertEquals("A clear recognized two-edit repair must autocorrect without requiring prior personalization.",
+        target, choose(request, Arrays.asList(rewrite, literal), literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void swiftkey_parity_ranks_same_length_hello_before_shorter_help()
+      throws Exception
+  {
+    Decoder.Request request = request("hrllp");
+    Decoder.Candidate literal = candidate("hrllp", "hrllp",
+        Decoder.SOURCE_LITERAL, UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false,
+        true, Decoder.Role.ENTERED_LITERAL);
+    Score helloScore = score("hrllp", "hello", centeredTouches("hrllp"));
+    Score helpScore = score("hrllp", "help", centeredTouches("hrllp"));
+    Decoder.Candidate hello = candidate("hello", "hello",
+        Decoder.SOURCE_CDICT_SPATIAL, 0, helloScore.editCount,
+        helloScore.editMask, true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate help = candidate("help", "help",
+        Decoder.SOURCE_CDICT_SPATIAL, 0, helpScore.editCount,
+        helpScore.editMask, true, false, true, Decoder.Role.WORD);
+    List<Decoder.Candidate> ranked =
+      new java.util.ArrayList<Decoder.Candidate>(
+          Arrays.asList(help, hello, literal));
+
+    sortForRequest(request, ranked);
+
+    assertEquals("Same-length hello must be the primary prediction before shorter help.",
+        "hello", ranked.get(0).canonical);
+    assertEquals("The primary same-length prediction must also be the committed correction.",
+        "hello", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
   }
 
   @Test
@@ -106,14 +135,14 @@ public class AutocorrectScoringTest
           Decoder.Failure.NONE));
 
     Decoder.Candidate weakWinner = candidate("the", "the",
-        Decoder.SOURCE_CDICT_SPATIAL, 7400, 1, Decoder.EDIT_TRANSPOSITION,
+        Decoder.SOURCE_CDICT_SPATIAL, 7800, 1, Decoder.EDIT_TRANSPOSITION,
         true, false, true, Decoder.Role.WORD);
-    assertNull("A candidate without a four-point literal margin is too risky to commit automatically.",
+    assertNull("A candidate without a two-point literal margin is too risky to commit automatically.",
         choose(request, Arrays.asList(weakWinner, literal), literal, true,
           Decoder.Failure.NONE));
 
     Decoder.Candidate closeRunner = candidate("ten", "ten",
-        Decoder.SOURCE_CDICT_SPATIAL, 256, 1, Decoder.EDIT_SUBSTITUTION,
+        Decoder.SOURCE_CDICT_SPATIAL, 64, 1, Decoder.EDIT_SUBSTITUTION,
         true, false, true, Decoder.Role.WORD);
     assertNull("Two nearly tied corrections are ambiguous and must leave the user's text unchanged.",
         choose(request, Arrays.asList(winner, closeRunner, literal), literal,
@@ -121,6 +150,27 @@ public class AutocorrectScoringTest
     assertNull("A resource failure must disable automatic replacement rather than guessing from incomplete evidence.",
         choose(request, Arrays.asList(winner, literal), literal, true,
           Decoder.Failure.RESOURCE));
+  }
+
+  @Test
+  public void truncated_search_still_accepts_clear_recognized_one_edit_winner()
+      throws Exception
+  {
+    Decoder.Request request = request("wirld");
+    Decoder.Candidate literal = candidate("wirld", "wirld",
+        Decoder.SOURCE_LITERAL, 8192, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate winner = candidate("world", "world",
+        Decoder.SOURCE_CDICT_SPATIAL, 0, 1, Decoder.EDIT_SUBSTITUTION,
+        true, false, false, Decoder.Role.WORD);
+
+    Decoder.Candidate correction = choose(request,
+        Arrays.asList(winner, literal), literal, true,
+        Decoder.Failure.NATIVE_TRUNCATED);
+
+    assertNotNull("A truncated search may still commit its clear recognized one-edit winner; refusing it reproduces the shown-but-not-applied Space bug.",
+        correction);
+    assertEquals("world", correction.surface);
   }
 
   @Test
@@ -343,6 +393,16 @@ public class AutocorrectScoringTest
         new Object[] { Decoder.normalize(candidate).codePoints().toArray() });
     return new Score(intField(raw, "spatialQ8"), intField(raw, "editCount"),
         intField(raw, "editMask"));
+  }
+
+  private static void sortForRequest(Decoder.Request request,
+      List<Decoder.Candidate> ranked)
+      throws Exception
+  {
+    Method method = Decoder.class.getDeclaredMethod(
+        "sort_candidates_for_request", Decoder.Request.class, List.class);
+    method.setAccessible(true);
+    method.invoke(null, request, ranked);
   }
 
   private static Decoder.Candidate choose(Decoder.Request request,

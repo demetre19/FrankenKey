@@ -1305,7 +1305,8 @@ static bool spatial_expand_scalar(uint32_t codepoint,
     uint32_t substitution = spatial_substitution_cost(query,
         state->tap_index, codepoint);
     bool exact = query->literal_codepoints[state->tap_index] == codepoint;
-    if (exact || state->edit_count < query->max_edits)
+    if (exact || (state->edit_count < query->max_edits &&
+          substitution != UINT16_MAX))
     {
       spatial_state_t next = *state;
       next.cursor = *cursor;
@@ -1321,7 +1322,8 @@ static bool spatial_expand_scalar(uint32_t codepoint,
     }
   }
 
-  if (state->edit_count < query->max_edits)
+  if (state->edit_count < query->max_edits &&
+      query->omission_cost_q8 != UINT16_MAX)
   {
     spatial_state_t next = *state;
     next.cursor = *cursor;
@@ -1434,7 +1436,8 @@ cdict_spatial_status_t cdict_spatial_search(cdict_t const *dict,
     }
 
     if (state.tap_index < query->input_count &&
-        state.edit_count < query->max_edits)
+        state.edit_count < query->max_edits &&
+        query->extra_tap_cost_q8 != UINT16_MAX)
     {
       spatial_state_t extra_tap = state;
       extra_tap.tap_index++;
@@ -1447,6 +1450,7 @@ cdict_spatial_status_t cdict_spatial_search(cdict_t const *dict,
 
     if (state.tap_index + 1 < query->input_count &&
         state.edit_count < query->max_edits &&
+        query->transposition_cost_q8 != UINT16_MAX &&
         state.word_codepoints + 2 <= word_limit)
     {
       spatial_cursor_t first_cursor;

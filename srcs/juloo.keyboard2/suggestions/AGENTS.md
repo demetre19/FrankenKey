@@ -14,6 +14,7 @@
 - Suggestions and separator-time autocorrect must derive from the same immutable request/result; no second scoring path or synchronous commit-time decode is allowed.
 - If the exact separator-boundary result is still pending, commit the literal separator immediately. A late correction may refine only the same request's exact source-plus-separator after revalidating its session, InputConnection, cursor, and suffix; any later key or editor mutation freezes the literal text.
 - Native candidate recall is bounded, Unicode-scalar aware, coordinate-first, and scored against the exact visible keyboard layout.
+- Native result truncation is not a blanket autocorrect veto: a clear recognized one-edit winner may commit, while two-edit repairs still require complete evidence and resource/corruption failures fail closed.
 - Only an exact current `RequestKey` may publish, prepare a commit token, learn/unlearn, or receive a candidate action; PENDING/EMPTY states are non-clickable. A prepared token may commit after the typed-word key advances only while its captured session and personalization domain remain valid.
 - The IME passively prewarms the exact dictionary, Hunspell, and personalization descriptors before the first editor; same-key resources remain worker-resident across editor sessions, while active resource changes advance through explicit epoch updates.
 - Learned words must remain reversible, and ranking must combine dictionary, geometry, frequency, unigram, bigram, and bounded typo-to-target evidence deterministically without user-visible debug labels.

@@ -1,0 +1,17 @@
+Bundled English Hunspell sources
+================================
+
+The English (Australia) and English (United Kingdom) Hunspell files under
+assets/language_packs/en_AU and assets/language_packs/en_GB are unmodified
+copies from LibreOffice dictionaries commit:
+da8a7e73fd26a134ad7c6438fa7c310730906b3a
+https://github.com/LibreOffice/dictionaries/tree/da8a7e73fd26a134ad7c6438fa7c310730906b3a/en
+
+File hashes:
+- en_AU.aff: e746c882dd6f303c2c46e7452804b9201115a6942cfeb15f18f8edf774d2e24e
+- en_AU.dic: aa07c46571f306b79fc1bc534357ed357af15687381b26f891ba66e8a2caed89
+- en_GB.aff: 0fd6ed120ef28957847d98ba5149b117e27116cf81b5aa36208453f6755a36fd
+- en_GB.dic: 04e90f34f5263bf26780e9c4a442e9ad16584e227af49ddd1b3b21b01df5b29c
+
+The applicable upstream notices are included beside this file as
+english-hunspell-en_AU.txt and english-hunspell-en_GB.txt.

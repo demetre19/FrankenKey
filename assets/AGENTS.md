@@ -14,6 +14,7 @@
 - Preserve source image assets unless explicitly replacing them.
 - Language pack assets are user-facing typing data; changes require focused verification of lookup/loading behavior.
 - Third-party assets must keep their applicable license notice under `assets/licenses/`; the Lucide snippet icons require the packaged ISC/MIT notice.
+- Bundled `en_AU` and `en_GB` Cdict files live under `assets/dictionaries/`; matching Hunspell packs live under `assets/language_packs/`. Keep their pinned source, hashes, and applicable notices under `assets/licenses/`.
 
 ## Work Guidance
 

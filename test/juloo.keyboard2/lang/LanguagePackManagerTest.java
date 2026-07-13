@@ -9,9 +9,11 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public class LanguagePackManagerTest
 {
   public LanguagePackManagerTest() {}
@@ -106,6 +108,33 @@ public class LanguagePackManagerTest
     assertSameCanonicalFile(aff, enUs.hunspell_aff);
     assertSameCanonicalFile(dic, enUs.hunspell_dic);
     assertNull(manager.find("fr_FR"));
+  }
+
+  @Test
+  public void bundled_australian_and_british_packs_load_by_subtype_dictionary_id()
+      throws Exception
+  {
+    LanguagePackManager manager = new LanguagePackManager(
+        RuntimeEnvironment.getApplication());
+
+    LanguagePack australian = manager.find("en_AU");
+    LanguagePack british = manager.find("en_GB");
+
+    assertNotNull("The Australian subtype must have production Hunspell data.",
+        australian);
+    assertEquals("en_AU", australian.id);
+    assertEquals("en_AU.aff", australian.hunspell_aff.getName());
+    assertTrue(australian.hunspell_aff.length() > 0);
+    assertEquals("en_AU.dic", australian.hunspell_dic.getName());
+    assertTrue(australian.hunspell_dic.length() > 0);
+
+    assertNotNull("The UK subtype must have production Hunspell data.",
+        british);
+    assertEquals("en_GB", british.id);
+    assertEquals("en_GB.aff", british.hunspell_aff.getName());
+    assertTrue(british.hunspell_aff.length() > 0);
+    assertEquals("en_GB.dic", british.hunspell_dic.getName());
+    assertTrue(british.hunspell_dic.length() > 0);
   }
 
   private void assertMissingRequiredFile(String role, String missingPath,

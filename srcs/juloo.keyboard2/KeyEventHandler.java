@@ -818,10 +818,11 @@ public final class KeyEventHandler
     _pending_autocorrect_boundary = null;
     CurrentlyTypedWord.Snapshot boundary_snapshot = _typedword.snapshot();
     Decoder.Candidate correction = result.autocorrection;
-    boolean editor_matches = boundary_snapshot.word.length() == 0
+    boolean empty_boundary = boundary_snapshot.word.length() == 0
       && !boundary_snapshot.hasSelection
-      && boundary_snapshot.cursorRelative == 0
-      && pending_autocorrect_boundary_matches_editor(pending);
+      && boundary_snapshot.cursorRelative == 0;
+    boolean suffix_matches = pending_autocorrect_boundary_matches_editor(pending);
+    boolean editor_matches = empty_boundary && suffix_matches;
     if (correction == null || correction.surface.equals(pending.source)
         || !editor_matches)
     {
