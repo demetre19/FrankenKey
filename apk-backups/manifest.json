@@ -431,6 +431,54 @@
       "sha256": "1624891d3002223c571a1ab64022fc73ca9ad2197402d6a0e0ae1170bbfb7077",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release making shown autocorrection candidates apply reliably on Space while preserving immediate Backspace undo."
+    },
+    {
+      "label": "short-word-contraction-backspace-test-release",
+      "file": "FrankenKey-2.0.43-vc94-new-release-key-9fdb3633-2526cc02.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "94",
+      "versionName": "2.0.43",
+      "size": 6835991,
+      "sha256": "2526cc020c8058d745edab97efddf1116983119fae4a12a3477c230c0b93420e",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release for short-word undo learning, single-delete Backspace, and common apostrophe contractions."
+    },
+    {
+      "label": "learned-word-autocorrect-veto-test-release",
+      "file": "FrankenKey-2.0.44-vc95-new-release-key-9fdb3633-8ef4cb88.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "95",
+      "versionName": "2.0.44",
+      "size": 6836090,
+      "sha256": "8ef4cb884a8470391dad8cf1b84374fa3e8065f4ecf37a766a717ad643cc8b59",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release preventing automatic replacement of learned words while allowing unlearned im to contract to I'm."
+    },
+    {
+      "label": "learned-apostrophe-preference-test-release",
+      "file": "FrankenKey-2.0.45-vc96-new-release-key-9fdb3633-27647a2e.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "96",
+      "versionName": "2.0.45",
+      "size": 6836198,
+      "sha256": "27647a2e59958517492da33e643373ce15118ae8e2158f51cbe99ff0c92ae1f8",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release learning repeated exact straight-apostrophe preferences without reopening ordinary learned-word spelling replacements."
+    },
+    {
+      "label": "capitalized-first-person-contraction-test-release",
+      "file": "FrankenKey-2.0.46-vc97-new-release-key-9fdb3633-4789581b.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "97",
+      "versionName": "2.0.46",
+      "size": 6836217,
+      "sha256": "4789581ba12e2b548dbe3778a2d67c536b602253952acbbdfd6d67bb14edfa65",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release forcing every straight-apostrophe first-person I'm candidate to display and commit with capital I."
     }
   ]
 }
