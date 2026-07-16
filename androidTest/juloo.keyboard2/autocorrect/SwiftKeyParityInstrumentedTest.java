@@ -118,7 +118,58 @@ public final class SwiftKeyParityInstrumentedTest
   }
 
 
+  @Test
+  public void generatesCommonMissingApostropheContractions()
+  {
+    Decoder.Result missing = decode(1001, "theyll");
+    assertNotNull("theyll must autocorrect with the bundled dictionary.",
+        missing.autocorrection);
+    assertEquals("they'll", normalized(missing.autocorrection.surface));
+
+    Decoder.Result ambiguous = decode(1002, "well");
+    assertNull("Recognized well must remain literal until repeated choices establish intent.",
+        ambiguous.autocorrection);
+    boolean includesContraction = false;
+    for (Decoder.Candidate candidate : ambiguous.words())
+      includesContraction |= "we'll".equals(normalized(candidate.surface));
+    assertTrue("well must offer we'll without forcing an ambiguous correction.",
+        includesContraction);
+
+    Decoder.Result shortContraction = decode(1003, "im");
+    assertNotNull("Unlearned im must autocorrect with the bundled dictionary.",
+        shortContraction.autocorrection);
+    assertEquals("I'm", shortContraction.autocorrection.surface);
+  }
+
+  @Test
+  public void repeatedApostrophePreferenceAlwaysCapitalizesFirstPersonI()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("im");
+    for (int count = 1; count < 4; count++)
+    {
+      store.record_commit("i'm", "Im");
+      assertNull("Learned apostrophe preference must retain the four-choice threshold.",
+          decode(1100 + count, "Im", store).autocorrection);
+    }
+    store.record_commit("i'm", "Im");
+    Decoder.Result learned = decode(1104, "Im", store);
+    assertNotNull("The fourth accepted Im to I'm choice must autocorrect on Space.",
+        learned.autocorrection);
+    assertEquals("I'm", learned.autocorrection.surface);
+    Decoder.Result lowercase = decode(1105, "im", store);
+    assertNotNull("Learned lowercase im must autocorrect on Space.",
+        lowercase.autocorrection);
+    assertEquals("I'm", lowercase.autocorrection.surface);
+  }
+
   private Decoder.Result decode(long generation, String typed)
+  {
+    return decode(generation, typed, PersonalizationStore.empty());
+  }
+
+  private Decoder.Result decode(long generation, String typed,
+      PersonalizationStore personalization)
   {
     TouchTrace touches = new TouchTrace();
     int count = typed.codePointCount(0, typed.length());
@@ -129,7 +180,7 @@ public final class SwiftKeyParityInstrumentedTest
         typed, touches.snapshot(), Decoder.Geometry.from(null),
         new Decoder.DecoderConfig(true, true, true, true));
     return new Decoder().decode(request, _dictionary, null, _hunspell,
-        PersonalizationStore.empty(), false);
+        personalization, false);
   }
 
   private String readOracle() throws Exception

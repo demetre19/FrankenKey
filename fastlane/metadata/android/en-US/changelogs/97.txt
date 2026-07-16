@@ -1,0 +1,5 @@
+The first-person contraction is now always capitalized correctly: typing lowercase “im” presents “I'm” in autocomplete and commits “I'm” through autocorrect, never lowercase “i'm”.
+
+Repeatedly choosing “I'm” for “Im” or “im” teaches FrankenKey the apostrophe preference. After four accepted corrections, pressing Space applies the learned contraction automatically.
+
+Learned words remain protected from ordinary spelling replacements such as “omp” → “mop”; alternatives remain visible and tappable. Short-word undo learning, exact single-space Backspace behavior, and common missing-apostrophe contraction suggestions remain included.

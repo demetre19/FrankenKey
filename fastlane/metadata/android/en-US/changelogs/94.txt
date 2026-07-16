@@ -1,0 +1,5 @@
+Short words such as “omp” and “cdi” can now be taught by immediately undoing an unwanted autocorrection, while the rejected replacement is not learned.
+
+Backspace now deletes exactly one trailing space even when an Android editor mutates text but incorrectly reports that code-point deletion failed.
+
+Common missing-apostrophe contractions such as “theyll” → “they’ll” and “well” → “we’ll” are now detected, suggested, and eligible for personalization.

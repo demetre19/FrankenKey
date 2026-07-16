@@ -242,6 +242,10 @@ public class SuggestionPersonalizationTest
         PersonalizationStore.is_plausible_correction("thiiss", "this"));
     assertTrue("The existing adjacent-transposition case remains one valid edit.",
         PersonalizationStore.is_plausible_correction("htis", "this"));
+    assertTrue("A missing apostrophe in a common contraction is one valid editor-confirmed edit.",
+        PersonalizationStore.is_plausible_correction("theyll", "they'll"));
+    assertTrue("A selected contraction must be learnable even when its uncontracted spelling is also a valid word.",
+        PersonalizationStore.is_plausible_correction("well", "we'll"));
     assertFalse("Three substitutions remain too broad for automatic learning.",
         PersonalizationStore.is_plausible_correction("txxz", "this"));
     assertFalse("A three-letter length difference remains too broad.",
@@ -473,7 +477,7 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void protected_learned_literal_changes_only_on_the_fourth_exact_pair()
+  public void learned_literal_never_changes_after_exact_pair_observations()
   {
     PersonalizationStore store = PersonalizationStore.empty();
     store.record_word("gello");
@@ -483,19 +487,53 @@ public class SuggestionPersonalizationTest
       correction(store, "gello", "hello", 1);
       Decoder.Result result =
         decode("gello", store, enabledConfig(), 300 + count);
+      assertNull("A learned literal must remain unchanged regardless of correction-pair evidence.",
+          result.autocorrection);
+      Decoder.Candidate suggestion = find(result, "hello");
+      assertNotNull("Correction evidence may keep ranking a tappable suggestion.",
+          suggestion);
+      assertEquals(count, suggestion.exactCorrectionCount);
+    }
+  }
+
+  @Test
+  public void repeated_apostrophe_preference_overrides_only_learned_spelling()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("im");
+    for (int count = 1; count <= 4; count++)
+    {
+      store.record_commit("i'm", "Im");
+      Decoder.Result result =
+        decode("Im", store, enabledConfig(), 400 + count);
+      Decoder.Candidate suggestion = find(result, "i'm");
+      assertNotNull("The chosen apostrophe spelling must remain suggested.",
+          suggestion);
+      assertEquals("Capitalized editor input must preserve the contraction surface.",
+          "I'm", suggestion.surface);
+      assertEquals("Every accepted Im to I'm correction must retain exact punctuation evidence.",
+          count, suggestion.exactCorrectionCount);
       if (count < 4)
-      {
-        assertNull("A learned literal must remain unchanged before four exact pair observations.",
+        assertNull("Apostrophe autocorrect must retain the repeated-evidence threshold.",
             result.autocorrection);
-      }
       else
       {
-        assertNotNull("The fourth exact pair observation must unlock a decisive learned correction.",
+        assertNotNull("Repeated apostrophe preference must become separator autocorrect.",
             result.autocorrection);
-        assertEquals("hello", result.autocorrection.canonical);
-        assertEquals(4, result.autocorrection.exactCorrectionCount);
+        assertEquals("I'm", result.autocorrection.surface);
       }
     }
+    Decoder.Result lowercase =
+      decode("im", store, enabledConfig(), 405);
+    assertNotNull("Learned lowercase im must autocorrect after the same threshold.",
+        lowercase.autocorrection);
+    assertEquals("First-person contractions must capitalize I independently of the typed casing.",
+        "I'm", lowercase.autocorrection.surface);
+    Decoder.Candidate lowercaseSuggestion = find(lowercase, "i'm");
+    assertNotNull("Learned lowercase im must keep the contraction in autocomplete.",
+        lowercaseSuggestion);
+    assertEquals("Autocomplete must display the same capitalized first-person contraction.",
+        "I'm", lowercaseSuggestion.surface);
   }
 
 

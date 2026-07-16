@@ -32,7 +32,7 @@
 - Use `JAVA_HOME=/opt/homebrew/opt/openjdk@17` for Gradle commands.
 - Android SDK tools may live at `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk`.
 - Prefer existing app patterns over new frameworks or abstractions.
-- For live phone testing, use the saved RustDesk/Termux SSH workflow; Termux SSH is unprivileged and cannot run privileged Android shell commands.
+- For live phone testing, use direct LAN Termux SSH at `deme-s23-ultra.modem:8022`; do not assume RustDesk or a localhost `2222` tunnel. Termux SSH is unprivileged and cannot run privileged Android shell commands.
 
 ## Verification
 

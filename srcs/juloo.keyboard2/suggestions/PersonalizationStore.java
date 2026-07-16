@@ -417,12 +417,23 @@ public final class PersonalizationStore
     int count = word.codePointCount(0, word.length());
     if (count < 2 || count > 32)
       return false;
+    boolean apostrophe = false;
     for (int offset = 0; offset < word.length();)
     {
       int codePoint = word.codePointAt(offset);
-      if (!Character.isLetter(codePoint))
+      int next = offset + Character.charCount(codePoint);
+      if (Character.isLetter(codePoint))
+      {
+        offset = next;
+        continue;
+      }
+      if ((codePoint != '\'' && codePoint != '’') || apostrophe
+          || offset == 0 || next == word.length()
+          || !Character.isLetter(word.codePointBefore(offset))
+          || !Character.isLetter(word.codePointAt(next)))
         return false;
-      offset += Character.charCount(codePoint);
+      apostrophe = true;
+      offset = next;
     }
     return true;
   }

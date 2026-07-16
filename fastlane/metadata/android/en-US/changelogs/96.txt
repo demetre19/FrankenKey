@@ -1,0 +1,7 @@
+Repeatedly choosing “I'm” for “Im” now teaches FrankenKey the apostrophe preference. After four accepted corrections, pressing Space applies the learned contraction automatically while preserving the capitalized surface.
+
+Learned words remain protected from ordinary spelling replacements such as “omp” → “mop”; alternatives remain visible and tappable. An unlearned “im” can still use the bundled contraction immediately, while learned “im” without apostrophe evidence remains literal.
+
+Short words can be taught by immediately undoing an unwanted correction, and Backspace deletes exactly one trailing space even when an editor reports deletion incorrectly.
+
+Common missing-apostrophe contractions such as “theyll” → “they’ll” and “well” → “we’ll” remain available for suggestions and personalization.

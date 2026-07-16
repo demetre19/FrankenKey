@@ -104,6 +104,25 @@ public class DeleteHoldBehaviorTest
   }
 
   @Test
+  public void false_codepoint_result_after_mutation_must_not_delete_twice()
+  {
+    FakeReceiver receiver = new FakeReceiver("omp ");
+    receiver.input.codePointDeleteResult = false;
+    receiver.input.codePointDeleteMutatesBeforeFalse = true;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+
+    handler.handle_backspace();
+
+    assertEquals("An editor that performs codepoint deletion but reports false must lose only the requested trailing space.",
+        "omp", receiver.input.text.toString());
+    assertEquals(1, receiver.input.codePointDeleteCalls);
+    assertEquals("Mutation must be verified before any destructive UTF-16 fallback runs.",
+        0, receiver.input.deleteSurroundingTextCalls);
+    assertTrue("A verified semantic deletion must not emit a second synthetic DEL.",
+        receiver.input.keyEvents.isEmpty());
+  }
+
+  @Test
   public void handle_backspace_falls_back_to_del_key_when_web_input_acknowledges_without_mutating()
   {
     FakeReceiver receiver = new FakeReceiver("https://example.test/ab");
@@ -352,6 +371,7 @@ public class DeleteHoldBehaviorTest
     CharSequence lastCommittedText = "";
     boolean codePointDeleteResult = true;
     boolean codePointDeleteMutatesText = true;
+    boolean codePointDeleteMutatesBeforeFalse = false;
     int selectionStart = 0;
     int selectionEnd = 0;
     final StringBuilder text = new StringBuilder();
@@ -407,7 +427,11 @@ public class DeleteHoldBehaviorTest
       codePointDeleteBefore += beforeLength;
       codePointDeleteAfter += afterLength;
       if (!codePointDeleteResult)
+      {
+        if (codePointDeleteMutatesBeforeFalse)
+          deleteCodePointsAroundSelection(beforeLength, afterLength);
         return false;
+      }
       if (codePointDeleteMutatesText)
         deleteCodePointsAroundSelection(beforeLength, afterLength);
       return true;

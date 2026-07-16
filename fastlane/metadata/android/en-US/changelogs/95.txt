@@ -1,0 +1,7 @@
+Learned words are now user-owned vocabulary and are never replaced automatically, regardless of older correction-pair evidence. Suggestions remain visible and tappable.
+
+Unlearned “im” now autocorrects to “I'm”; explicitly learning “im” disables that correction as expected.
+
+Short words such as “omp” and “cdi” can be taught by immediately undoing an unwanted correction, while the rejected replacement is not learned. Backspace also deletes exactly one trailing space when an editor reports deletion incorrectly.
+
+Common missing-apostrophe contractions such as “theyll” → “they’ll” and “well” → “we’ll” are detected, suggested, and eligible for personalization.

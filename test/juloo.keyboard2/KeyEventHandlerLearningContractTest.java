@@ -72,8 +72,10 @@ public class KeyEventHandlerLearningContractTest
         harness.handler.can_change_learning("cazoo"));
     assertFalse("Single-letter tokens are not stable personalization entries.",
         harness.handler.can_change_learning("a"));
-    assertFalse("Punctuation-bearing tokens must not enter the typing model.",
+    assertTrue("A single internal apostrophe must remain a learnable spelling choice.",
         harness.handler.can_change_learning("can't"));
+    assertFalse("Other punctuation must not enter the typing model.",
+        harness.handler.can_change_learning("can't!"));
     assertFalse("Technical URL text must not enter personalization.",
         harness.handler.can_change_learning("https://example.test"));
 

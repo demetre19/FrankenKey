@@ -35,6 +35,7 @@ public final class Decoder
   public static final int SOURCE_PERSONAL = 1 << 5;
   public static final int SOURCE_CONTEXT = 1 << 6;
   public static final int SOURCE_CORRECTION = 1 << 7;
+  public static final int SOURCE_CONTRACTION = 1 << 8;
 
   public static final int EDIT_SUBSTITUTION = 1;
   public static final int EDIT_OMISSION = 1 << 1;
@@ -67,6 +68,8 @@ public final class Decoder
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
   private static final int PROTECTED_LITERAL_EXACT_EVENTS = 4;
+  private static final String[] CONTRACTION_SUFFIXES =
+    { "t", "s", "d", "m", "re", "ve", "ll" };
 
   public Decoder() {}
 
@@ -165,6 +168,8 @@ public final class Decoder
           literal.hunspellSurface = request.typed;
           literal.hunspellRank = 0;
         }
+        if (generateCandidates)
+          collect_hunspell_contractions(hunspell, request.normalized, merged);
       }
       catch (RuntimeException e)
       {
@@ -387,6 +392,32 @@ public final class Decoder
       candidate.set_hunspell(suggestions[i], i);
     }
   }
+  private static void collect_hunspell_contractions(Hunspell hunspell,
+      String normalized, Map<String, Accumulator> merged)
+  {
+    if (!is_letters_only(normalized))
+      return;
+    int rank = 0;
+    for (String suffix : CONTRACTION_SUFFIXES)
+    {
+      int offset = normalized.length() - suffix.length();
+      if (offset <= 0 || !normalized.endsWith(suffix))
+        continue;
+      String contraction = normalized.substring(0, offset) + "'"
+        + normalized.substring(offset);
+      String surface = contraction.startsWith("i'")
+        ? "I" + contraction.substring(1) : contraction;
+      if (!hunspell.spell(surface))
+        continue;
+      Accumulator candidate = accumulator_for(merged, surface);
+      if (candidate != null)
+      {
+        candidate.sourceMask |= SOURCE_HUNSPELL | SOURCE_CONTRACTION;
+        candidate.set_hunspell(surface, rank++);
+      }
+    }
+  }
+
 
   private static void collect_spatial(Cdict dictionary,
       Cdict.SpatialResult result, Request request,
@@ -501,14 +532,14 @@ public final class Decoder
       List<Candidate> ranked, Candidate literal, boolean enabled,
       Failure failure)
   {
-    if (!enabled || literal == null || request.codePointCount < 3
+    if (!enabled || literal == null || request.codePointCount < 2
         || request.codePointCount > MAX_WORD_CODEPOINTS
-        || !is_plain_word(request.typed)
+        || !is_word_text(request.typed)
         || casing(request.typed) == Casing.MIXED
         || (failure != Failure.NONE && failure != Failure.NATIVE_TRUNCATED))
       return null;
-
     Candidate repeatedExact = null;
+    Candidate repeatedApostrophe = null;
     for (Candidate candidate : ranked)
     {
       if (!is_repeated_exact_correction(request, candidate))
@@ -516,6 +547,29 @@ public final class Decoder
       if (repeatedExact == null || candidate.exactCorrectionCount
           > repeatedExact.exactCorrectionCount)
         repeatedExact = candidate;
+      if (is_apostrophe_only_correction(request.correctionSource,
+            candidate.surface)
+          && (repeatedApostrophe == null || candidate.exactCorrectionCount
+            > repeatedApostrophe.exactCorrectionCount))
+        repeatedApostrophe = candidate;
+    }
+    if (literal.unigramCount > 0)
+      return repeatedApostrophe == null ? null
+        : present_candidate(repeatedApostrophe, request, true);
+    if (request.codePointCount == 2)
+    {
+      if (repeatedApostrophe != null)
+        return present_candidate(repeatedApostrophe, request, true);
+      if (!"im".equals(request.normalized))
+        return null;
+      for (Candidate candidate : ranked)
+        if (candidate != literal
+            && "i'm".equals(candidate.canonical)
+            && (candidate.sourceMask & SOURCE_CONTRACTION) != 0
+            && candidate.recognized
+            && candidate.editCount == 1)
+          return present_candidate(candidate, request, true);
+      return null;
     }
     if (repeatedExact != null)
       return present_candidate(repeatedExact, request, true);
@@ -572,9 +626,24 @@ public final class Decoder
       return false;
     String target = normalize_correction_text(candidate.surface);
     return target.codePointCount(0, target.length()) >= 3
-      && is_plain_word(target)
+      && is_word_text(target)
       && PersonalizationStore.is_plausible_correction(
           request.correctionSource, target);
+  }
+
+  private static boolean is_apostrophe_only_correction(String source,
+      String target)
+  {
+    source = normalize_correction_text(source);
+    target = normalize_correction_text(target);
+    if (source.equals(target))
+      return false;
+    return without_apostrophes(source).equals(without_apostrophes(target));
+  }
+
+  private static String without_apostrophes(String text)
+  {
+    return text.replace("'", "").replace("\u2019", "");
   }
 
   private static boolean is_autocorrection_candidate_text(
@@ -584,7 +653,7 @@ public final class Decoder
       && !candidate.canonical.equals(literal.canonical)
       && candidate.canonical.codePointCount(0, candidate.canonical.length())
         >= 3
-      && is_plain_word(candidate.canonical)
+      && is_word_text(candidate.canonical)
       && ((candidate.recognized
           && (candidate.editCount == 1 || candidate.completeEvidence))
         || candidate.learned);
@@ -631,12 +700,14 @@ public final class Decoder
     if (candidate == null)
       return null;
     String surface;
+    String preferredSurface = "i'm".equals(candidate.canonical)
+      ? "I'm" : candidate.surface;
     if ((candidate.sourceMask & SOURCE_LITERAL) != 0 && !autocorrection)
       surface = request.typed;
     else if (autocorrection)
-      surface = match_case(request.typed, candidate.surface);
+      surface = match_case(request.typed, preferredSurface);
     else
-      surface = display_case(request.typed, candidate.surface);
+      surface = display_case(request.typed, preferredSurface);
     return candidate.with_surface(surface);
   }
 
@@ -677,16 +748,21 @@ public final class Decoder
     return Casing.MIXED;
   }
 
-  private static boolean is_plain_word(String word)
+  private static boolean is_word_text(String word)
+  {
+    return PersonalizationStore.is_learnable(word);
+  }
+
+  private static boolean is_letters_only(String word)
   {
     if (word == null || word.length() == 0)
       return false;
-    for (int i = 0; i < word.length();)
+    for (int offset = 0; offset < word.length();)
     {
-      int codePoint = word.codePointAt(i);
+      int codePoint = word.codePointAt(offset);
       if (!Character.isLetter(codePoint))
         return false;
-      i += Character.charCount(codePoint);
+      offset += Character.charCount(codePoint);
     }
     return true;
   }
@@ -1526,11 +1602,14 @@ public final class Decoder
       }
       int correctionWeight = Math.min(MAX_CORRECTION_WEIGHT,
           exactCorrectionCount * 2 + relatedCorrectionCount);
+      int contractionBonus = (sourceMask & SOURCE_CONTRACTION) != 0
+        ? OMISSION_COST_Q8 : 0;
       long total = (long)score.spatialQ8 + sourcePenalty
         + unknownLiteralPenalty - (long)128 * cdictFrequency
         - (long)256 * count_level(unigramCount)
         - (long)384 * count_level(bigramCount)
-        - (long)CORRECTION_BONUS_Q8 * correctionWeight;
+        - (long)CORRECTION_BONUS_Q8 * correctionWeight
+        - contractionBonus;
       Role role = literal && !recognized ? Role.ENTERED_LITERAL : Role.WORD;
       return new Candidate(canonical, surface(), sourceMask, cdict_index(),
           cdictFrequency, provider_rank(), unigramCount, bigramCount,

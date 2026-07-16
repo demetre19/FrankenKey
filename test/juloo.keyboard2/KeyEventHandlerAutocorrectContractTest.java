@@ -333,7 +333,12 @@ public class KeyEventHandlerAutocorrectContractTest
       assertEquals("The changed " + origin
           + " and its verified undo must each be one surrounding-text replacement.",
           2, harness.receiver.input.commitTextCalls);
-      assertCountsRemain(harness.prefs, "the", "teh", 0, 0);
+      awaitCounts(harness.prefs, "teh", null, 1, 0);
+      assertCountsRemain(harness.prefs, "teh", null, 1, 0);
+      assertEquals("Rejecting an unwanted correction must not teach its target.",
+          0, wordCount(harness.prefs, "the"));
+      assertEquals("Rejecting an unwanted correction must not retain typo evidence for that target.",
+          0, correctionCount(harness.prefs, "teh", "the"));
     }
   }
 

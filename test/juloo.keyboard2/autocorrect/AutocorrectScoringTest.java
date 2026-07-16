@@ -225,6 +225,49 @@ public class AutocorrectScoringTest
   }
 
   @Test
+  public void unlearned_im_autocorrects_to_contraction_but_learned_im_does_not()
+      throws Exception
+  {
+    Decoder.Request request = request("im");
+    Decoder.Candidate literal = candidate("im", "im", Decoder.SOURCE_LITERAL,
+        8192, 0, 0, false, false, true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate contraction = candidate("i'm", "I'm",
+        Decoder.SOURCE_HUNSPELL | Decoder.SOURCE_CONTRACTION,
+        0, 1, Decoder.EDIT_OMISSION, true, false, true, Decoder.Role.WORD);
+
+    Decoder.Candidate chosen = choose(request,
+        Arrays.asList(contraction, literal), literal, true,
+        Decoder.Failure.NONE);
+    assertNotNull("Unlearned im must allow its validated contraction.", chosen);
+    assertEquals("I'm", chosen.surface);
+
+    Decoder.Candidate learnedLiteral = candidate("im", "im",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_PERSONAL,
+        0, 0, 0, false, true, true, Decoder.Role.ENTERED_LITERAL);
+    assertNull("Learned im must remain literal.",
+        choose(request, Arrays.asList(contraction, learnedLiteral),
+          learnedLiteral, true, Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void learned_literal_never_autocorrects_even_after_repeated_exact_events()
+      throws Exception
+  {
+    Decoder.Request request = request("omp");
+    Decoder.Candidate learnedLiteral = candidate("omp", "omp",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_PERSONAL,
+        0, 0, 0, false, true, true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate repeatedCorrection = candidate("mop", "mop",
+        Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_CORRECTION,
+        -16 * 256, 1, Decoder.EDIT_TRANSPOSITION, 4, 0, 8,
+        true, true, true, Decoder.Role.WORD);
+
+    assertNull("A learned literal is user-owned vocabulary and must never be autocorrected.",
+        choose(request, Arrays.asList(repeatedCorrection, learnedLiteral),
+          learnedLiteral, true, Decoder.Failure.NONE));
+  }
+
+  @Test
   public void repeated_exact_choice_beats_nearer_guess_and_unlocks_two_edits()
       throws Exception
   {
@@ -292,6 +335,27 @@ public class AutocorrectScoringTest
     assertNull("Mixed-case identifiers and names are not safe commit-boundary autocorrect targets.",
         choose(mixed, Arrays.asList(winner, literal), literal, true,
           Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void missing_apostrophe_contraction_can_autocorrect()
+      throws Exception
+  {
+    Decoder.Request request = request("theyll");
+    Decoder.Candidate literal = candidate("theyll", "theyll",
+        Decoder.SOURCE_LITERAL, 8192, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate contraction = candidate("they'll", "they'll",
+        Decoder.SOURCE_HUNSPELL, 0, 1, Decoder.EDIT_OMISSION,
+        true, false, true, Decoder.Role.WORD);
+
+    Decoder.Candidate chosen = choose(request,
+        Arrays.asList(contraction, literal), literal, true,
+        Decoder.Failure.NONE);
+
+    assertNotNull("A recognized contraction must not be discarded merely because its correction inserts an apostrophe.",
+        chosen);
+    assertEquals("they'll", chosen.surface);
   }
 
   @Test

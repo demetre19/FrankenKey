@@ -74,11 +74,12 @@ public final class KeyEventHandler
     final InputConnection connection;
     final int cursor;
     final int correctionOffset;
+    final boolean mayLearnSourceOnUndo;
 
     PendingAutocorrectBoundary(long session_epoch_, Decoder.RequestKey key_,
         SharedDecoder.CommitToken literal_token_, String source_,
         String separator_, InputConnection connection_, int cursor_,
-        int correction_offset_)
+        int correction_offset_, boolean may_learn_source_on_undo_)
     {
       sessionEpoch = session_epoch_;
       key = key_;
@@ -88,6 +89,7 @@ public final class KeyEventHandler
       connection = connection_;
       cursor = cursor_;
       correctionOffset = correction_offset_;
+      mayLearnSourceOnUndo = may_learn_source_on_undo_;
     }
   }
 
@@ -101,11 +103,12 @@ public final class KeyEventHandler
     final InputConnection connection;
     final int cursor;
     final long typedWordRevision;
+    final boolean learnSourceOnUndo;
 
     PendingReplacement(SharedDecoder.CommitToken token_,
         SharedDecoder.CommitToken undo_token_, String source_,
         String target_, String separator_, InputConnection connection_,
-        int cursor_, long typed_word_revision_)
+        int cursor_, long typed_word_revision_, boolean learn_source_on_undo_)
     {
       token = token_;
       undoToken = undo_token_;
@@ -115,6 +118,7 @@ public final class KeyEventHandler
       connection = connection_;
       cursor = cursor_;
       typedWordRevision = typed_word_revision_;
+      learnSourceOnUndo = learn_source_on_undo_;
     }
   }
 
@@ -370,10 +374,13 @@ public final class KeyEventHandler
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
+    Decoder.Result result = _decoder.current_result(key);
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
     String corrected_from = plausible_correction_source(snapshot.word, text);
     if (corrected_from == null)
       corrected_from = manual_correction_source(snapshot, text);
+    String undo_corrected_from = manual_correction_source(
+        snapshot, snapshot.word);
     boolean should_record = should_use_personalization();
     SharedDecoder.CommitToken token = should_record
       ? _decoder.prepare_commit(_decoder_session, key, text, corrected_from)
@@ -381,14 +388,17 @@ public final class KeyEventHandler
     SharedDecoder.CommitToken undo_token =
       should_record && !text.equals(snapshot.word)
       ? _decoder.prepare_commit(_decoder_session, key, snapshot.word,
-          manual_correction_source(snapshot, snapshot.word))
+          undo_corrected_from)
       : null;
+    boolean learn_source_on_undo = undo_corrected_from == null
+      && should_learn_source_on_undo(result == null ? null : result.literal);
     if (!commit_correction(text, " ", false))
       return;
     if (text.equals(snapshot.word))
       commit_prepared(token);
     else
-      stage_pending_replacement(token, undo_token, snapshot.word, text, " ");
+      stage_pending_replacement(token, undo_token, snapshot.word, text, " ",
+          learn_source_on_undo);
   }
 
   @Override
@@ -738,16 +748,23 @@ public final class KeyEventHandler
     commit_pending_candidate_replacement();
   }
 
+  private boolean should_learn_source_on_undo(Decoder.Candidate literal)
+  {
+    return literal != null && !literal.recognized && !literal.learned
+      && can_change_learning(literal.surface);
+  }
+
   private void stage_pending_replacement(SharedDecoder.CommitToken token,
       SharedDecoder.CommitToken undoToken, String source, String target,
-      String separator)
+      String separator, boolean learnSourceOnUndo)
   {
     InputConnection conn = _recv.getCurrentInputConnection();
     ExtractedText et = conn == null ? null : get_cursor_pos(conn);
     int cursor = et != null && et.selectionStart == et.selectionEnd
       ? et.selectionStart : -1;
     _pending_replacement = new PendingReplacement(token, undoToken, source,
-        target, separator, conn, cursor, _typedword.snapshot().revision);
+        target, separator, conn, cursor, _typedword.snapshot().revision,
+        learnSourceOnUndo);
   }
 
   private boolean pending_cursor_matches(PendingReplacement pending)
@@ -773,7 +790,8 @@ public final class KeyEventHandler
   }
   private boolean stage_pending_autocorrect_boundary(
       CurrentlyTypedWord.Snapshot snapshot, Decoder.RequestKey key,
-      SharedDecoder.CommitToken literal_token, String separator)
+      SharedDecoder.CommitToken literal_token, String separator,
+      boolean may_learn_source_on_undo)
   {
     if (snapshot == null || snapshot.word.length() == 0 || key == null
         || uses_termux_raw_events() || !_decoder.is_current(key))
@@ -800,7 +818,7 @@ public final class KeyEventHandler
       ? after.selectionStart : -1;
     _pending_autocorrect_boundary = new PendingAutocorrectBoundary(
         _decoder_session, key, literal_token, snapshot.word, separator, conn,
-        cursor, correction_offset);
+        cursor, correction_offset, may_learn_source_on_undo);
     if (cursor < 0)
       commit_pending_autocorrect_boundary();
     return true;
@@ -845,7 +863,9 @@ public final class KeyEventHandler
       report_editor_correction(pending.connection, pending.correctionOffset,
           pending.source, correction.surface);
       stage_pending_replacement(correction_token, pending.literalToken,
-          pending.source, correction.surface, pending.separator);
+          pending.source, correction.surface, pending.separator,
+          pending.mayLearnSourceOnUndo
+          && should_learn_source_on_undo(result.literal));
       advance_past_pending_autocorrect_request(pending);
     }
     else
@@ -1545,7 +1565,9 @@ public final class KeyEventHandler
           commit_prepared(correction_token);
         else
           stage_pending_replacement(correction_token, literal_token,
-              snapshot.word, correction.surface, separator);
+              snapshot.word, correction.surface, separator,
+              literal_corrected_from == null
+              && should_learn_source_on_undo(result.literal));
       }
       else if (send_text(separator))
         commit_prepared(literal_token);
@@ -1564,7 +1586,8 @@ public final class KeyEventHandler
     }
     else if (should_try_autocorrect()
         && stage_pending_autocorrect_boundary(
-          snapshot, key, literal_token, separator))
+          snapshot, key, literal_token, separator,
+          literal_corrected_from == null))
     {
       // The literal separator is already visible; READY may safely refine it.
     }
@@ -1612,10 +1635,16 @@ public final class KeyEventHandler
         else
         {
           String before = extracted_text_snapshot(conn);
-          if (delete_previous_codepoint(conn))
+          boolean accepted = delete_previous_codepoint(conn);
+          String after = extracted_text_snapshot(conn);
+          deleted = before == null || after == null
+            ? accepted : !before.equals(after);
+          if (!deleted && !accepted && before != null && before.equals(after))
           {
-            String after = extracted_text_snapshot(conn);
-            deleted = before == null || after == null || !before.equals(after);
+            boolean fallback_accepted = conn.deleteSurroundingText(1, 0);
+            String fallback_after = extracted_text_snapshot(conn);
+            deleted = fallback_after == null
+              ? fallback_accepted : !after.equals(fallback_after);
           }
         }
       }
@@ -1636,20 +1665,21 @@ public final class KeyEventHandler
   {
     ExtractedTextRequest req = new ExtractedTextRequest();
     ExtractedText et = conn.getExtractedText(req, 0);
-    if (et == null || et.text == null)
+    if (et != null && et.text != null)
+      return et.startOffset + ":" + et.selectionStart + ":" + et.selectionEnd
+        + ":" + et.text.toString();
+    CharSequence before = conn.getTextBeforeCursor(64, 0);
+    CharSequence after = conn.getTextAfterCursor(1, 0);
+    if (before == null && after == null)
       return null;
-    return et.startOffset + ":" + et.selectionStart + ":" + et.selectionEnd
-      + ":" + et.text.toString();
+    return String.valueOf(before) + "|" + String.valueOf(after);
   }
 
   private boolean delete_previous_codepoint(InputConnection conn)
   {
     if (VERSION.SDK_INT >= VERSION_CODES.N)
-      return conn.deleteSurroundingTextInCodePoints(1, 0)
-        || conn.deleteSurroundingText(1, 0);
-    if (delete_previous_codepoint_if_available(conn))
-      return true;
-    return conn.deleteSurroundingText(1, 0);
+      return conn.deleteSurroundingTextInCodePoints(1, 0);
+    return delete_previous_codepoint_if_available(conn);
   }
 
   private boolean delete_previous_codepoint_if_available(InputConnection conn)
@@ -1714,6 +1744,8 @@ public final class KeyEventHandler
         _autocap.text_replaced(expected.length(), replacement);
         _typedword.typed(pending.separator);
         commit_prepared(pending.undoToken);
+        if (pending.learnSourceOnUndo)
+          learn_word(pending.source);
         clear_manual_correction();
         return;
       }
