@@ -1,0 +1,1 @@
+Swipe left across the middle keyboard row now deletes words reliably in browser URL bars, search fields, and other editors with limited text APIs.

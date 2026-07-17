@@ -12,14 +12,17 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.LooperMode;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
 @org.robolectric.annotation.Config(sdk = 35)
+@LooperMode(LooperMode.Mode.PAUSED)
 public class DeleteHoldBehaviorTest
 {
   @Test
@@ -123,6 +126,25 @@ public class DeleteHoldBehaviorTest
   }
 
   @Test
+  public void accepted_deferred_codepoint_delete_must_not_emit_second_del()
+  {
+    FakeReceiver receiver = new FakeReceiver("omp ");
+    receiver.input.codePointDeleteDefersMutation = true;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+
+    handler.handle_backspace();
+
+    assertTrue("An accepted semantic delete awaiting editor mutation must not immediately emit a second DEL.",
+        receiver.input.keyEvents.isEmpty());
+    org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(
+        100, TimeUnit.MILLISECONDS);
+    assertEquals("One Backspace must remove only the trailing space after the editor applies its deferred semantic deletion.",
+        "omp", receiver.input.text.toString());
+    assertTrue("Deferred semantic completion must suppress synthetic DEL.",
+        receiver.input.keyEvents.isEmpty());
+  }
+
+  @Test
   public void handle_backspace_falls_back_to_del_key_when_web_input_acknowledges_without_mutating()
   {
     FakeReceiver receiver = new FakeReceiver("https://example.test/ab");
@@ -130,6 +152,8 @@ public class DeleteHoldBehaviorTest
     KeyEventHandler handler = new KeyEventHandler(receiver, null);
 
     handler.handle_backspace();
+    org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(
+        100, TimeUnit.MILLISECONDS);
 
     assertEquals("Chrome/WebView-style inputs can acknowledge semantic codepoint delete without changing visible text; the fallback DEL key must do the visible deletion.",
         "https://example.test/a", receiver.input.text.toString());
@@ -145,6 +169,23 @@ public class DeleteHoldBehaviorTest
     assertEquals(KeyEvent.KEYCODE_DEL, receiver.input.keyEvents.get(0).getKeyCode());
     assertEquals(KeyEvent.ACTION_UP, receiver.input.keyEvents.get(1).getAction());
     assertEquals(KeyEvent.KEYCODE_DEL, receiver.input.keyEvents.get(1).getKeyCode());
+  }
+
+  @Test
+  public void pending_backspace_fallback_cannot_delete_subsequent_input()
+  {
+    FakeReceiver receiver = new FakeReceiver("ab");
+    receiver.input.codePointDeleteMutatesText = false;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+
+    handler.handle_backspace();
+    assertTrue(handler.send_text("c"));
+    org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(
+        100, TimeUnit.MILLISECONDS);
+
+    assertEquals("Typing after an unresolved semantic Backspace must cancel its stale fallback instead of deleting the new character.",
+        "abc", receiver.input.text.toString());
+    assertTrue(receiver.input.keyEvents.isEmpty());
   }
 
   @Test
@@ -201,6 +242,137 @@ public class DeleteHoldBehaviorTest
     assertEquals("Commit must collapse the selection where the deleted chunk started.",
         receiver.input.selectionStart, receiver.input.selectionEnd);
     assertEquals(false, receiver.selectionStates.get(3));
+  }
+
+  @Test
+  public void delete_words_left_works_when_editor_exposes_only_cursor_local_text()
+  {
+    String prefix = "https://example.test/";
+    String target = new String(new char[128]).replace('\0', 'a');
+    FakeReceiver receiver = new FakeReceiver(prefix + target);
+    receiver.input.extractedTextAvailable = false;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+    KeyValue grow = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 1);
+    KeyValue release = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 0);
+
+    handler.key_down(grow, true);
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
+
+    assertTrue("Swipe deletion must request a cursor-local window large enough to include the complete deletion target.",
+        receiver.input.largestTextBeforeCursorRequest >= target.length());
+    assertEquals("Cursor-local deletion must not invent an absolute setSelection position.",
+        0, receiver.input.setSelectionCalls);
+    assertEquals("Cursor-local deletion must use one semantic relative edit.",
+        1, receiver.input.deleteSurroundingTextCalls);
+    assertEquals(target.length(), receiver.input.deleteBefore);
+    assertEquals("URL/search editors that expose getTextBeforeCursor but not full extracted text must still support middle-row swipe deletion.",
+        prefix, receiver.input.text.toString());
+  }
+
+  @Test
+  public void delete_words_left_cursor_local_fallback_verifies_editor_mutation()
+  {
+    String prefix = "https://example.test/";
+    KeyValue grow = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 1);
+    KeyValue release = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 0);
+    FakeReceiver receiver = new FakeReceiver(prefix + "path");
+    receiver.input.extractedTextAvailable = false;
+    receiver.input.deleteSurroundingTextResult = false;
+    receiver.input.deleteSurroundingTextMutatesBeforeFalse = true;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+
+    handler.key_down(grow, true);
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("A false return after a real semantic deletion must not trigger a second destructive fallback.",
+        prefix, receiver.input.text.toString());
+    assertTrue(receiver.input.keyEvents.isEmpty());
+
+    receiver = new FakeReceiver(prefix + "path");
+    receiver.input.extractedTextAvailable = false;
+    receiver.input.deleteSurroundingTextMutatesText = false;
+    handler = new KeyEventHandler(receiver, null);
+
+    handler.key_down(grow, true);
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("An acknowledged no-op from a quirky URL/search editor must fall back to visible DEL events.",
+        prefix, receiver.input.text.toString());
+    assertEquals("The raw fallback must emit one DEL down/up pair per deleted codepoint.",
+        8, receiver.input.keyEvents.size());
+  }
+
+  @Test
+  public void cmux_single_backspace_uses_exactly_one_terminal_callback()
+      throws Exception
+  {
+    FakeReceiver receiver = new FakeReceiver("omp ");
+    receiver.editorInfo.packageName = "dev.cmux.connector.debug";
+    receiver.editorInfo.inputType =
+      android.text.InputType.TYPE_CLASS_TEXT
+      | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+      | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+    receiver.editorInfo.imeOptions =
+      android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+      | android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN;
+    receiver.input.extractedTextAvailable = false;
+    receiver.input.cursorTextAvailable = false;
+    receiver.input.writeOnlyTerminal = true;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+    handler.started(testConfig("omp "), 0);
+
+    handler.handle_backspace();
+    org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(
+        100, TimeUnit.MILLISECONDS);
+
+    assertEquals("One CMUX Backspace must emit exactly one terminal 0x7f callback.",
+        1, receiver.input.terminalBackspaces);
+    assertEquals("CMUX does not implement the generic codepoint deletion contract.",
+        0, receiver.input.codePointDeleteCalls);
+    assertEquals(1, receiver.input.deleteSurroundingTextCalls);
+    assertTrue("CMUX Backspace must not append a synthetic DEL event.",
+        receiver.input.keyEvents.isEmpty());
+    handler.finished();
+  }
+
+  @Test
+  public void delete_words_left_uses_tracked_word_in_cmux_terminal()
+      throws Exception
+  {
+    FakeReceiver receiver = new FakeReceiver("omp");
+    receiver.editorInfo.packageName = "dev.cmux.connector.debug";
+    receiver.editorInfo.inputType =
+      android.text.InputType.TYPE_CLASS_TEXT
+      | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+      | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+    receiver.editorInfo.imeOptions =
+      android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+      | android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN;
+    receiver.input.extractedTextAvailable = false;
+    receiver.input.cursorTextAvailable = false;
+    receiver.input.writeOnlyTerminal = true;
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+    handler.started(testConfig("omp"), 0);
+    KeyValue grow = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 1);
+    KeyValue release = KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 0);
+
+    handler.key_down(grow, true);
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("CMUX exposes no readable terminal buffer, so swipe deletion must reuse the working Backspace path once per tracked codepoint.",
+        3, receiver.input.terminalBackspaces);
+    java.lang.reflect.Field typedWordField =
+      KeyEventHandler.class.getDeclaredField("_typedword");
+    typedWordField.setAccessible(true);
+    CurrentlyTypedWord typedWord =
+      (CurrentlyTypedWord)typedWordField.get(handler);
+    assertEquals("CMUX cannot refresh word state from its write-only connection, so swipe deletion must clear the tracked word synchronously.",
+        "", typedWord.get());
+    assertEquals(0, receiver.input.codePointDeleteCalls);
+    assertEquals(3, receiver.input.deleteSurroundingTextCalls);
+    assertTrue(receiver.input.keyEvents.isEmpty());
+    assertEquals(0, receiver.input.setSelectionCalls);
+    handler.finished();
   }
 
   @Test
@@ -268,6 +440,32 @@ public class DeleteHoldBehaviorTest
       assertTrue(message + " out of order", index > previous);
       previous = index;
     }
+  }
+
+  private static Config testConfig(String word)
+      throws Exception
+  {
+    java.lang.reflect.Constructor<Config> constructor =
+      Config.class.getDeclaredConstructor(
+          android.content.SharedPreferences.class,
+          android.content.res.Resources.class, Boolean.class,
+          juloo.keyboard2.dict.Dictionaries.class);
+    constructor.setAccessible(true);
+    Config config = constructor.newInstance(
+        RuntimeEnvironment.getApplication().getSharedPreferences(
+          "delete-hold-behavior", 0),
+        new TestResources(
+          RuntimeEnvironment.getApplication().getResources()),
+        Boolean.FALSE, null);
+    config.suggestions_enabled = true;
+    config.autocorrect_enabled = false;
+    config.editor_config.should_show_candidates_view = true;
+    config.editor_config.should_use_typing_assistance = true;
+    config.editor_config.initial_text_before_cursor = word;
+    config.editor_config.initial_text_after_cursor = "";
+    config.editor_config.initial_sel_start = word.length();
+    config.editor_config.initial_sel_end = word.length();
+    return config;
   }
 
   private static String readSource(String path)
@@ -357,6 +555,17 @@ public class DeleteHoldBehaviorTest
 
   }
 
+  private static final class TestResources
+      extends android.content.res.Resources
+  {
+    TestResources(android.content.res.Resources base)
+    {
+      super(base.getAssets(), base.getDisplayMetrics(), base.getConfiguration());
+    }
+
+    @Override public float getDimension(int id) { return 1f; }
+  }
+
   private static class RecordingInputConnection extends BaseInputConnection
   {
     int deleteBefore = 0;
@@ -372,8 +581,18 @@ public class DeleteHoldBehaviorTest
     boolean codePointDeleteResult = true;
     boolean codePointDeleteMutatesText = true;
     boolean codePointDeleteMutatesBeforeFalse = false;
+    boolean codePointDeleteDefersMutation = false;
+    boolean deleteSurroundingTextResult = true;
+    boolean deleteSurroundingTextMutatesText = true;
+    boolean deleteSurroundingTextMutatesBeforeFalse = false;
+    boolean extractedTextAvailable = true;
+    boolean cursorTextAvailable = true;
+    boolean writeOnlyTerminal = false;
+    int terminalBackspaces = 0;
     int selectionStart = 0;
     int selectionEnd = 0;
+    int largestTextBeforeCursorRequest = 0;
+    int setSelectionCalls = 0;
     final StringBuilder text = new StringBuilder();
     final List<KeyEvent> keyEvents = new ArrayList<>();
 
@@ -416,7 +635,19 @@ public class DeleteHoldBehaviorTest
       ++deleteSurroundingTextCalls;
       deleteBefore += beforeLength;
       deleteAfter += afterLength;
-      deleteCodeUnitsAroundSelection(beforeLength, afterLength);
+      if (writeOnlyTerminal)
+      {
+        terminalBackspaces += beforeLength;
+        return deleteSurroundingTextResult;
+      }
+      if (!deleteSurroundingTextResult)
+      {
+        if (deleteSurroundingTextMutatesBeforeFalse)
+          deleteCodeUnitsAroundSelection(beforeLength, afterLength);
+        return false;
+      }
+      if (deleteSurroundingTextMutatesText)
+        deleteCodeUnitsAroundSelection(beforeLength, afterLength);
       return true;
     }
 
@@ -426,11 +657,20 @@ public class DeleteHoldBehaviorTest
       ++codePointDeleteCalls;
       codePointDeleteBefore += beforeLength;
       codePointDeleteAfter += afterLength;
+      if (writeOnlyTerminal)
+        return deleteSurroundingText(beforeLength, afterLength);
       if (!codePointDeleteResult)
       {
         if (codePointDeleteMutatesBeforeFalse)
           deleteCodePointsAroundSelection(beforeLength, afterLength);
         return false;
+      }
+      if (codePointDeleteDefersMutation)
+      {
+        new Handler(Looper.getMainLooper()).postDelayed(
+            () -> deleteCodePointsAroundSelection(beforeLength, afterLength),
+            10);
+        return true;
       }
       if (codePointDeleteMutatesText)
         deleteCodePointsAroundSelection(beforeLength, afterLength);
@@ -438,8 +678,21 @@ public class DeleteHoldBehaviorTest
     }
 
     @Override
+    public CharSequence getTextBeforeCursor(int length, int flags)
+    {
+      if (!cursorTextAvailable)
+        return null;
+      largestTextBeforeCursorRequest =
+        Math.max(largestTextBeforeCursorRequest, length);
+      int cursor = Math.min(selectionStart, selectionEnd);
+      return text.substring(Math.max(0, cursor - length), cursor);
+    }
+
+    @Override
     public ExtractedText getExtractedText(ExtractedTextRequest request, int flags)
     {
+      if (!extractedTextAvailable)
+        return null;
       ExtractedText extracted = new ExtractedText();
       extracted.text = text.toString();
       extracted.startOffset = 0;
@@ -451,6 +704,7 @@ public class DeleteHoldBehaviorTest
     @Override
     public boolean setSelection(int start, int end)
     {
+      ++setSelectionCalls;
       if (start < 0 || end < 0 || start > text.length() || end > text.length())
         return false;
       selectionStart = start;

@@ -1,0 +1,1 @@
+Middle-row swipe deletion now works in CMUX terminal sessions. Single Backspace presses no longer double-delete when an editor applies deletion asynchronously; URL/search and regular editor deletion remains reliable.

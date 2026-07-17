@@ -1,0 +1,1 @@
+CMUX terminal Backspace now uses exactly one terminal delete callback per press, preventing doubled character deletion. Middle-row swipe deletion also works in CMUX while URL/search and regular editor deletion remain reliable.

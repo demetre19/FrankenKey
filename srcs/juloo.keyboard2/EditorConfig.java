@@ -137,6 +137,21 @@ public final class EditorConfig
       && "com.termux".equals(info.packageName);
   }
 
+  static boolean is_cmux_terminal_editor(EditorInfo info)
+  {
+    if (info == null || info.packageName == null
+        || !info.packageName.startsWith("dev.cmux.connector"))
+      return false;
+    int terminal_flags = InputType.TYPE_TEXT_FLAG_MULTI_LINE
+      | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+    int terminal_ime_flags = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+      | EditorInfo.IME_FLAG_NO_FULLSCREEN;
+    return (info.inputType & InputType.TYPE_MASK_CLASS)
+        == InputType.TYPE_CLASS_TEXT
+      && (info.inputType & terminal_flags) == terminal_flags
+      && (info.imeOptions & terminal_ime_flags) == terminal_ime_flags;
+  }
+
   public static boolean should_use_typing_assistance(EditorInfo info)
   {
     if (is_termux_raw_editor(info))

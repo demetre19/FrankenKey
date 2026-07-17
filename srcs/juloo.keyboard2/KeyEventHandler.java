@@ -49,6 +49,11 @@ public final class KeyEventHandler
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
   private boolean _preserve_autocorrect_boundary_transition = false;
   private DeleteSelection _delete_selection = null;
+  private long _backspace_fallback_generation = 0;
+  private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
+  private static final int DELETE_WORDS_CONTEXT_LIMIT = 4096;
+  private static final int DELETE_WORDS_CURSOR_LOCAL = -1;
+  private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
 
   private static final class DeleteSelection
   {
@@ -165,6 +170,7 @@ public final class KeyEventHandler
   /** Editing just started. */
   public void started(Config conf, long decoder_session)
   {
+    cancel_pending_backspace_fallback();
     _config = conf;
     _decoder_session = decoder_session;
     _current_request_key = null;
@@ -184,6 +190,7 @@ public final class KeyEventHandler
 
   public void finished()
   {
+    cancel_pending_backspace_fallback();
     commit_pending_replacement();
     _manual_correction = null;
     _delete_selection = null;
@@ -214,6 +221,7 @@ public final class KeyEventHandler
   /** Selection has been updated. */
   public void selection_updated(int oldSelStart, int newSelStart, int newSelEnd)
   {
+    cancel_pending_backspace_fallback();
     PendingAutocorrectBoundary boundary = _pending_autocorrect_boundary;
     if (boundary != null)
     {
@@ -268,7 +276,10 @@ public final class KeyEventHandler
     if (key == null)
       return;
     if (!is_backspace_action(key))
+    {
+      cancel_pending_backspace_fallback();
       commit_pending_replacement();
+    }
     // Stop auto capitalisation when pressing some keys
     switch (key.getKind())
     {
@@ -371,6 +382,7 @@ public final class KeyEventHandler
   @Override
   public void suggestion_entered(Decoder.RequestKey key, String text)
   {
+    cancel_pending_backspace_fallback();
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
@@ -1007,6 +1019,7 @@ public final class KeyEventHandler
 
   boolean send_text(String text, TouchTrace.Entry touch)
   {
+    cancel_pending_backspace_fallback();
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
@@ -1179,25 +1192,43 @@ public final class KeyEventHandler
   {
     if (_delete_selection != null)
       return true;
+    if (EditorConfig.is_cmux_terminal_editor(
+          _recv.getCurrentInputEditorInfo()))
+    {
+      String tracked_word = _typedword.get();
+      if (tracked_word.isEmpty())
+        return false;
+      _delete_selection = new DeleteSelection(
+          tracked_word, DELETE_WORDS_TRACKED_TERMINAL);
+      return true;
+    }
     ExtractedTextRequest req = new ExtractedTextRequest();
-    req.hintMaxChars = 4096;
+    req.hintMaxChars = DELETE_WORDS_CONTEXT_LIMIT;
     ExtractedText et = conn.getExtractedText(req, 0);
-    if (et == null || et.text == null || !can_set_selection(conn))
+    if (et != null && et.text != null && can_set_selection(conn))
+    {
+      int cursor = Math.max(et.selectionStart, et.selectionEnd);
+      int local_cursor = cursor - et.startOffset;
+      if (local_cursor < 0)
+        local_cursor = 0;
+      if (local_cursor > et.text.length())
+        local_cursor = et.text.length();
+      _delete_selection = new DeleteSelection(
+          et.text.subSequence(0, local_cursor).toString(), cursor);
+      return true;
+    }
+    CharSequence before = conn.getTextBeforeCursor(
+        DELETE_WORDS_CONTEXT_LIMIT, 0);
+    if (before == null)
       return false;
-    int cursor = Math.max(et.selectionStart, et.selectionEnd);
-    int local_cursor = cursor - et.startOffset;
-    if (local_cursor < 0)
-      local_cursor = 0;
-    if (local_cursor > et.text.length())
-      local_cursor = et.text.length();
     _delete_selection = new DeleteSelection(
-        et.text.subSequence(0, local_cursor).toString(), cursor);
+        before.toString(), DELETE_WORDS_CURSOR_LOCAL);
     return true;
   }
 
   private void apply_delete_words_selection(InputConnection conn)
   {
-    if (_delete_selection == null)
+    if (_delete_selection == null || _delete_selection.cursor < 0)
       return;
     int start = delete_start_for_steps(_delete_selection.textBeforeCursor,
         _delete_selection.steps);
@@ -1217,22 +1248,101 @@ public final class KeyEventHandler
     if (conn == null)
       return;
     int start = delete_start_for_steps(sel.textBeforeCursor, sel.steps);
-    int selection_start = sel.cursor - (sel.textBeforeCursor.length() - start);
-    if (selection_start == sel.cursor)
+    int remove_before = sel.textBeforeCursor.length() - start;
+    if (remove_before == 0)
     {
-      conn.setSelection(sel.cursor, sel.cursor);
+      if (sel.cursor >= 0)
+        conn.setSelection(sel.cursor, sel.cursor);
       _recv.selection_state_changed(false);
       return;
     }
-    conn.beginBatchEdit();
-    if (conn.setSelection(selection_start, sel.cursor))
+    if (sel.cursor == DELETE_WORDS_TRACKED_TERMINAL)
     {
-      conn.commitText("", 1);
+      int code_points = sel.textBeforeCursor.codePointCount(
+          start, sel.textBeforeCursor.length());
+      for (int i = 0; i < code_points; ++i)
+        if (!send_cmux_terminal_backspace(conn))
+          break;
+      _recv.selection_state_changed(false);
+      return;
+    }
+    boolean deleted;
+    if (sel.cursor < 0)
+      deleted = delete_cursor_local_text(conn, sel, start);
+    else
+    {
+      deleted = false;
+      conn.beginBatchEdit();
+      try
+      {
+        int selection_start = sel.cursor - remove_before;
+        if (conn.setSelection(selection_start, sel.cursor))
+          deleted = conn.commitText("", 1);
+      }
+      finally
+      {
+        conn.endBatchEdit();
+      }
+    }
+    if (deleted)
+    {
       _autocap.event_sent(KeyEvent.KEYCODE_DEL, 0);
       _typedword.event_sent(KeyEvent.KEYCODE_DEL, 0);
     }
-    conn.endBatchEdit();
     _recv.selection_state_changed(false);
+  }
+
+  private boolean send_cmux_terminal_backspace(InputConnection conn)
+  {
+    boolean accepted;
+    conn.beginBatchEdit();
+    try
+    {
+      conn.finishComposingText();
+      accepted = conn.deleteSurroundingText(1, 0);
+    }
+    finally
+    {
+      conn.endBatchEdit();
+    }
+    if (!accepted)
+      return false;
+    _autocap.event_sent(KeyEvent.KEYCODE_DEL, 0);
+    _typedword.raw_backspace();
+    return true;
+  }
+
+  private boolean delete_cursor_local_text(InputConnection conn,
+      DeleteSelection sel, int start)
+  {
+    CharSequence current = conn.getTextBeforeCursor(
+        sel.textBeforeCursor.length(), 0);
+    if (current == null || !sel.textBeforeCursor.contentEquals(current))
+      return false;
+    String before = extracted_text_snapshot(conn);
+    boolean accepted;
+    conn.beginBatchEdit();
+    try
+    {
+      conn.finishComposingText();
+      accepted = conn.deleteSurroundingText(
+          sel.textBeforeCursor.length() - start, 0);
+    }
+    finally
+    {
+      conn.endBatchEdit();
+    }
+    String after = extracted_text_snapshot(conn);
+    boolean deleted = before == null || after == null
+      ? accepted : !before.equals(after);
+    if (deleted)
+      return true;
+    int code_points = sel.textBeforeCursor.codePointCount(
+        start, sel.textBeforeCursor.length());
+    for (int i = 0; i < code_points; ++i)
+      if (!send_untracked_key_down_up(KeyEvent.KEYCODE_DEL))
+        return false;
+    return code_points > 0;
   }
 
   private void cancel_delete_words_selection()
@@ -1242,7 +1352,7 @@ public final class KeyEventHandler
     if (sel == null)
       return;
     InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn != null)
+    if (conn != null && sel.cursor >= 0)
       conn.setSelection(sel.cursor, sel.cursor);
     _recv.selection_state_changed(false);
   }
@@ -1622,7 +1732,15 @@ public final class KeyEventHandler
       return;
     }
     InputConnection conn = _recv.getCurrentInputConnection();
+    if (EditorConfig.is_cmux_terminal_editor(
+          _recv.getCurrentInputEditorInfo()))
+    {
+      if (conn != null)
+        send_cmux_terminal_backspace(conn);
+      return;
+    }
     boolean deleted = false;
+    String deferred_before = null;
     if (conn != null)
     {
       conn.beginBatchEdit();
@@ -1639,6 +1757,8 @@ public final class KeyEventHandler
           String after = extracted_text_snapshot(conn);
           deleted = before == null || after == null
             ? accepted : !before.equals(after);
+          if (!deleted && accepted && before != null && before.equals(after))
+            deferred_before = before;
           if (!deleted && !accepted && before != null && before.equals(after))
           {
             boolean fallback_accepted = conn.deleteSurroundingText(1, 0);
@@ -1653,12 +1773,38 @@ public final class KeyEventHandler
         conn.endBatchEdit();
       }
     }
+    if (deferred_before != null)
+    {
+      schedule_backspace_fallback(conn, deferred_before);
+      return;
+    }
     if (deleted)
     {
       record_backspace();
       return;
     }
     send_key_down_up(KeyEvent.KEYCODE_DEL);
+  }
+
+  private void cancel_pending_backspace_fallback()
+  {
+    ++_backspace_fallback_generation;
+  }
+
+  private void schedule_backspace_fallback(InputConnection conn,
+      String before)
+  {
+    long generation = _backspace_fallback_generation;
+    _recv.getHandler().postDelayed(() -> {
+      if (generation != _backspace_fallback_generation
+          || conn != _recv.getCurrentInputConnection())
+        return;
+      String after = extracted_text_snapshot(conn);
+      if (after == null || !before.equals(after))
+        record_backspace();
+      else
+        send_key_down_up(KeyEvent.KEYCODE_DEL);
+    }, BACKSPACE_FALLBACK_DELAY_MS);
   }
 
   private String extracted_text_snapshot(InputConnection conn)
