@@ -161,9 +161,9 @@ Current release:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.40
-Version code: 91
-SHA-256: b6c612ff0de0706bcd482a03b31b18c3dd85843cfc5ed2e3eef836bc19a3f9bc
+Version: 2.0.49
+Version code: 100
+SHA-256: a9ed938b39d4498f4492fbee2820d591decbe70c5ff80a605814f740a1f3f5b4
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

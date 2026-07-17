@@ -85,7 +85,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Never put a debug/dev APK in the live repository or updater path. The internal Android package ID `dev.frankenkey.keyboard` is retained only for update compatibility; every delivered APK must be the signed release variant, display `FrankenKey`, use the production launcher logo, and pass the source checkout's `verifyReleaseIdentity` gate before publication.
 - When a supplied reference APK, package, binary, or artifact defines parity, inspect and execute that artifact before editing the port; derive the observable behavior and package/runtime architecture first.
 - Follow the global programmatic-first rule: use APIs, commands, direct service/data operations, and automated harnesses instead of UI whenever they can achieve the same result. Use UI only for UI-specific verification or when no programmatic surface exists. `AUTOBUILD-AGENT-PROGRAMMATIC-FIRST.md` is the standalone AutoBuild skill-agent handoff copy of this rule.
-- For phone test delivery, connect directly to `deme-s23-ultra.modem` through Termux SSH port `8022`; do not require RustDesk or a localhost `2222` tunnel. Phone-upload requests place the signed candidate at `/storage/emulated/0/Download/FrankenKey-installable-release.apk`.
+- For phone test delivery, connect directly to `deme-s23-ultra.modem` through Termux SSH port `8022`; do not require RustDesk or a localhost `2222` tunnel. Always upload every signed test candidate to the Android Downloads folder at `/storage/emulated/0/Download/FrankenKey-installable-release.apk`; never use the Termux home directory or another phone path as the delivered test location.
 
 ## Project Context
 
