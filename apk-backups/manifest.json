@@ -491,6 +491,18 @@
       "sha256": "a9ed938b39d4498f4492fbee2820d591decbe70c5ff80a605814f740a1f3f5b4",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Release making CMUX Backspace emit exactly one terminal delete callback and enabling reliable middle-row swipe deletion in CMUX."
+    },
+    {
+      "label": "autocorrect-cursor-return-test-release",
+      "file": "FrankenKey-2.0.50-vc101-new-release-key-9fdb3633-a2fd61b4.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "101",
+      "versionName": "2.0.50",
+      "size": 6836837,
+      "sha256": "a2fd61b4960aff0585de4be76f694ca99e064b8b48db932e67cfbd4fd4a6bc26",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release preventing cursor-return Backspace from restoring an old autocorrect replacement while preserving exact immediate undo."
     }
   ]
 }
