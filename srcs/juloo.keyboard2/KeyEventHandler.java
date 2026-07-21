@@ -241,9 +241,21 @@ public final class KeyEventHandler
     PendingReplacement replacement = _pending_replacement;
     if (replacement != null
         && (replacement.cursor < 0 || newSelStart != newSelEnd
-          || newSelStart != replacement.cursor)
-        && !pending_replacement_matches_editor(replacement))
-      commit_pending_replacement();
+          || newSelStart != replacement.cursor))
+    {
+      int replacement_start = replacement.cursor
+        - replacement.target.length() - replacement.separator.length();
+      int selection_start = Math.min(newSelStart, newSelEnd);
+      int selection_end = Math.max(newSelStart, newSelEnd);
+      boolean moved_into_replacement = replacement.cursor >= 0
+        && oldSelStart == replacement.cursor
+        && selection_start >= replacement_start
+        && selection_end <= replacement.cursor
+        && selection_end >= replacement_start;
+      if (moved_into_replacement
+          || !pending_replacement_matches_editor(replacement))
+        commit_pending_replacement();
+    }
 
     if (newSelStart != newSelEnd)
     {

@@ -1,0 +1,1 @@
+Fixed autocorrected words reverting to the original spelling and re-inserting their trailing space after you moved the cursor back to edit them. Backspace now edits normally at the returned cursor, while immediate Backspace at the original insertion point still undoes an unwanted correction.

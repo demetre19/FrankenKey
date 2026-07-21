@@ -149,6 +149,31 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void moving_back_into_corrected_word_cancels_stale_undo()
+      throws Exception
+  {
+    for (int cursor : new int[] { 7, 9, 10 })
+    {
+      Harness harness = harness("prefix teh", true, true);
+      clearResult(harness.decoder);
+      harness.handler.handle_space_bar();
+      Decoder.Result result = correctionResult(harness.key, "teh", "the");
+      installResult(harness.decoder, result);
+      harness.handler.decoder_result_ready(result);
+
+      harness.receiver.input.setSelection(cursor, cursor);
+      harness.receiver.input.staleReadCursor = 11;
+      harness.handler.selection_updated(11, cursor, cursor);
+      harness.handler.handle_backspace();
+
+      String expected = cursor == 7 ? "prefixthe "
+        : cursor == 9 ? "prefix te " : "prefix th ";
+      assertEquals("Returning the cursor to the start, inside, or immediately after the corrected word must settle correction undo before Backspace, even while editor readback still reports the old insertion point.",
+          expected, harness.receiver.input.text.toString());
+    }
+  }
+
+  @Test
   public void pointer_up_modifier_refresh_preserves_live_correction_undo()
       throws Exception
   {
@@ -1079,6 +1104,7 @@ public class KeyEventHandlerAutocorrectContractTest
     int selectionStart;
     int selectionEnd;
     int extractedStartOffset;
+    int staleReadCursor = -1;
     int cursorCapsMode;
     int commitTextCalls;
     int deleteSurroundingCalls;
@@ -1103,8 +1129,10 @@ public class KeyEventHandlerAutocorrectContractTest
       ExtractedText out = new ExtractedText();
       out.text = text.toString();
       out.startOffset = extractedStartOffset;
-      out.selectionStart = selectionStart;
-      out.selectionEnd = selectionEnd;
+      out.selectionStart = staleReadCursor >= 0
+        ? staleReadCursor : selectionStart;
+      out.selectionEnd = staleReadCursor >= 0
+        ? staleReadCursor : selectionEnd;
       return out;
     }
 
@@ -1116,7 +1144,8 @@ public class KeyEventHandlerAutocorrectContractTest
 
     @Override public CharSequence getTextBeforeCursor(int length, int flags)
     {
-      return text.substring(Math.max(0, cursor - length), cursor);
+      int readCursor = staleReadCursor >= 0 ? staleReadCursor : cursor;
+      return text.substring(Math.max(0, readCursor - length), readCursor);
     }
 
     @Override public CharSequence getTextAfterCursor(int length, int flags)
