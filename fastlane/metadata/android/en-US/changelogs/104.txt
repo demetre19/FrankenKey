@@ -1,0 +1,3 @@
+Fixed Backspace reintroducing an extra letter when undoing an autocorrection whose original typo was longer than the corrected word.
+
+Backspace now accepts that correction and deletes normally instead of making the visible text longer.

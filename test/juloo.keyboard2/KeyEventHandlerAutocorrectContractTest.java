@@ -72,6 +72,74 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void prose_punctuation_removes_a_plain_space_and_keeps_one_afterward()
+      throws Exception
+  {
+    for (char punctuation : new char[] { '.', ',', '!', '?', ';', ':' })
+    {
+      Harness harness = harness("word", false, true);
+
+      harness.handler.handle_space_bar();
+      harness.handler.key_up(
+          KeyValue.getKeyByName(String.valueOf(punctuation)),
+          Pointers.Modifiers.EMPTY, null);
+      harness.handler.handle_space_bar();
+      harness.handler.handle_space_bar();
+
+      assertEquals("Prose typing word Space " + punctuation
+          + " Space must attach punctuation and retain exactly one following space.",
+          "word" + punctuation + " ",
+          harness.receiver.input.text.toString());
+    }
+  }
+
+  @Test
+  public void prose_duplicate_plain_spaces_collapse_at_the_cursor()
+      throws Exception
+  {
+    Harness harness = harness("word", false, true);
+
+    harness.handler.handle_space_bar();
+    harness.handler.handle_space_bar();
+    harness.handler.handle_space_bar();
+
+    assertEquals("Repeated user-entered plain spaces in prose must collapse to one.",
+        "word ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void structured_fields_and_termux_keep_literal_spacing()
+      throws Exception
+  {
+    for (int variation : new int[] {
+        android.text.InputType.TYPE_TEXT_VARIATION_URI,
+        android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS })
+    {
+      Harness harness = harness("word", false, true);
+      harness.config.editor_config.should_use_sentence_assistance = false;
+      harness.receiver.editorInfo.inputType =
+        android.text.InputType.TYPE_CLASS_TEXT | variation;
+
+      harness.handler.handle_space_bar();
+      harness.handler.key_up(KeyValue.getKeyByName("."),
+          Pointers.Modifiers.EMPTY, null);
+      harness.handler.handle_space_bar();
+
+      assertEquals("URI and email editors must preserve literal user spacing.",
+          "word . ", harness.receiver.input.text.toString());
+    }
+
+    Harness termux = harness("word", false, true, 0, true);
+    termux.handler.handle_space_bar();
+    termux.handler.key_up(KeyValue.getKeyByName("."),
+        Pointers.Modifiers.EMPTY, null);
+    termux.handler.handle_space_bar();
+
+    assertEquals("Termux raw input must preserve literal user spacing.",
+        "word . ", termux.receiver.input.text.toString());
+  }
+
+  @Test
   public void automatic_correction_reports_editor_metadata_for_platform_flash()
       throws Exception
   {
@@ -124,13 +192,203 @@ public class KeyEventHandlerAutocorrectContractTest
         harness.decoder.is_current(harness.key));
 
     harness.handler.handle_backspace();
-
-    assertEquals("Immediate Backspace after a late correction must retain the normal correction-undo contract.",
-        "prefix teh ", harness.receiver.input.text.toString());
+    assertEquals("Backspace after a late accepted correction must delete only its separator.",
+        "prefix the", harness.receiver.input.text.toString());
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+    assertEquals("The next typed character must continue after the accepted correction.",
+        "prefix thex", harness.receiver.input.text.toString());
   }
 
   @Test
-  public void stale_replacement_selection_callbacks_preserve_live_correction_undo()
+  public void provisional_fast_result_keeps_boundary_pending_for_full_result()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+
+    Decoder.Candidate literal = candidate("teh", "teh",
+        Decoder.SOURCE_LITERAL, 0, 0, 0, false, false,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Result provisional = result(harness.key, "teh",
+        new Decoder.Candidate[] { literal }, literal, null, false);
+    installResult(harness.decoder, provisional);
+    harness.handler.decoder_result_ready(provisional);
+
+    assertEquals("A provisional fast preview must leave the literal boundary pending instead of finalizing it.",
+        "prefix teh ", harness.receiver.input.text.toString());
+
+    Decoder.Result complete = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, complete);
+    harness.handler.decoder_result_ready(complete);
+    assertEquals("The later full boundary result must still be able to correct the exact pending word.",
+        "prefix the ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void late_boundary_correction_survives_fast_following_word()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("Typing the next word must remain immediate while the prior completed-word request finishes.",
+        "prefix teh x", harness.receiver.input.text.toString());
+    assertTrue("The completed-word request must remain current briefly so decoder speed cannot decide correctness.",
+        harness.decoder.is_current(harness.key));
+
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    assertEquals("A late result must repair only the previous word while preserving the following word exactly.",
+        "prefix the x", harness.receiver.input.text.toString());
+    assertEquals("The delayed previous-word repair must report one editor correction.",
+        1, harness.receiver.input.commitCorrectionCalls);
+    assertFalse("After resolving the old boundary, decoding must advance to the current following word.",
+        harness.decoder.is_current(harness.key));
+  }
+  @Test
+  public void late_boundary_correction_survives_several_fast_following_letters()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    for (String letter : new String[] { "n", "e", "x", "t" })
+      harness.handler.key_up(KeyValue.getKeyByName(letter),
+          Pointers.Modifiers.EMPTY, null);
+
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+
+    assertEquals("Decoder latency must not decide correctness while a short following word is typed at full speed.",
+        "prefix the next", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void next_separator_retains_old_boundary_for_latent_correction()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+    harness.handler.handle_space_bar();
+
+    assertEquals("A second completed word must appear immediately without overwriting the prior pending boundary.",
+        "prefix teh x ", harness.receiver.input.text.toString());
+    assertFalse("The prior request no longer owns the current suggestion strip after the next boundary.",
+        harness.decoder.is_current(harness.key));
+
+    Decoder.Result latent = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, latent);
+    harness.handler.decoder_result_ready(latent);
+    assertEquals("A completed full spellcheck may repair the exact previous word after the next separator.",
+        "prefix the x ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void latent_correction_revalidates_two_following_words()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("y"),
+        Pointers.Modifiers.EMPTY, null);
+
+    Decoder.Result latent = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, latent);
+    harness.handler.decoder_result_ready(latent);
+
+    assertEquals("A full spellcheck may repair an exact word while preserving two subsequently typed words.",
+        "prefix the x y", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void latent_correction_uses_absolute_extracted_text_offsets()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    harness.receiver.input.extractedStartOffset = 100;
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+    harness.handler.handle_space_bar();
+
+    Decoder.Result latent = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, latent);
+    harness.handler.decoder_result_ready(latent);
+
+    assertEquals("A latent correction must translate extracted-text-local indices to absolute editor selection offsets.",
+        "prefix the x ", harness.receiver.input.text.toString());
+    assertEquals("Latent correction metadata must retain the absolute word offset.",
+        107, harness.receiver.input.correctionInfo.getOffset());
+  }
+
+  @Test
+  public void cursor_move_after_following_character_rejects_late_boundary()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+
+    int oldCursor = harness.receiver.input.cursor;
+    harness.receiver.input.setSelection(0, 0);
+    harness.handler.selection_updated(oldCursor, 0, 0);
+
+    Decoder.Result stale = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, stale);
+    harness.handler.decoder_result_ready(stale);
+
+    assertEquals("Moving the cursor must fail closed rather than rewrite an old word boundary.",
+        "prefix teh x", harness.receiver.input.text.toString());
+    assertEquals("Rejecting a stale result must not emit correction metadata.",
+        0, harness.receiver.input.commitCorrectionCalls);
+  }
+
+  @Test
+  public void backspace_in_following_word_keeps_late_accepted_correction()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+    harness.handler.handle_space_bar();
+    harness.handler.key_up(KeyValue.getKeyByName("x"),
+        Pointers.Modifiers.EMPTY, null);
+
+    Decoder.Result result = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, result);
+    harness.handler.decoder_result_ready(result);
+    harness.handler.handle_backspace();
+
+    assertEquals("Backspace in the following word must keep the accepted prior correction and delete only the current character.",
+        "prefix the ", harness.receiver.input.text.toString());
+  }
+
+
+
+  @Test
+  public void stale_replacement_selection_callbacks_preserve_accepted_correction()
       throws Exception
   {
     Harness harness = harness("prefix teh", true, true);
@@ -144,8 +402,8 @@ public class KeyEventHandlerAutocorrectContractTest
     harness.handler.selection_updated(0, 11, 11);
     harness.handler.handle_backspace();
 
-    assertEquals("Delayed selection callbacks from the editor's internal replacement must not settle an otherwise exact correction before immediate Backspace can restore the literal.",
-        "prefix teh ", harness.receiver.input.text.toString());
+    assertEquals("Delayed selection callbacks from the editor's internal replacement must not make Backspace restore the source.",
+        "prefix the", harness.receiver.input.text.toString());
   }
 
   @Test
@@ -174,7 +432,7 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
-  public void pointer_up_modifier_refresh_preserves_live_correction_undo()
+  public void pointer_up_modifier_refresh_preserves_accepted_correction()
       throws Exception
   {
     Harness harness = harness("prefix teh", true, true);
@@ -187,8 +445,8 @@ public class KeyEventHandlerAutocorrectContractTest
     harness.handler.mods_changed(Pointers.Modifiers.EMPTY);
     harness.handler.handle_backspace();
 
-    assertEquals("The neutral pointer-up modifier refresh is not a new editing action and must not settle correction undo.",
-        "prefix teh ", harness.receiver.input.text.toString());
+    assertEquals("A neutral pointer-up modifier refresh must not make Backspace restore the source.",
+        "prefix the", harness.receiver.input.text.toString());
   }
 
   @Test
@@ -212,22 +470,20 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
-  public void next_key_cancels_pending_separator_correction_before_editor_mutation()
+  public void key_down_keeps_unchanged_separator_boundary_live_for_ready_result()
       throws Exception
   {
     Harness harness = harness("teh", true, true);
     clearResult(harness.decoder);
     harness.handler.handle_space_bar();
     Decoder.Result late = correctionResult(harness.key, "teh", "the");
-
     harness.handler.key_down(KeyValue.getKeyByName("x"), false);
     installResult(harness.decoder, late);
     harness.handler.decoder_result_ready(late);
-
-    assertEquals("Any later key action must freeze the already-visible literal boundary rather than rewrite text behind the cursor.",
-        "teh ", harness.receiver.input.text.toString());
-    assertEquals("A cancelled late result must not report correction metadata.",
-        0, harness.receiver.input.commitCorrectionCalls);
+    assertEquals("A key press alone must not discard a correction while the captured word, separator, cursor, and editor connection are still exact.",
+        "the ", harness.receiver.input.text.toString());
+    assertEquals("The accepted late result must report correction metadata before the next key mutates the editor.",
+        1, harness.receiver.input.commitCorrectionCalls);
   }
 
   @Test
@@ -340,7 +596,7 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
-  public void changed_candidate_and_autocorrect_undo_before_learning()
+  public void changed_candidate_and_autocorrect_backspace_accepts_correction()
       throws Exception
   {
     for (boolean candidateClick : new boolean[] { false, true })
@@ -352,23 +608,61 @@ public class KeyEventHandlerAutocorrectContractTest
           Pointers.Modifiers.EMPTY, null);
 
       String origin = candidateClick ? "candidate click" : "separator autocorrect";
-      assertEquals("Immediate Backspace after a changed " + origin
-          + " must restore the exact source and separator.",
-          "teh ", harness.receiver.input.text.toString());
-      assertEquals("The changed " + origin
-          + " and its verified undo must each be one surrounding-text replacement.",
-          2, harness.receiver.input.commitTextCalls);
-      awaitCounts(harness.prefs, "teh", null, 1, 0);
-      assertCountsRemain(harness.prefs, "teh", null, 1, 0);
-      assertEquals("Rejecting an unwanted correction must not teach its target.",
-          0, wordCount(harness.prefs, "the"));
-      assertEquals("Rejecting an unwanted correction must not retain typo evidence for that target.",
-          0, correctionCount(harness.prefs, "teh", "the"));
+      assertEquals("Backspace after a changed " + origin
+          + " must accept the correction and delete only its separator.",
+          "the", harness.receiver.input.text.toString());
+      assertEquals("Accepting the changed " + origin
+          + " must not perform a source-restoration commit.",
+          1, harness.receiver.input.commitTextCalls);
+      awaitCounts(harness.prefs, "the", "teh", 1, 1);
+      assertCountsRemain(harness.prefs, "the", "teh", 1, 1);
+
+      harness.handler.key_up(KeyValue.getKeyByName("x"),
+          Pointers.Modifiers.EMPTY, null);
+      assertEquals("The next typed character after " + origin
+          + " must continue after the accepted correction.",
+          "thex", harness.receiver.input.text.toString());
     }
   }
 
   @Test
-  public void rejected_thys_to_thus_then_manual_this_keeps_original_source()
+  public void backspace_never_restores_a_longer_typo()
+      throws Exception
+  {
+    Harness harness = harness("keyas", true, true);
+    installCorrection(harness.decoder, harness.key, "keyas", "keys");
+    harness.handler.handle_space_bar();
+    assertEquals("The fixture must first replace the longer typo.",
+        "keys ", harness.receiver.input.text.toString());
+
+    harness.handler.handle_backspace();
+
+    assertEquals("Backspace must remove the separator normally instead of making the corrected text longer by restoring an extra source letter.",
+        "keys", harness.receiver.input.text.toString());
+    assertEquals("A rejected length-increasing undo must not perform a second replacement commit.",
+        1, harness.receiver.input.commitTextCalls);
+  }
+
+  @Test
+  public void backspace_after_same_length_correction_deletes_separator()
+      throws Exception
+  {
+    Harness harness = harness("aa", true, true);
+    installCorrection(harness.decoder, harness.key, "aa", "as");
+    harness.handler.handle_space_bar();
+    assertEquals("The fixture must first replace the same-length typo.",
+        "as ", harness.receiver.input.text.toString());
+
+    harness.handler.handle_backspace();
+
+    assertEquals("Backspace after an accepted correction must delete the separator instead of restoring the typo.",
+        "as", harness.receiver.input.text.toString());
+    assertEquals("Deleting the separator must not perform a second replacement commit.",
+        1, harness.receiver.input.commitTextCalls);
+  }
+
+  @Test
+  public void accepted_thys_to_thus_then_manual_this_uses_corrected_source()
       throws Exception
   {
     Harness harness = harness("thys", true, true);
@@ -379,29 +673,27 @@ public class KeyEventHandlerAutocorrectContractTest
         "thus ", harness.receiver.input.text.toString());
     harness.handler.key_up(KeyValue.getSpecialKeyByName("backspace"),
         Pointers.Modifiers.EMPTY, null);
-    assertEquals("Immediate Backspace must restore the exact original typed word before manual repair.",
-        "thys ", harness.receiver.input.text.toString());
+    assertEquals("Backspace must accept the correction and delete only its separator before manual editing.",
+        "thus", harness.receiver.input.text.toString());
+    awaitCounts(harness.prefs, "thus", "thys", 1, 1);
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
       harness.handler.key_up(KeyValue.getSpecialKeyByName("backspace"),
           Pointers.Modifiers.EMPTY, null);
     harness.handler.send_text("is");
-    assertEquals("Removing the separator, s, and y then typing is must visibly produce this.",
+    assertEquals("Removing s and y then typing is must visibly produce this.",
         "this", harness.receiver.input.text.toString());
     harness.handler.handle_space_bar();
 
     assertEquals("The final user-approved correction and boundary must remain in the editor.",
         "this ", harness.receiver.input.text.toString());
-    awaitCounts(harness.prefs, "this", "thys", 0, 1);
-    assertCountsRemain(harness.prefs, "this", "thys", 0, 1);
-    assertEquals("Rejecting the intermediate autocorrection must not teach thys-to-thus.",
-        0, correctionCount(harness.prefs, "thys", "thus"));
-    assertEquals("The intermediate thus spelling must not replace the original thys provenance.",
-        0, correctionCount(harness.prefs, "thus", "this"));
+    assertCountsRemain(harness.prefs, "thus", "thys", 1, 1);
+    assertEquals("Manual editing after acceptance must not create source-literal undo learning.",
+        0, wordCount(harness.prefs, "thys"));
   }
 
   @Test
-  public void secondary_replacement_undo_preserves_prior_manual_correction()
+  public void secondary_replacement_backspace_accepts_new_target()
       throws Exception
   {
     for (boolean candidateClick : new boolean[] { false, true })
@@ -423,24 +715,18 @@ public class KeyEventHandlerAutocorrectContractTest
         harness.handler.suggestion_entered(correctedKey, "thit");
       else
         harness.handler.handle_space_bar();
-      assertEquals("The secondary replacement must be visible before its undo window.",
+      assertEquals("The secondary replacement must be visible before Backspace.",
           "thit ", harness.receiver.input.text.toString());
 
       harness.handler.key_up(KeyValue.getSpecialKeyByName("backspace"),
           Pointers.Modifiers.EMPTY, null);
 
       String origin = candidateClick ? "candidate click" : "separator autocorrect";
-      assertEquals("Immediate Backspace after the secondary " + origin
-          + " must restore the manually corrected word.",
-          "this ", harness.receiver.input.text.toString());
-      awaitCounts(harness.prefs, "this", "thus", 0, 1);
-      assertCountsRemain(harness.prefs, "this", "thus", 0, 1);
-      assertEquals("Undoing the secondary " + origin
-          + " must reject its positive typo-pair evidence.",
-          0, correctionCount(harness.prefs, "this", "thit"));
-      assertEquals("Undoing the secondary " + origin
-          + " must not teach its rejected target.",
-          0, wordCount(harness.prefs, "thit"));
+      assertEquals("Backspace after the secondary " + origin
+          + " must accept the new target and delete only its separator.",
+          "thit", harness.receiver.input.text.toString());
+      awaitCounts(harness.prefs, "thit", "this", 1, 1);
+      assertCountsRemain(harness.prefs, "thit", "this", 1, 1);
     }
   }
 
@@ -583,6 +869,83 @@ public class KeyEventHandlerAutocorrectContractTest
       assertEquals("An unchanged word must use only its normal separator commit.",
           1, harness.receiver.input.commitTextCalls);
     }
+  }
+
+  @Test
+  public void stale_lowercase_suffix_cannot_duplicate_a_capitalized_word()
+      throws Exception
+  {
+    Harness harness = harness("Time", true, true);
+    harness.handler._typedword.set_current_word("ime");
+    Decoder.RequestKey staleKey = harness.handler._current_request_key;
+    assertNotNull(staleKey);
+    installCorrection(harness.decoder, staleKey, "ime", "time");
+
+    harness.handler.handle_space_bar();
+    Shadows.shadowOf(Looper.getMainLooper()).idle();
+
+    assertEquals("Autocorrect must not leave the editor's capital T and append a replacement for only the stale lowercase suffix.",
+        "Time ", harness.receiver.input.text.toString());
+    assertEquals("Rejecting a tracker/editor mismatch must append only the requested separator.",
+        1, harness.receiver.input.commitTextCalls);
+    assertEquals("A tracker/editor mismatch must not delete any part of the visible capitalized word.",
+        0, harness.receiver.input.deleteSurroundingCalls);
+  }
+
+  @Test
+  public void short_all_caps_token_is_preserved_at_commit_boundary()
+      throws Exception
+  {
+    Harness substitution = harness("STM", true, true);
+    installResult(substitution.decoder, correctionResult(substitution.key,
+          "stm", "Atm", Decoder.EDIT_SUBSTITUTION));
+
+    substitution.handler.handle_space_bar();
+
+    assertEquals("The editor-verified all-caps token must survive a one-letter substitution even when an earlier lowercase decoder request offered a correction.",
+        "STM ", substitution.receiver.input.text.toString());
+    assertEquals("Preserving a short all-caps token must not delete visible text.",
+        0, substitution.receiver.input.deleteSurroundingCalls);
+
+    Harness transposition = harness("TEH", true, true);
+    installResult(transposition.decoder, correctionResult(transposition.key,
+          "teh", "The", Decoder.EDIT_TRANSPOSITION));
+
+    transposition.handler.handle_space_bar();
+
+    assertEquals("The final commit guard must preserve any cold two- or three-letter all-caps token.",
+        "TEH ", transposition.receiver.input.text.toString());
+  }
+
+  @Test
+  public void capped_long_word_suffix_cannot_request_or_commit_correction()
+      throws Exception
+  {
+    String visible = "abcdefghijklmnopqrstuvwxy";
+    String cappedSuffix = visible.substring(
+        visible.length() - CurrentlyTypedWord.EDITOR_CONTEXT_LENGTH);
+    Harness harness = harness(visible, true, true);
+    harness.handler._typedword.set_current_word(cappedSuffix);
+    assertEquals("A context read capped inside a long token must remain explicitly incomplete.",
+        CurrentlyTypedWord.WordCompleteness.INCOMPLETE,
+        harness.handler._typedword.snapshot().completeness);
+    assertNull("Publishing an incomplete editor suffix must invalidate its decoder request instead of exposing suffix candidates.",
+        harness.handler._current_request_key);
+
+    Decoder.RequestKey unsafeKey = harness.decoder.request(harness.session,
+        harness.handler._typedword.snapshot());
+    harness.handler._current_request_key = unsafeKey;
+    installCorrection(harness.decoder, unsafeKey, cappedSuffix,
+        "abcdefghijklmnopqrst");
+
+    harness.handler.handle_space_bar();
+
+    assertEquals("An incomplete suffix must never replace the tail of the complete visible editor word.",
+        visible + " ", harness.receiver.input.text.toString());
+    assertEquals("Failing closed on incomplete readback must not delete visible text.",
+        0, harness.receiver.input.deleteSurroundingCalls);
+    assertEquals("Failing closed must commit only the user's requested separator.",
+        1, harness.receiver.input.commitTextCalls);
   }
 
   @Test
@@ -774,6 +1137,7 @@ public class KeyEventHandlerAutocorrectContractTest
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
     config.editor_config.should_use_personalization = !termux;
+    config.editor_config.should_use_sentence_assistance = safeEditor && !termux;
     config.editor_config.initial_text_before_cursor = text;
     config.editor_config.initial_text_after_cursor = "";
     config.editor_config.initial_sel_start = text.length();
@@ -791,13 +1155,12 @@ public class KeyEventHandlerAutocorrectContractTest
         new SharedDecoder.Callback()
         {
           @Override
-          public void decoder_state_changed(SharedDecoder.Presentation state)
+          public void decoder_state_changed(SharedDecoder.Presentation state) {}
+
+          @Override
+          public void decoder_result_completed(Decoder.Result completed)
           {
-            SharedDecoder active_decoder = decoder_ref[0];
             KeyEventHandler active_handler = handler_ref[0];
-            Decoder.Result completed = active_decoder == null
-              || state.key == null
-              ? null : active_decoder.current_result(state.key);
             if (completed != null && active_handler != null)
               active_handler.decoder_result_ready(completed);
           }
@@ -829,12 +1192,20 @@ public class KeyEventHandlerAutocorrectContractTest
       String queried, String corrected)
       throws Exception
   {
+    return correctionResult(key, queried, corrected,
+        Decoder.EDIT_TRANSPOSITION);
+  }
+
+  private static Decoder.Result correctionResult(Decoder.RequestKey key,
+      String queried, String corrected, int editMask)
+      throws Exception
+  {
     Decoder.Candidate literal = candidate(Decoder.normalize(queried), queried,
         Decoder.SOURCE_LITERAL, 8192, 0, 0, false, false,
         Decoder.Role.ENTERED_LITERAL);
     Decoder.Candidate correction = candidate(Decoder.normalize(corrected),
         corrected, Decoder.SOURCE_CDICT_SPATIAL, 0, 1,
-        Decoder.EDIT_TRANSPOSITION, true, false, Decoder.Role.WORD);
+        editMask, true, false, Decoder.Role.WORD);
     return result(key, queried,
         new Decoder.Candidate[] { correction, literal }, literal, correction);
   }
@@ -862,13 +1233,22 @@ public class KeyEventHandlerAutocorrectContractTest
       Decoder.Candidate correction)
       throws Exception
   {
+    return result(key, queried, words, literal, correction, true);
+  }
+
+  private static Decoder.Result result(Decoder.RequestKey key, String queried,
+      Decoder.Candidate[] words, Decoder.Candidate literal,
+      Decoder.Candidate correction, boolean autocorrectionComplete)
+      throws Exception
+  {
     Constructor<Decoder.Result> constructor = Decoder.Result.class
       .getDeclaredConstructor(Decoder.RequestKey.class, String.class,
           Decoder.Candidate[].class, String.class, Decoder.Candidate.class,
-          Decoder.Candidate.class, boolean.class, Decoder.Failure.class);
+          Decoder.Candidate.class, boolean.class, boolean.class,
+          Decoder.Failure.class);
     constructor.setAccessible(true);
     return constructor.newInstance(key, queried, words, null, literal,
-        correction, true, Decoder.Failure.NONE);
+        correction, autocorrectionComplete, true, Decoder.Failure.NONE);
   }
 
   private static void installResult(SharedDecoder decoder,
@@ -1161,11 +1541,16 @@ public class KeyEventHandlerAutocorrectContractTest
 
     @Override public boolean setSelection(int start, int end)
     {
-      if (start < 0 || end < 0 || start > text.length() || end > text.length())
+      int localStart = extractedStartOffset > 0 && start >= extractedStartOffset
+        ? start - extractedStartOffset : start;
+      int localEnd = extractedStartOffset > 0 && end >= extractedStartOffset
+        ? end - extractedStartOffset : end;
+      if (localStart < 0 || localEnd < 0
+          || localStart > text.length() || localEnd > text.length())
         return false;
-      selectionStart = start;
-      selectionEnd = end;
-      cursor = end;
+      selectionStart = localStart;
+      selectionEnd = localEnd;
+      cursor = localEnd;
       return true;
     }
 

@@ -8,10 +8,12 @@ import android.view.inputmethod.BaseInputConnection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 import org.robolectric.RuntimeEnvironment;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public class AutocapitalisationTest
 {
   @Test

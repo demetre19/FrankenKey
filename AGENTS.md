@@ -37,6 +37,7 @@
 ## Verification
 
 - Focused tests: `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache testDebugUnitTest --tests <TestClass>`.
+- Real-IME throughput changes must pass both targeted and chapter `RealImeThroughputInstrumentedTest` gates at zero artificial key interval on the signed release candidate.
 - Release build: load release signing env without echoing secrets, then run `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleRelease`; its mandatory `verifyReleaseIdentity` finalizer must pass.
 - Verify release APK with Android build tools when relevant: package/version via `aapt2`, signature via `apksigner`, and SHA-256 via `shasum -a 256`.
 - Local emulator AVD is `FrankenKeyParity`; emulator binary is `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk/emulator/emulator`.

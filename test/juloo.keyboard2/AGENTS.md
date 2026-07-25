@@ -19,7 +19,7 @@
 
 - Use Robolectric-friendly fakes and existing helper patterns.
 - Cover edge cases for user data, permission state, layout visibility, and gesture/ranking branches.
-- Resource-backed `SettingsActivity` Robolectric tests depend on Gradle unit-test Android resources; confirm their class appears in generated test-result XML rather than trusting only the aggregate task status.
+- Resource-backed Robolectric tests depend on Gradle unit-test Android resources; confirm their class appears in generated test-result XML rather than trusting only the aggregate task status. While the app targets API 36 and the pinned Robolectric runner supports at most API 35, these suites must declare `@Config(sdk = 35)`.
 
 ## Verification
 

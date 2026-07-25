@@ -1,17 +1,23 @@
 Bundled English Hunspell sources
 ================================
 
-The English (Australia) and English (United Kingdom) Hunspell files under
-assets/language_packs/en_AU and assets/language_packs/en_GB are unmodified
-copies from LibreOffice dictionaries commit:
+The bundled English (Australia), English (United Kingdom), and English
+(United States) Hunspell files under assets/language_packs are derived from
+LibreOffice dictionaries commit:
 da8a7e73fd26a134ad7c6438fa7c310730906b3a
 https://github.com/LibreOffice/dictionaries/tree/da8a7e73fd26a134ad7c6438fa7c310730906b3a/en
 
+FrankenKey adds the lowercase technical names gboard, omp, and cmux to each
+.dic file so they can be recognized without autocorrection. The .aff files
+remain unmodified.
+
 File hashes:
 - en_AU.aff: e746c882dd6f303c2c46e7452804b9201115a6942cfeb15f18f8edf774d2e24e
-- en_AU.dic: aa07c46571f306b79fc1bc534357ed357af15687381b26f891ba66e8a2caed89
+- en_AU.dic: 86f449dea1a32c197b68d5d87f8743e5a5dc1d94c254ee937c5be68571b42942
 - en_GB.aff: 0fd6ed120ef28957847d98ba5149b117e27116cf81b5aa36208453f6755a36fd
-- en_GB.dic: 04e90f34f5263bf26780e9c4a442e9ad16584e227af49ddd1b3b21b01df5b29c
+- en_GB.dic: 5911b8813e4f115c5eadafa91df140afb5672693a5e8091934320b9da90d09f4
+- en_US.aff: d360d87bef1d33c0d0b2800e47104b1b588cffb783e7c6c928832b819bc1d96f
+- en_US.dic: d122545212b7e7d04a963abf60a934e895e5ea7f433fd87ee305fee2f46ef547
 
 The applicable upstream notices are included beside this file as
 english-hunspell-en_AU.txt and english-hunspell-en_GB.txt.

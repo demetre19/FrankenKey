@@ -1,0 +1,3 @@
+Fixed capitalized words sometimes duplicating their first letter during autocorrection (for example, Time becoming Ttime).
+
+Autocorrect now verifies the complete visible word before replacing or learning it.

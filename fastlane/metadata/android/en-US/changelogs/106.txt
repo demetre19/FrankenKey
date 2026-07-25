@@ -1,0 +1,3 @@
+Improved autocorrect for common adjacent-key, transposition, omission, and trailing-letter typos without hardcoded word pairs. Ambiguous short tokens now stay unchanged instead of risking the wrong word.
+
+Accepted corrections no longer restore the original misspelling when Backspace is pressed or the cursor moves. Two- and three-letter uppercase tokens remain typeable and learnable.

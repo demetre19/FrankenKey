@@ -989,20 +989,23 @@ public class Keyboard2 extends InputMethodService
       return _handler;
     }
 
+    @Override
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {
-      Decoder.Result completed = state.key == null
-        ? null : _decoder.current_result(state.key);
-      if (completed != null)
-        _handler.post(new Runnable()
-            {
-              @Override public void run()
-              {
-                _keyeventhandler.decoder_result_ready(completed);
-              }
-            });
       if (_candidates_view != null)
         _candidates_view.set_decoder_state(_decoder.current_presentation());
+    }
+
+    @Override
+    public void decoder_result_completed(final Decoder.Result result)
+    {
+      _handler.post(new Runnable()
+          {
+            @Override public void run()
+            {
+              _keyeventhandler.decoder_result_ready(result);
+            }
+          });
     }
 
     public String provide_stateful_key_symbol(KeyValue.Stateful q)

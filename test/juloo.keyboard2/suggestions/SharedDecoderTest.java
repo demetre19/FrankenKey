@@ -70,6 +70,68 @@ public class SharedDecoderTest
             latest, delivered.key);
   }
 
+
+  @Test
+  public void completed_fast_result_escalates_to_full_decode_at_boundary()
+      throws Exception
+  {
+    SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
+    long session = start(decoder, enabledConfig());
+    Decoder.RequestKey key = decoder.request(session,
+        snapshot(1, "twi", false));
+
+    Decoder.Result fast = awaitReady(decoder, key).result;
+    assertFalse("An unproven keystroke preview must remain provisional.",
+        fast.autocorrectionComplete);
+    Field lockField = SharedDecoder.class.getDeclaredField("_lock");
+    lockField.setAccessible(true);
+    Object lock = lockField.get(decoder);
+    Field acceptedField =
+      SharedDecoder.class.getDeclaredField("_acceptedEnvelope");
+    acceptedField.setAccessible(true);
+    Field runningField = SharedDecoder.class.getDeclaredField("_running");
+    runningField.setAccessible(true);
+    synchronized (lock)
+    {
+      runningField.set(decoder, acceptedField.get(decoder));
+    }
+    assertTrue("Space must retain the exact immutable request for full decoding.",
+        decoder.retain_boundary_request(session, key));
+
+    Decoder.Result complete = awaitCompleteResult(decoder, key);
+    assertTrue("A retained boundary must replace its provisional result with a complete decode.",
+        complete.autocorrectionComplete);
+  }
+
+
+  @Test
+  public void retained_boundary_mailbox_matches_editor_rewrite_window()
+      throws Exception
+  {
+    SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
+    long session = start(decoder, enabledConfig());
+    Field lockField = SharedDecoder.class.getDeclaredField("_lock");
+    lockField.setAccessible(true);
+    Object lock = lockField.get(decoder);
+    Field retainedField = SharedDecoder.class.getDeclaredField("_retained");
+    retainedField.setAccessible(true);
+
+    synchronized (lock)
+    {
+      for (int i = 1; i <= 4; ++i)
+      {
+        Decoder.RequestKey key = decoder.request(session,
+            snapshot(i, "word" + i, false));
+        assertTrue(decoder.retain_boundary_request(session, key));
+      }
+      java.util.ArrayDeque<?> retained =
+        (java.util.ArrayDeque<?>)retainedField.get(decoder);
+      assertEquals("The worker must retain only the two boundaries the editor can still revalidate.",
+          2, retained.size());
+    }
+  }
+
+
   @Test
   public void delayed_callback_reads_latest_state_instead_of_replaying_stale_ready()
       throws Exception
@@ -905,6 +967,25 @@ public class SharedDecoderTest
     fail("Timed out waiting for hidden decoder result");
     return null;
   }
+
+  private static Decoder.Result awaitCompleteResult(SharedDecoder decoder,
+      Decoder.RequestKey key)
+      throws Exception
+  {
+    long deadline = System.nanoTime() + 3_000_000_000L;
+    do
+    {
+      Decoder.Result result = decoder.current_result(key);
+      if (result != null && result.autocorrectionComplete)
+        return result;
+      Thread.sleep(2L);
+    }
+    while (System.nanoTime() < deadline);
+    fail("Timed out waiting for complete boundary result for generation "
+        + key.requestGeneration);
+    return null;
+  }
+
 
   private static void assertEmpty(SharedDecoder decoder,
       Decoder.RequestKey key, String message)

@@ -37,6 +37,18 @@ public final class PersonalizationStore
     }
   }
 
+  public static final class ScoredContextualCorrection
+  {
+    public final String target;
+    public final int count;
+
+    private ScoredContextualCorrection(String target_, int count_)
+    {
+      target = target_;
+      count = count_;
+    }
+  }
+
   private static final class TopWords
   {
     private final String[] _values;
@@ -172,6 +184,40 @@ public final class PersonalizationStore
     }
   }
 
+  private static final class ContextualCorrection
+  {
+    final String previous;
+    final String source;
+    final String target;
+
+    ContextualCorrection(String previous_, String source_, String target_)
+    {
+      previous = previous_;
+      source = source_;
+      target = target_;
+    }
+
+    @Override
+    public boolean equals(Object other)
+    {
+      if (this == other)
+        return true;
+      if (!(other instanceof ContextualCorrection))
+        return false;
+      ContextualCorrection correction = (ContextualCorrection)other;
+      return previous.equals(correction.previous)
+        && source.equals(correction.source)
+        && target.equals(correction.target);
+    }
+
+    @Override
+    public int hashCode()
+    {
+      return (previous.hashCode() * 31 + source.hashCode()) * 31
+        + target.hashCode();
+    }
+  }
+
 
   public PersonalizationStore(SharedPreferences prefs)
   {
@@ -182,6 +228,9 @@ public final class PersonalizationStore
       : load_counts(PREF_BIGRAMS);
     _correction_counts = prefs == null
       ? new HashMap<CorrectionPair, Integer>() : load_corrections();
+    _contextual_correction_counts = prefs == null
+      ? new HashMap<ContextualCorrection, Integer>()
+      : load_contextual_corrections();
   }
 
   public static PersonalizationStore empty()
@@ -204,16 +253,21 @@ public final class PersonalizationStore
     word = normalize(word);
     if (!is_learnable(word))
       return;
+    correctedFrom = normalize(correctedFrom);
+    String previousWord = _last_word;
     boolean changed = increment(_word_counts, word);
-    if (_last_word != null)
-      changed |= increment(_bigram_counts, _last_word + " " + word);
-    if (!word.equals(_last_word))
+    if (previousWord != null)
+      changed |= increment(_bigram_counts, previousWord + " " + word);
+    if (!word.equals(previousWord))
       changed = true;
     _last_word = word;
 
-    correctedFrom = normalize(correctedFrom);
     if (is_plausible_correction(correctedFrom, word))
       changed |= increment_correction(new CorrectionPair(correctedFrom, word));
+    if (previousWord != null
+        && is_plausible_contextual_correction(correctedFrom, word))
+      changed |= increment_contextual_correction(new ContextualCorrection(
+            previousWord, correctedFrom, word));
 
     if (changed)
     {
@@ -230,8 +284,14 @@ public final class PersonalizationStore
   {
     source = normalize(source);
     target = normalize(target);
-    if (!is_plausible_correction(source, target)
-        || !increment_correction(new CorrectionPair(source, target)))
+    boolean changed = false;
+    if (is_plausible_correction(source, target))
+      changed |= increment_correction(new CorrectionPair(source, target));
+    if (_last_word != null
+        && is_plausible_contextual_correction(source, target))
+      changed |= increment_contextual_correction(new ContextualCorrection(
+            _last_word, source, target));
+    if (!changed)
       return;
     _generation++;
     save();
@@ -249,6 +309,7 @@ public final class PersonalizationStore
     boolean changed = _word_counts.remove(word) != null;
     changed |= remove_bigrams_containing(word);
     changed |= remove_corrections_involving(word);
+    changed |= remove_contextual_corrections_involving(word);
     if (word.equals(_last_word))
     {
       _last_word = null;
@@ -281,6 +342,15 @@ public final class PersonalizationStore
   {
     Integer count = _correction_counts.get(new CorrectionPair(normalize(source),
           normalize(target)));
+    return count == null ? 0 : count;
+  }
+
+  int contextual_correction_count(String previous, String source,
+      String target)
+  {
+    ContextualCorrection correction = new ContextualCorrection(
+        normalize(previous), normalize(source), normalize(target));
+    Integer count = _contextual_correction_counts.get(correction);
     return count == null ? 0 : count;
   }
 
@@ -360,6 +430,33 @@ public final class PersonalizationStore
     return top.scored_corrections();
   }
 
+  List<ScoredContextualCorrection>
+      suggest_contextual_corrections_with_counts(String source, int count)
+  {
+    if (_last_word == null || count <= 0
+        || _contextual_correction_counts.isEmpty())
+      return new ArrayList<ScoredContextualCorrection>();
+    source = normalize(source);
+    if (!is_learnable(source))
+      return new ArrayList<ScoredContextualCorrection>();
+    TopWords matches = new TopWords(Math.min(count,
+          _contextual_correction_counts.size()));
+    for (Map.Entry<ContextualCorrection, Integer> entry
+        : _contextual_correction_counts.entrySet())
+    {
+      ContextualCorrection correction = entry.getKey();
+      if (correction.previous.equals(_last_word)
+          && correction.source.equals(source))
+        matches.offer(correction.target, 0, entry.getValue());
+    }
+    List<ScoredWord> scored = matches.scored_words();
+    List<ScoredContextualCorrection> out =
+      new ArrayList<ScoredContextualCorrection>(scored.size());
+    for (ScoredWord word : scored)
+      out.add(new ScoredContextualCorrection(word.word, word.count));
+    return out;
+  }
+
   long generation()
   {
     return _generation;
@@ -381,11 +478,13 @@ public final class PersonalizationStore
   public void clear()
   {
     boolean changed = !_word_counts.isEmpty() || !_bigram_counts.isEmpty()
-      || !_correction_counts.isEmpty() || _last_word != null
+      || !_correction_counts.isEmpty()
+      || !_contextual_correction_counts.isEmpty() || _last_word != null
       || has_data(_prefs);
     _word_counts.clear();
     _bigram_counts.clear();
     _correction_counts.clear();
+    _contextual_correction_counts.clear();
     _last_word = null;
     clear(_prefs);
     if (changed)
@@ -400,6 +499,7 @@ public final class PersonalizationStore
       .remove(PREF_WORDS)
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
+      .remove(PREF_CONTEXTUAL_CORRECTIONS)
       .apply();
   }
 
@@ -407,7 +507,8 @@ public final class PersonalizationStore
   {
     return prefs != null
       && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_BIGRAMS)
-        || prefs.contains(PREF_CORRECTIONS));
+        || prefs.contains(PREF_CORRECTIONS)
+        || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS));
   }
 
   public static boolean is_learnable(String word)
@@ -440,6 +541,20 @@ public final class PersonalizationStore
 
   public static boolean is_plausible_correction(String source, String target)
   {
+    return is_plausible_correction(source, target,
+        MAX_EXACT_CORRECTION_EDITS);
+  }
+
+  static boolean is_plausible_contextual_correction(String source,
+      String target)
+  {
+    return is_plausible_correction(source, target,
+        MAX_CONTEXTUAL_CORRECTION_EDITS);
+  }
+
+  private static boolean is_plausible_correction(String source, String target,
+      int editLimit)
+  {
     source = normalize(source);
     target = normalize(target);
     if (!is_learnable(source) || !is_learnable(target)
@@ -447,11 +562,10 @@ public final class PersonalizationStore
       return false;
     int[] sourceCodePoints = source.codePoints().toArray();
     int[] targetCodePoints = target.codePoints().toArray();
-    if (Math.abs(sourceCodePoints.length - targetCodePoints.length)
-        > MAX_EXACT_CORRECTION_EDITS)
+    if (Math.abs(sourceCodePoints.length - targetCodePoints.length) > editLimit)
       return false;
     return within_exact_correction_distance(sourceCodePoints,
-        targetCodePoints);
+        targetCodePoints, editLimit);
   }
 
   /**
@@ -459,9 +573,8 @@ public final class PersonalizationStore
    * Geometry remains exclusive to weaker related-source generalization.
    */
   private static boolean within_exact_correction_distance(int[] source,
-      int[] target)
+      int[] target, int limit)
   {
-    final int limit = MAX_EXACT_CORRECTION_EDITS;
     final int overLimit = limit + 1;
     int[] previousPrevious = new int[target.length + 1];
     int[] previous = new int[target.length + 1];
@@ -585,6 +698,63 @@ public final class PersonalizationStore
     return out;
   }
 
+  private Map<ContextualCorrection, Integer> load_contextual_corrections()
+  {
+    Map<ContextualCorrection, Integer> out =
+      new HashMap<ContextualCorrection, Integer>();
+    Set<String> entries = _prefs.getStringSet(
+        PREF_CONTEXTUAL_CORRECTIONS, null);
+    if (entries == null)
+      return out;
+    for (String entry : entries)
+    {
+      if (entry == null)
+        continue;
+      int first = entry.indexOf('\t');
+      int second = first < 0 ? -1 : entry.indexOf('\t', first + 1);
+      int third = second < 0 ? -1 : entry.indexOf('\t', second + 1);
+      if (first <= 0 || second <= first + 1 || third <= second + 1
+          || entry.indexOf('\t', third + 1) >= 0)
+        continue;
+      String previous = normalize(entry.substring(0, first));
+      String source = normalize(entry.substring(first + 1, second));
+      String target = normalize(entry.substring(second + 1, third));
+      if (!is_learnable(previous)
+          || !is_plausible_contextual_correction(source, target))
+        continue;
+      try
+      {
+        int count = Integer.parseInt(entry.substring(third + 1));
+        if (count <= 0 || count > MAX_CORRECTION_COUNT)
+          continue;
+        ContextualCorrection correction =
+          new ContextualCorrection(previous, source, target);
+        Integer existing = out.get(correction);
+        if (existing != null)
+        {
+          if (count > existing)
+            out.put(correction, Integer.valueOf(count));
+        }
+        else if (out.size() < MAX_CONTEXTUAL_CORRECTIONS)
+          out.put(correction, Integer.valueOf(count));
+        else
+        {
+          ContextualCorrection weakest =
+            weakest_contextual_correction(out);
+          int weakestCount = out.get(weakest);
+          if (count > weakestCount || (count == weakestCount
+                && compare_contextual_corrections(correction, weakest) < 0))
+          {
+            out.remove(weakest);
+            out.put(correction, Integer.valueOf(count));
+          }
+        }
+      }
+      catch (NumberFormatException e) {}
+    }
+    return out;
+  }
+
   private void save()
   {
     if (_prefs == null)
@@ -597,6 +767,11 @@ public final class PersonalizationStore
     else
       editor.putStringSet(PREF_CORRECTIONS,
           encode_corrections(_correction_counts));
+    if (_contextual_correction_counts.isEmpty())
+      editor.remove(PREF_CONTEXTUAL_CORRECTIONS);
+    else
+      editor.putStringSet(PREF_CONTEXTUAL_CORRECTIONS,
+          encode_contextual_corrections(_contextual_correction_counts));
     editor.apply();
   }
 
@@ -627,6 +802,19 @@ public final class PersonalizationStore
     return out;
   }
 
+  private static Set<String> encode_contextual_corrections(
+      Map<ContextualCorrection, Integer> counts)
+  {
+    Set<String> out = new HashSet<String>();
+    for (Map.Entry<ContextualCorrection, Integer> entry : counts.entrySet())
+    {
+      ContextualCorrection correction = entry.getKey();
+      out.add(correction.previous + "\t" + correction.source + "\t"
+          + correction.target + "\t" + entry.getValue());
+    }
+    return out;
+  }
+
   private static boolean increment(Map<String, Integer> counts, String key)
   {
     Integer prev = counts.get(key);
@@ -652,6 +840,24 @@ public final class PersonalizationStore
     return true;
   }
 
+  private boolean increment_contextual_correction(
+      ContextualCorrection correction)
+  {
+    Integer previous = _contextual_correction_counts.get(correction);
+    if (previous != null)
+    {
+      if (previous >= MAX_CORRECTION_COUNT)
+        return false;
+      _contextual_correction_counts.put(correction, previous + 1);
+      return true;
+    }
+    if (_contextual_correction_counts.size() >= MAX_CONTEXTUAL_CORRECTIONS)
+      _contextual_correction_counts.remove(
+          weakest_contextual_correction(_contextual_correction_counts));
+    _contextual_correction_counts.put(correction, 1);
+    return true;
+  }
+
   private CorrectionPair weakest_correction()
   {
     return weakest_correction(_correction_counts);
@@ -668,6 +874,25 @@ public final class PersonalizationStore
       if (count < weakestCount || (count == weakestCount
             && (weakest == null
               || compare_pairs(entry.getKey(), weakest) > 0)))
+      {
+        weakest = entry.getKey();
+        weakestCount = count;
+      }
+    }
+    return weakest;
+  }
+
+  private static ContextualCorrection weakest_contextual_correction(
+      Map<ContextualCorrection, Integer> counts)
+  {
+    ContextualCorrection weakest = null;
+    int weakestCount = Integer.MAX_VALUE;
+    for (Map.Entry<ContextualCorrection, Integer> entry : counts.entrySet())
+    {
+      int count = entry.getValue();
+      if (count < weakestCount || (count == weakestCount
+            && (weakest == null || compare_contextual_corrections(
+                entry.getKey(), weakest) > 0)))
       {
         weakest = entry.getKey();
         weakestCount = count;
@@ -703,6 +928,21 @@ public final class PersonalizationStore
         toRemove.add(pair);
     for (CorrectionPair pair : toRemove)
       changed |= _correction_counts.remove(pair) != null;
+    return changed;
+  }
+
+  private boolean remove_contextual_corrections_involving(String word)
+  {
+    boolean changed = false;
+    List<ContextualCorrection> toRemove =
+      new ArrayList<ContextualCorrection>();
+    for (ContextualCorrection correction
+        : _contextual_correction_counts.keySet())
+      if (correction.previous.equals(word) || correction.source.equals(word)
+          || correction.target.equals(word))
+        toRemove.add(correction);
+    for (ContextualCorrection correction : toRemove)
+      changed |= _contextual_correction_counts.remove(correction) != null;
     return changed;
   }
 
@@ -791,6 +1031,17 @@ public final class PersonalizationStore
       : compare_suffixes(left.target, 0, right.target, 0);
   }
 
+  private static int compare_contextual_corrections(
+      ContextualCorrection left, ContextualCorrection right)
+  {
+    int previous = compare_suffixes(left.previous, 0, right.previous, 0);
+    if (previous != 0)
+      return previous;
+    int source = compare_suffixes(left.source, 0, right.source, 0);
+    return source != 0 ? source
+      : compare_suffixes(left.target, 0, right.target, 0);
+  }
+
   private static int compare_suffixes(String value, int offset,
       String otherValue, int otherOffset)
   {
@@ -819,17 +1070,23 @@ public final class PersonalizationStore
   private final Map<String, Integer> _word_counts;
   private final Map<String, Integer> _bigram_counts;
   private final Map<CorrectionPair, Integer> _correction_counts;
+  private final Map<ContextualCorrection, Integer>
+    _contextual_correction_counts;
   private String _last_word = null;
   private long _generation = 0;
 
   static final int MAX_EXACT_CORRECTION_EDITS = 2;
+  static final int MAX_CONTEXTUAL_CORRECTION_EDITS = 3;
   private static final int MAX_COUNT = 10000;
   private static final int MAX_CORRECTION_COUNT = 15;
   private static final int MAX_CORRECTION_PAIRS = 512;
+  private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
   private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_BIGRAMS = "typing_model_bigrams";
   public static final String PREF_CORRECTIONS =
     "typing_model_corrections_v1";
+  public static final String PREF_CONTEXTUAL_CORRECTIONS =
+    "typing_model_contextual_corrections_v1";
 }

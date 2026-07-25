@@ -2,17 +2,25 @@ package juloo.keyboard2.autocorrect;
 
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
 import java.util.Locale;
 import juloo.cdict.Cdict;
+import juloo.keyboard2.KeyboardData;
+import juloo.keyboard2.R;
+import juloo.keyboard2.CurrentlyTypedWord;
 import juloo.keyboard2.TouchTrace;
 import juloo.keyboard2.dict.Dictionaries;
 import juloo.keyboard2.lang.LanguagePack;
 import juloo.keyboard2.lang.LanguagePackManager;
 import juloo.keyboard2.suggestions.Decoder;
 import juloo.keyboard2.suggestions.PersonalizationStore;
+import juloo.keyboard2.suggestions.SharedDecoder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -26,15 +34,23 @@ public final class SwiftKeyParityInstrumentedTest
 {
   private Hunspell _hunspell;
   private Cdict _dictionary;
+  private Decoder.Geometry _geometry;
+  private LanguagePack _languagePack;
+  private KeyboardData _layout;
 
   @Before
   public void setUp() throws Exception
   {
     Context target = InstrumentationRegistry.getInstrumentation()
       .getTargetContext();
-    LanguagePack pack = new LanguagePackManager(target).find("en_AU");
-    assertNotNull("The bundled Australian pack is required for parity.", pack);
-    _hunspell = Hunspell.load(pack);
+    _languagePack = new LanguagePackManager(target).find("en_AU");
+    assertNotNull("The bundled Australian pack is required for parity.",
+        _languagePack);
+    _hunspell = Hunspell.load(_languagePack);
+    _layout = KeyboardData.load(target.getResources(), R.xml.clean_text);
+    assertNotNull("The production clean layout is required for parity.",
+        _layout);
+    _geometry = Decoder.Geometry.from(_layout);
 
     InputStream input = target.getAssets().open("dictionaries/en_AU.dict");
     byte[] bytes;
@@ -81,7 +97,7 @@ public final class SwiftKeyParityInstrumentedTest
       else
         mismatches.append("final ").append(typed).append(": expected ")
           .append(expectedFinal).append(", got ").append(actualFinal)
-          .append('\n');
+          .append("; ").append(candidateSummary(result)).append('\n');
 
       if (expectedPrimary.equals(actualPrimary))
         primaryMatches++;
@@ -105,6 +121,122 @@ public final class SwiftKeyParityInstrumentedTest
     assertTrue(summary + "\n" + mismatches, finalMatches >= 82);
     assertTrue(summary + "\n" + mismatches, primaryMatches >= 78);
   }
+
+  @Test
+  public void liveSentenceTokensSeparateColdAndLearnedReplayLanes()
+      throws Exception
+  {
+    JSONArray sentences = new JSONArray(readAsset(
+          "frankenkey_live_sentence_oracle.json"));
+    PersonalizationStore profile = PersonalizationStore.empty();
+    StringBuilder coldMismatches = new StringBuilder();
+    StringBuilder learnedMismatches = new StringBuilder();
+    StringBuilder outputOnlyCases = new StringBuilder();
+    int coldRecovered = 0;
+    int learnedRecovered = 0;
+    int scoreable = 0;
+    int outputOnly = 0;
+    long generation = 2000;
+
+    // Cold lane: score every isolated token before recording any correction.
+    for (int i = 0; i < sentences.length(); i++)
+    {
+      JSONObject sentence = sentences.getJSONObject(i);
+      JSONArray tokens = sentence.getJSONArray("tokens");
+      for (int j = 0; j < tokens.length(); j++)
+      {
+        JSONObject token = tokens.getJSONObject(j);
+        if (token.getString("kind").startsWith("output-only-"))
+        {
+          outputOnly++;
+          outputOnlyCases.append(sentence.getString("id")).append(' ')
+            .append(token.getString("previous")).append(" [")
+            .append(token.getString("typed")).append("] ")
+            .append(token.getString("next")).append('\n');
+          continue;
+        }
+        profile.reset_context();
+        String typed = token.getString("typed");
+        String expected = normalized(token.getString("expected"));
+        String actual = decodedSurface(decode(generation++, typed, profile),
+            typed);
+        scoreable++;
+        if (expected.equals(actual))
+          coldRecovered++;
+        else
+          appendMismatch(coldMismatches, sentence, token, expected, actual);
+      }
+    }
+
+    // Training lane: completed prior occurrences are recorded as one
+    // editor-verified event each. The replay does not happen in this loop.
+    java.util.HashSet<String> completedOccurrences =
+      new java.util.HashSet<String>();
+    for (int i = 0; i < sentences.length(); i++)
+    {
+      JSONObject sentence = sentences.getJSONObject(i);
+      JSONArray tokens = sentence.getJSONArray("tokens");
+      for (int j = 0; j < tokens.length(); j++)
+      {
+        JSONObject token = tokens.getJSONObject(j);
+        if (token.getString("kind").startsWith("output-only-"))
+          continue;
+        String previous = token.getString("previous");
+        String typed = token.getString("typed");
+        String expected = token.getString("expected");
+        String occurrence = normalized(previous) + '\t' + normalized(typed)
+          + '\t' + normalized(expected);
+        if (!completedOccurrences.add(occurrence))
+          continue;
+        profile.reset_context();
+        if (previous.length() > 0)
+          profile.record_word(previous);
+        profile.record_commit(expected, typed);
+      }
+    }
+
+    // Learned-replay lane: use the same profile, resetting only active
+    // sentence context and restoring the fixture's completed previous word.
+    for (int i = 0; i < sentences.length(); i++)
+    {
+      JSONObject sentence = sentences.getJSONObject(i);
+      JSONArray tokens = sentence.getJSONArray("tokens");
+      for (int j = 0; j < tokens.length(); j++)
+      {
+        JSONObject token = tokens.getJSONObject(j);
+        if (token.getString("kind").startsWith("output-only-"))
+          continue;
+        String previous = token.getString("previous");
+        profile.reset_context();
+        if (previous.length() > 0)
+          profile.record_word(previous);
+        String typed = token.getString("typed");
+        String expected = normalized(token.getString("expected"));
+        String actual = decodedSurface(decode(generation++, typed, profile),
+            typed);
+        if (expected.equals(actual))
+          learnedRecovered++;
+        else
+          appendMismatch(learnedMismatches, sentence, token, expected, actual);
+      }
+    }
+
+    String summary = "Live lanes: cold " + coldRecovered + "/" + scoreable
+      + ", learned replay " + learnedRecovered + "/" + scoreable
+      + ", output-only next-context " + outputOnly;
+    assertTrue(summary + "\nCold mismatches:\n" + coldMismatches
+        + "Learned mismatches:\n" + learnedMismatches
+        + "Output-only cases (reported, not isolated-correction gated):\n"
+        + outputOnlyCases,
+        learnedRecovered * 100 >= scoreable * 95);
+    assertTrue("A profile trained only from completed prior occurrences must not regress the honest cold lane. "
+        + summary, learnedRecovered >= coldRecovered);
+    assertTrue("The adaptive fixture must prove learned replay improves over the cold lane rather than silently pretraining each scored token. "
+        + summary, learnedRecovered > coldRecovered);
+    assertTrue("Observed-output next-context cases must be labeled and reported separately instead of treated as known raw keystrokes.",
+        outputOnly > 0);
+  }
+
 
   @Test
   public void sameLengthTwoEditRepairCommitsHello()
@@ -142,6 +274,302 @@ public final class SwiftKeyParityInstrumentedTest
   }
 
   @Test
+  public void repairsMissingNegativeContractionAndClearShortTypos()
+  {
+    assertTrue("The bundled Hunspell dictionary must recognize doesn't.",
+        _hunspell.spell("doesn't"));
+    Decoder.Result negative = decode(1004, "doest");
+    StringBuilder offered = new StringBuilder();
+    boolean offeredNegative = false;
+    for (Decoder.Candidate candidate : negative.words())
+    {
+      if (offered.length() > 0)
+        offered.append(", ");
+      offered.append(normalized(candidate.surface));
+      offeredNegative |= "doesn't".equals(normalized(candidate.surface));
+    }
+    assertTrue("The real decoder must collect doesn't before choosing; offered="
+        + offered + ", literalMask=" + negative.literal.sourceMask,
+        offeredNegative);
+    assertNotNull("Bundled Hunspell generated doesn't but the commit chooser rejected it; offered="
+        + offered + ", literalMask=" + negative.literal.sourceMask,
+        negative.autocorrection);
+    assertEquals("doesn't", normalized(negative.autocorrection.surface));
+
+    Decoder.Result ordinary = decode(1005, "cat");
+    assertNull("A common word ending in t must remain literal.",
+        ordinary.autocorrection);
+
+    Decoder.Result twoLetter = decode(1006, "br");
+    assertNotNull("A clear neighboring-key typo must repair an unknown two-letter token.",
+        twoLetter.autocorrection);
+    assertEquals("be", normalized(twoLetter.autocorrection.surface));
+
+    Decoder.Result firstPerson = decode(1007, "j");
+    assertNotNull("A lowercase neighboring key must recover standalone first-person I.",
+        firstPerson.autocorrection);
+    assertEquals("i", normalized(firstPerson.autocorrection.surface));
+    assertEquals("I", firstPerson.autocorrection.surface);
+  }
+
+  @Test
+  public void repairsReportedShortWordAndTrailingLetterTypos()
+  {
+    String[][] cases = new String[][] {
+      { "ia", "is" },
+      { "ad", "as" },
+      { "aa", "as" },
+      { "fixinf", "fixing" },
+      { "teh", "the" },
+      { "ths", "this" },
+      { "od", "od" },
+      { "leter", "letter" },
+      { "writr", "writer" },
+      { "adn", "and" },
+      { "shold", "should" }
+    };
+    StringBuilder failures = new StringBuilder();
+    for (int i = 0; i < cases.length; i++)
+    {
+      Decoder.Result result = decode(1200 + i, cases[i][0]);
+      String actual = decodedSurface(result, cases[i][0]);
+      if (!cases[i][1].equals(actual))
+        failures.append(cases[i][0]).append(" -> ")
+          .append(cases[i][1]).append(", got ").append(actual)
+          .append("; ").append(candidateSummary(result)).append('\n');
+    }
+    assertEquals("Reported correction failures:\n" + failures,
+        0, failures.length());
+  }
+
+  @Test
+  public void repairsReportedSingleTokenMisspellings()
+  {
+    String[][] cases = new String[][] {
+      { "yhere", "there" },
+      { "coccrected", "corrected" },
+    };
+    StringBuilder failures = new StringBuilder();
+    for (int i = 0; i < cases.length; i++)
+    {
+      Decoder.Result result = decode(1250 + i, cases[i][0]);
+      String actual = decodedSurface(result, cases[i][0]);
+      if (!cases[i][1].equals(actual))
+        failures.append(cases[i][0]).append(" -> ")
+          .append(cases[i][1]).append(", got ").append(actual)
+          .append("; ").append(candidateSummary(result)).append('\n');
+    }
+    assertEquals("Reported single-token spellcheck failures:\n" + failures,
+        0, failures.length());
+  }
+
+  @Test
+  public void rejectsAmbiguousReportedLengthRepair()
+  {
+    Decoder.Result result = decode(1259, "eech");
+    assertEquals("Without following-word evidence, equally plausible beech/leech length repairs must stay literal instead of committing a harmful guess.",
+        "eech", decodedSurface(result, "eech"));
+  }
+
+  @Test
+  public void leavesExtremeUnprovenPhoneTypoLiteral()
+  {
+    Decoder.Result result = decode(1260, "Ecerytbjbg");
+    assertEquals("A distant ten-letter input with no independent dictionary candidate must stay literal rather than guess a destructive replacement.",
+        "ecerytbjbg", decodedSurface(result, "Ecerytbjbg"));
+  }
+
+  @Test
+  public void documentsReportedProtectedAndConjoinedInputs()
+  {
+    String[][] cases = new String[][] {
+      { "th", "th" },
+      { "kr", "kr" },
+      { "Thiwbus", "thiwbus" }
+    };
+    StringBuilder failures = new StringBuilder();
+    for (int i = 0; i < cases.length; i++)
+    {
+      Decoder.Result result = decode(1275 + i, cases[i][0]);
+      String actual = decodedSurface(result, cases[i][0]);
+      if (!cases[i][1].equals(actual))
+        failures.append(cases[i][0]).append(" -> ")
+          .append(cases[i][1]).append(", got ").append(actual)
+          .append("; ").append(candidateSummary(result)).append('\n');
+    }
+    assertEquals("Recognized short literals and unproven conjoined inputs must remain literal without contextual evidence:\n"
+        + failures, 0, failures.length());
+  }
+
+  @Test
+  public void fullBoundaryPassCoversSeparatorRepairs() throws Exception
+  {
+    String[][] cases = new String[][] {
+      { "ia", "is" },
+      { "ad", "as" },
+      { "aa", "as" },
+      { "fixinf", "fixing" },
+      { "teh", "the" },
+      { "ths", "this" },
+      { "leter", "letter" },
+      { "writr", "writer" },
+      { "shold", "should" },
+      { "aeem", "seem" },
+      { "hellp", "hello" },
+      { "od", "od" },
+      { "STM", "stm" },
+      { "CMUX", "cmux" }
+    };
+    StringBuilder failures = new StringBuilder();
+    for (int i = 0; i < cases.length; i++)
+    {
+      Decoder.Result result = decode(1300 + i, cases[i][0]);
+      String actual = decodedSurface(result, cases[i][0]);
+      if (!cases[i][1].equals(actual))
+        failures.append(cases[i][0]).append(" -> ")
+          .append(cases[i][1]).append(", got ").append(actual)
+          .append("; ").append(candidateSummary(result)).append('\n');
+    }
+    assertEquals("Full separator-boundary failures:\n" + failures,
+        0, failures.length());
+
+    assertEquals("The fast typing preview may leave a Hunspell-only short repair literal; the boundary escalation must recover it.",
+        "ad", decodedSurface(decodeFast(1400, "ad"), "ad"));
+    assertEquals("The full separator-boundary pass must recover the deferred short repair.",
+        "as", decodedSurface(decode(1401, "ad"), "ad"));
+  }
+
+  @Test
+  public void shortPrefixCompletionDoesNotBeatSameLengthRepair()
+      throws Exception
+  {
+    Decoder.Result result = decode(1450, "twi");
+    assertNotNull("A short unknown token must not expand to a longer prefix completion when a decisive same-length repair exists.",
+        result.autocorrection);
+    assertEquals("two", normalized(result.autocorrection.surface));
+    Decoder.Result boundary = decodeBoundary(1451, "twi");
+    assertTrue(boundary.autocorrectionComplete);
+    assertNotNull(boundary.autocorrection);
+    assertEquals("two", normalized(boundary.autocorrection.surface));
+  }
+
+  @Test
+  public void earlyShortRepairsMatchExhaustiveProviderResults()
+      throws Exception
+  {
+    String[] probes = {
+      "twi", "Twi", "ths", "hwo", "oen", "cna", "teh", "adn", "wrd",
+      "far", "the", "and", "toe", "its", "not", "how"
+    };
+    int earlyRepairs = 0;
+    for (int i = 0; i < probes.length; ++i)
+    {
+      Decoder.Result early = decodeBoundary(1460 + i, probes[i]);
+      if (early.autocorrection == null)
+        continue;
+      earlyRepairs++;
+      Decoder.Result full = decode(1500 + i, probes[i]);
+      assertNotNull("An early short repair must survive exhaustive provider expansion for "
+          + probes[i], full.autocorrection);
+      assertEquals("An early short repair must not change after Hunspell expansion for "
+          + probes[i], normalized(full.autocorrection.surface),
+          normalized(early.autocorrection.surface));
+    }
+    assertTrue("The safety probe must exercise at least the reported twi repair.",
+        earlyRepairs > 0);
+  }
+
+  @Test
+  public void verifiedLearningCompletesContextDependentRecognizedTargets()
+  {
+    PersonalizationStore profile = PersonalizationStore.empty();
+    profile.record_word("no");
+    profile.record_commit("two", "toe");
+    profile.reset_context();
+    profile.record_word("no");
+    Decoder.Result contextual = decode(1580, "toe", profile);
+    assertNotNull("One editor-verified exact context may resolve a recognized literal.",
+        contextual.autocorrection);
+    assertEquals("two", normalized(contextual.autocorrection.surface));
+
+    for (int i = 0; i < 4; ++i)
+    {
+      profile.reset_context();
+      profile.record_commit("It's", "Its");
+    }
+    profile.reset_context();
+    Decoder.Result repeated = decode(1581, "Its", profile);
+    assertNotNull("Four exact accepted contraction choices may resolve a recognized literal without phrase hardcoding.",
+        repeated.autocorrection);
+    assertEquals("it's", normalized(repeated.autocorrection.surface));
+  }
+
+
+
+
+
+
+  @Test
+  public void productionBoundaryEscalationCompletesShortRepair()
+      throws Exception
+  {
+    final java.util.ArrayList<Decoder.Result> completed =
+      new java.util.ArrayList<Decoder.Result>();
+    SharedDecoder decoder = new SharedDecoder(
+        new Handler(Looper.getMainLooper()), new SharedDecoder.Callback()
+        {
+          @Override
+          public void decoder_state_changed(SharedDecoder.Presentation state)
+          {
+          }
+
+          @Override
+          public void decoder_result_completed(Decoder.Result result)
+          {
+            synchronized (completed)
+            {
+              completed.add(result);
+            }
+          }
+        });
+    try
+    {
+      SharedDecoder.ResourceSpec resources = new SharedDecoder.ResourceSpec(
+          "en_AU-test", new Cdict[] { _dictionary }, _dictionary, null,
+          _languagePack);
+      long session = decoder.start_session(
+          new Decoder.DecoderConfig(true, true, true, true), resources,
+          _layout, SharedDecoder.PersonalizationSpec.empty("parity-test"));
+      Constructor<CurrentlyTypedWord.Snapshot> constructor =
+        CurrentlyTypedWord.Snapshot.class.getDeclaredConstructor(long.class,
+            String.class, int.class, boolean.class,
+            TouchTrace.Snapshot.class);
+      constructor.setAccessible(true);
+      TouchTrace touches = new TouchTrace();
+      for (int i = 0; i < 3; ++i)
+        touches.add(TouchTrace.entry(100f, 100f, 100f, 100f, 20f, 20f));
+      CurrentlyTypedWord.Snapshot word = constructor.newInstance(1L, "twi",
+          0, false, touches.snapshot());
+      Decoder.RequestKey key = decoder.request(session, word);
+
+      Decoder.Result fast = awaitResult(decoder, key, false);
+      assertFalse("The fast request must remain provisional before Space.",
+          fast.autocorrectionComplete);
+      assertTrue(decoder.retain_boundary_request(session, key));
+
+      Decoder.Result full = awaitResult(decoder, key, true);
+      assertNotNull("The production worker boundary pass must expose the decisive same-length repair.",
+          full.autocorrection);
+      assertEquals("two", normalized(full.autocorrection.surface));
+    }
+    finally
+    {
+      decoder.close();
+    }
+  }
+
+
+  @Test
   public void repeatedApostrophePreferenceAlwaysCapitalizesFirstPersonI()
   {
     PersonalizationStore store = PersonalizationStore.empty();
@@ -177,16 +605,128 @@ public final class SwiftKeyParityInstrumentedTest
       touches.add(TouchTrace.entry(100f, 100f, 100f, 100f, 20f, 20f));
     Decoder.Request request = new Decoder.Request(
         new Decoder.RequestKey(1, generation, generation, 1, 1, 1, 1),
-        typed, touches.snapshot(), Decoder.Geometry.from(null),
+        typed, touches.snapshot(), _geometry,
         new Decoder.DecoderConfig(true, true, true, true));
     return new Decoder().decode(request, _dictionary, null, _hunspell,
         personalization, false);
   }
 
+  private Decoder.Result decodeFast(long generation, String typed)
+      throws Exception
+  {
+    TouchTrace touches = new TouchTrace();
+    int count = typed.codePointCount(0, typed.length());
+    for (int i = 0; i < count; i++)
+      touches.add(TouchTrace.entry(100f, 100f, 100f, 100f, 20f, 20f));
+    Decoder.Request request = new Decoder.Request(
+        new Decoder.RequestKey(1, generation, generation, 1, 1, 1, 1),
+        typed, touches.snapshot(), _geometry,
+        new Decoder.DecoderConfig(true, true, true, true));
+    Method method = Decoder.class.getDeclaredMethod("decode_fast",
+        Decoder.Request.class, Cdict.class, Cdict.class, Hunspell.class,
+        PersonalizationStore.class, boolean.class);
+    method.setAccessible(true);
+    return (Decoder.Result)method.invoke(new Decoder(), request, _dictionary,
+        null, _hunspell, PersonalizationStore.empty(), false);
+  }
+
+  private Decoder.Result decodeBoundary(long generation, String typed)
+      throws Exception
+  {
+    TouchTrace touches = new TouchTrace();
+    int count = typed.codePointCount(0, typed.length());
+    for (int i = 0; i < count; i++)
+      touches.add(TouchTrace.entry(100f, 100f, 100f, 100f, 20f, 20f));
+    Decoder.Request request = new Decoder.Request(
+        new Decoder.RequestKey(1, generation, generation, 1, 1, 1, 1),
+        typed, touches.snapshot(), _geometry,
+        new Decoder.DecoderConfig(true, true, true, true));
+    Method method = Decoder.class.getDeclaredMethod("decode_boundary",
+        Decoder.Request.class, Cdict.class, Cdict.class, Hunspell.class,
+        PersonalizationStore.class, boolean.class);
+    method.setAccessible(true);
+    return (Decoder.Result)method.invoke(new Decoder(), request, _dictionary,
+        null, _hunspell, PersonalizationStore.empty(), false);
+  }
+
+
+
+
+  private static Decoder.Result awaitResult(SharedDecoder decoder,
+      Decoder.RequestKey key, boolean complete)
+      throws Exception
+  {
+    long deadline = System.nanoTime() + 5_000_000_000L;
+    do
+    {
+      Decoder.Result result = decoder.current_result(key);
+      if (result != null && result.autocorrectionComplete == complete)
+        return result;
+      Thread.sleep(2L);
+    }
+    while (System.nanoTime() < deadline);
+    fail("Timed out waiting for " + (complete ? "complete" : "provisional")
+        + " result for generation " + key.requestGeneration);
+    return null;
+  }
+
+
+
+  private static String decodedSurface(Decoder.Result result, String typed)
+  {
+    return result.autocorrection == null ? normalized(typed)
+      : normalized(result.autocorrection.surface);
+  }
+
+  private static String candidateSummary(Decoder.Result result)
+  {
+    StringBuilder out = new StringBuilder();
+    out.append("literal=").append(result.literal.surface)
+      .append("{recognized=").append(result.literal.recognized)
+      .append(", learned=").append(result.literal.learned)
+      .append(", mask=").append(result.literal.sourceMask)
+      .append(", total=").append(result.literal.totalQ8)
+      .append(", spatial=").append(result.literal.spatialQ8).append("}");
+    out.append(", words=[");
+    Decoder.Candidate[] words = result.words();
+    for (int i = 0; i < words.length; i++)
+    {
+      if (i > 0)
+        out.append(", ");
+      Decoder.Candidate candidate = words[i];
+      out.append(candidate.surface)
+        .append("{recognized=").append(candidate.recognized)
+        .append(", mask=").append(candidate.sourceMask)
+        .append(", editCount=").append(candidate.editCount)
+        .append(", editMask=").append(candidate.editMask)
+        .append(", frequency=").append(candidate.cdictFrequency)
+        .append(", providerRank=").append(candidate.providerRank)
+        .append(", total=").append(candidate.totalQ8)
+        .append(", spatial=").append(candidate.spatialQ8).append("}");
+    }
+    return out.append(']').toString();
+  }
+
+  private static void appendMismatch(StringBuilder out, JSONObject sentence,
+      JSONObject token, String expected, String actual)
+      throws Exception
+  {
+    out.append(sentence.getString("id")).append(' ')
+      .append(token.getString("previous")).append(" [")
+      .append(token.getString("typed")).append("] ")
+      .append(token.getString("next")).append(": expected ")
+      .append(expected).append(", got ").append(actual).append('\n');
+  }
+
   private String readOracle() throws Exception
   {
+    return readAsset("swiftkey_autocorrection_oracle.json");
+  }
+
+  private String readAsset(String name) throws Exception
+  {
     InputStream input = InstrumentationRegistry.getInstrumentation()
-      .getContext().getAssets().open("swiftkey_autocorrection_oracle.json");
+      .getContext().getAssets().open(name);
     try { return new String(readAll(input), "UTF-8"); }
     finally { input.close(); }
   }

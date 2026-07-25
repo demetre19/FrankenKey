@@ -1,0 +1,3 @@
+Autocorrect now learns corrections in the exact preceding-word context, handles short key-mash typos without hardcoded phrases, and preserves short all-caps terms such as STM.
+
+Fixed partial-word replacement, extra spaces after undo, duplicate spaces, and spaces before punctuation.

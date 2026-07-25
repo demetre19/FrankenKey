@@ -1,0 +1,3 @@
+Improved continuous autocorrect learning so four explicit source-to-target corrections override stale word history and replay after restart.
+
+Added guarded correction for clear adjacent-key mistakes in unknown two-letter words, standalone j to I, and missing negative contractions such as doest to doesn't. Valid short words and ambiguous apostrophe-only words remain protected.

@@ -154,6 +154,34 @@ public class KeyEventHandlerLearningContractTest
   }
 
   @Test
+  public void repeated_manual_correction_replays_after_decoder_reload()
+      throws Exception
+  {
+    Harness training = harness("thus", true, true);
+    for (int count = 1; count <= 4; count++)
+    {
+      if (count > 1)
+        training.handler.send_text("thus");
+      backspace(training);
+      backspace(training);
+      training.handler.send_text("is");
+      training.handler.handle_space_bar();
+      awaitCounts(training.prefs, "this", "thus", 0, count);
+    }
+    new PersonalizationStore(training.prefs).record_word("thus");
+
+    Harness replay = harness("thus", true, true, true, training.prefs);
+    Decoder.RequestKey key = replay.handler._current_request_key;
+    assertNotNull("The reloaded editor word must own an exact decoder request.",
+        key);
+    awaitResult(replay.decoder, key);
+    replay.handler.handle_space_bar();
+
+    assertEquals("Four manual thus-to-this edits must survive reload and autocorrect the next thus at its Space boundary.",
+        "this ", replay.receiver.input.text.toString());
+  }
+
+  @Test
   public void ambiguous_broad_or_cross_boundary_manual_edits_fail_closed()
       throws Exception
   {
@@ -208,6 +236,14 @@ public class KeyEventHandlerLearningContractTest
     if (seededCorrectionSource != null)
       new PersonalizationStore(prefs).record_commit(text,
           seededCorrectionSource);
+    return harness(text, suggestions, false, safeEditor, prefs);
+  }
+
+  private Harness harness(String text, boolean suggestions,
+      boolean autocorrect, boolean safeEditor, SharedPreferences prefs)
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
     Constructor<Config> constructor = Config.class.getDeclaredConstructor(
         SharedPreferences.class, Resources.class, Boolean.class,
         juloo.keyboard2.dict.Dictionaries.class);
@@ -215,7 +251,7 @@ public class KeyEventHandlerLearningContractTest
     Config config = constructor.newInstance(prefs,
         new TestResources(context.getResources()), Boolean.FALSE, null);
     config.suggestions_enabled = suggestions;
-    config.autocorrect_enabled = false;
+    config.autocorrect_enabled = autocorrect;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
     config.editor_config.initial_text_before_cursor = text;
@@ -232,7 +268,7 @@ public class KeyEventHandlerLearningContractTest
         });
     _decoders.add(decoder);
     long session = decoder.start_session(
-        new Decoder.DecoderConfig(suggestions, false, true, safeEditor),
+        new Decoder.DecoderConfig(suggestions, autocorrect, true, safeEditor),
         SharedDecoder.ResourceSpec.empty("empty"), null,
         new SharedDecoder.PersonalizationSpec(
           "learning-" + _decoders.size(), prefs));
@@ -276,10 +312,11 @@ public class KeyEventHandlerLearningContractTest
     Constructor<Decoder.Result> constructor = Decoder.Result.class
       .getDeclaredConstructor(Decoder.RequestKey.class, String.class,
           Decoder.Candidate[].class, String.class, Decoder.Candidate.class,
-          Decoder.Candidate.class, boolean.class, Decoder.Failure.class);
+          Decoder.Candidate.class, boolean.class, boolean.class,
+          Decoder.Failure.class);
     constructor.setAccessible(true);
     Decoder.Result result = constructor.newInstance(key, word,
-        new Decoder.Candidate[] { literal }, null, literal, null, true,
+        new Decoder.Candidate[] { literal }, null, literal, null, true, true,
         Decoder.Failure.NONE);
     for (String fieldName : new String[] {
         "_acceptedResult", "_lastCompletedResult" })

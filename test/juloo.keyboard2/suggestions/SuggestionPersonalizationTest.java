@@ -168,6 +168,7 @@ public class SuggestionPersonalizationTest
   public void correction_only_evidence_survives_restart_and_can_fix_unknown_text()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
+    record(store, "thus", 5);
     for (int i = 0; i < 4; i++)
       store.record_correction("thus", "this");
 
@@ -183,7 +184,7 @@ public class SuggestionPersonalizationTest
         candidate);
     assertTrue("A correction target must be reversible through the learned-candidate affordance.",
         candidate.learned);
-    assertNotNull("Four exact manual corrections must make the unknown target actionable at the next boundary.",
+    assertNotNull("Four exact manual corrections must override stale accepted-literal history; explicit source-to-target training is stronger than passive word counts.",
         result.autocorrection);
     assertEquals("this", result.autocorrection.canonical);
 
@@ -196,6 +197,102 @@ public class SuggestionPersonalizationTest
     assertNotNull("Repeated exact learning must make the adjacent unknown typo actionable without a dictionary.",
         related.autocorrection);
     assertEquals("this", related.autocorrection.canonical);
+  }
+
+  @Test
+  public void one_exact_correction_adapts_only_in_the_same_fabricated_context()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    Decoder.Result cold = decode("zip", store, enabledConfig(), 1000);
+    assertNull("A fabricated source must remain literal before any editor-verified correction exists.",
+        cold.autocorrection);
+
+    store.record_word("flarn");
+    store.record_correction("zip", "zep");
+    assertEquals("The adaptive threshold must use exactly one verified global source-target event.",
+        1, store.correction_count("zip", "zep"));
+    assertEquals("The same completed occurrence must persist one exact previous-source-target triple.",
+        1, store.contextual_correction_count("flarn", "zip", "zep"));
+    assertEquals("Correction-only contextual learning must not promote a fabricated target to a global unigram.",
+        0, store.word_count("zep"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    reloaded.record_word("flarn");
+    Decoder.Result matching =
+      decode("zip", reloaded, enabledConfig(), 1001);
+    assertNotNull("One persisted exact contextual triple must be enough for fluid same-context adaptation.",
+        matching.autocorrection);
+    assertEquals("zep", matching.autocorrection.canonical);
+    assertTrue("The actionable target must come from exact contextual evidence.",
+        (matching.autocorrection.sourceMask
+          & Decoder.SOURCE_CONTEXTUAL_CORRECTION) != 0);
+
+    reloaded.reset_context();
+    reloaded.record_word("drim");
+    reloaded.record_word("zep");
+    reloaded.reset_context();
+    reloaded.record_word("drim");
+    assertTrue("The regression setup must contain the separately learned previous-target bigram.",
+        reloaded.bigram_count("drim", "zep") > 0);
+    assertEquals("No exact correction was ever observed in the unrelated context.",
+        0, reloaded.contextual_correction_count("drim", "zip", "zep"));
+    Decoder.Result unrelated =
+      decode("zip", reloaded, enabledConfig(), 1002);
+    assertNull("A global exact pair and separate previous-target bigram must not cross-product into a phrase rule.",
+        unrelated.autocorrection);
+  }
+
+  @Test
+  public void same_context_learning_can_repair_a_two_letter_fabricated_token()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("plim");
+    store.record_correction("zi", "zo");
+    assertEquals(1,
+        store.contextual_correction_count("plim", "zi", "zo"));
+
+    store.reset_context();
+    store.record_word("plim");
+    Decoder.Result result = decode("zi", store, enabledConfig(), 1003);
+    assertNotNull("A completed prior occurrence must let the same context replay a bounded two-letter correction.",
+        result.autocorrection);
+    assertEquals("zo", result.autocorrection.canonical);
+    assertEquals(1, result.autocorrection.exactCorrectionCount);
+    assertTrue((result.autocorrection.sourceMask
+          & Decoder.SOURCE_CONTEXTUAL_CORRECTION) != 0);
+  }
+
+  @Test
+  public void exact_contextual_triple_learns_three_edit_key_mash_without_global_pair()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("plarn");
+    store.record_correction("aww", "see");
+
+    assertEquals("The global pair model must remain capped at two textual edits.",
+        0, store.correction_count("aww", "see"));
+    assertEquals("A verified contextual triple may retain one bounded three-edit key-mash occurrence.",
+        1, store.contextual_correction_count("plarn", "aww", "see"));
+    assertTrue(PersonalizationStore.is_plausible_contextual_correction(
+          "aww", "see"));
+    assertFalse("Even contextual exact evidence remains bounded and must reject four-edit rewrites.",
+        PersonalizationStore.is_plausible_contextual_correction(
+          "awww", "seen"));
+
+    store.reset_context();
+    store.record_word("plarn");
+    Decoder.Result matching =
+      decode("aww", store, enabledConfig(), 1004);
+    assertNotNull("The completed three-edit occurrence must replay only through its exact contextual triple.",
+        matching.autocorrection);
+    assertEquals("see", matching.autocorrection.canonical);
+
+    store.reset_context();
+    store.record_word("drarn");
+    Decoder.Result unrelated =
+      decode("aww", store, enabledConfig(), 1005);
+    assertNull("Three-edit contextual learning must not leak into another previous-word context.",
+        unrelated.autocorrection);
   }
 
   @Test
@@ -402,6 +499,15 @@ public class SuggestionPersonalizationTest
     correction(store, "gello", "hello", 2);
     correction(store, "hello", "jello", 2);
     correction(store, "wrold", "world", 1);
+    store.reset_context();
+    store.record_word("greet");
+    store.record_correction("gello", "hello");
+    store.reset_context();
+    store.record_word("hello");
+    store.record_correction("gello", "jello");
+    store.reset_context();
+    store.record_word("planet");
+    store.record_correction("wrold", "world");
 
     assertTrue(store.unlearn_word("HELLO"));
 
@@ -410,8 +516,14 @@ public class SuggestionPersonalizationTest
         0, reloaded.correction_count("gello", "hello"));
     assertEquals("Unlearning must also remove pairs whose source is the selected word.",
         0, reloaded.correction_count("hello", "jello"));
+    assertEquals("Unlearning must remove contextual triples where the selected word is previous, source, or target.",
+        0, reloaded.contextual_correction_count("greet", "gello", "hello"));
+    assertEquals(0,
+        reloaded.contextual_correction_count("hello", "gello", "jello"));
+    assertEquals("Unlearning one word must preserve unrelated contextual correction evidence.",
+        1, reloaded.contextual_correction_count("planet", "wrold", "world"));
     assertEquals("Unlearning one word must preserve unrelated typo evidence.",
-        1, reloaded.correction_count("wrold", "world"));
+        2, reloaded.correction_count("wrold", "world"));
   }
 
   @Test
@@ -424,6 +536,8 @@ public class SuggestionPersonalizationTest
     assertTrue(_prefs.contains(PersonalizationStore.PREF_WORDS));
     assertTrue(_prefs.contains(PersonalizationStore.PREF_BIGRAMS));
     assertTrue(_prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
+    assertTrue(_prefs.contains(
+          PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
     assertEquals("beta", store.previous_word());
 
     store.clear();
@@ -434,6 +548,8 @@ public class SuggestionPersonalizationTest
         _prefs.contains(PersonalizationStore.PREF_BIGRAMS));
     assertFalse("Clear must remove typo pairs from persistent storage.",
         _prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
+    assertFalse("Clear must remove contextual correction triples from persistent storage.",
+        _prefs.contains(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
     assertNull("Clear must reset the active in-memory context as well as persisted data.",
         store.previous_word());
     assertFalse(PersonalizationStore.has_data(_prefs));
@@ -477,7 +593,7 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void learned_literal_never_changes_after_exact_pair_observations()
+  public void repeated_exact_training_overrides_passive_learned_literal()
   {
     PersonalizationStore store = PersonalizationStore.empty();
     store.record_word("gello");
@@ -487,12 +603,19 @@ public class SuggestionPersonalizationTest
       correction(store, "gello", "hello", 1);
       Decoder.Result result =
         decode("gello", store, enabledConfig(), 300 + count);
-      assertNull("A learned literal must remain unchanged regardless of correction-pair evidence.",
-          result.autocorrection);
       Decoder.Candidate suggestion = find(result, "hello");
-      assertNotNull("Correction evidence may keep ranking a tappable suggestion.",
+      assertNotNull("Correction evidence must keep ranking the explicitly taught target.",
           suggestion);
       assertEquals(count, suggestion.exactCorrectionCount);
+      if (count < 4)
+        assertNull("Passive learned-word history stays protected before four exact corrections.",
+            result.autocorrection);
+      else
+      {
+        assertNotNull("Four explicit source-to-target corrections must override stale passive word history.",
+            result.autocorrection);
+        assertEquals("hello", result.autocorrection.canonical);
+      }
     }
   }
 

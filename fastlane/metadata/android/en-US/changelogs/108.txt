@@ -1,0 +1,1 @@
+Spellchecking now finishes full word checks after you type ahead, safely corrects well-supported longer typos, and avoids harmful guesses when multiple words are equally plausible.

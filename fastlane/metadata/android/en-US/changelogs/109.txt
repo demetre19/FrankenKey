@@ -1,0 +1,3 @@
+Improved autocorrection responsiveness and accuracy for short words.
+
+FrankenKey now resolves decisive three-letter typos at the separator without waiting for slower dictionary passes, prevents short prefix completions from outranking same-length corrections, and keeps late corrections safely bounded to unchanged recent text.

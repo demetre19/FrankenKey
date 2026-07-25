@@ -26,6 +26,7 @@ public final class SharedDecoder implements AutoCloseable
   public static interface Callback
   {
     public void decoder_state_changed(Presentation state);
+    public default void decoder_result_completed(Decoder.Result result) {}
   }
 
   /** Immutable candidate-row state. Only READY contains clickable data. */
@@ -301,6 +302,8 @@ public final class SharedDecoder implements AutoCloseable
       _lastRequestEnvelope = null;
       _feedback = null;
       _pending = null;
+      _retained.clear();
+      _completed.clear();
       _presentation = Presentation.empty(_sessionEpoch, null);
       post_presentation_locked(_presentation);
       ensure_drain_locked();
@@ -440,6 +443,44 @@ public final class SharedDecoder implements AutoCloseable
     }
   }
 
+  /**
+   * Preserve the exact current word-boundary request while newer keystroke
+   * snapshots continue through the latest-wins mailbox.
+   */
+  public boolean retain_boundary_request(long sessionEpoch,
+      Decoder.RequestKey key)
+  {
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch) || !is_current_locked(key))
+        return false;
+      PendingDecode envelope = find_envelope_locked(key);
+      if (envelope == null)
+        return false;
+      if (_running != null && _running != envelope && _running.boundary
+          && !_retained.contains(_running))
+        _retained.addFirst(_running);
+      boolean alreadyBoundary = envelope.boundary;
+      envelope.boundary = true;
+      if (_pending == envelope)
+      {
+        _pending = null;
+        _retained.addLast(envelope);
+      }
+      else if (_running == envelope)
+      {
+        if (!alreadyBoundary && !_retained.contains(envelope))
+          _retained.addLast(envelope);
+      }
+      else if (!_retained.contains(envelope))
+        _retained.addLast(envelope);
+      while (_retained.size() > MAX_RETAINED_BOUNDARIES)
+        _retained.removeFirst().boundary = false;
+      ensure_drain_locked();
+      return true;
+    }
+  }
+
   /** Immediately invalidate all candidate/correction targets for this session. */
   public void invalidate(long sessionEpoch)
   {
@@ -499,12 +540,13 @@ public final class SharedDecoder implements AutoCloseable
       return null;
     synchronized (_lock)
     {
-      if (!is_active_session_locked(sessionEpoch) || !is_current_locked(source)
+      PendingDecode sourceEnvelope = find_envelope_locked(source);
+      if (!is_active_session_locked(sessionEpoch)
+          || !is_valid_request_key_locked(source)
+          || sourceEnvelope == null
+          || (!is_current_locked(source) && !sourceEnvelope.boundary)
           || !_config.useTypingAssistance
           || (!_config.suggestionsEnabled && !_config.autocorrectEnabled))
-        return null;
-      PendingDecode sourceEnvelope = find_envelope_locked(source);
-      if (sourceEnvelope == null)
         return null;
       Boolean recognized = recognized_from_result_locked(source,
           committedWord, sourceEnvelope);
@@ -629,6 +671,8 @@ public final class SharedDecoder implements AutoCloseable
       _closed = true;
       _active = false;
       _pending = null;
+      _retained.clear();
+      _completed.clear();
       _latestWord = null;
       _latestKey = null;
       _acceptedResult = null;
@@ -648,6 +692,8 @@ public final class SharedDecoder implements AutoCloseable
           _personalization));
     _active = false;
     _pending = null;
+    _retained.clear();
+    _completed.clear();
     _latestWord = null;
     _latestKey = null;
     _acceptedResult = null;
@@ -670,6 +716,8 @@ public final class SharedDecoder implements AutoCloseable
   /** Return the resubmitted key, or null when there is no current word. */
   private Decoder.RequestKey resubmit_latest_locked()
   {
+    _retained.clear();
+    _completed.clear();
     if (!_active || _latestWord == null)
     {
       _pending = null;
@@ -728,6 +776,10 @@ public final class SharedDecoder implements AutoCloseable
   private void invalidate_locked()
   {
     _pending = null;
+    _lastRequestEnvelope = null;
+    _lastCompletedResult = null;
+    _retained.clear();
+    _completed.clear();
     _latestWord = null;
     _latestKey = null;
     _acceptedResult = null;
@@ -746,27 +798,32 @@ public final class SharedDecoder implements AutoCloseable
       return _running;
     if (_pending != null && _pending.request.key.equals(key))
       return _pending;
+    for (PendingDecode envelope : _retained)
+      if (envelope.request.key.equals(key))
+        return envelope;
     if (_acceptedEnvelope != null
         && _acceptedEnvelope.request.key.equals(key))
       return _acceptedEnvelope;
-    return null;
+    CompletedDecode completed = completed_for_key_locked(key);
+    return completed == null ? null : completed.envelope;
   }
 
   private Boolean recognized_from_result_locked(Decoder.RequestKey key,
       String word, PendingDecode source)
   {
-    if (_lastCompletedResult == null || !_lastCompletedResult.key.equals(key))
+    Decoder.Result result = result_for_key_locked(key);
+    if (result == null)
       return null;
     Decoder.Request probe = new Decoder.Request(key, word, null,
         source.request.geometry, source.request.config);
     String normalized = probe.normalized;
-    Decoder.Candidate literal = _lastCompletedResult.literal;
+    Decoder.Candidate literal = result.literal;
     if (literal != null && literal.canonical.equals(normalized))
       return has_word_evidence(literal);
-    Decoder.Candidate correction = _lastCompletedResult.autocorrection;
+    Decoder.Candidate correction = result.autocorrection;
     if (correction != null && correction.canonical.equals(normalized))
       return has_word_evidence(correction);
-    for (Decoder.Candidate candidate : _lastCompletedResult.words())
+    for (Decoder.Candidate candidate : result.words())
       if (candidate.canonical.equals(normalized))
         return has_word_evidence(candidate);
     return null;
@@ -789,22 +846,23 @@ public final class SharedDecoder implements AutoCloseable
     String target = Decoder.normalize_correction_text(committedWord);
     String queried = sourceEnvelope.request.correctionSource;
     String targetCanonical = Decoder.normalize(committedWord);
-    if (_acceptedResult != null && _acceptedResult.key.equals(key))
+    Decoder.Result accepted = result_for_key_locked(key);
+    if (accepted != null)
     {
       if (source.equals(queried) && !target.equals(queried))
       {
-        Decoder.Candidate correction = _acceptedResult.autocorrection;
+        Decoder.Candidate correction = accepted.autocorrection;
         if (is_accepted_correction_target(correction, target,
               targetCanonical, queried))
           return correctedFrom;
-        for (Decoder.Candidate candidate : _acceptedResult.words())
+        for (Decoder.Candidate candidate : accepted.words())
           if (is_accepted_correction_target(candidate, target,
                 targetCanonical, queried))
             return correctedFrom;
         return null;
       }
 
-      Decoder.Candidate literal = _acceptedResult.literal;
+      Decoder.Candidate literal = accepted.literal;
       if (target.equals(queried) && literal != null
           && literal.canonical.equals(targetCanonical))
         return correctedFrom;
@@ -822,10 +880,36 @@ public final class SharedDecoder implements AutoCloseable
 
   private boolean is_decode_envelope_locked(PendingDecode source)
   {
-    return source != null && (source == _pending || source == _running
-        || source == _acceptedEnvelope);
+    if (source == null)
+      return false;
+    if (source == _pending || source == _running
+        || source == _acceptedEnvelope || _retained.contains(source))
+      return true;
+    for (CompletedDecode completed : _completed)
+      if (completed.envelope == source)
+        return true;
+    return false;
   }
 
+  private CompletedDecode completed_for_key_locked(Decoder.RequestKey key)
+  {
+    for (CompletedDecode completed : _completed)
+      if (completed.result.key.equals(key))
+        return completed;
+    return null;
+  }
+
+
+  private Decoder.Result result_for_key_locked(Decoder.RequestKey key)
+  {
+    if (_acceptedResult != null && _acceptedResult.key.equals(key))
+      return _acceptedResult;
+    CompletedDecode completed = completed_for_key_locked(key);
+    if (completed != null)
+      return completed.result;
+    return _lastCompletedResult != null
+      && _lastCompletedResult.key.equals(key) ? _lastCompletedResult : null;
+  }
   private static boolean is_accepted_correction_target(
       Decoder.Candidate candidate, String target, String targetCanonical,
       String queried)
@@ -842,15 +926,20 @@ public final class SharedDecoder implements AutoCloseable
     return !_closed && _active && sessionEpoch == _sessionEpoch;
   }
 
-  private boolean is_current_locked(Decoder.RequestKey key)
+  private boolean is_valid_request_key_locked(Decoder.RequestKey key)
   {
-    return key != null && !_closed && _active && _latestKey != null
-      && _latestKey.equals(key)
+    return key != null && !_closed && _active
       && key.sessionEpoch == _sessionEpoch
       && key.resourceEpoch == _resourceEpoch
       && key.layoutEpoch == _layoutEpoch
       && key.configEpoch == _configEpoch
       && key.personalizationEpoch == _personalizationEpoch;
+  }
+
+  private boolean is_current_locked(Decoder.RequestKey key)
+  {
+    return is_valid_request_key_locked(key) && _latestKey != null
+      && _latestKey.equals(key);
   }
 
   private void post_presentation_locked(Presentation state)
@@ -892,6 +981,24 @@ public final class SharedDecoder implements AutoCloseable
       _postedPresentation = null;
       _presentationDeliveryScheduled = false;
     }
+  }
+
+  private void post_completed_result_locked(final Decoder.Result result)
+  {
+    _mainHandler.post(new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            synchronized (_lock)
+            {
+              if (!is_valid_request_key_locked(result.key)
+                  || completed_for_key_locked(result.key) == null)
+                return;
+            }
+            _callback.decoder_result_completed(result);
+          }
+        });
   }
 
   private void ensure_open_locked()
@@ -947,6 +1054,11 @@ public final class SharedDecoder implements AutoCloseable
           install = new InstallState(_resourceEpoch, _resources,
               _personalizationSpecEpoch, _personalizationEpoch,
               _personalization);
+        else if (!_retained.isEmpty())
+        {
+          request = _retained.removeFirst();
+          _running = request;
+        }
         else if (_pending != null)
         {
           request = _pending;
@@ -1080,20 +1192,34 @@ public final class SharedDecoder implements AutoCloseable
     }
 
     Decoder.Result result = null;
+    boolean boundaryPreview = false;
     try
     {
       Cdict main = _workerResources.cdictFailed
         ? null : _workerResources.spec.mainDictionary;
       Cdict emoji = _workerResources.cdictFailed
         ? null : _workerResources.spec.emojiDictionary;
-      result = _decoder.decode(envelope.request, main, emoji,
-          _workerResources.hunspell, _workerPersonalization,
-          _workerResources.failed() || _workerPersonalizationFailed);
+      boolean full = envelope.boundary;
+      boundaryPreview = full && !envelope.boundaryPreviewed
+        && envelope.request.codePointCount == 3;
+      if (boundaryPreview)
+        result = _decoder.decode_boundary(envelope.request, main, emoji,
+            _workerResources.hunspell, _workerPersonalization,
+            _workerResources.failed() || _workerPersonalizationFailed);
+      else if (full)
+        result = _decoder.decode(envelope.request, main, emoji,
+            _workerResources.hunspell, _workerPersonalization,
+            _workerResources.failed() || _workerPersonalizationFailed);
+      else
+        result = _decoder.decode_fast(envelope.request, main, emoji,
+            _workerResources.hunspell, _workerPersonalization,
+            _workerResources.failed() || _workerPersonalizationFailed);
       if (result.failure == Decoder.Failure.NATIVE_CORRUPT)
         _workerResources.cdictFailed = true;
     }
     catch (RuntimeException e)
     {
+      boundaryPreview = false;
       Logs.exn("Shared decoder failed", e);
       if (_workerResources.hunspell != null)
       {
@@ -1124,35 +1250,72 @@ public final class SharedDecoder implements AutoCloseable
       }
     }
 
+
+    if (boundaryPreview)
+    {
+      if (result != null && result.autocorrectionComplete)
+        complete_decode(envelope, result);
+      synchronized (_lock)
+      {
+        if (_running == envelope)
+        {
+          _running = null;
+          envelope.boundaryPreviewed = true;
+          if (envelope.boundary && !_retained.contains(envelope))
+            _retained.addLast(envelope);
+          while (_retained.size() > MAX_RETAINED_BOUNDARIES)
+            _retained.removeFirst().boundary = false;
+        }
+      }
+      return;
+    }
+
     complete_decode(envelope, result);
     synchronized (_lock)
     {
       if (_running == envelope)
+      {
         _running = null;
+        if (result != null && result.autocorrectionComplete)
+          _retained.remove(envelope);
+      }
     }
   }
 
   private void complete_decode(PendingDecode envelope, Decoder.Result result)
   {
-    Presentation presentation = null;
     synchronized (_lock)
     {
-      if (result == null || !_active || _closed
-          || _latestKey == null
-          || !_latestKey.equals(envelope.request.key)
-          || !result.key.equals(envelope.request.key)
-          || _latestWord == null
-          || !result.queriedWord.equals(_latestWord.word)
+      if (result == null || !result.key.equals(envelope.request.key)
+          || !is_valid_request_key_locked(result.key)
           || _workerResourceEpoch != result.key.resourceEpoch
           || _workerPersonalizationEpoch != result.key.personalizationEpoch)
+        return;
+      boolean latest = _latestKey != null
+        && _latestKey.equals(envelope.request.key)
+        && _latestWord != null
+        && result.queriedWord.equals(_latestWord.word);
+      if (!latest && !envelope.boundary)
+        return;
+
+      for (java.util.Iterator<CompletedDecode> it = _completed.iterator();
+          it.hasNext();)
+        if (it.next().result.key.equals(result.key))
+          it.remove();
+      _completed.addLast(new CompletedDecode(envelope, result));
+      while (_completed.size() > MAX_COMPLETED_RESULTS)
+        _completed.removeFirst();
+      _lastCompletedResult = result;
+      post_completed_result_locked(result);
+      if (!latest)
         return;
 
       _acceptedResult = result;
       _acceptedEnvelope = envelope;
-      _lastCompletedResult = result;
       FeedbackRecord feedback = _feedback;
       if (feedback != null && !feedback.key.equals(result.key))
         feedback = null;
+      Presentation presentation;
       if (should_publish_candidates_locked())
         presentation = Presentation.ready(_sessionEpoch, result,
             feedback == null ? Presentation.Feedback.NONE : feedback.feedback,
@@ -1300,6 +1463,8 @@ public final class SharedDecoder implements AutoCloseable
       _lastRequestEnvelope = null;
       _acceptedResult = null;
       _lastCompletedResult = null;
+      _retained.clear();
+      _completed.clear();
       _resources = null;
       _personalization = null;
       _postedPresentation = null;
@@ -1346,11 +1511,15 @@ public final class SharedDecoder implements AutoCloseable
   private CurrentlyTypedWord.Snapshot _latestWord;
   private Decoder.RequestKey _latestKey;
   private PendingDecode _pending;
+  private final ArrayDeque<PendingDecode> _retained =
+    new ArrayDeque<PendingDecode>();
   private PendingDecode _running;
   private PendingDecode _acceptedEnvelope;
   private PendingDecode _lastRequestEnvelope;
   private Decoder.Result _acceptedResult;
   private Decoder.Result _lastCompletedResult;
+  private final ArrayDeque<CompletedDecode> _completed =
+    new ArrayDeque<CompletedDecode>();
   private FeedbackRecord _feedback;
   private Presentation _presentation = Presentation.empty(0, null);
   private Presentation _postedPresentation;
@@ -1368,6 +1537,8 @@ public final class SharedDecoder implements AutoCloseable
   private boolean _workerPersonalizationFailed = false;
 
   private static final int MAX_CONTROLS = 64;
+  private static final int MAX_RETAINED_BOUNDARIES = 2;
+  private static final int MAX_COMPLETED_RESULTS = 8;
 
   private static final class PendingDecode
   {
@@ -1375,6 +1546,8 @@ public final class SharedDecoder implements AutoCloseable
     final ResourceSpec resources;
     final long personalizationSpecEpoch;
     final PersonalizationSpec personalization;
+    volatile boolean boundary;
+    boolean boundaryPreviewed;
 
     PendingDecode(Decoder.Request request_, ResourceSpec resources_,
         long personalizationSpecEpoch_, PersonalizationSpec personalization_)
@@ -1383,6 +1556,18 @@ public final class SharedDecoder implements AutoCloseable
       resources = resources_;
       personalizationSpecEpoch = personalizationSpecEpoch_;
       personalization = personalization_;
+    }
+  }
+
+  private static final class CompletedDecode
+  {
+    final PendingDecode envelope;
+    final Decoder.Result result;
+
+    CompletedDecode(PendingDecode envelope_, Decoder.Result result_)
+    {
+      envelope = envelope_;
+      result = result_;
     }
   }
 
