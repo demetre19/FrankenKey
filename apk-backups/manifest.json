@@ -503,6 +503,102 @@
       "sha256": "a2fd61b4960aff0585de4be76f694ca99e064b8b48db932e67cfbd4fd4a6bc26",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Local test release preventing cursor-return Backspace from restoring an old autocorrect replacement while preserving exact immediate undo."
+    },
+    {
+      "label": "capitalized-autocorrect-test-release",
+      "file": "FrankenKey-2.0.51-vc102-new-release-key-9fdb3633-ce61592c.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "102",
+      "versionName": "2.0.51",
+      "size": 6837075,
+      "sha256": "ce61592cc0710818d06848d04a4d58a5f654b33b43cfb161ad86a3cd072226cb",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release preventing stale tracked suffixes from duplicating capitalized word initials during autocorrect or entering malformed learning evidence."
+    },
+    {
+      "label": "adaptive-context-autocorrect-test-release",
+      "file": "FrankenKey-2.0.52-vc103-new-release-key-9fdb3633-79dfa12f.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "103",
+      "versionName": "2.0.52",
+      "size": 6839479,
+      "sha256": "79dfa12fc9d87243df0d128db6609bc36c6d1750c95ffff85807e4efd9f44977",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release adding exact-context adaptive corrections, complete-word safety, short all-caps preservation, punctuation spacing normalization, and separator-free immediate undo."
+    },
+    {
+      "label": "backspace-no-lengthening-test-release",
+      "file": "FrankenKey-2.0.53-vc104-new-release-key-9fdb3633-28954da1.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "104",
+      "versionName": "2.0.53",
+      "size": 6839473,
+      "sha256": "28954da1de9c57d85eaecee9e8ec238baf8504b84861c9bc5095a5cdb69d8236",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release preventing Backspace from reintroducing an extra letter when an autocorrection source is longer than its target."
+    },
+    {
+      "label": "continuous-learning-short-word-contraction-test-release",
+      "file": "FrankenKey-2.0.54-vc105-new-release-key-9fdb3633-3929bd02.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "105",
+      "versionName": "2.0.54",
+      "size": 6840243,
+      "sha256": "3929bd02fbd524c6c056a860a9aa66b62d81a925e10d4a85a0cf4d700c1c556e",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release making four exact corrections override stale learned-literal history, repairing guarded short adjacent-key errors, and recovering validated missing negative contractions."
+    },
+    {
+      "label": "general-autocorrect-backspace-acronym-test-release",
+      "file": "FrankenKey-2.0.55-vc106-new-release-key-9fdb3633-5bae2545.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "106",
+      "versionName": "2.0.55",
+      "size": 6840916,
+      "sha256": "5bae25454dfbc2eaed6b966d3e191ee85fb30c1dc3dc41eb68da6c32087558f2",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release improving general typo correction, accepting autocorrections on Backspace or cursor movement, and preserving short uppercase tokens."
+    },
+    {
+      "label": "continuous-typing-autocorrect-throughput-test-release",
+      "file": "FrankenKey-2.0.56-vc107-new-release-key-9fdb3633-9a2306c6.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "107",
+      "versionName": "2.0.56",
+      "size": 6843799,
+      "sha256": "9a2306c6b5d11d057bec4ba2db08e44de7b09620ac4f59047a77f7aa30323766",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release retaining exact separator-boundary results during continuous typing, improving bounded typo recall and transposition scoring, and protecting technical names and ambiguous short words."
+    },
+    {
+      "label": "two-word-latent-autocorrect-test-release",
+      "file": "FrankenKey-2.0.57-vc108-new-release-key-9fdb3633-1cf05cda.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "108",
+      "versionName": "2.0.57",
+      "size": 6845300,
+      "sha256": "1cf05cda0d391f31a96f6dab3cfa8302d402ad710c1fd31ee823e04f579c8408",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release escalating separator boundaries to full spellcheck, retaining up to two prior words for exact late correction, safely repairing well-supported long typos, and rejecting ambiguous length guesses."
+    },
+    {
+      "label": "short-word-boundary-autocorrect-test-release",
+      "file": "FrankenKey-2.0.58-vc109-new-release-key-9fdb3633-ae0b9711.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "109",
+      "versionName": "2.0.58",
+      "size": 6846165,
+      "sha256": "ae0b9711d4a1c5c1a6e93bd7a255f797ca6bbe14aacdee137f86aedc9944e911",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release resolving decisive three-letter typos at the separator, preventing short prefix completions from outranking same-length corrections, and bounding late replacements to unchanged recent text."
     }
   ]
 }
