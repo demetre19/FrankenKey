@@ -3,6 +3,7 @@ package juloo.keyboard2.lang;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import juloo.keyboard2.suggestions.LanguageModel;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -111,30 +112,41 @@ public class LanguagePackManagerTest
   }
 
   @Test
-  public void bundled_australian_and_british_packs_load_by_subtype_dictionary_id()
+  public void bundledEnglishPacksLoadDictionaryAndContextResources()
       throws Exception
   {
     LanguagePackManager manager = new LanguagePackManager(
         RuntimeEnvironment.getApplication());
-
     LanguagePack australian = manager.find("en_AU");
     LanguagePack british = manager.find("en_GB");
-
-    assertNotNull("The Australian subtype must have production Hunspell data.",
-        australian);
-    assertEquals("en_AU", australian.id);
-    assertEquals("en_AU.aff", australian.hunspell_aff.getName());
-    assertTrue(australian.hunspell_aff.length() > 0);
-    assertEquals("en_AU.dic", australian.hunspell_dic.getName());
-    assertTrue(australian.hunspell_dic.length() > 0);
-
-    assertNotNull("The UK subtype must have production Hunspell data.",
-        british);
-    assertEquals("en_GB", british.id);
-    assertEquals("en_GB.aff", british.hunspell_aff.getName());
-    assertTrue(british.hunspell_aff.length() > 0);
-    assertEquals("en_GB.dic", british.hunspell_dic.getName());
-    assertTrue(british.hunspell_dic.length() > 0);
+    LanguagePack american = manager.find("en_US");
+    assertBundledEnglishPack(australian, "en_AU", "en_AU.aff", "en_AU.dic");
+    assertBundledEnglishPack(british, "en_GB", "en_GB.aff", "en_GB.dic");
+    assertBundledEnglishPack(american, "en_US", "en_US.aff", "en_US.dic");
+    assertNotEquals("Each locale must own its copied context resource.",
+        australian.next_words.getCanonicalFile(),
+        british.next_words.getCanonicalFile());
+    assertNotEquals("Each locale must own its copied context resource.",
+        british.next_words.getCanonicalFile(),
+        american.next_words.getCanonicalFile());
+  }
+  private static void assertBundledEnglishPack(LanguagePack pack, String id,
+      String affName, String dicName) throws Exception
+  {
+    assertNotNull("The " + id + " subtype must have production language data.",
+        pack);
+    assertEquals(id, pack.id);
+    assertEquals(affName, pack.hunspell_aff.getName());
+    assertTrue(pack.hunspell_aff.length() > 0);
+    assertEquals(dicName, pack.hunspell_dic.getName());
+    assertTrue(pack.hunspell_dic.length() > 0);
+    assertNotNull(id + " must package previous-word priors.", pack.next_words);
+    assertEquals("next_words.tsv", pack.next_words.getName());
+    assertTrue(pack.next_words.length() > 0);
+    LanguageModel.load(pack.next_words);
+    assertTrue(id + " must preserve the decisive observed context prior.",
+        Files.readAllLines(pack.next_words.toPath(), StandardCharsets.UTF_8)
+          .contains("examples\tof\t15"));
   }
 
   private void assertMissingRequiredFile(String role, String missingPath,

@@ -1,0 +1,3 @@
+Expanded English autocorrect accuracy and safety across everyday writing.
+
+FrankenKey now uses bounded previous-word context, handles more contractions and regular typo forms, protects common names, slang, and technical terms, and exceeds tested Gboard correction coverage without unsafe replacements.

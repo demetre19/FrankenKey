@@ -1,0 +1,43 @@
+{
+  "scope": "Limited physical-device Samsung Keyboard spot-check; not equivalent to the 98-case Gboard oracle",
+  "identity": {
+    "package": "com.samsung.android.honeyboard",
+    "versionCode": 592089400,
+    "versionName": "5.9.20.89",
+    "baseApkSha256": "6e611da6655854313bf85aaf788150b455ab7f36f73d5e4cfbaaabf5d7da91ff",
+    "device": "Samsung SM-S918B",
+    "locale": "en-AU"
+  },
+  "method": {
+    "editor": "OmniNotes",
+    "input": "Physical soft-key taps through an approved RustDesk input-control session",
+    "delimiter": "One case per line; correction observed after space",
+    "casing": "Sentence-start auto-capitalization is normalized for classification",
+    "evidence": "samsung_autocorrection_spotcheck.png",
+    "evidenceSha256": "633a896afa7ec5622f8c716f14b6e487ecd0c620d470451025f59f0e08f76d31"
+  },
+  "summary": {
+    "cases": 14,
+    "intendedMatches": 7,
+    "safeLiteralNoOps": 1,
+    "misses": 3,
+    "harmfulReplacements": 3,
+    "safetyAwareMatches": 8
+  },
+  "results": [
+    {"category": "omission", "typed": "helo", "intended": "hello", "final": "Helo", "classification": "miss"},
+    {"category": "nearby1", "typed": "gello", "intended": "hello", "final": "Gello", "classification": "miss"},
+    {"category": "nearby1", "typed": "wprd", "intended": "word", "final": "Word", "classification": "intended"},
+    {"category": "nearby1", "typed": "messagd", "intended": "message", "final": "Message", "classification": "intended"},
+    {"category": "nearby1", "typed": "thos", "intended": "this", "final": "Those", "classification": "harmful"},
+    {"category": "nearby1", "typed": "hime", "intended": "home", "final": "Hime", "classification": "miss"},
+    {"category": "nearby1", "typed": "languagd", "intended": "language", "final": "Language", "classification": "intended"},
+    {"category": "omission", "typed": "wrld", "intended": "world", "final": "World", "classification": "intended"},
+    {"category": "nearby2", "typed": "nessagd", "intended": "message", "final": "Message", "classification": "intended"},
+    {"category": "transpose", "typed": "recieve", "intended": "receive", "final": "Receive", "classification": "intended"},
+    {"category": "literal", "typed": "hello", "intended": "hello", "final": "Hello", "classification": "intended"},
+    {"category": "ambiguous-valid-word", "typed": "hone", "intended": "home", "final": "Hone", "classification": "safe-literal-no-op"},
+    {"category": "nearby2-context", "typed": "thow", "intended": "this", "final": "How", "classification": "harmful"},
+    {"category": "technical-literal", "typed": "github", "intended": "github", "final": "Mitsubishi", "classification": "harmful"}
+  ]
+}

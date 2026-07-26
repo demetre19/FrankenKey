@@ -175,6 +175,31 @@ public class EditorConfigTest
   }
 
   @Test
+  public void cmux_terminal_editor_allows_stateless_typing_assistance()
+  {
+    EditorInfo cmux = editor(InputType.TYPE_CLASS_TEXT
+        | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    cmux.packageName = "dev.cmux.connector.debug";
+    cmux.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        | EditorInfo.IME_FLAG_NO_FULLSCREEN;
+    EditorConfig config = new EditorConfig();
+
+    config.refresh(cmux, null);
+
+    assertTrue("CMUX terminals must keep local dictionary suggestions.",
+        config.should_show_candidates_view);
+    assertTrue("CMUX terminals must keep local correction.",
+        config.should_use_typing_assistance);
+    assertFalse("Terminal text may include hidden passwords and must never use persistent personalization.",
+        config.should_use_personalization);
+    assertFalse("Write-only terminal editors cannot safely run sentence grammar or multimodal voice.",
+        config.should_use_sentence_assistance);
+    assertTrue("CMUX behavior must remain scoped to its exact terminal EditorInfo contract.",
+        EditorConfig.is_cmux_terminal_editor(cmux));
+  }
+
+  @Test
   public void caps_mode_keeps_all_editor_requested_capitalisation_modes()
   {
     EditorConfig config = new EditorConfig();

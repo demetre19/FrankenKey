@@ -254,6 +254,11 @@ public class AutocorrectScoringTest
           | Decoder.SOURCE_HUNSPELL,
         -384, 1536, 1, Decoder.EDIT_EXTRA_TAP,
         true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate secondDeletionGuess = spatialCandidate("help", "help",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 1, Decoder.EDIT_EXTRA_TAP,
+        true, false, true, Decoder.Role.WORD);
     Decoder.Candidate primarySameLengthRepair =
       spatialCandidate("hello", "hello",
         Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
@@ -263,11 +268,138 @@ public class AutocorrectScoringTest
 
     List<Decoder.Candidate> ranked =
       new java.util.ArrayList<Decoder.Candidate>(
-        Arrays.asList(primarySameLengthRepair, literal, deletionGuess));
+        Arrays.asList(primarySameLengthRepair, literal, deletionGuess,
+          secondDeletionGuess));
     sortForRequest(request, ranked);
 
     assertEquals("A provider's primary same-length repair must beat a close deletion guess.",
         "hello", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void primary_same_length_substitution_uses_frequency_supported_tie()
+      throws Exception
+  {
+    Decoder.Request request = request("wirld");
+    Decoder.Candidate literal = candidate("wirld", "wirld",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate primary = spatialCandidateWithFrequency(
+        "world", "world", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL
+          | Decoder.SOURCE_HUNSPELL_PRIMARY,
+        -896, 1024, 15, 0, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate runner = spatialCandidateWithFrequency(
+        "wield", "wield", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -768, 1024, 14, 1, 1, Decoder.EDIT_SUBSTITUTION);
+    List<Decoder.Candidate> ranked =
+      Arrays.asList(primary, runner, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A complete primary same-length repair may resolve an adjacent-key tie only with independent frequency support.",
+        "world", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void decisive_same_length_repair_beats_weaker_length_guesses()
+      throws Exception
+  {
+    Decoder.Request request = request("thos");
+    Decoder.Candidate literal = candidate("thos", "thos",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate sameLength = spatialCandidateWithFrequency(
+        "this", "this", Decoder.SOURCE_CDICT_SPATIAL,
+        -896, 1024, 15, 0, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate omission = spatialCandidateWithFrequency(
+        "those", "those", Decoder.SOURCE_CDICT_SPATIAL,
+        -384, 1536, 15, 2, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate extra = spatialCandidateWithFrequency(
+        "tho", "tho", Decoder.SOURCE_CDICT_SPATIAL,
+        -384, 1536, 15, 1, 1, Decoder.EDIT_EXTRA_TAP);
+    List<Decoder.Candidate> ranked =
+      Arrays.asList(sameLength, omission, extra, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A complete same-length repair with a decisive score and spatial margin must not be blocked by weaker length guesses.",
+        "this", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void dominant_same_length_frequency_beats_primary_length_guess()
+      throws Exception
+  {
+    Decoder.Request request = request("messagd");
+    Decoder.Candidate literal = candidate("messagd", "messagd",
+        Decoder.SOURCE_LITERAL, 3840, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate sameLength = spatialCandidateWithFrequency(
+        "message", "message", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -320, 1600, 15, 1, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate primaryLength = spatialCandidateWithFrequency(
+        "messaged", "messaged", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL
+          | Decoder.SOURCE_HUNSPELL_PRIMARY,
+        384, 1536, 9, 0, 1, Decoder.EDIT_OMISSION);
+    List<Decoder.Candidate> ranked =
+      Arrays.asList(sameLength, primaryLength, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A much more frequent same-length word with a decisive total score must beat a weaker primary length guess.",
+        "message", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void frequent_two_edit_same_length_word_beats_close_deletion_guess()
+      throws Exception
+  {
+    Decoder.Request request = request("frornd");
+    Decoder.Candidate literal = candidate("frornd", "frornd",
+        Decoder.SOURCE_LITERAL, 3456, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate deletionGuess = spatialCandidateWithFrequency(
+        "frond", "frond", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        0, 1536, 12, 0, 1, Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate sameLength = spatialCandidateWithFrequency(
+        "friend", "friend", Decoder.SOURCE_CDICT_SPATIAL,
+        128, 2048, 15, 0, 2, Decoder.EDIT_SUBSTITUTION);
+    List<Decoder.Candidate> ranked =
+      Arrays.asList(deletionGuess, sameLength, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A complete two-substitution word with strong frequency support must beat a close one-letter deletion guess.",
+        "friend", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void two_edit_same_length_word_needs_strong_frequency_support()
+      throws Exception
+  {
+    Decoder.Request request = request("frornd");
+    Decoder.Candidate literal = candidate("frornd", "frornd",
+        Decoder.SOURCE_LITERAL, 3456, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate deletionGuess = spatialCandidateWithFrequency(
+        "frond", "frond", Decoder.SOURCE_CDICT_EXACT
+          | Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        0, 1536, 12, 0, 1, Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate sameLength = spatialCandidateWithFrequency(
+        "friend", "friend", Decoder.SOURCE_CDICT_SPATIAL,
+        128, 2048, 14, 0, 2, Decoder.EDIT_SUBSTITUTION);
+    List<Decoder.Candidate> ranked =
+      Arrays.asList(deletionGuess, sameLength, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A two-edit same-length guess must not displace a one-edit length repair without the full frequency margin.",
+        "frond", choose(request, ranked, literal, true,
           Decoder.Failure.NONE).canonical);
   }
 
@@ -340,18 +472,80 @@ public class AutocorrectScoringTest
     Decoder.Candidate deletion = spatialCandidateWithProviderRank(
         "sold", "sold", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
         -384, 1536, 1, 1, Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate secondDeletion = spatialCandidateWithProviderRank(
+        "hold", "hold", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 2, 1, Decoder.EDIT_EXTRA_TAP);
     Decoder.Candidate omission = spatialCandidateWithProviderRank(
         "should", "should",
         Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
         -384, 1536, 3, 1, Decoder.EDIT_OMISSION);
     List<Decoder.Candidate> ranked =
-      Arrays.asList(deletion, omission, literal);
+      Arrays.asList(deletion, secondDeletion, omission, literal);
     sortForRequest(request, ranked);
 
     assertEquals("For a longer unknown word, an equally supported missing-tap repair must outrank deleting a typed letter.",
         "should", ranked.get(0).canonical);
-    assertEquals("Provider order alone must not veto the equally scored omission repair.",
+    assertEquals("Multiple equally scored deletions must not veto the omission repair for an unknown word of at least five letters.",
         "should", choose(request, ranked, literal, true,
+          Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
+  public void multiple_tied_deletions_keep_ambiguous_omission_literal()
+      throws Exception
+  {
+    Decoder.Request request = request("thow");
+    Decoder.Candidate literal = candidate("thow", "thow",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate omission = spatialCandidateWithProviderRank(
+        "throw", "throw",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 3, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate firstDeletion = spatialCandidateWithProviderRank(
+        "tho", "tho", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 0, 1, Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate secondDeletion = spatialCandidateWithProviderRank(
+        "tow", "tow", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 1, 1, Decoder.EDIT_EXTRA_TAP);
+    List<Decoder.Candidate> ranked = Arrays.asList(
+        omission, firstDeletion, secondDeletion, literal);
+    sortForRequest(request, ranked);
+
+    assertNull("A tied omission must not win when deleting either of two typed letters produces an equally supported word.",
+        choose(request, ranked, literal, true, Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void dominant_repeated_letter_omission_beats_substitution()
+      throws Exception
+  {
+    Decoder.Request request = request("helo");
+    Decoder.Candidate literal = candidate("helo", "helo",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate substitution = spatialCandidateWithFrequency(
+        "help", "help",
+        Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -896, 1024, 15, 1, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate repeatedOmission = spatialCandidateWithFrequency(
+        "hello", "hello",
+        Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 15, 3, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate alternate = spatialCandidateWithFrequency(
+        "hell", "hell",
+        Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -320, 1600, 15, 6, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate weakerOmission = spatialCandidateWithFrequency(
+        "helot", "helot",
+        Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -256, 1536, 10, 5, 1, Decoder.EDIT_OMISSION);
+    List<Decoder.Candidate> ranked = Arrays.asList(
+        substitution, repeatedOmission, alternate, weakerOmission, literal);
+    sortForRequest(request, ranked);
+
+    assertEquals("A dominant same-frequency repeated-letter completion must recover the conventional missing doubled letter.",
+        "hello", choose(request, ranked, literal, true,
           Decoder.Failure.NONE).canonical);
   }
 
@@ -758,6 +952,142 @@ public class AutocorrectScoringTest
             Decoder.Failure.NONE));
   }
 
+  @Test
+  public void decisivePreviousWordPriorMayRepairARecognizedLiteral()
+      throws Exception
+  {
+    Decoder.Request request = request("or");
+    Decoder.Candidate literal = contextPriorCandidate("or",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT, -1920, 0, 0,
+        0, true);
+    Decoder.Candidate correction = contextPriorCandidate("of",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CONTEXT, 64, 15, 1,
+        1600, true);
+    Decoder.Candidate distractor = contextPriorCandidate("oe",
+        Decoder.SOURCE_CDICT_SPATIAL, -512, 0, 1, 1024, true);
+
+    Decoder.Candidate chosen = choose(request,
+        Arrays.asList(distractor, correction, literal), literal, true,
+        Decoder.Failure.NONE);
+
+    assertNotNull("A bounded high-confidence previous-word prior must resolve an observed valid-word typo.",
+        chosen);
+    assertEquals("of", chosen.canonical);
+  }
+
+  @Test
+  public void weakPreviousWordPriorMustPreserveARecognizedLiteral()
+      throws Exception
+  {
+    Decoder.Request request = request("or");
+    Decoder.Candidate literal = contextPriorCandidate("or",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT, -1920, 0, 0,
+        0, true);
+    Decoder.Candidate weakCorrection = contextPriorCandidate("of",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CONTEXT, 64, 7, 1,
+        1600, true);
+
+    assertNull("A weak or incidental context must not rewrite an ordinary valid word.",
+        choose(request, Arrays.asList(weakCorrection, literal), literal,
+          true, Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void doubledConsonantInflectionResolvesOnlyTheMatchingOmissionTie()
+      throws Exception
+  {
+    Decoder.Candidate running = spatialCandidateWithFrequency("running",
+        "running", Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 15, 3, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate ruining = spatialCandidateWithFrequency("ruining",
+        "ruining", Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -256, 1536, 14, 2, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate runingLiteral = candidate("runing", "runing",
+        Decoder.SOURCE_LITERAL, 3456, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+
+    assertEquals("The common doubled-consonant -ing form must resolve a near-tied unrelated omission.",
+        "running", choose(request("runing"),
+          Arrays.asList(running, ruining, runingLiteral), runingLiteral,
+          true, Decoder.Failure.NONE).canonical);
+
+    Decoder.Candidate runner = spatialCandidateWithFrequency("runner",
+        "runner", Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 15, 3, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate ruiner = spatialCandidateWithFrequency("ruiner",
+        "ruiner", Decoder.SOURCE_CDICT_SPATIAL | Decoder.SOURCE_HUNSPELL,
+        -256, 1536, 14, 2, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate runerLiteral = candidate("runer", "runer",
+        Decoder.SOURCE_LITERAL, 3456, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    assertNull("Outside -ing/-ed morphology, the same omission tie must remain ambiguous.",
+        choose(request("runer"), Arrays.asList(runner, ruiner, runerLiteral),
+          runerLiteral, true, Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void regularInflectionsBeatNearbyWordsOnlyForUnknownSource()
+      throws Exception
+  {
+    Decoder.Candidate trued = spatialCandidateWithFrequency("trued", "trued",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL | Decoder.SOURCE_HUNSPELL_PRIMARY,
+        797, 1693, 7, 0, 1, Decoder.EDIT_SUBSTITUTION);
+    Decoder.Candidate tried = spatialCandidateWithFrequency("tried", "tried",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        1152, 3072, 15, 2, 2,
+        Decoder.EDIT_OMISSION | Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate literal = candidate("tryed", "tryed",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    assertEquals("Regular y-to-i past tense must beat a nearby unrelated valid word.",
+        "tried", choose(request("tryed"), Arrays.asList(trued, tried, literal),
+          literal, true, Decoder.Failure.NONE).canonical);
+
+    Decoder.Candidate playedLiteral = candidate("played", "played",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT,
+        -1920, 0, 0, true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate plaied = spatialCandidateWithFrequency("plaied",
+        "plaied", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_HUNSPELL,
+        -256, 1536, 15, 0, 2,
+        Decoder.EDIT_OMISSION | Decoder.EDIT_EXTRA_TAP);
+    assertNull("A valid source word must never enter the y-inflection override.",
+        choose(request("played"), Arrays.asList(plaied, playedLiteral),
+          playedLiteral, true, Decoder.Failure.NONE));
+
+    Decoder.Candidate possessive = spatialCandidateWithFrequency("box's",
+        "box's", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL | Decoder.SOURCE_CONTRACTION,
+        -1280, 1536, 10, 0, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate plural = spatialCandidateWithFrequency("boxes", "boxes",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL | Decoder.SOURCE_HUNSPELL_PRIMARY,
+        -384, 1536, 15, 2, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate boxsLiteral = candidate("boxs", "boxs",
+        Decoder.SOURCE_LITERAL, 3072, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    assertEquals("A regular sibilant plural must beat the possessive spelling.",
+        "boxes", choose(request("boxs"),
+          Arrays.asList(possessive, plural, boxsLiteral), boxsLiteral,
+          true, Decoder.Failure.NONE).canonical);
+
+    Decoder.Candidate usefully = spatialCandidateWithFrequency("usefully",
+        "usefully", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL | Decoder.SOURCE_HUNSPELL_PRIMARY,
+        -128, 1536, 13, 1, 1, Decoder.EDIT_OMISSION);
+    Decoder.Candidate useful = spatialCandidateWithFrequency("useful",
+        "useful", Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_CDICT_SPATIAL
+          | Decoder.SOURCE_HUNSPELL,
+        -384, 1536, 15, 0, 1, Decoder.EDIT_EXTRA_TAP);
+    Decoder.Candidate usefullLiteral = candidate("usefull", "usefull",
+        Decoder.SOURCE_LITERAL, 3840, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    assertEquals("The standard -ful suffix must beat a longer adverb completion.",
+        "useful", choose(request("usefull"),
+          Arrays.asList(usefully, useful, usefullLiteral), usefullLiteral,
+          true, Decoder.Failure.NONE).canonical);
+  }
+
   private static Decoder.Candidate clearCorrection(String typed)
       throws Exception
   {
@@ -893,6 +1223,24 @@ public class AutocorrectScoringTest
         learned, completeEvidence);
   }
 
+  private static Decoder.Candidate contextPriorCandidate(String canonical,
+      int sourceMask, int totalQ8, int bigramCount, int editCount,
+      int spatialQ8, boolean recognized)
+      throws Exception
+  {
+    Constructor<Decoder.Candidate> constructor =
+      Decoder.Candidate.class.getDeclaredConstructor(String.class,
+          String.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, Decoder.Role.class, boolean.class,
+          boolean.class, boolean.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(canonical, canonical, sourceMask, -1, 0, 0,
+        0, bigramCount, 0, 0, 0, spatialQ8, editCount,
+        editCount == 0 ? 0 : Decoder.EDIT_SUBSTITUTION, totalQ8,
+        Decoder.Role.WORD, recognized, false, true);
+  }
+
   private static Decoder.Candidate contextualCandidate(String canonical,
       String surface, int exactCorrectionCount, int bigramCount,
       boolean contextual, int editCount, int editMask)
@@ -947,6 +1295,23 @@ public class AutocorrectScoringTest
     return constructor.newInstance(canonical, surface, sourceMask, -1, 15,
         providerRank, 0, 0, 0, 0, 0, spatialQ8, editCount, editMask, totalQ8,
         Decoder.Role.WORD, true, false, true);
+  }
+
+  private static Decoder.Candidate spatialCandidateWithFrequency(
+      String canonical, String surface, int sourceMask, int totalQ8,
+      int spatialQ8, int frequency, int providerRank, int editCount,
+      int editMask) throws Exception
+  {
+    Constructor<Decoder.Candidate> constructor =
+      Decoder.Candidate.class.getDeclaredConstructor(String.class,
+          String.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, Decoder.Role.class, boolean.class,
+          boolean.class, boolean.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(canonical, surface, sourceMask, -1,
+        frequency, providerRank, 0, 0, 0, 0, 0, spatialQ8, editCount,
+        editMask, totalQ8, Decoder.Role.WORD, true, false, true);
   }
 
   private static Decoder.Request request(String typed)

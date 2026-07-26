@@ -1,0 +1,5 @@
+# FrankenKey English previous-word priors v1
+# Fields: previous<TAB>next<TAB>weight (1-15)
+examples	of	15
+kind	of	15
+this	is	15

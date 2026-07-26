@@ -114,14 +114,14 @@ public final class EditorConfig
     }
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
-    boolean termux_raw_editor = is_termux_raw_editor(info);
+    boolean terminal_editor =
+      is_termux_raw_editor(info) || is_cmux_terminal_editor(info);
     should_use_typing_assistance = should_use_typing_assistance(info);
     should_use_sentence_assistance = should_use_typing_assistance
-      && !is_structured_text_editor(info);
-    should_show_candidates_view =
-      should_use_typing_assistance || termux_raw_editor;
+      && !terminal_editor && !is_structured_text_editor(info);
+    should_show_candidates_view = should_use_typing_assistance;
     should_use_personalization = should_use_personalization(info)
-      && !termux_raw_editor && !is_structured_text_editor(info);
+      && !terminal_editor && !is_structured_text_editor(info);
     should_show_snippet_row = should_show_snippet_row(info);
   }
 

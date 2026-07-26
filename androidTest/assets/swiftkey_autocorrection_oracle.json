@@ -387,6 +387,7 @@
     "category": "nearby2",
     "typed": "wprls",
     "intended": "world",
+    "requiresContext": true,
     "swiftFinal": "world",
     "swiftSuggestions": [
       "woprls",
@@ -409,6 +410,7 @@
     "category": "nearby2",
     "typed": "thow",
     "intended": "this",
+    "requiresContext": true,
     "swiftFinal": "this",
     "swiftSuggestions": [
       "this",

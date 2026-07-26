@@ -61,6 +61,7 @@ public final class Decoder
   private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 2 * Q8;
   private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = Q8 / 2;
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
+  private static final int DECISIVE_SAME_LENGTH_MARGIN_Q8 = 2 * Q8;
   private static final int LENGTH_DELTA_RANKING_PENALTY_Q8 = 4 * Q8;
   private static final int NEARBY_SUBSTITUTION_COST_Q8 = 8 * Q8;
   private static final int UNKNOWN_LITERAL_LENGTH_THRESHOLD = 5;
@@ -88,31 +89,56 @@ public final class Decoder
       Hunspell hunspell, PersonalizationStore personalization,
       boolean resourceFailure)
   {
+    return decode(request, dictionary, emojiDictionary, hunspell,
+        personalization, LanguageModel.empty(), resourceFailure);
+  }
+
+  public Result decode(Request request, Cdict dictionary, Cdict emojiDictionary,
+      Hunspell hunspell, PersonalizationStore personalization,
+      LanguageModel languageModel, boolean resourceFailure)
+  {
     return decode_internal(request, dictionary, emojiDictionary, hunspell,
-        personalization, resourceFailure, false, false);
+        personalization, languageModel, resourceFailure, false, false);
   }
 
   Result decode_fast(Request request, Cdict dictionary,
       Cdict emojiDictionary, Hunspell hunspell,
       PersonalizationStore personalization, boolean resourceFailure)
   {
+    return decode_fast(request, dictionary, emojiDictionary, hunspell,
+        personalization, LanguageModel.empty(), resourceFailure);
+  }
+
+  Result decode_fast(Request request, Cdict dictionary,
+      Cdict emojiDictionary, Hunspell hunspell,
+      PersonalizationStore personalization, LanguageModel languageModel,
+      boolean resourceFailure)
+  {
     return decode_internal(request, dictionary, emojiDictionary, hunspell,
-        personalization, resourceFailure, true, false);
+        personalization, languageModel, resourceFailure, true, false);
   }
 
   Result decode_boundary(Request request, Cdict dictionary,
       Cdict emojiDictionary, Hunspell hunspell,
       PersonalizationStore personalization, boolean resourceFailure)
   {
-    return decode_internal(request, dictionary, emojiDictionary, hunspell,
-        personalization, resourceFailure, false, true);
+    return decode_boundary(request, dictionary, emojiDictionary, hunspell,
+        personalization, LanguageModel.empty(), resourceFailure);
   }
 
+  Result decode_boundary(Request request, Cdict dictionary,
+      Cdict emojiDictionary, Hunspell hunspell,
+      PersonalizationStore personalization, LanguageModel languageModel,
+      boolean resourceFailure)
+  {
+    return decode_internal(request, dictionary, emojiDictionary, hunspell,
+        personalization, languageModel, resourceFailure, false, true);
+  }
 
   private Result decode_internal(Request request, Cdict dictionary,
       Cdict emojiDictionary, Hunspell hunspell,
-      PersonalizationStore personalization, boolean resourceFailure,
-      boolean fast, boolean boundaryPreview)
+      PersonalizationStore personalization, LanguageModel languageModel,
+      boolean resourceFailure, boolean fast, boolean boundaryPreview)
   {
     if (request == null)
       throw new IllegalArgumentException("request must not be null");
@@ -138,7 +164,7 @@ public final class Decoder
     if (!request.config.useTypingAssistance || (!displayEnabled && !autocorrectEnabled))
     {
       Candidate literalCandidate = finish_literal_only(literal, request,
-          personalization, failure);
+          personalization, languageModel, failure);
       return new Result(request.key, request.typed, new Candidate[0], null,
           literalCandidate, null, !fast && !boundaryPreview,
           failure.complete(), failure.failure);
@@ -183,6 +209,8 @@ public final class Decoder
             candidate.sourceMask |= SOURCE_CDICT_PREFIX;
             candidate.set_prefix(surface, i, index, dictionary.freq(index));
           }
+          collect_regular_inflection_candidates(dictionary, hunspell,
+              request.normalized, merged);
         }
       }
       catch (IllegalStateException e)
@@ -287,9 +315,6 @@ public final class Decoder
       }
     }
 
-    if (costs == null && generateCandidates && merged.size() > 1)
-      costs = request.geometry.cost_table(request.code_points_internal(),
-          request.touch_indexes_internal(), request.touches);
 
     String previousWord = null;
     if (personalization != null)
@@ -304,8 +329,28 @@ public final class Decoder
       }
     }
 
+    if (generateCandidates && previousWord != null && languageModel != null)
+    {
+      try
+      {
+        collect_language_model_candidates(dictionary, hunspell, languageModel,
+            previousWord, merged);
+      }
+      catch (IllegalStateException e)
+      {
+        failure.corrupt();
+      }
+      catch (RuntimeException e)
+      {
+        failure.resource();
+      }
+    }
+    if (costs == null && generateCandidates && merged.size() > 1)
+      costs = request.geometry.cost_table(request.code_points_internal(),
+          request.touch_indexes_internal(), request.touches);
+
     List<Candidate> ranked = rank_candidates(request, merged, costs,
-        personalization, previousWord, failure);
+        personalization, languageModel, previousWord, failure);
     Candidate literalCandidate = candidate_for_canonical(ranked,
         request.normalized);
     Candidate autocorrection = choose_autocorrection(request, ranked,
@@ -330,7 +375,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          previousWord, failure);
+          languageModel, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure);
@@ -353,7 +398,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          previousWord, failure);
+          languageModel, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure);
@@ -378,15 +423,15 @@ public final class Decoder
 
   private static List<Candidate> rank_candidates(Request request,
       Map<String, Accumulator> merged, CostTable costs,
-      PersonalizationStore personalization, String previousWord,
-      FailureState failure)
+      PersonalizationStore personalization, LanguageModel languageModel,
+      String previousWord, FailureState failure)
   {
     Scorer scorer = costs == null ? null : new Scorer(costs);
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
     for (Accumulator accumulator : merged.values())
     {
-      add_personalization_metadata(accumulator, personalization, previousWord,
-          failure);
+      add_personalization_metadata(accumulator, personalization, languageModel,
+          previousWord, failure);
       Score score;
       if (accumulator.literal)
         score = Score.EXACT;
@@ -440,9 +485,9 @@ public final class Decoder
 
   private static Candidate finish_literal_only(Accumulator literal,
       Request request, PersonalizationStore personalization,
-      FailureState failure)
+      LanguageModel languageModel, FailureState failure)
   {
-    add_personalization_metadata(literal, personalization,
+    add_personalization_metadata(literal, personalization, languageModel,
         personalization == null ? null : safe_previous_word(personalization,
           failure), failure);
     return present_candidate(literal.to_candidate(Score.EXACT), request, false);
@@ -644,6 +689,77 @@ public final class Decoder
 
 
 
+  private static void collect_regular_inflection_candidates(
+      Cdict dictionary, Hunspell hunspell, String typed,
+      Map<String, Accumulator> merged)
+  {
+    collect_regular_inflection_candidate(dictionary, hunspell,
+        regular_y_inflection_target(typed), merged);
+    collect_regular_inflection_candidate(dictionary, hunspell,
+        regular_es_plural_target(typed), merged);
+    collect_regular_inflection_candidate(dictionary, hunspell,
+        regular_suffix_target(typed), merged);
+  }
+
+  private static void collect_regular_inflection_candidate(
+      Cdict dictionary, Hunspell hunspell, String target,
+      Map<String, Accumulator> merged)
+  {
+    if (target == null)
+      return;
+    Cdict.Result exact = dictionary.find(target);
+    String surface = exact.found ? dictionary.word(exact.index) : target;
+    if (!exact.found && (hunspell == null || !hunspell.spell(surface)))
+      return;
+    Accumulator candidate = accumulator_for(merged, surface);
+    if (candidate == null)
+      return;
+    if (exact.found)
+    {
+      candidate.sourceMask |= SOURCE_CDICT_EXACT;
+      candidate.set_cdict_exact(exact.index, dictionary.freq(exact.index));
+    }
+    else
+    {
+      candidate.sourceMask |= SOURCE_HUNSPELL;
+      candidate.set_hunspell(surface, 0);
+    }
+  }
+
+  private static void collect_language_model_candidates(Cdict dictionary,
+      Hunspell hunspell, LanguageModel languageModel, String previousWord,
+      Map<String, Accumulator> merged)
+  {
+    for (String target : languageModel.following(previousWord).keySet())
+    {
+      String surface = target;
+      Cdict.Result exact = null;
+      if (dictionary != null)
+      {
+        exact = dictionary.find(target);
+        if (exact.found)
+          surface = dictionary.word(exact.index);
+      }
+      boolean hunspellExact = exact == null || !exact.found;
+      if (hunspellExact && (hunspell == null || !hunspell.spell(target)))
+        continue;
+
+      Accumulator candidate = accumulator_for(merged, surface);
+      if (candidate == null)
+        continue;
+      if (exact != null && exact.found)
+      {
+        candidate.sourceMask |= SOURCE_CDICT_EXACT;
+        candidate.set_cdict_exact(exact.index, dictionary.freq(exact.index));
+      }
+      else
+      {
+        candidate.sourceMask |= SOURCE_HUNSPELL;
+        candidate.set_hunspell(surface, 0);
+      }
+    }
+  }
+
   private static Accumulator accumulator_for(Map<String, Accumulator> merged,
       String surface)
   {
@@ -666,23 +782,28 @@ public final class Decoder
   }
 
   private static void add_personalization_metadata(Accumulator candidate,
-      PersonalizationStore personalization, String previousWord,
-      FailureState failure)
+      PersonalizationStore personalization, LanguageModel languageModel,
+      String previousWord, FailureState failure)
   {
-    if (personalization == null)
-      return;
     try
     {
-      candidate.unigramCount = personalization.word_count(candidate.canonical);
-      candidate.bigramCount = previousWord == null ? 0
-        : personalization.bigram_count(previousWord, candidate.canonical);
-      if (candidate.unigramCount > 0)
+      if (personalization != null)
       {
-        candidate.sourceMask |= SOURCE_PERSONAL;
-        candidate.learned = true;
-        if (candidate.personalRank == Integer.MAX_VALUE)
-          candidate.personalRank = 0;
+        candidate.unigramCount =
+          personalization.word_count(candidate.canonical);
+        candidate.bigramCount = previousWord == null ? 0
+          : personalization.bigram_count(previousWord, candidate.canonical);
+        if (candidate.unigramCount > 0)
+        {
+          candidate.sourceMask |= SOURCE_PERSONAL;
+          candidate.learned = true;
+          if (candidate.personalRank == Integer.MAX_VALUE)
+            candidate.personalRank = 0;
+        }
       }
+      if (languageModel != null && previousWord != null)
+        candidate.bigramCount = Math.max(candidate.bigramCount,
+            languageModel.weight(previousWord, candidate.canonical));
       if (candidate.bigramCount > 0)
         candidate.sourceMask |= SOURCE_CONTEXT;
     }
@@ -808,6 +929,18 @@ public final class Decoder
           return present_candidate(candidate, request, true);
       return null;
     }
+    Candidate contextRepair =
+      decisive_context_repair(request, literal, ranked);
+    if (contextRepair != null)
+      return present_candidate(contextRepair, request, true);
+    Candidate inflectionRepair =
+      regular_inflection_repair(request, literal, ranked);
+    if (inflectionRepair != null)
+      return present_candidate(inflectionRepair, request, true);
+    Candidate repeatedLetterRepair =
+      repeated_letter_omission_repair(request, literal, ranked);
+    if (repeatedLetterRepair != null)
+      return present_candidate(repeatedLetterRepair, request, true);
     Candidate shortTransposition =
       clear_short_transposition(request, literal, ranked);
     if (shortTransposition != null)
@@ -863,8 +996,12 @@ public final class Decoder
                 && best.editMask == EDIT_SUBSTITUTION
                 && runner.editMask == EDIT_SUBSTITUTION)
               ? Q8 : AUTOCORRECT_RUNNER_MARGIN_Q8)
+          && !primary_resolves_same_length_substitution(
+            request, best, runner)
           && !provider_rank_resolves_length_tie(request, best, runner)
           && !omission_resolves_unknown_length_tie(
+            request, literal, best, runner, ranked)
+          && !morphology_resolves_omission_tie(
             request, literal, best, runner)))
       return null;
     if (has_ambiguous_length_repair_pair(
@@ -874,9 +1011,186 @@ public final class Decoder
       return null;
     if (protectedLiteral
         && !is_missing_negative_contraction(request, best)
+        && !has_decisive_context_prior(literal, best)
         && best.exactCorrectionCount < PROTECTED_LITERAL_EXACT_EVENTS)
       return null;
     return present_candidate(best, request, true);
+  }
+
+  private static Candidate regular_inflection_repair(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.recognized || literal.learned
+        || !is_letters_only(request.normalized))
+      return null;
+    Candidate repair = validated_regular_inflection(ranked,
+        regular_y_inflection_target(request.normalized), 12, 3, request);
+    if (repair != null)
+      return repair;
+    repair = validated_regular_inflection(ranked,
+        regular_es_plural_target(request.normalized), 10, 2, request);
+    if (repair != null)
+      return repair;
+    return validated_regular_inflection(ranked,
+        regular_suffix_target(request.normalized), 10, 2, request);
+  }
+
+  private static Candidate repeated_letter_omission_repair(
+      Request request, Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.recognized || literal.learned || request.codePointCount < 3)
+      return null;
+    Candidate bestRecognized = null;
+    Candidate repeatedRepair = null;
+    int strongestOtherOmissionFrequency = -1;
+    for (Candidate candidate : ranked)
+    {
+      if (!is_autocorrection_candidate_text(candidate, literal)
+          || !is_case_compatible_autocorrection(request, candidate)
+          || !candidate.recognized || !candidate.completeEvidence)
+        continue;
+      if (bestRecognized == null)
+        bestRecognized = candidate;
+      if (candidate.editCount != 1 || candidate.editMask != EDIT_OMISSION)
+        continue;
+      if (is_repeated_letter_completion(
+            request.normalized, candidate.canonical)
+          && (repeatedRepair == null || candidate.cdictFrequency
+            > repeatedRepair.cdictFrequency))
+      {
+        if (repeatedRepair != null)
+          strongestOtherOmissionFrequency = Math.max(
+              strongestOtherOmissionFrequency,
+              repeatedRepair.cdictFrequency);
+        repeatedRepair = candidate;
+      }
+      else
+        strongestOtherOmissionFrequency = Math.max(
+            strongestOtherOmissionFrequency, candidate.cdictFrequency);
+    }
+    if (repeatedRepair == null
+        || (bestRecognized != null && repeatedRepair.cdictFrequency
+          < bestRecognized.cdictFrequency)
+        || repeatedRepair.cdictFrequency
+          < strongestOtherOmissionFrequency + 2)
+      return null;
+    return repeatedRepair;
+  }
+
+  private static boolean is_repeated_letter_completion(
+      String source, String target)
+  {
+    int[] sourcePoints = source.codePoints().toArray();
+    int[] targetPoints = target.codePoints().toArray();
+    if (targetPoints.length != sourcePoints.length + 1)
+      return false;
+    for (int skip = 0; skip < targetPoints.length; skip++)
+    {
+      boolean repeated = (skip > 0
+          && targetPoints[skip] == targetPoints[skip - 1])
+        || (skip + 1 < targetPoints.length
+          && targetPoints[skip] == targetPoints[skip + 1]);
+      if (!repeated)
+        continue;
+      boolean matches = true;
+      for (int i = 0; i < sourcePoints.length; i++)
+        if (sourcePoints[i] != targetPoints[i < skip ? i : i + 1])
+        {
+          matches = false;
+          break;
+        }
+      if (matches)
+        return true;
+    }
+    return false;
+  }
+
+  private static Candidate validated_regular_inflection(
+      List<Candidate> ranked, String target, int minimumFrequency,
+      int maximumEdits, Request request)
+  {
+    if (target == null)
+      return null;
+    for (Candidate candidate : ranked)
+      if (target.equals(candidate.canonical)
+          && candidate.recognized && candidate.completeEvidence
+          && (((candidate.sourceMask & SOURCE_CDICT_EXACT) != 0
+                && candidate.cdictFrequency >= minimumFrequency)
+            || (candidate.sourceMask & SOURCE_HUNSPELL) != 0)
+          && is_case_compatible_autocorrection(request, candidate)
+          && candidate.editCount >= 1
+          && candidate.editCount <= maximumEdits)
+        return candidate;
+    return null;
+  }
+
+  private static String regular_y_inflection_target(String typed)
+  {
+    if (typed.length() > 3 && typed.endsWith("yed"))
+      return typed.substring(0, typed.length() - 3) + "ied";
+    if (typed.length() > 2 && typed.endsWith("ys"))
+      return typed.substring(0, typed.length() - 2) + "ies";
+    return null;
+  }
+
+  private static String regular_es_plural_target(String typed)
+  {
+    if (typed.length() <= 2 || !typed.endsWith("s"))
+      return null;
+    String base = typed.substring(0, typed.length() - 1);
+    if (base.endsWith("s") || base.endsWith("x") || base.endsWith("z")
+        || base.endsWith("ch") || base.endsWith("sh"))
+      return base + "es";
+    return null;
+  }
+
+  private static String regular_suffix_target(String typed)
+  {
+    if (typed.length() > 4 && typed.endsWith("full"))
+      return typed.substring(0, typed.length() - 1);
+    if (typed.length() > 5 && typed.endsWith("yness"))
+      return typed.substring(0, typed.length() - 5) + "iness";
+    return null;
+  }
+
+  private static Candidate decisive_context_repair(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    Candidate selected = null;
+    int strongest = -1;
+    boolean tied = false;
+    for (Candidate candidate : ranked)
+    {
+      if (!is_autocorrection_candidate_text(candidate, literal)
+          || !is_case_compatible_autocorrection(request, candidate)
+          || !is_safe_autocorrection_edit(request, candidate)
+          || is_short_prefix_completion(request, candidate)
+          || is_cold_short_all_caps_correction(request, candidate)
+          || candidate.editMask != EDIT_SUBSTITUTION
+          || candidate.spatialQ8 > NEARBY_SUBSTITUTION_COST_Q8
+          || !has_decisive_context_prior(literal, candidate))
+        continue;
+      if (candidate.bigramCount > strongest)
+      {
+        selected = candidate;
+        strongest = candidate.bigramCount;
+        tied = false;
+      }
+      else if (candidate.bigramCount == strongest)
+        tied = true;
+    }
+    return tied ? null : selected;
+  }
+
+  private static boolean has_decisive_context_prior(Candidate literal,
+      Candidate candidate)
+  {
+    return candidate != null && candidate.recognized
+      && candidate.completeEvidence && candidate.editCount == 1
+      && (candidate.sourceMask & SOURCE_CONTEXT) != 0
+      && candidate.bigramCount >= 8
+      && count_level(candidate.bigramCount)
+        >= count_level(literal.bigramCount) + 3;
   }
 
   private static boolean is_short_prefix_completion(Request request,
@@ -1397,11 +1711,21 @@ public final class Decoder
           || is_short_prefix_completion(request, candidate)
           || !is_complete_one_edit_length_repair(candidate))
         continue;
+      long candidateGap = ranking_total_q8(request, candidate) - bestScore;
+      if (best.recognized && best.completeEvidence
+          && best.cdictFrequency >= candidate.cdictFrequency
+          && candidateGap >= DECISIVE_SAME_LENGTH_MARGIN_Q8
+          && candidate.spatialQ8 - best.spatialQ8
+            >= DECISIVE_SAME_LENGTH_MARGIN_Q8)
+        continue;
+      if (best.recognized && best.completeEvidence
+          && best.cdictFrequency >= candidate.cdictFrequency + 4
+          && candidateGap >= DECISIVE_SAME_LENGTH_MARGIN_Q8)
+        continue;
       if ((best.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
           && best.cdictFrequency >= candidate.cdictFrequency + 2)
         continue;
-      if (ranking_total_q8(request, candidate) - bestScore
-          <= LENGTH_DELTA_RANKING_PENALTY_Q8)
+      if (candidateGap <= LENGTH_DELTA_RANKING_PENALTY_Q8)
         return true;
     }
     return false;
@@ -1422,7 +1746,7 @@ public final class Decoder
           || !is_autocorrection_candidate_text(candidate, literal)
           || !is_case_compatible_autocorrection(request, candidate)
           || !candidate.recognized || !candidate.completeEvidence
-          || candidate.editCount != 1
+          || (candidate.editCount != 1 && candidate.editCount != 2)
           || (long)literal.totalQ8 - candidate.totalQ8
             < AUTOCORRECT_LITERAL_MARGIN_Q8)
         continue;
@@ -1432,15 +1756,27 @@ public final class Decoder
       boolean sameLength =
         candidate.canonical.codePointCount(0, candidate.canonical.length())
           == request.normalizedCodePointCount;
-      boolean sameLengthRepair = sameLength
+      boolean sameLengthOneEditRepair = sameLength
+        && candidate.editCount == 1
         && (candidate.editMask == EDIT_SUBSTITUTION
           || candidate.editMask == EDIT_TRANSPOSITION);
+      boolean sameLengthTwoEditSubstitution = sameLength
+        && candidate.editCount == 2
+        && candidate.editMask == EDIT_SUBSTITUTION;
       if (best.editMask == EDIT_EXTRA_TAP
-          && sameLengthRepair
+          && sameLengthOneEditRepair
           && (candidate.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
           && gap <= Q8)
         return candidate;
-      if (sameLengthRepair
+      if (best.editMask == EDIT_EXTRA_TAP
+          && request.codePointCount >= 6
+          && sameLengthTwoEditSubstitution
+          && candidate.cdictFrequency >= best.cdictFrequency + 3
+          && gap <= AUTOCORRECT_RUNNER_MARGIN_Q8
+          && (long)candidate.spatialQ8 - best.spatialQ8
+            <= DECISIVE_SAME_LENGTH_MARGIN_Q8)
+        return candidate;
+      if (sameLengthOneEditRepair
           && candidate.cdictFrequency >= best.cdictFrequency + 4
           && gap <= 2L * Q8)
         return candidate;
@@ -1451,6 +1787,43 @@ public final class Decoder
         return candidate;
     }
     return null;
+  }
+
+  private static boolean morphology_resolves_omission_tie(Request request,
+      Candidate literal, Candidate best, Candidate runner)
+  {
+    return request.codePointCount >= 4
+      && !literal.recognized && !literal.learned
+      && is_complete_one_edit_length_repair(best)
+      && is_complete_one_edit_length_repair(runner)
+      && best.editMask == EDIT_OMISSION
+      && runner.editMask == EDIT_OMISSION
+      && best.cdictFrequency >= runner.cdictFrequency
+      && is_doubled_consonant_inflection(request, best)
+      && !is_doubled_consonant_inflection(request, runner);
+  }
+
+  private static boolean is_doubled_consonant_inflection(Request request,
+      Candidate candidate)
+  {
+    String typed = request.normalized;
+    int suffixLength;
+    if (typed.endsWith("ing"))
+      suffixLength = 3;
+    else if (typed.endsWith("ed"))
+      suffixLength = 2;
+    else
+      return false;
+    int stemEnd = typed.length() - suffixLength;
+    if (stemEnd < 2)
+      return false;
+    char consonant = typed.charAt(stemEnd - 1);
+    if (consonant < 'a' || consonant > 'z'
+        || "aeiou".indexOf(consonant) >= 0)
+      return false;
+    String doubled = typed.substring(0, stemEnd) + consonant
+      + typed.substring(stemEnd);
+    return doubled.equals(candidate.canonical);
   }
 
   private static boolean has_ambiguous_length_repair_pair(Request request,
@@ -1477,7 +1850,12 @@ public final class Decoder
         continue;
       long gap = ranking_total_q8(request, candidate) - bestScore;
       if (gap >= 0 && gap <= Q8)
+      {
+        if (morphology_resolves_omission_tie(
+              request, literal, best, candidate))
+          continue;
         return true;
+      }
     }
     return false;
   }
@@ -1512,6 +1890,29 @@ public final class Decoder
       && best.providerRank < runner.providerRank;
   }
 
+  private static boolean primary_resolves_same_length_substitution(
+      Request request, Candidate best, Candidate runner)
+  {
+    if (request.codePointCount < 4 || best == null || runner == null
+        || best.editCount != 1 || runner.editCount != 1
+        || best.editMask != EDIT_SUBSTITUTION
+        || runner.editMask != EDIT_SUBSTITUTION
+        || !best.recognized || !best.completeEvidence
+        || !runner.recognized || !runner.completeEvidence
+        || (best.sourceMask & SOURCE_HUNSPELL_PRIMARY) == 0
+        || (runner.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
+        || best.cdictFrequency < runner.cdictFrequency + 1
+        || best.canonical.codePointCount(0, best.canonical.length())
+          != request.normalizedCodePointCount
+        || runner.canonical.codePointCount(0, runner.canonical.length())
+          != request.normalizedCodePointCount)
+      return false;
+    long gap = ranking_total_q8(request, runner)
+      - ranking_total_q8(request, best);
+    return gap >= AUTOCORRECT_RUNNER_MARGIN_Q8
+      && best.spatialQ8 <= runner.spatialQ8;
+  }
+
   private static int unknown_length_repair_priority(Request request,
       Candidate candidate)
   {
@@ -1522,17 +1923,34 @@ public final class Decoder
   }
 
   private static boolean omission_resolves_unknown_length_tie(
-      Request request, Candidate literal, Candidate best, Candidate runner)
+      Request request, Candidate literal, Candidate best, Candidate runner,
+      List<Candidate> ranked)
   {
-    return request.codePointCount >= 3
-      && !literal.recognized && !literal.learned
-      && is_complete_one_edit_length_repair(best)
-      && is_complete_one_edit_length_repair(runner)
-      && best.editMask == EDIT_OMISSION
-      && runner.editMask == EDIT_EXTRA_TAP
-      && best.totalQ8 == runner.totalQ8
-      && best.spatialQ8 == runner.spatialQ8
-      && best.cdictFrequency == runner.cdictFrequency;
+    if (request.codePointCount < 3
+        || literal.recognized || literal.learned
+        || !is_complete_one_edit_length_repair(best)
+        || !is_complete_one_edit_length_repair(runner)
+        || best.editMask != EDIT_OMISSION
+        || runner.editMask != EDIT_EXTRA_TAP
+        || best.totalQ8 != runner.totalQ8
+        || best.spatialQ8 != runner.spatialQ8
+        || best.cdictFrequency != runner.cdictFrequency)
+      return false;
+    int tiedExtraTapCandidates = 0;
+    for (Candidate candidate : ranked)
+    {
+      if (!is_autocorrection_candidate_text(candidate, literal)
+          || !is_case_compatible_autocorrection(request, candidate)
+          || !is_safe_autocorrection_edit(request, candidate)
+          || !is_complete_one_edit_length_repair(candidate)
+          || candidate.editMask != EDIT_EXTRA_TAP)
+        continue;
+      if (candidate.totalQ8 == best.totalQ8
+          && candidate.spatialQ8 == best.spatialQ8
+          && candidate.cdictFrequency == best.cdictFrequency)
+        tiedExtraTapCandidates++;
+    }
+    return tiedExtraTapCandidates == 1 || request.codePointCount >= 5;
   }
 
   private static long ranking_total_q8(Request request, Candidate candidate)

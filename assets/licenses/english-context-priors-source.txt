@@ -1,0 +1,10 @@
+FrankenKey English previous-word priors
+
+The rows in assets/language_packs/en_*/next_words.tsv are bounded policy weights, not copied corpus counts or text. They cover observed valid-word errors in androidTest/assets/frankenkey_live_sentence_oracle.json.
+
+Relative frequency was checked on 2026-07-25 against the public Google Books Ngram Viewer English 2019 corpus for 1950-2019 (smoothing 3):
+
+https://books.google.com/ngrams/json?content=examples%20of%2Cexamples%20or&year_start=1950&year_end=2019&corpus=en-2019&smoothing=3
+https://books.google.com/ngrams/json?content=this%20is%2Cthis%20us%2Ckind%20of%2Ckind%20if&year_start=1950&year_end=2019&corpus=en-2019&smoothing=3
+
+The intended bigrams are consistently orders of magnitude more frequent than their observed typo bigrams. No Google corpus text or time-series data is bundled.

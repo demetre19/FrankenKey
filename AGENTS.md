@@ -24,6 +24,7 @@
 - Automatic update checks default on, but download and installer handoff always require explicit user acceptance. Update APKs must match the package, a higher version code, the declared SHA-256/size, and the persistent release signer before Android receives them.
 - Treat clipboard/snippets/personalization data as user data; preserve privacy and avoid unnecessary persistence.
 - Suggestion display and autocorrect share one bounded asynchronous decoder; never perform dictionary/Hunspell decoding or wait for results on the IME main thread.
+- Reference-keyboard evidence lives under `androidTest/assets/`. Keep the full Gboard oracle and limited physical-Samsung spot-check explicitly scoped apart, and record the exact package version, APK hash, input method, and observed outputs for each refresh.
 
 ## Work Guidance
 

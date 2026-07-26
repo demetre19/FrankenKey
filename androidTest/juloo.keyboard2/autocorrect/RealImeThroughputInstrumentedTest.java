@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,6 +53,9 @@ public final class RealImeThroughputInstrumentedTest
   private static final PointF SPACE = point(475, 2160);
   private static final PointF PERIOD = point(837, 2160);
   private static final PointF HOST_FOCUS = point(540, 700);
+  private static final Map<Character, PointF> GBOARD_KEYS = gboardKeys();
+  private static final PointF GBOARD_SHIFT = point(84, 2070);
+  private static final PointF GBOARD_SPACE = point(475, 2250);
 
   private Instrumentation _instrumentation;
   private UiAutomation _automation;
@@ -59,6 +63,7 @@ public final class RealImeThroughputInstrumentedTest
   private float _scaleX;
   private float _scaleY;
   private long _keyIntervalMs;
+  private boolean _referenceIme;
 
   @Before
   public void setUp() throws Exception
@@ -66,10 +71,21 @@ public final class RealImeThroughputInstrumentedTest
     _instrumentation = InstrumentationRegistry.getInstrumentation();
     _automation = _instrumentation.getUiAutomation();
     _target = _instrumentation.getTargetContext();
-    _imePackage = InstrumentationRegistry.getArguments().getString(
-        "ime_package", RELEASE_IME_PACKAGE);
-    _imeId = _imePackage + "/juloo.keyboard2.Keyboard2";
-    _imeLauncher = _imePackage + "/juloo.keyboard2.LauncherActivity";
+    android.os.Bundle arguments = InstrumentationRegistry.getArguments();
+    String referenceImeId = arguments.getString("reference_ime_id");
+    _referenceIme = referenceImeId != null;
+    if (_referenceIme)
+    {
+      _imeId = referenceImeId;
+      _imePackage = referenceImeId.substring(0, referenceImeId.indexOf('/'));
+      _imeLauncher = null;
+    }
+    else
+    {
+      _imePackage = arguments.getString("ime_package", RELEASE_IME_PACKAGE);
+      _imeId = _imePackage + "/juloo.keyboard2.Keyboard2";
+      _imeLauncher = _imePackage + "/juloo.keyboard2.LauncherActivity";
+    }
     DisplayMetrics metrics = new DisplayMetrics();
     WindowManager window = (WindowManager)_target.getSystemService(
         Context.WINDOW_SERVICE);
@@ -81,18 +97,21 @@ public final class RealImeThroughputInstrumentedTest
 
     assertTrue("The benchmark host must be installed before running the real-IME gate.",
         shell("pm list packages " + HOST_PACKAGE).contains(HOST_PACKAGE));
-    if (_imePackage.equals(_target.getPackageName()))
+    if (!_referenceIme)
     {
-      android.preference.PreferenceManager.getDefaultSharedPreferences(_target)
-        .edit().clear().commit();
-      if (android.os.Build.VERSION.SDK_INT >= 24)
-        android.preference.PreferenceManager.getDefaultSharedPreferences(
-            _target.createDeviceProtectedStorageContext())
+      if (_imePackage.equals(_target.getPackageName()))
+      {
+        android.preference.PreferenceManager.getDefaultSharedPreferences(_target)
           .edit().clear().commit();
+        if (android.os.Build.VERSION.SDK_INT >= 24)
+          android.preference.PreferenceManager.getDefaultSharedPreferences(
+              _target.createDeviceProtectedStorageContext())
+            .edit().clear().commit();
+      }
+      else
+        shell("pm clear " + _imePackage);
+      shell("am start -W -n " + _imeLauncher);
     }
-    else
-      shell("pm clear " + _imePackage);
-    shell("am start -W -n " + _imeLauncher);
     shell("ime enable " + _imeId);
     shell("ime set " + _imeId);
     SystemClock.sleep(1000);
@@ -222,6 +241,95 @@ public final class RealImeThroughputInstrumentedTest
     assertEquals("Maximum-throughput chapter failures; report="
         + reportPath("frankenkey-real-ime-fast-chapter.json") + "\n"
         + failures, 0, failures.length());
+  }
+
+  @Test
+  public void collectReferenceImeOracle() throws Exception
+  {
+    Assume.assumeTrue("Reference collection requires reference_ime_id.",
+        _referenceIme);
+    JSONArray corpus = new JSONArray(readAsset(
+          "swiftkey_autocorrection_oracle.json"));
+    JSONArray results = new JSONArray();
+    for (int i = 0; i < corpus.length(); i++)
+    {
+      JSONObject spec = corpus.getJSONObject(i);
+      String actual = runReferenceCase(spec.getString("typed"));
+      results.put(new JSONObject(spec.toString()).put("referenceFinal", actual));
+    }
+    JSONObject report = new JSONObject()
+      .put("identity", installedIdentity())
+      .put("imeId", _imeId)
+      .put("profile", "gboard-qwerty")
+      .put("results", results);
+    writeReport("reference-ime-gboard-oracle.json", report);
+    assertEquals("Every oracle row must be driven through real soft-key taps.",
+        corpus.length(), results.length());
+  }
+
+  private String runReferenceCase(String typed) throws Exception
+  {
+    String lastActual = "";
+    for (int attempt = 0; attempt < 3; attempt++)
+    {
+      shell("ime set " + _imeId);
+      shell("am force-stop " + HOST_PACKAGE);
+      shell("am start -W -n " + HOST_ACTIVITY);
+      waitForEditor();
+      waitForKeyboard();
+      tap(GBOARD_SHIFT);
+      SystemClock.sleep(150);
+      for (int i = 0; i < typed.length(); i++)
+      {
+        PointF key = GBOARD_KEYS.get(typed.charAt(i));
+        if (key == null)
+          throw new IllegalArgumentException(
+              "Unsupported reference character: " + typed.charAt(i));
+        tap(key);
+        SystemClock.sleep(45);
+      }
+      tap(GBOARD_SPACE);
+      SystemClock.sleep(1000);
+      lastActual = editorText().trim();
+      if (isPlausibleReferenceDelivery(typed, lastActual))
+        return lastActual;
+    }
+    fail("Soft-key delivery left the alphabetic QWERTY layer for " + typed
+        + "; last editor text=" + lastActual);
+    return "";
+  }
+
+  private static boolean isPlausibleReferenceDelivery(String typed,
+      String actual)
+  {
+    if (!actual.matches("[A-Za-z]{2,}"))
+      return false;
+    int maxDistance = Math.max(3, typed.length() / 2);
+    return editDistance(typed.toLowerCase(Locale.ROOT),
+        actual.toLowerCase(Locale.ROOT)) <= maxDistance;
+  }
+
+  private static int editDistance(String left, String right)
+  {
+    int[] previous = new int[right.length() + 1];
+    int[] current = new int[right.length() + 1];
+    for (int j = 0; j <= right.length(); j++)
+      previous[j] = j;
+    for (int i = 1; i <= left.length(); i++)
+    {
+      current[0] = i;
+      for (int j = 1; j <= right.length(); j++)
+      {
+        int substitution = previous[j - 1]
+          + (left.charAt(i - 1) == right.charAt(j - 1) ? 0 : 1);
+        current[j] = Math.min(substitution,
+            Math.min(current[j - 1] + 1, previous[j] + 1));
+      }
+      int[] swap = previous;
+      previous = current;
+      current = swap;
+    }
+    return previous[right.length()];
   }
 
   private CaseResult runCase(JSONObject spec) throws Exception
@@ -550,6 +658,18 @@ public final class RealImeThroughputInstrumentedTest
         114, 221, 328, 435, 542, 649, 756, 863, 970 }, 1740);
     addRow(keys, "zxcvbnm", new int[] {
         221, 328, 435, 542, 649, 756, 863 }, 1960);
+    return keys;
+  }
+
+  private static Map<Character, PointF> gboardKeys()
+  {
+    HashMap<Character, PointF> keys = new HashMap<Character, PointF>();
+    addRow(keys, "qwertyuiop", new int[] {
+        60, 168, 275, 382, 489, 596, 703, 810, 917, 1024 }, 1725);
+    addRow(keys, "asdfghjkl", new int[] {
+        114, 221, 328, 435, 542, 649, 756, 863, 970 }, 1900);
+    addRow(keys, "zxcvbnm", new int[] {
+        221, 328, 435, 542, 649, 756, 863 }, 2070);
     return keys;
   }
 

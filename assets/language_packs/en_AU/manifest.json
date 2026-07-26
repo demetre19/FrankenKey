@@ -1,4 +1,5 @@
 {
   "hunspell_aff": "en_AU.aff",
-  "hunspell_dic": "en_AU.dic"
+  "hunspell_dic": "en_AU.dic",
+  "next_words": "next_words.tsv"
 }

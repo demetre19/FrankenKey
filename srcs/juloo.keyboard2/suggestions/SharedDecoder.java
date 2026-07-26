@@ -1140,6 +1140,20 @@ public final class SharedDecoder implements AutoCloseable
         Logs.exn("Failed to load Hunspell", e);
       }
     }
+    if (resources.languagePack != null
+        && resources.languagePack.next_words != null)
+    {
+      try
+      {
+        next.languageModel =
+          LanguageModel.load(resources.languagePack.next_words);
+      }
+      catch (Exception e)
+      {
+        next.languageModelFailed = true;
+        Logs.exn("Failed to load language context model", e);
+      }
+    }
     _workerResources = next;
     synchronized (_lock)
     {
@@ -1205,14 +1219,17 @@ public final class SharedDecoder implements AutoCloseable
       if (boundaryPreview)
         result = _decoder.decode_boundary(envelope.request, main, emoji,
             _workerResources.hunspell, _workerPersonalization,
+            _workerResources.languageModel,
             _workerResources.failed() || _workerPersonalizationFailed);
       else if (full)
         result = _decoder.decode(envelope.request, main, emoji,
             _workerResources.hunspell, _workerPersonalization,
+            _workerResources.languageModel,
             _workerResources.failed() || _workerPersonalizationFailed);
       else
         result = _decoder.decode_fast(envelope.request, main, emoji,
             _workerResources.hunspell, _workerPersonalization,
+            _workerResources.languageModel,
             _workerResources.failed() || _workerPersonalizationFailed);
       if (result.failure == Decoder.Failure.NATIVE_CORRUPT)
         _workerResources.cdictFailed = true;
@@ -1242,7 +1259,7 @@ public final class SharedDecoder implements AutoCloseable
               ? null : _workerResources.spec.mainDictionary,
             _workerResources.cdictFailed
               ? null : _workerResources.spec.emojiDictionary,
-            null, _workerPersonalization, true);
+            null, _workerPersonalization, _workerResources.languageModel, true);
       }
       catch (RuntimeException fallbackError)
       {
@@ -1576,7 +1593,9 @@ public final class SharedDecoder implements AutoCloseable
     final long epoch;
     final ResourceSpec spec;
     Hunspell hunspell;
+    LanguageModel languageModel = LanguageModel.empty();
     boolean hunspellFailed;
+    boolean languageModelFailed;
     boolean cdictFailed;
 
     WorkerResources(long epoch_, ResourceSpec spec_)
@@ -1590,7 +1609,8 @@ public final class SharedDecoder implements AutoCloseable
 
     boolean failed()
     {
-      return spec.initiallyFailed || hunspellFailed || cdictFailed;
+      return spec.initiallyFailed || hunspellFailed || languageModelFailed
+        || cdictFailed;
     }
   }
 
