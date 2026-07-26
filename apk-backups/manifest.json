@@ -599,6 +599,18 @@
       "sha256": "ae0b9711d4a1c5c1a6e93bd7a255f797ca6bbe14aacdee137f86aedc9944e911",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Local test release resolving decisive three-letter typos at the separator, preventing short prefix completions from outranking same-length corrections, and bounding late replacements to unchanged recent text."
+    },
+    {
+      "label": "english-parity-context-morphology-test-release",
+      "file": "FrankenKey-2.0.59-vc110-new-release-key-9fdb3633-f94215e5.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "110",
+      "versionName": "2.0.59",
+      "size": 6850883,
+      "sha256": "f94215e5b6125b9a3f970cbb38706858b3cd9b729346908c1c8c607ad2a0b29d",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release expanding English context, contraction, typo-morphology, slang, and technical-word coverage while exceeding the validated Gboard correction score with zero harmful replacements."
     }
   ]
 }
