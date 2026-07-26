@@ -31,6 +31,7 @@
 - Match existing Java and XML style; make surgical changes.
 - Use focused unit tests for touched behavior; do not run broad suites unless necessary.
 - Use `JAVA_HOME=/opt/homebrew/opt/openjdk@17` for Gradle commands.
+- Gradle generators invoke `python`; keep `/Users/apple/.local/bin/python` executable and resolving to Python 3 (`exec python3 "$@"`) instead of creating task-local shims.
 - Android SDK tools may live at `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk`.
 - Prefer existing app patterns over new frameworks or abstractions.
 - For live phone testing, use direct LAN Termux SSH at `deme-s23-ultra.modem:8022`; do not assume RustDesk or a localhost `2222` tunnel. Termux SSH is unprivileged and cannot run privileged Android shell commands.

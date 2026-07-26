@@ -81,4 +81,39 @@ public class SnippetIconsTest
     assertEquals("Text labels remain the fallback when no icon is selected.",
         "Hi", fallbackView.getText().toString());
   }
+
+  @Test
+  public void snippet_page_swipes_wrap_in_both_directions()
+  {
+    assertEquals("A finger-right swipe past the last page must wrap to the first page.",
+        0, SnippetRowView.targetPageForSwipe(2, 3, 48, 48));
+    assertEquals("A finger-left swipe from the first page must wrap to the last page.",
+        2, SnippetRowView.targetPageForSwipe(0, 3, -48, 48));
+    assertEquals("Finger-right swipes still advance one page at a time.",
+        2, SnippetRowView.targetPageForSwipe(1, 3, 48, 48));
+    assertEquals("Finger-left swipes still move backward one page at a time.",
+        0, SnippetRowView.targetPageForSwipe(1, 3, -48, 48));
+  }
+
+  @Test
+  public void snippet_page_swipes_use_a_short_bounded_activation_distance()
+  {
+    int distance = SnippetRowView.swipeActivationDistance(1080, 72, 144);
+
+    assertEquals("The swipe commits after the configured 48dp ceiling.",
+        144, distance);
+    assertTrue("The new activation distance must be much shorter than half a page.",
+        distance < 1080 / 2);
+    assertEquals("Movement below the activation distance must preserve taps.",
+        1, SnippetRowView.targetPageForSwipe(1, 3, 143, distance));
+    assertEquals("Movement at the activation distance must change pages.",
+        2, SnippetRowView.targetPageForSwipe(1, 3, 144, distance));
+    assertTrue("A short horizontal drag must be intercepted for page movement.",
+        SnippetRowView.isPageSwipe(-144, 20, distance));
+    assertFalse("Sub-threshold movement must remain a snippet tap.",
+        SnippetRowView.isPageSwipe(-143, 20, distance));
+    assertFalse("Vertical gestures must not change snippet pages.",
+        SnippetRowView.isPageSwipe(-144, 145, distance));
+  }
+
 }

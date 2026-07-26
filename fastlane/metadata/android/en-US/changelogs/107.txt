@@ -1,3 +1,3 @@
 Autocorrect now keeps up with continuous typing, including common transpositions and missing or extra letters, while leaving ambiguous short words unchanged.
 
-Technical names such as Gboard, OMP, and CMUX remain untouched, and editor refreshes no longer discard valid touch evidence for the current word.
+Technical terms remain untouched, and editor refreshes no longer discard valid touch evidence for the current word.

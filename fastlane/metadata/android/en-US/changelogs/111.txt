@@ -1,0 +1,3 @@
+Improved snippet ribbon navigation.
+
+Snippet pages now loop continuously in both directions, and shorter horizontal swipes move between pages more quickly while preserving normal snippet taps.

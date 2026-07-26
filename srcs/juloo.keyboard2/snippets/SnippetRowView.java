@@ -29,6 +29,9 @@ public class SnippetRowView extends HorizontalScrollView
 
   private LinearLayout _pages;
   private final Paint _divider_paint = new Paint();
+  private float _touch_down_x = Float.NaN;
+  private float _touch_down_y;
+  private int _touch_down_scroll_x;
 
   public SnippetRowView(Context context, AttributeSet attrs)
   {
@@ -146,12 +149,43 @@ public class SnippetRowView extends HorizontalScrollView
   }
 
   @Override
+  public boolean onInterceptTouchEvent(MotionEvent ev)
+  {
+    int action = ev.getActionMasked();
+    if (action == MotionEvent.ACTION_DOWN)
+      beginSwipe(ev);
+    else if (action == MotionEvent.ACTION_MOVE &&
+        !Float.isNaN(_touch_down_x))
+    {
+      int activationDistance = swipeActivationDistance(
+          pageWidth(), dp(24), dp(48));
+      if (isPageSwipe(ev.getX() - _touch_down_x,
+            ev.getY() - _touch_down_y, activationDistance))
+        return true;
+    }
+    return super.onInterceptTouchEvent(ev);
+  }
+
+  @Override
   public boolean onTouchEvent(MotionEvent ev)
   {
+    int action = ev.getActionMasked();
+    if (action == MotionEvent.ACTION_DOWN)
+      beginSwipe(ev);
     boolean handled = super.onTouchEvent(ev);
-    if (ev.getAction() == MotionEvent.ACTION_UP ||
-        ev.getAction() == MotionEvent.ACTION_CANCEL)
+    if (action == MotionEvent.ACTION_UP)
+    {
+      if (Float.isNaN(_touch_down_x))
+        snapToNearestPage();
+      else
+        finishSwipe(ev.getX() - _touch_down_x);
+      _touch_down_x = Float.NaN;
+    }
+    else if (action == MotionEvent.ACTION_CANCEL)
+    {
       snapToNearestPage();
+      _touch_down_x = Float.NaN;
+    }
     return handled;
   }
 
@@ -162,6 +196,61 @@ public class SnippetRowView extends HorizontalScrollView
       return;
     int page = (getScrollX() + width / 2) / width;
     smoothScrollTo(page * width, 0);
+  }
+
+  private void beginSwipe(MotionEvent ev)
+  {
+    _touch_down_x = ev.getX();
+    _touch_down_y = ev.getY();
+    _touch_down_scroll_x = getScrollX();
+  }
+
+  private void finishSwipe(float deltaX)
+  {
+    int width = pageWidth();
+    int pageCount = _pages.getChildCount();
+    if (width <= 0 || pageCount <= 0)
+      return;
+    int currentPage = Math.max(0, Math.min(pageCount - 1,
+          (_touch_down_scroll_x + width / 2) / width));
+    int activationDistance = swipeActivationDistance(
+        width, dp(24), dp(48));
+    int targetPage = targetPageForSwipe(
+        currentPage, pageCount, deltaX, activationDistance);
+    boolean wraps = pageCount > 1 &&
+      ((currentPage == 0 && targetPage == pageCount - 1) ||
+       (currentPage == pageCount - 1 && targetPage == 0));
+    if (wraps)
+      scrollTo(targetPage * width, 0);
+    else
+      smoothScrollTo(targetPage * width, 0);
+  }
+
+  static int swipeActivationDistance(
+      int width, int minimumDistance, int maximumDistance)
+  {
+    int distance = Math.max(minimumDistance,
+        Math.min(maximumDistance, width / 6));
+    return Math.max(1, Math.min(width, distance));
+  }
+
+  static boolean isPageSwipe(
+      float deltaX, float deltaY, int activationDistance)
+  {
+    return Math.abs(deltaX) >= activationDistance &&
+      Math.abs(deltaX) > Math.abs(deltaY);
+  }
+
+  static int targetPageForSwipe(int currentPage, int pageCount,
+      float deltaX, int activationDistance)
+  {
+    if (pageCount <= 0)
+      return 0;
+    int current = Math.max(0, Math.min(pageCount - 1, currentPage));
+    if (Math.abs(deltaX) < activationDistance)
+      return current;
+    int direction = deltaX > 0 ? 1 : -1;
+    return (current + direction + pageCount) % pageCount;
   }
 
   @Override
