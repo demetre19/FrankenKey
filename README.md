@@ -14,6 +14,8 @@
 
 <p align="center">
   <a href="FrankenKey-installable-release.apk"><strong>Download the latest APK</strong></a>
+  ·
+  <a href="CHANGELOG.md"><strong>Recent changes</strong></a>
 </p>
 
 ---
@@ -129,7 +131,7 @@ Save phrases as snippet buttons above the keyboard, then tap to insert them at t
 
 - Seven snippet slots per page.
 - Add more pages when needed.
-- Swipe the snippet row horizontally to change pages.
+- Use short horizontal swipes to change pages; the page list loops continuously in both directions.
 - Available in both Everyday and Coding modes.
 - Stored locally and available on lock screens when configured.
 
@@ -161,9 +163,9 @@ Current release:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.49
-Version code: 100
-SHA-256: a9ed938b39d4498f4492fbee2820d591decbe70c5ff80a605814f740a1f3f5b4
+Version: 2.0.60
+Version code: 111
+SHA-256: cbe1c15c7993f5f096678d8818eb6cf941f30022fb2fef76e3d6101b824887ac
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

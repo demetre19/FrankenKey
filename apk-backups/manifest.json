@@ -61,7 +61,7 @@
       "note": "Release with Spacebar swipe to toggle Fleksy/FrankenKey mode and number-entry shortcuts/settings polish."
     },
     {
-      "label": "samsung-gboard-clipboard-parity-release",
+      "label": "compact-rich-clipboard-release",
       "file": "FrankenKey-2.0.12-vc63-new-release-key-9fdb3633-82f3e3d1.apk",
       "source": "FrankenKey-installable-release.apk",
       "package": "dev.frankenkey.keyboard",
@@ -70,7 +70,7 @@
       "size": 5959444,
       "sha256": "82f3e3d1e669d36c9a9c7f2ca882bcb92384766a778b26bc37027732ca488e52",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
-      "note": "Release with Samsung-style compact expandable editable clipboard cards and Gboard-style screenshot/image clipboard save/pin/paste support."
+      "note": "Release with compact expandable editable clipboard cards and screenshot/image clipboard save, pin, and paste support."
     },
     {
       "label": "debug-deep-clipboard-numpad-cog-release",
@@ -610,7 +610,19 @@
       "size": 6850883,
       "sha256": "f94215e5b6125b9a3f970cbb38706858b3cd9b729346908c1c8c607ad2a0b29d",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
-      "note": "Local test release expanding English context, contraction, typo-morphology, slang, and technical-word coverage while exceeding the validated Gboard correction score with zero harmful replacements."
+      "note": "Local test release expanding English context, contraction, typo-morphology, slang, and technical-word coverage while improving validated correction coverage with zero harmful replacements."
+    },
+    {
+      "label": "looping-snippet-ribbon-test-release",
+      "file": "FrankenKey-2.0.60-vc111-new-release-key-9fdb3633-cbe1c15c.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "111",
+      "versionName": "2.0.60",
+      "size": 6851304,
+      "sha256": "cbe1c15c7993f5f096678d8818eb6cf941f30022fb2fef76e3d6101b824887ac",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release looping snippet pages in both directions and reducing horizontal swipe activation distance while preserving snippet taps and vertical gestures."
     }
   ]
 }
