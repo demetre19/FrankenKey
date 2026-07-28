@@ -62,10 +62,10 @@ You can turn Suggestions or Autocorrect off independently in Settings.
 
 ## Two keyboard modes
 
-FrankenKey combines two keyboard ideas:
+FrankenKey combines two layouts:
 
-- **Everyday mode** uses a clean Fleksy-style layout for messages, notes, search, and normal phone typing.
-- **Coding mode** uses a dense Unexpected Keyboard-style layout for code, Termux, SSH, remote computers, and configuration files.
+- **Everyday mode** uses a clean layout for messages, notes, search, and normal phone typing.
+- **Coding mode** uses a dense layout for code, terminals, SSH, remote computers, and configuration files.
 
 Swipe northeast from the Spacebar to switch modes at any time.
 
@@ -114,16 +114,24 @@ FrankenKey includes a keyboard-native clipboard panel for text and images.
 
 Clipboard data remains local to FrankenKey.
 
-## Swipe to delete
+## Cursor navigation, selection and deletion
 
-Everyday mode supports reversible word deletion from the middle letter row:
+The **G** key is a convenient four-direction cursor touchpad. The same gesture works from any middle-row letter in Everyday and Coding text layouts:
 
-1. Start on any middle-row letter and swipe left.
-2. Continue left to select more words or punctuation chunks.
-3. Slide back to the right before release if you selected too much.
-4. Lift your finger to delete the highlighted text.
+- Swipe left or right from G or another middle-row letter to move through text.
+- Swipe up or down to move between lines.
+- Continue farther from the starting key to move faster.
+- Reverse direction to move back precisely.
+- Tap without swiping to type the letter normally.
 
-Backspace also supports normal character deletion, accelerated deletion while held, and a separate word-delete corner gesture.
+To delete a selection:
+
+1. Tap **Shift**.
+2. Swipe from **G** or any middle-row letter to select text in any direction.
+3. Reverse the swipe to shrink the selection when needed.
+4. Tap **Delete**.
+
+For progressive deletion, you can still hold Delete to repeat letters, continue left to highlight words and sentences, reverse to shrink the highlight, and lift to delete it.
 
 ## Snippets
 
@@ -159,13 +167,13 @@ Install the signed APK from this repository:
 FrankenKey-installable-release.apk
 ```
 
-Current release:
+Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.60
-Version code: 111
-SHA-256: cbe1c15c7993f5f096678d8818eb6cf941f30022fb2fef76e3d6101b824887ac
+Version: 2.0.65
+Version code: 116
+SHA-256: 5d1a33b3e516d226d59e8f51763d11d102d59dc349b40c7fdb51f045662ed382
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

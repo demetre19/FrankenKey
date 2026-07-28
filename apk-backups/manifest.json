@@ -623,6 +623,30 @@
       "sha256": "cbe1c15c7993f5f096678d8818eb6cf941f30022fb2fef76e3d6101b824887ac",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Local test release looping snippet pages in both directions and reducing horizontal swipe activation distance while preserving snippet taps and vertical gestures."
+    },
+    {
+      "label": "held-delete-drag-restoration-test-release",
+      "file": "FrankenKey-2.0.63-vc114-new-release-key-9fdb3633-e00242af.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "114",
+      "versionName": "2.0.63",
+      "size": 6854236,
+      "sha256": "e00242af112292650af3f5bbb75a45a307710df8a79c9cf6517d73f25a8bf4a5",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Local test release restoring held Delete letter repeat, progressive word and sentence preview, reverse shrink, and exact highlighted-range deletion on lift."
+    },
+    {
+      "label": "dictionary-and-navigation-guidance-release",
+      "file": "FrankenKey-2.0.65-vc116-new-release-key-9fdb3633-5d1a33b3.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "116",
+      "versionName": "2.0.65",
+      "size": 7824103,
+      "sha256": "5d1a33b3e516d226d59e8f51763d11d102d59dc349b40c7fdb51f045662ed382",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release fixing bundled English dictionary status and availability while updating launcher navigation, selection, and deletion guidance."
     }
   ]
 }

@@ -2,6 +2,22 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.65 — version code 116
+
+- Fixed the incorrect dictionary-install message and made English (Australia), English (United Kingdom), and English (United States) consistently available from local bundled data.
+- Updated the launcher guide for four-direction cursor movement from G or any middle-row letter and Shift-swipe selection followed by Delete.
+
+## 2.0.63 — version code 114
+
+- Restored the held-Delete drag so it deletes the highlighted range instead of leaving the selection active.
+- Hold Delete to remove letters, continue left to highlight words and complete sentences, reverse to shrink the range, and lift to delete it.
+
+## 2.0.61 — version code 112
+
+- Added accelerated four-direction cursor movement from `G` and every middle-row letter.
+- Hold Shift while dragging a middle-row letter to extend or contract text selection horizontally or vertically.
+- Added private adaptive touch calibration and expanded explicit voice-editing commands.
+
 ## 2.0.60 — version code 111
 
 - Snippet pages now loop continuously in both directions.
@@ -36,18 +52,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Let repeated explicit corrections override stale learned history and persist across restarts.
 - Added guarded correction for clear short-word mistakes and missing negative contractions while protecting ambiguous valid words.
-
-## 2.0.53 — version code 104
-
-- Fixed Backspace reintroducing an extra letter after an autocorrection shortened the original typo.
-- Accepted corrections now delete normally instead of making visible text longer.
-
-## 2.0.52 — version code 103
-
-- Added correction learning tied to the exact preceding-word context.
-- Fixed partial-word replacements, duplicate spaces, spaces after undo, and spaces before punctuation.
-
-## 2.0.51 — version code 102
-
-- Fixed capitalized words sometimes duplicating their first letter during autocorrection.
-- Autocorrect now verifies the complete visible word before replacing or learning it.
