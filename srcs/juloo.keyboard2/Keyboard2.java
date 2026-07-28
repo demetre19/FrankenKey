@@ -354,7 +354,7 @@ public class Keyboard2 extends InputMethodService
       && !_assistant_strip.is_showing();
     if (should_show)
       _candidates_view.refresh_config(_config,
-          _resource_spec.mainDictionary != null);
+          _resource_spec.hasTypingDictionary());
     _candidates_view.set_decoder_state(_decoder.current_presentation());
     _candidates_view.setVisibility(should_show ? View.VISIBLE : View.GONE);
   }
@@ -397,10 +397,128 @@ public class Keyboard2 extends InputMethodService
     InputConnection connection = getCurrentInputConnection();
     if (connection == null)
       return;
-    CharSequence before = connection.getTextBeforeCursor(1, 0);
-    String committed = MultimodalVoiceInput.text_to_commit(before, text);
-    if (committed.length() > 0)
-      connection.commitText(committed, 1);
+    MultimodalVoiceInput.VoiceCommand command =
+      MultimodalVoiceInput.parse_command(text);
+    switch (command.action)
+    {
+      case NEW_LINE:
+        connection.commitText("\n", 1);
+        return;
+      case NEW_PARAGRAPH:
+        connection.commitText("\n\n", 1);
+        return;
+      case DELETE_LAST_WORD:
+        delete_last_voice_word(connection);
+        return;
+      case CAPITALIZE_LAST_WORD:
+        capitalize_last_voice_word(connection);
+        return;
+      case UNDO:
+        connection.performContextMenuAction(android.R.id.undo);
+        return;
+      case REDO:
+        connection.performContextMenuAction(android.R.id.redo);
+        return;
+      case SELECT_ALL:
+        connection.performContextMenuAction(android.R.id.selectAll);
+        return;
+      case SEND:
+        perform_voice_editor_action(connection, EditorInfo.IME_ACTION_SEND,
+            KeyEvent.KEYCODE_ENTER);
+        return;
+      case NEXT_FIELD:
+        perform_voice_editor_action(connection, EditorInfo.IME_ACTION_NEXT,
+            KeyEvent.KEYCODE_TAB);
+        return;
+      case STOP:
+        _voice_input.stop();
+        return;
+      case REPLACE:
+        replace_recent_voice_text(connection, command.first, command.second,
+            false);
+        return;
+      case INSERT_AFTER:
+        replace_recent_voice_text(connection, command.second, command.first,
+            true);
+        return;
+      case DICTATE:
+      default:
+        CharSequence before = connection.getTextBeforeCursor(1, 0);
+        String committed = MultimodalVoiceInput.text_to_commit(
+            before, command.first);
+        if (committed.length() > 0)
+          connection.commitText(committed, 1);
+    }
+  }
+
+  static void delete_last_voice_word(InputConnection connection)
+  {
+    CharSequence value = connection.getTextBeforeCursor(256, 0);
+    if (value == null || value.length() == 0)
+      return;
+    int start = value.length();
+    while (start > 0 && Character.isWhitespace(value.charAt(start - 1)))
+      --start;
+    while (start > 0 && !Character.isWhitespace(value.charAt(start - 1)))
+      --start;
+    connection.deleteSurroundingText(value.length() - start, 0);
+  }
+
+  static void capitalize_last_voice_word(InputConnection connection)
+  {
+    CharSequence value = connection.getTextBeforeCursor(256, 0);
+    if (value == null || value.length() == 0)
+      return;
+    int end = value.length();
+    while (end > 0 && Character.isWhitespace(value.charAt(end - 1)))
+      --end;
+    int start = end;
+    while (start > 0 && Character.isLetter(value.charAt(start - 1)))
+      --start;
+    if (start == end)
+      return;
+    String word = value.subSequence(start, end).toString();
+    String replacement = Utils.capitalize_string(word);
+    String tail = value.subSequence(end, value.length()).toString();
+    if (connection.deleteSurroundingText(value.length() - start, 0))
+      connection.commitText(replacement + tail, 1);
+  }
+
+  static void replace_recent_voice_text(InputConnection connection,
+      String target, String replacement, boolean insertAfter)
+  {
+    if (target == null || target.length() == 0 || replacement == null)
+      return;
+    CharSequence value = connection.getTextBeforeCursor(2048, 0);
+    if (value == null)
+      return;
+    String before = value.toString();
+    int start = before.toLowerCase(Locale.ROOT)
+      .lastIndexOf(target.toLowerCase(Locale.ROOT));
+    if (start < 0)
+      return;
+    int end = start + target.length();
+    String tail = before.substring(end);
+    int deleteCount = before.length() - (insertAfter ? end : start);
+    if (!connection.deleteSurroundingText(deleteCount, 0))
+      return;
+    if (insertAfter)
+    {
+      String separator = replacement.length() == 0
+        || Character.isWhitespace(replacement.charAt(0)) ? "" : " ";
+      connection.commitText(separator + replacement + tail, 1);
+    }
+    else
+      connection.commitText(replacement + tail, 1);
+  }
+
+  static void perform_voice_editor_action(InputConnection connection,
+      int action, int fallbackKey)
+  {
+    if (connection.performEditorAction(action))
+      return;
+    connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, fallbackKey));
+    connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, fallbackKey));
   }
 
   private void voice_input_stopped(int errorCode)

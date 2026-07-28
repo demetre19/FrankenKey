@@ -1,11 +1,13 @@
-Bundled English (Australia) and English (United Kingdom) Cdict files
-===================================================================
+Bundled English Cdict files
+===========================
 
 Files:
 - assets/dictionaries/en_AU.dict
   SHA-256 f58af12ce85b4198362d5a06ccaa6505df3428930feea1a1a661b9df9ca45757
 - assets/dictionaries/en_GB.dict
   SHA-256 3d37df320280c2511010abc9a14ce0c4b14c2167c0a10133a7c6c08fe1c97ef6
+- assets/dictionaries/en_US.dict
+  SHA-256 c0080b8544fc21ba9642e66dec1aa2d32923a7b98f8bd1b276f473cb33b7f02a
 
 The files are byte-for-byte decompressed copies of the gzip-compressed Cdict
 artifacts published by Unexpected Keyboard Dictionaries at commit

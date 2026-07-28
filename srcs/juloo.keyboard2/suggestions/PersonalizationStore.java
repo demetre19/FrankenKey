@@ -1,6 +1,7 @@
 package juloo.keyboard2.suggestions;
 
 import android.content.SharedPreferences;
+import juloo.keyboard2.TouchTrace;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,6 +47,23 @@ public final class PersonalizationStore
     {
       target = target_;
       count = count_;
+    }
+  }
+
+  public static final class Stats
+  {
+    public final int learnedWords;
+    public final int nextWordPairs;
+    public final int correctionPatterns;
+    public final int calibratedTouches;
+
+    private Stats(int learnedWords_, int nextWordPairs_,
+        int correctionPatterns_, int calibratedTouches_)
+    {
+      learnedWords = learnedWords_;
+      nextWordPairs = nextWordPairs_;
+      correctionPatterns = correctionPatterns_;
+      calibratedTouches = calibratedTouches_;
     }
   }
 
@@ -231,6 +249,15 @@ public final class PersonalizationStore
     _contextual_correction_counts = prefs == null
       ? new HashMap<ContextualCorrection, Integer>()
       : load_contextual_corrections();
+    if (prefs != null)
+    {
+      _touch_samples = Math.max(0, Math.min(MAX_TOUCH_SAMPLES,
+            prefs.getInt(PREF_TOUCH_SAMPLES, 0)));
+      _touch_offset_x = clamp_touch_offset(
+          prefs.getFloat(PREF_TOUCH_OFFSET_X, 0f));
+      _touch_offset_y = clamp_touch_offset(
+          prefs.getFloat(PREF_TOUCH_OFFSET_Y, 0f));
+    }
   }
 
   public static PersonalizationStore empty()
@@ -240,7 +267,7 @@ public final class PersonalizationStore
 
   public void record_word(String word)
   {
-    record_commit(word, null);
+    record_commit(word, null, null, null);
   }
 
   /**
@@ -250,24 +277,34 @@ public final class PersonalizationStore
    */
   public void record_commit(String word, String correctedFrom)
   {
-    word = normalize(word);
-    if (!is_learnable(word))
-      return;
-    correctedFrom = normalize(correctedFrom);
-    String previousWord = _last_word;
-    boolean changed = increment(_word_counts, word);
-    if (previousWord != null)
-      changed |= increment(_bigram_counts, previousWord + " " + word);
-    if (!word.equals(previousWord))
-      changed = true;
-    _last_word = word;
+    record_commit(word, correctedFrom, null, null);
+  }
 
-    if (is_plausible_correction(correctedFrom, word))
-      changed |= increment_correction(new CorrectionPair(correctedFrom, word));
+  void record_commit(String word, String correctedFrom, String typedWord,
+      TouchTrace.Snapshot touches)
+  {
+    String normalizedWord = normalize(word);
+    if (!is_learnable(normalizedWord))
+      return;
+    String normalizedCorrection = normalize(correctedFrom);
+    String previousWord = _last_word;
+    boolean changed = increment(_word_counts, normalizedWord);
+    if (previousWord != null)
+      changed |= increment(_bigram_counts, previousWord + " " + normalizedWord);
+    if (!normalizedWord.equals(previousWord))
+      changed = true;
+    _last_word = normalizedWord;
+
+    if (is_plausible_correction(normalizedCorrection, normalizedWord))
+      changed |= increment_correction(new CorrectionPair(
+            normalizedCorrection, normalizedWord));
     if (previousWord != null
-        && is_plausible_contextual_correction(correctedFrom, word))
+        && is_plausible_contextual_correction(normalizedCorrection,
+          normalizedWord))
       changed |= increment_contextual_correction(new ContextualCorrection(
-            previousWord, correctedFrom, word));
+            previousWord, normalizedCorrection, normalizedWord));
+    changed |= record_touch_calibration(typedWord, normalizedWord,
+        normalizedCorrection, touches);
 
     if (changed)
     {
@@ -475,17 +512,83 @@ public final class PersonalizationStore
     _generation++;
   }
 
+  float touch_offset_x()
+  {
+    return _touch_samples >= MIN_TOUCH_SAMPLES ? _touch_offset_x : 0f;
+  }
+
+  float touch_offset_y()
+  {
+    return _touch_samples >= MIN_TOUCH_SAMPLES ? _touch_offset_y : 0f;
+  }
+
+  public static Stats stats(SharedPreferences prefs)
+  {
+    PersonalizationStore store = new PersonalizationStore(prefs);
+    return new Stats(store._word_counts.size(), store._bigram_counts.size(),
+        store._correction_counts.size()
+          + store._contextual_correction_counts.size(),
+        store._touch_samples);
+  }
+
+  private boolean record_touch_calibration(String typedWord,
+      String normalizedWord, String normalizedCorrection,
+      TouchTrace.Snapshot touches)
+  {
+    if (typedWord == null || touches == null
+        || normalizedCorrection.length() != 0
+        || !normalize(typedWord).equals(normalizedWord)
+        || typedWord.codePointCount(0, typedWord.length()) != touches.size())
+      return false;
+    boolean changed = false;
+    for (int i = 0; i < touches.size(); ++i)
+    {
+      TouchTrace.Entry touch = touches.get(i);
+      if (touch == null || touch.keyWidth <= 0f || touch.keyHeight <= 0f)
+        continue;
+      float x = (touch.touchX - touch.keyCenterX) / touch.keyWidth;
+      float y = (touch.touchY - touch.keyCenterY) / touch.keyHeight;
+      if (!finite(x) || !finite(y) || Math.abs(x) > 0.6f
+          || Math.abs(y) > 0.6f)
+        continue;
+      int denominator = Math.min(_touch_samples + 1, 256);
+      _touch_offset_x += (clamp_touch_offset(x) - _touch_offset_x)
+        / denominator;
+      _touch_offset_y += (clamp_touch_offset(y) - _touch_offset_y)
+        / denominator;
+      if (_touch_samples < MAX_TOUCH_SAMPLES)
+        ++_touch_samples;
+      changed = true;
+    }
+    return changed;
+  }
+
+  private static float clamp_touch_offset(float value)
+  {
+    if (!finite(value))
+      return 0f;
+    return Math.max(-MAX_TOUCH_OFFSET, Math.min(MAX_TOUCH_OFFSET, value));
+  }
+
+  private static boolean finite(float value)
+  {
+    return !Float.isNaN(value) && !Float.isInfinite(value);
+  }
+
   public void clear()
   {
     boolean changed = !_word_counts.isEmpty() || !_bigram_counts.isEmpty()
       || !_correction_counts.isEmpty()
       || !_contextual_correction_counts.isEmpty() || _last_word != null
-      || has_data(_prefs);
+      || _touch_samples != 0 || has_data(_prefs);
     _word_counts.clear();
     _bigram_counts.clear();
     _correction_counts.clear();
     _contextual_correction_counts.clear();
     _last_word = null;
+    _touch_samples = 0;
+    _touch_offset_x = 0f;
+    _touch_offset_y = 0f;
     clear(_prefs);
     if (changed)
       _generation++;
@@ -500,6 +603,9 @@ public final class PersonalizationStore
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
       .remove(PREF_CONTEXTUAL_CORRECTIONS)
+      .remove(PREF_TOUCH_SAMPLES)
+      .remove(PREF_TOUCH_OFFSET_X)
+      .remove(PREF_TOUCH_OFFSET_Y)
       .apply();
   }
 
@@ -508,7 +614,8 @@ public final class PersonalizationStore
     return prefs != null
       && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_BIGRAMS)
         || prefs.contains(PREF_CORRECTIONS)
-        || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS));
+        || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS)
+        || prefs.getInt(PREF_TOUCH_SAMPLES, 0) > 0);
   }
 
   public static boolean is_learnable(String word)
@@ -772,6 +879,18 @@ public final class PersonalizationStore
     else
       editor.putStringSet(PREF_CONTEXTUAL_CORRECTIONS,
           encode_contextual_corrections(_contextual_correction_counts));
+    if (_touch_samples == 0)
+    {
+      editor.remove(PREF_TOUCH_SAMPLES);
+      editor.remove(PREF_TOUCH_OFFSET_X);
+      editor.remove(PREF_TOUCH_OFFSET_Y);
+    }
+    else
+    {
+      editor.putInt(PREF_TOUCH_SAMPLES, _touch_samples);
+      editor.putFloat(PREF_TOUCH_OFFSET_X, _touch_offset_x);
+      editor.putFloat(PREF_TOUCH_OFFSET_Y, _touch_offset_y);
+    }
     editor.apply();
   }
 
@@ -1073,6 +1192,9 @@ public final class PersonalizationStore
   private final Map<ContextualCorrection, Integer>
     _contextual_correction_counts;
   private String _last_word = null;
+  private int _touch_samples = 0;
+  private float _touch_offset_x = 0f;
+  private float _touch_offset_y = 0f;
   private long _generation = 0;
 
   static final int MAX_EXACT_CORRECTION_EDITS = 2;
@@ -1083,10 +1205,19 @@ public final class PersonalizationStore
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
   private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
+  private static final int MIN_TOUCH_SAMPLES = 20;
+  private static final int MAX_TOUCH_SAMPLES = 4096;
+  private static final float MAX_TOUCH_OFFSET = 0.2f;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_BIGRAMS = "typing_model_bigrams";
   public static final String PREF_CORRECTIONS =
     "typing_model_corrections_v1";
   public static final String PREF_CONTEXTUAL_CORRECTIONS =
     "typing_model_contextual_corrections_v1";
+  public static final String PREF_TOUCH_SAMPLES =
+    "typing_model_touch_samples_v1";
+  public static final String PREF_TOUCH_OFFSET_X =
+    "typing_model_touch_offset_x_v1";
+  public static final String PREF_TOUCH_OFFSET_Y =
+    "typing_model_touch_offset_y_v1";
 }

@@ -78,6 +78,52 @@ public class PointerRepeatTimingTest
   }
 
   @Test
+  public void ordinary_backspace_swipe_keeps_authored_word_delete()
+      throws Exception
+  {
+    Harness harness = harness(configuredTiming(), key(
+        KeyValue.getKeyByName("backspace"),
+        KeyValue.getKeyByName("delete_word")));
+
+    harness.down();
+    harness.move(-100f, 10f);
+    harness.up();
+
+    assertEquals("A swipe before the hold threshold must keep the layout-authored Backspace gesture.",
+        1, harness.handler.ups.size());
+    assertEquals(KeyValue.getKeyByName("delete_word"),
+        harness.handler.ups.get(0));
+  }
+
+  @Test
+  public void held_backspace_left_drag_switches_from_letter_repeat_to_gradual_delete()
+      throws Exception
+  {
+    Harness harness = harness(configuredTiming(),
+        new RepeatCase("Backspace", KeyValue.getKeyByName("backspace")));
+
+    harness.down();
+    idleFor(LONG_PRESS_TIMEOUT_MS);
+    assertEquals("Holding Delete must begin its normal letter-by-letter repeat at the long-press threshold.",
+        1, harness.handler.holds.size());
+    assertEquals(KeyValue.getKeyByName("backspace"),
+        harness.handler.holds.get(0));
+
+    harness.move(-100f, 10f);
+    idleFor(DELETE_REPEAT_INTERVAL_MS * 2L);
+    assertEquals("Entering the left-drag slider must cancel all further letter repeats.",
+        1, harness.handler.holds.size());
+    harness.up();
+
+    assertEquals(1, harness.handler.ups.size());
+    KeyValue release = harness.handler.ups.get(0);
+    assertEquals(KeyValue.Kind.Slider, release.getKind());
+    assertEquals("A held Delete drag must reuse the destructive gradual-delete slider.",
+        KeyValue.Slider.Delete_words_left, release.getSlider());
+    assertEquals(0, release.getSliderRepeat());
+  }
+
+  @Test
   public void releasing_after_first_paste_or_delete_repeat_emits_no_extra_action()
       throws Exception
   {
@@ -89,11 +135,12 @@ public class PointerRepeatTimingTest
       harness.down();
       idleFor(LONG_PRESS_TIMEOUT_MS);
       assertEquals("Holding " + repeatCase.label
-          + " through the timeout must emit the first intentional repeat.",
+          + " through its first repeat deadline must emit one intentional repeat.",
           1, harness.handler.holds.size());
       assertEquals("The first held " + repeatCase.label
           + " action must repeat the key the user is still pressing.",
           repeatCase.value, harness.handler.holds.get(0));
+
       harness.up();
 
       assertEquals("Releasing " + repeatCase.label
@@ -147,7 +194,7 @@ public class PointerRepeatTimingTest
       harness.down();
       idleFor(LONG_PRESS_TIMEOUT_MS);
       assertEquals("Held " + repeatCase.label
-          + " must emit its first delete at the long-press timeout.",
+          + " must emit its first delete at its repeat deadline.",
           1, harness.handler.holds.size());
 
       idleFor(DELETE_REPEAT_INTERVAL_MS - 1L);
@@ -203,10 +250,15 @@ public class PointerRepeatTimingTest
 
   private Harness harness(Config config, RepeatCase repeatCase)
   {
+    return harness(config, key(repeatCase.value));
+  }
+
+  private Harness harness(Config config, KeyboardData.Key key)
+  {
     RecordingHandler handler = new RecordingHandler();
     Pointers pointers = new Pointers(handler, config);
     _pointers.add(pointers);
-    return new Harness(pointers, handler, key(repeatCase.value));
+    return new Harness(pointers, handler, key);
   }
 
   private static List<RepeatCase> pasteAndDeleteCases()
@@ -229,6 +281,7 @@ public class PointerRepeatTimingTest
   {
     return Arrays.asList(
         new RepeatCase("Backspace", KeyValue.getKeyByName("backspace")),
+
         new RepeatCase("delete word", KeyValue.getKeyByName("delete_word")),
         new RepeatCase("forward delete word",
           KeyValue.getKeyByName("forward_delete_word")),
@@ -238,10 +291,20 @@ public class PointerRepeatTimingTest
           KeyValue.keyeventKey("Forward Del", KeyEvent.KEYCODE_FORWARD_DEL, 0)));
   }
 
+
   private static KeyboardData.Key key(KeyValue value)
   {
     KeyValue[] values = new KeyValue[9];
     values[0] = value;
+    return new KeyboardData.Key(values, null, 0, 1f, 0f, null,
+        KeyboardData.Key.Role.Normal);
+  }
+
+  private static KeyboardData.Key key(KeyValue value, KeyValue leftSwipe)
+  {
+    KeyValue[] values = new KeyValue[9];
+    values[0] = value;
+    values[5] = leftSwipe;
     return new KeyboardData.Key(values, null, 0, 1f, 0f, null,
         KeyboardData.Key.Role.Normal);
   }
@@ -283,9 +346,14 @@ public class PointerRepeatTimingTest
 
     void down()
     {
-      pointers.onTouchDown(0f, 0f, pointerId, key, null);
+      pointers.onTouchDown(0f, 10f, pointerId, key, null);
     }
 
+
+    void move(float x, float y)
+    {
+      pointers.onTouchMove(x, y, pointerId);
+    }
     void up()
     {
       pointers.onTouchUp(pointerId);

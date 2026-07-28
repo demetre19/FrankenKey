@@ -1,0 +1,3 @@
+Restored accelerated text selection from the Delete key.
+
+Hold Delete until the selection gesture arms, then drag left. FrankenKey highlights the nearest words first and expands by complete sentences as the drag accelerates. Drag back toward Delete to shrink the highlight, then lift to keep the selected text available for replacement, copying, or a later Delete press. Normal Delete taps, held deletion, existing authored swipes, and middle-row touchpad movement remain separate.

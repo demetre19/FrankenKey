@@ -59,6 +59,7 @@ public final class KeyEventHandler
   private static final int DELETE_WORDS_CONTEXT_LIMIT = 4096;
   private static final int DELETE_WORDS_CURSOR_LOCAL = -1;
   private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
+  private static final int SELECT_WORDS_BEFORE_SENTENCES = 3;
   private static final int PENDING_BOUNDARY_FOLLOWING_CODEPOINTS = 8;
   private static final int MAX_LATENT_AUTOCORRECT_BOUNDARIES = 2;
 
@@ -483,7 +484,7 @@ public final class KeyEventHandler
   @Override
   public void key_cancel(KeyValue key, Pointers.Modifiers mods)
   {
-    if (is_delete_words_slider(key))
+    if (is_backward_words_slider(key))
       cancel_delete_words_selection();
   }
 
@@ -1508,24 +1509,35 @@ public final class KeyEventHandler
       clear_manual_correction();
     switch (s)
     {
-      case Cursor_left: move_cursor(-r); break;
-      case Cursor_right: move_cursor(r); break;
+      case Cursor_left:
+        if ((_meta_state & KeyEvent.META_SHIFT_ON) != 0)
+          move_cursor_fallback(-r);
+        else
+          move_cursor(-r);
+        break;
+      case Cursor_right:
+        if ((_meta_state & KeyEvent.META_SHIFT_ON) != 0)
+          move_cursor_fallback(r);
+        else
+          move_cursor(r);
+        break;
       case Cursor_up: move_cursor_vertical(-r); break;
       case Cursor_down: move_cursor_vertical(r); break;
       case Selection_cursor_left: move_cursor_sel(r, true, key_down); break;
       case Selection_cursor_right: move_cursor_sel(r, false, key_down); break;
-      case Delete_words_left: handle_delete_words_slider(r, key_down); break;
+      case Delete_words_left: handle_backward_words_slider(r, key_down); break;
     }
   }
 
-  private boolean is_delete_words_slider(KeyValue key)
+  private boolean is_backward_words_slider(KeyValue key)
   {
-    return key != null
-      && key.getKind() == KeyValue.Kind.Slider
-      && key.getSlider() == KeyValue.Slider.Delete_words_left;
+    if (key == null || key.getKind() != KeyValue.Kind.Slider)
+      return false;
+    KeyValue.Slider slider = key.getSlider();
+    return slider == KeyValue.Slider.Delete_words_left;
   }
 
-  private void handle_delete_words_slider(int r, boolean key_down)
+  private void handle_backward_words_slider(int r, boolean key_down)
   {
     if (r == 0 && !key_down)
     {
@@ -1585,13 +1597,14 @@ public final class KeyEventHandler
   {
     if (_delete_selection == null || _delete_selection.cursor < 0)
       return;
-    int start = delete_start_for_steps(_delete_selection.textBeforeCursor,
+    int start = select_start_for_steps(_delete_selection.textBeforeCursor,
         _delete_selection.steps);
     int selection_start = _delete_selection.cursor
       - (_delete_selection.textBeforeCursor.length() - start);
     if (conn.setSelection(selection_start, _delete_selection.cursor))
       _recv.selection_state_changed(_delete_selection.steps > 0);
   }
+
 
   private void commit_delete_words_selection()
   {
@@ -1602,7 +1615,7 @@ public final class KeyEventHandler
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return;
-    int start = delete_start_for_steps(sel.textBeforeCursor, sel.steps);
+    int start = select_start_for_steps(sel.textBeforeCursor, sel.steps);
     int remove_before = sel.textBeforeCursor.length() - start;
     if (remove_before == 0)
     {
@@ -1723,6 +1736,56 @@ public final class KeyEventHandler
       pos = next;
     }
     return pos;
+  }
+
+  static int select_start_for_steps(String text, int steps)
+  {
+    int pos = text.length();
+    int word_steps = Math.min(steps, SELECT_WORDS_BEFORE_SENTENCES);
+    for (int i = 0; i < word_steps; ++i)
+    {
+      int next = previous_delete_start(text, pos);
+      if (next == pos)
+        break;
+      pos = next;
+    }
+    for (int i = SELECT_WORDS_BEFORE_SENTENCES; i < steps; ++i)
+    {
+      int next = previous_sentence_start(text, pos);
+      if (next == pos)
+        break;
+      pos = next;
+    }
+    return pos;
+  }
+
+  private static int previous_sentence_start(String text, int pos)
+  {
+    int p = Math.max(0, Math.min(pos, text.length()));
+    for (int i = p - 1; i >= 0; --i)
+    {
+      char c = text.charAt(i);
+      if (c != '\n' && !is_sentence_terminator(c))
+        continue;
+      int start = i + 1;
+      while (start < p && is_sentence_tail(text.charAt(start)))
+        ++start;
+      if (start < p)
+        return start;
+    }
+    return 0;
+  }
+
+  private static boolean is_sentence_terminator(char c)
+  {
+    return c == '.' || c == '!' || c == '?';
+  }
+
+  private static boolean is_sentence_tail(char c)
+  {
+    return Character.isWhitespace(c) || is_sentence_terminator(c)
+      || c == '"' || c == '\'' || c == '”' || c == '’'
+      || c == ')' || c == ']';
   }
 
   private static int previous_delete_start(String text, int pos)

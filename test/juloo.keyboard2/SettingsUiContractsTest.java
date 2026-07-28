@@ -67,6 +67,18 @@ public class SettingsUiContractsTest
   }
 
   @Test
+  public void launcher_guidance_explains_navigation_selection_and_delete()
+      throws Exception
+  {
+    assertEquals("Launcher guidance must name the current text-editing workflow.",
+        "Navigate and delete", resourceString("launcher_delete_heading"));
+    assertEquals("Users must be told how to navigate from G or any middle-row letter, select with Shift, and delete.",
+        "Swipe from G or any middle-row letter to move the cursor up, down, left or right. "
+          + "Tap Shift first to select text while swiping, then tap Delete.",
+        resourceString("launcher_delete_summary"));
+  }
+
+  @Test
   public void all_generated_extra_key_checkboxes_share_localized_summary()
       throws Exception
   {
@@ -641,12 +653,14 @@ public class SettingsUiContractsTest
     {
       String copy = resourceString(resource)
         .toLowerCase(java.util.Locale.US);
-      assertTrue(resource + " must name remembered-word data.",
-          copy.contains("remembered words"));
+      assertTrue(resource + " must name learned-word data.",
+          copy.contains("learned words"));
       assertTrue(resource + " must name next-word memory.",
-          copy.contains("next-word memory"));
-      assertTrue(resource + " must name learned typo-correction weights.",
-          copy.contains("typo-correction weights"));
+          copy.contains("next-word"));
+      assertTrue(resource + " must name correction patterns.",
+          copy.contains("correction patterns"));
+      assertTrue(resource + " must name touch calibration.",
+          copy.contains("touch calibration"));
     }
   }
 

@@ -13,15 +13,15 @@
     <key key0="p" key2="hide toggle_clean_mode"/>
   </row>
   <row>
-    <key shift="0.5" key0="a" key5="hide delete_words_left"/>
-    <key key0="s" key5="hide delete_words_left"/>
-    <key key0="d" key4="hide esc" key5="hide delete_words_left"/>
-    <key key0="f" key4="hide change_method" key5="hide delete_words_left"/>
-    <key key0="g" key4="hide compose" key5="hide delete_words_left"/>
-    <key key0="h" key4="hide alt" key5="hide delete_words_left"/>
-    <key key0="j" key4="hide meta" key5="hide delete_words_left"/>
-    <key key0="k" key5="hide delete_words_left"/>
-    <key key0="l" key5="hide delete_words_left"/>
+    <key shift="0.5" key0="a" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="s" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="d" key4="hide esc" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="f" key4="hide change_method" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="g" key4="hide compose" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="h" key4="hide alt" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="j" key4="hide meta" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="k" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
+    <key key0="l" key5="hide cursor_left" key6="hide cursor_right" key7="hide cursor_up" key8="hide cursor_down"/>
   </row>
   <row>
     <key width="1.5" role="action" key0="shift"/>

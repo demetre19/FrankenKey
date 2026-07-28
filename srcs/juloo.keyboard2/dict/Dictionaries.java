@@ -42,7 +42,12 @@ public final class Dictionaries
   {
     if (_loaded_dictionaries.containsKey(dict_name))
       return _loaded_dictionaries.get(dict_name);
+    ensure_bundled_dictionary_file(dict_name);
     Cdict[] dict = load_uncached(dict_name);
+    if (dict == null && is_bundled_english(dict_name)
+        && _installed_dictionaries.contains(dict_name)
+        && install_bundled_dictionary(dict_name))
+      dict = load_uncached(dict_name);
     _loaded_dictionaries.put(dict_name, dict);
     return dict;
   }
@@ -95,8 +100,12 @@ public final class Dictionaries
   static final String PREF_INSTALLED_DICTS = "installed";
   static final String PREF_BUNDLED_ENGLISH_SEEDED =
     "bundled_english_au_gb_v1_seeded";
+  static final String PREF_BUNDLED_ENGLISH_US_SEEDED =
+    "bundled_english_us_v1_seeded";
   static final String[] BUNDLED_ENGLISH_DICTIONARIES =
-    { "en_AU", "en_GB" };
+    { "en_AU", "en_GB", "en_US" };
+  static final String[] BUNDLED_ENGLISH_AU_GB = { "en_AU", "en_GB" };
+  static final String[] BUNDLED_ENGLISH_US = { "en_US" };
 
   Dictionaries(Context ctx)
   {
@@ -126,39 +135,67 @@ public final class Dictionaries
 
   void seed_bundled_english_dictionaries()
   {
+    seed_bundled_dictionary_generation(PREF_BUNDLED_ENGLISH_SEEDED,
+        BUNDLED_ENGLISH_AU_GB);
+    seed_bundled_dictionary_generation(PREF_BUNDLED_ENGLISH_US_SEEDED,
+        BUNDLED_ENGLISH_US);
+  }
+
+  void seed_bundled_dictionary_generation(String preference,
+      String[] dictionaries)
+  {
     if (_shared_prefs == null
-        || _shared_prefs.getBoolean(PREF_BUNDLED_ENGLISH_SEEDED, false))
+        || _shared_prefs.getBoolean(preference, false))
       return;
 
-    for (String name : BUNDLED_ENGLISH_DICTIONARIES)
-    {
-      if (_installed_dictionaries.contains(name)
-          && get_install_location(name).isFile())
-        continue;
-      InputStream input = null;
-      try
-      {
-        input = _context.getAssets().open("dictionaries/" + dict_file_name(name));
-        install(name, Utils.read_all_bytes(input));
-      }
-      catch (IOException e)
-      {
-        Logs.exn("Unable to seed bundled dictionary " + name, e);
+    for (String name : dictionaries)
+      if ((!_installed_dictionaries.contains(name)
+            || !get_install_location(name).isFile())
+          && !install_bundled_dictionary(name))
         return;
-      }
-      finally
+
+    _shared_prefs.edit().putBoolean(preference, true).commit();
+  }
+
+  boolean install_bundled_dictionary(String name)
+  {
+    InputStream input = null;
+    try
+    {
+      input = _context.getAssets().open("dictionaries/" + dict_file_name(name));
+      install(name, Utils.read_all_bytes(input));
+      return true;
+    }
+    catch (IOException e)
+    {
+      Logs.exn("Unable to seed bundled dictionary " + name, e);
+      return false;
+    }
+    finally
+    {
+      if (input != null)
       {
-        if (input != null)
-        {
-          try { input.close(); }
-          catch (IOException e) { Logs.exn("", e); }
-        }
+        try { input.close(); }
+        catch (IOException e) { Logs.exn("", e); }
       }
     }
+  }
 
-    _shared_prefs.edit()
-      .putBoolean(PREF_BUNDLED_ENGLISH_SEEDED, true)
-      .commit();
+  static boolean is_bundled_english(String name)
+  {
+    for (String bundled : BUNDLED_ENGLISH_DICTIONARIES)
+      if (bundled.equals(name))
+        return true;
+    return false;
+  }
+
+  boolean ensure_bundled_dictionary_file(String name)
+  {
+    if (!is_bundled_english(name)
+        || !_installed_dictionaries.contains(name))
+      return false;
+    return get_install_location(name).isFile()
+      || install_bundled_dictionary(name);
   }
 
   Cdict[] load_uncached(String dict_name)

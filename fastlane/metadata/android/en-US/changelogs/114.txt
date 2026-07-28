@@ -1,0 +1,3 @@
+Fixed the Delete drag regression.
+
+Hold Delete to remove letters. While the same finger remains down, drag left to highlight words and then complete sentences; drag back to shrink the highlight, and lift to delete exactly the highlighted text. Quick authored swipes before the hold threshold remain unchanged.

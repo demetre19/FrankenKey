@@ -245,6 +245,49 @@ public class DeleteHoldBehaviorTest
   }
 
   @Test
+  public void delete_words_left_highlights_words_then_sentences_and_deletes_selection()
+  {
+    String text =
+      "One sentence here. Two more words. alpha beta gamma";
+    FakeReceiver receiver = new FakeReceiver(text);
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+    KeyValue grow = KeyValue.sliderKey(
+        KeyValue.Slider.Delete_words_left, 1);
+    KeyValue shrink = KeyValue.sliderKey(
+        KeyValue.Slider.Delete_words_left, -1);
+    KeyValue release = KeyValue.sliderKey(
+        KeyValue.Slider.Delete_words_left, 0);
+
+    handler.key_down(grow, true);
+    assertEquals("gamma", receiver.input.selectedText());
+    handler.key_hold(grow, Pointers.Modifiers.EMPTY, 0);
+    assertEquals("beta gamma", receiver.input.selectedText());
+    handler.key_hold(grow, Pointers.Modifiers.EMPTY, 0);
+    assertEquals("alpha beta gamma", receiver.input.selectedText());
+
+    handler.key_hold(grow, Pointers.Modifiers.EMPTY, 0);
+    assertEquals("After the initial word tiers, a continued drag must expand by a whole sentence.",
+        "Two more words. alpha beta gamma",
+        receiver.input.selectedText());
+    handler.key_hold(grow, Pointers.Modifiers.EMPTY, 0);
+    assertEquals("A further drag step must add the previous sentence.",
+        text, receiver.input.selectedText());
+
+    handler.key_hold(shrink, Pointers.Modifiers.EMPTY, 0);
+    assertEquals("Dragging back toward Delete must shrink the sentence selection deterministically.",
+        "Two more words. alpha beta gamma",
+        receiver.input.selectedText());
+    handler.key_up(release, Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("Lifting a Delete drag must delete exactly the highlighted words and sentences.",
+        "One sentence here. ", receiver.input.text.toString());
+    assertEquals(receiver.input.selectionStart, receiver.input.selectionEnd);
+    assertEquals(false, receiver.selectionStates.get(
+          receiver.selectionStates.size() - 1));
+  }
+
+
+  @Test
   public void delete_words_left_works_when_editor_exposes_only_cursor_local_text()
   {
     String prefix = "https://example.test/";
@@ -393,6 +436,33 @@ public class DeleteHoldBehaviorTest
   }
 
   @Test
+  public void shift_trackpad_drag_uses_directional_selection_events()
+  {
+    FakeReceiver receiver = new FakeReceiver("alpha beta");
+    KeyEventHandler handler = new KeyEventHandler(receiver, null);
+    Pointers.Modifiers shift = Pointers.Modifiers.EMPTY.with_extra_mod(
+        KeyValue.getKeyByName("shift"));
+
+    handler.key_hold(KeyValue.sliderKey(KeyValue.Slider.Cursor_left, 1),
+        shift, 0);
+    handler.key_hold(KeyValue.sliderKey(KeyValue.Slider.Cursor_up, 1),
+        shift, 0);
+
+    List<KeyEvent> directions = new ArrayList<KeyEvent>();
+    for (KeyEvent event : receiver.input.keyEvents)
+      if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT
+          || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP)
+        directions.add(event);
+    assertEquals(4, directions.size());
+    assertEquals(KeyEvent.KEYCODE_DPAD_LEFT, directions.get(0).getKeyCode());
+    assertEquals(KeyEvent.KEYCODE_DPAD_UP, directions.get(2).getKeyCode());
+    assertTrue("Shift-drag trackpad events must retain Shift so the editor extends or contracts selection.",
+        (directions.get(0).getMetaState() & KeyEvent.META_SHIFT_ON) != 0);
+    assertTrue((directions.get(2).getMetaState()
+          & KeyEvent.META_SHIFT_ON) != 0);
+  }
+
+  @Test
   public void delete_words_left_slider_uses_gradual_accelerating_pacing()
       throws Exception
   {
@@ -401,16 +471,20 @@ public class DeleteHoldBehaviorTest
         "public void onTouchMove(Pointer ptr, float x, float y)");
     String pacedDeleteWordsDelta = methodBody(source,
         "private int pacedDeleteWordsDelta");
+    String wordSelectionGate = methodBody(source,
+        "private static boolean isWordSelectionSlider");
     String slidingConstructor = methodBody(source,
         "public Sliding(float x, float y, int dirx, int diry, KeyValue.Slider s)");
 
     int deleteWordsGate =
-      onTouchMove.indexOf("slider == KeyValue.Slider.Delete_words_left");
+      onTouchMove.indexOf("isWordSelectionSlider(slider)");
     int pacedDeltaCall =
       onTouchMove.indexOf("pacedDeleteWordsDelta", deleteWordsGate);
     int emitStep = onTouchMove.indexOf("_handler.onPointerHold", pacedDeltaCall);
-    assertOrdered("Delete-words slider steps must pass through the dedicated pacing helper before emitting repeat deltas.",
+    assertOrdered("Gradual deletion must pass through the pacing helper before emitting repeat deltas.",
         deleteWordsGate, pacedDeltaCall, emitStep);
+    assertTrue("The destructive slider must use the gradual word-selection acceleration gate.",
+        wordSelectionGate.contains("Delete_words_left"));
 
     assertTrue("Delete-words pacing must remain anchored by Config.deleteWordsInterval in milliseconds.",
         pacedDeleteWordsDelta.contains("_config.deleteWordsInterval"));
@@ -426,8 +500,8 @@ public class DeleteHoldBehaviorTest
     assertFalse("Delete-words slider pacing must not use the generic held-key repeat interval.",
         pacedDeleteWordsDelta.contains("repeatInterval")
         || pacedDeleteWordsDelta.contains("longPressInterval"));
-    assertTrue("Starting a delete-words slide must initialize its pacing clock so opening the slider cannot immediately burst-delete words.",
-        slidingConstructor.contains("s == KeyValue.Slider.Delete_words_left")
+    assertTrue("Starting either backward-word slide must initialize its pacing clock so opening the slider cannot immediately burst across text.",
+        slidingConstructor.contains("isWordSelectionSlider(s)")
         && slidingConstructor.contains("System.currentTimeMillis()"));
   }
 

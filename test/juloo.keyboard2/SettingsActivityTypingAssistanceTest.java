@@ -228,7 +228,19 @@ public class SettingsActivityTypingAssistanceTest
   {
     Preference status = activity.findPreference("typing_assistance_status");
     assertNotNull("Settings must expose adaptive-learning status.", status);
+    String expectedSummary;
+    if (expected == R.string.pref_typing_assistance_status_with_learning)
+    {
+      PersonalizationStore.Stats stats = PersonalizationStore.stats(
+          android.preference.PreferenceManager
+            .getDefaultSharedPreferences(activity));
+      expectedSummary = activity.getString(expected, stats.learnedWords,
+          stats.nextWordPairs, stats.correctionPatterns,
+          stats.calibratedTouches);
+    }
+    else
+      expectedSummary = activity.getString(expected);
     assertEquals("Adaptive-learning status must refresh from persisted data.",
-        activity.getString(expected), status.getSummary().toString());
+        expectedSummary, status.getSummary().toString());
   }
 }

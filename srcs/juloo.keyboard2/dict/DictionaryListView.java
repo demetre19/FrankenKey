@@ -43,20 +43,27 @@ public class DictionaryListView extends LinearLayout
     SupportedDictionaries ds = new SupportedDictionaries(ctx.getResources());
     DownloadBtnListener listener = this.new DownloadBtnListener();
     _dict_views = new ArrayList<DictView>();
+    Set<String> added = new HashSet<String>();
+    for (String name : Dictionaries.BUNDLED_ENGLISH_DICTIONARIES)
+      add_dictionary_view(ctx, ds, listener, added, name);
     for (DeviceLocales.Loc loc : locales.installed)
-    {
-      int idx = (loc.dictionary != null) ? ds.find(loc.dictionary) : -1;
-      if (idx >= 0)
-      {
-        DictView dv = new DictView(ctx, ds, idx, listener);
-        addView(dv.view);
-        _dict_views.add(dv);
-      }
-    }
+      if (loc.dictionary != null)
+        add_dictionary_view(ctx, ds, listener, added, loc.dictionary);
     refresh();
     // The keyboard is not enabled and the list is empty, show a message.
     if (locales.installed.size() == 0)
       addView(View.inflate(ctx, R.layout.dictionary_status_not_enabled, null));
+  }
+
+  void add_dictionary_view(Context ctx, SupportedDictionaries dictionaries,
+      DownloadBtnListener listener, Set<String> added, String name)
+  {
+    int index = dictionaries.find(name);
+    if (index < 0 || !added.add(name))
+      return;
+    DictView view = new DictView(ctx, dictionaries, index, listener);
+    addView(view.view);
+    _dict_views.add(view);
   }
 
   /** Update the "installed" status of item views. Meaning whether the
@@ -76,12 +83,19 @@ public class DictionaryListView extends LinearLayout
           {
             if (_dictionaries.get_installed().contains(dict_name))
               _dictionaries.uninstall(dict_name);
-            else if (install_dictionary_from_internet(dict_name))
+            else if (install_dictionary(dict_name))
               post_toast(R.string.dictionaries_download_success);
             else
               post_toast(R.string.dictionaries_download_failed);
           }
         });
+  }
+
+  boolean install_dictionary(String name)
+  {
+    return Dictionaries.is_bundled_english(name)
+      ? _dictionaries.install_bundled_dictionary(name)
+      : install_dictionary_from_internet(name);
   }
 
   /** Run action [r] for dictionary [name] if no action is already running for

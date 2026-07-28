@@ -1,0 +1,3 @@
+Fixed the incorrect install-dictionary message for bundled English typing data.
+
+The dictionary screen now always shows English (Australia), English (United Kingdom), and English (United States). All three include local typing data, and a bundled dictionary still marked installed repairs a missing private copy automatically.

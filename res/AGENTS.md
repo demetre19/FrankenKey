@@ -14,6 +14,9 @@
 - UI/resource changes must keep clean Fleksy mode and FrankenKey mode coherent.
 - Clean Fleksy mode keeps the Q, P, D, F, G, H, J, 123, and Backspace secondary gesture actions available but hides their compact legends to preserve an uncluttered everyday layout.
 - In clean and dense text layouts, the spacebar owns clipboard at top-left, emoji at bottom-left, and GIF at bottom-right; voice typing remains on the far-right Enter/Done key and must not move back to the spacebar.
+- Clean and dense text-layout middle rows are the cursor touchpad origin: hidden west/east/north/south sliders provide left/right/up/down movement without rendering arrow clutter. Do not move this behavior onto the already-tooled spacebar. Numeric and symbol middle rows retain their hidden gradual word-delete gesture.
+- Launcher navigation guidance must name G and the other middle-row letters for four-direction cursor movement, then describe Shift-modified swipe selection followed by Delete; do not present the held-Delete drag as the primary editing workflow.
+- English subtype resources must expose Australian (`en_AU`), UK (`en_GB`), and US (`en_US`) choices with matching dictionary IDs and region labels.
 - Preserve launcher/store icons unless the user explicitly requests icon changes; adaptive/circular foreground tweaks should target `ic_launcher_foreground` assets.
 - Strings and settings keys are behavioral contracts; update tests when changing them.
 - Typing settings expose separate millisecond repeat intervals for paste and destructive delete actions; both remain dependent on the global key-repeat toggle.
@@ -22,7 +25,7 @@
 - The launcher/settings home screen presents the `Private by design` card as its first content block, ahead of introductory copy and setup controls.
 - Every user-visible Settings switch must have a concise, accurate summary; generated extra-key checkboxes use the shared extra-key summary.
 - System grammar and multimodal voice settings default off. Their summaries/disclosures must identify the Android service boundary; the compact assistant strip may replace candidates temporarily but must leave the keyboard layout visible.
-- Adaptive-learning clear and individual word-forget copy must accurately describe the destructive scope and remain wired to explicit platform confirmation dialogs.
+- Adaptive-learning status and clear/forget copy must accurately describe learned words, correction patterns, and touch calibration; destructive actions remain wired to explicit platform confirmation dialogs.
 - Settings exposes default-on automatic update checks, in-app or GitHub delivery, current update status, and a manual check. Update notices must show release changelog text and require explicit acceptance or rejection.
 - Snippet icon drawables are the curated Lucide set mapped by stable IDs in `SnippetIcons`; preserve their shared 24×24 stroke treatment and the packaged Lucide/Feather license notice.
 

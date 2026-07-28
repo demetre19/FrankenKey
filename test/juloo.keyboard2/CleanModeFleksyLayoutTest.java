@@ -61,6 +61,7 @@ public class CleanModeFleksyLayoutTest
     assertEquals("Clean text bottom row must keep Fleksy's shift/letters/backspace shape.",
         Arrays.asList("shift", "z", "x", "c", "v", "b", "n", "m", "backspace"),
         primaryNames(directKeys(rows.get(2))));
+    assertCenterRowTrackpad(rows.get(1));
 
     assertEquals("Clean text bottom row must be Fleksy's 123/Fn/space/punctuation/enter row with no Ctrl or arrow cluster.",
         Arrays.asList("switch_numeric", "fn", "space", ".", "enter"),
@@ -100,15 +101,15 @@ public class CleanModeFleksyLayoutTest
     assertCleanLetterKey(rows.get(0), "i");
     assertCleanLetterKey(rows.get(0), "o");
     assertCleanLetterKey(rows.get(0), "p", "key2");
-    assertCleanLetterKey(rows.get(1), "a", "key5");
-    assertCleanLetterKey(rows.get(1), "s", "key5");
-    assertCleanLetterKey(rows.get(1), "d", "key4", "key5");
-    assertCleanLetterKey(rows.get(1), "f", "key4", "key5");
-    assertCleanLetterKey(rows.get(1), "g", "key4", "key5");
-    assertCleanLetterKey(rows.get(1), "h", "key4", "key5");
-    assertCleanLetterKey(rows.get(1), "j", "key4", "key5");
-    assertCleanLetterKey(rows.get(1), "k", "key5");
-    assertCleanLetterKey(rows.get(1), "l", "key5");
+    assertCleanLetterKey(rows.get(1), "a", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "s", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "d", "key4", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "f", "key4", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "g", "key4", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "h", "key4", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "j", "key4", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "k", "key5", "key6", "key7", "key8");
+    assertCleanLetterKey(rows.get(1), "l", "key5", "key6", "key7", "key8");
     assertCleanLetterKey(rows.get(2), "z", "key1");
     assertCleanLetterKey(rows.get(2), "x", "key1");
     assertCleanLetterKey(rows.get(2), "c", "key1");
@@ -191,28 +192,28 @@ public class CleanModeFleksyLayoutTest
     Element frankenRow = parseLayout(BOTTOM_ROW).getDocumentElement();
     List<Element> cleanKeys = directKeys(cleanRow);
     List<Element> frankenKeys = directKeys(frankenRow);
+    Element frankenSpace = key(frankenRow, "space");
+    Element cleanSpace = key(cleanRow, "space");
     Element frankenEnter = key(frankenRow, "enter");
     Element cleanEnter = key(cleanRow, "enter");
 
     assertEquals("Clean/Fleksy Fn key must stay in the same bottom-row slot as FrankenKey Fn.",
         indexOfKey(frankenKeys, "fn"), indexOfKey(cleanKeys, "fn"));
-    assertEquals("FrankenKey Fn lower-left corner is the emoji switch reference.",
-        "switch_emoji", key(frankenRow, "fn").getAttribute("key3"));
-    assertEquals("Clean/Fleksy Fn must expose emoji from the same lower-left corner.",
-        "switch_emoji", key(cleanRow, "fn").getAttribute("key3"));
+    assertEquals("Clean/Fleksy spacebar must preserve FrankenKey's clipboard corner.",
+        frankenSpace.getAttribute("key1"), cleanSpace.getAttribute("key1"));
+    assertEquals("Clean/Fleksy spacebar must preserve FrankenKey's mode corner.",
+        frankenSpace.getAttribute("key2"), cleanSpace.getAttribute("key2"));
+    assertEquals("Clean/Fleksy spacebar must preserve FrankenKey's emoji corner.",
+        frankenSpace.getAttribute("key3"), cleanSpace.getAttribute("key3"));
+    assertEquals("Clean/Fleksy spacebar must preserve FrankenKey's GIF corner.",
+        frankenSpace.getAttribute("key4"), cleanSpace.getAttribute("key4"));
 
     assertEquals("Clean/Fleksy Enter key must stay in the same bottom-row slot as FrankenKey Enter.",
         indexOfKey(frankenKeys, "enter"), indexOfKey(cleanKeys, "enter"));
-    assertEquals("FrankenKey Enter top-left corner is the voice typing reference.",
-        "loc voice_typing", frankenEnter.getAttribute("key1"));
     assertEquals("Clean/Fleksy Enter must expose voice typing from the same top-left corner.",
         frankenEnter.getAttribute("key1"), cleanEnter.getAttribute("key1"));
     assertEquals("Clean/Fleksy Enter must preserve the same Go/Done action corner as FrankenKey Enter.",
         frankenEnter.getAttribute("key2"), cleanEnter.getAttribute("key2"));
-    assertEquals("FrankenKey Enter lower-right corner is the GIF reference.",
-        "gif", frankenEnter.getAttribute("key4"));
-    assertEquals("Clean/Fleksy Enter must expose GIF from the same lower-right corner.",
-        "gif", cleanEnter.getAttribute("key4"));
   }
 
   @Test
@@ -325,6 +326,22 @@ public class CleanModeFleksyLayoutTest
         continue;
       assertEquals("Clean/Fleksy text key " + key0 + " must not carry a computer-heavy "
           + side + " side label.", "", key.getAttribute(side));
+    }
+  }
+
+  private static void assertCenterRowTrackpad(Element row)
+  {
+    for (Element key : directKeys(row))
+    {
+      String name = key.getAttribute("key0");
+      assertEquals(name + " left drag must start the horizontal cursor slider.",
+          "hide cursor_left", key.getAttribute("key5"));
+      assertEquals(name + " right drag must start the horizontal cursor slider.",
+          "hide cursor_right", key.getAttribute("key6"));
+      assertEquals(name + " upward drag must start the vertical cursor slider.",
+          "hide cursor_up", key.getAttribute("key7"));
+      assertEquals(name + " downward drag must start the vertical cursor slider.",
+          "hide cursor_down", key.getAttribute("key8"));
     }
   }
 

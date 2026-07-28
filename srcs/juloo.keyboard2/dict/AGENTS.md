@@ -13,7 +13,7 @@
 
 - Dictionary metadata must match available language assets and supported downloads.
 - Do not break offline/local typing behavior when changing dictionary integration.
-- Australian (`en_AU`) and UK (`en_GB`) production Cdict assets are seeded into private app storage once per install/update generation; a user who removes either bundled dictionary must not have it silently restored on restart.
+- Australian (`en_AU`), UK (`en_GB`), and US (`en_US`) production Cdict assets are bundled. AU/UK and US use separate once-per-generation seed markers so updates add new assets without restoring dictionaries the user removed. If a bundled dictionary remains marked installed but its private file is missing or invalid, loading repairs it from the bundled asset. The dictionary manager must always show all three English options and reinstall them from local assets without requiring Internet access.
 
 ## Work Guidance
 

@@ -13,6 +13,7 @@
 
 - Keep everyday clean layout free of default Ctrl/arrow clutter.
 - Preserve hidden gesture/edit shortcuts unless intentionally changing keyboard behavior.
+- Dense text-layout middle-row keys expose hidden west/east/north/south cursor sliders as the same touchpad origin as clean text mode; keep taps and existing diagonal actions intact.
 - Maintain upstream layout attribution/license files.
 
 ## Work Guidance

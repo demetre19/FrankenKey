@@ -35,11 +35,11 @@ public class SnippetSettingsTest
     Element root = settings.getDocumentElement();
 
     Element snippetsCategory = directCategoryContainingKey(root,
-        "CheckBoxPreference", SnippetStore.PREF_ENABLED);
+        "SwitchPreference", SnippetStore.PREF_ENABLED);
     assertNotNull("Snippet settings must expose the local enable toggle in a settings category.",
         snippetsCategory);
 
-    Element enable = directChildWithKey(snippetsCategory, "CheckBoxPreference",
+    Element enable = directChildWithKey(snippetsCategory, "SwitchPreference",
         SnippetStore.PREF_ENABLED);
     assertNotNull("Snippet settings must expose the local enable toggle using SnippetStore.PREF_ENABLED.",
         enable);
@@ -50,8 +50,8 @@ public class SnippetSettingsTest
     assertNotNull("Snippet settings must expose the custom fixed-slot editor preference as a top-level settings section.",
         slots);
 
-    assertEquals("There must be one snippets enable checkbox in settings.",
-        1, countElementsWithKey(root, "CheckBoxPreference", SnippetStore.PREF_ENABLED));
+    assertEquals("There must be one snippets enable switch in settings.",
+        1, countElementsWithKey(root, "SwitchPreference", SnippetStore.PREF_ENABLED));
     assertEquals("There must be one custom snippets slot editor in settings.",
         1, countElementsWithTag(root, SNIPPET_SLOTS_TAG));
   }

@@ -1,0 +1,3 @@
+Added private adaptive accuracy, a center-row touchpad, and advanced voice commands.
+
+FrankenKey now learns a bounded touch offset only from accepted literal typing and shows local learning counts in Settings. Drag from the middle letter row in any direction for accelerated cursor movement; hold Shift while dragging to extend or contract selection. Voice typing adds local spoken punctuation plus explicit “command …” actions for editing, replacement, insertion, sending, and field navigation.

@@ -1,0 +1,5 @@
+Fixed the incorrect install-dictionary message and updated the launcher guide.
+
+English (Australia), English (United Kingdom), and English (United States) are now always listed in the dictionary screen, reinstall locally without Internet access, and repair missing bundled copies automatically.
+
+The launcher guide now explains four-direction cursor movement from G or any middle-row letter and how to tap Shift, swipe to select text, then tap Delete.

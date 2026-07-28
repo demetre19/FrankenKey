@@ -74,6 +74,46 @@ public class FleksyLearningGestureTest
   }
 
   @Test
+  public void center_row_swipes_behave_as_four_direction_trackpad()
+      throws Exception
+  {
+    Config config = testConfig("", true, true);
+    config.swipe_dist_px = 8f;
+    config.slide_step_px = 2f;
+    config.longPressTimeout = 60000;
+    RecordingPointerHandler pointerHandler = new RecordingPointerHandler();
+    Pointers pointers = new Pointers(pointerHandler, config);
+    KeyboardData.Key key = centerTrackpadKey();
+
+    swipe(pointers, key, 1, -30f, 0f);
+    swipe(pointers, key, 2, 30f, 0f);
+    swipe(pointers, key, 3, 0f, -30f);
+    swipe(pointers, key, 4, 0f, 30f);
+
+    assertEquals("Center-row trackpad gestures must dispatch all four cursor sliders.",
+        java.util.Arrays.asList(KeyValue.Slider.Cursor_left,
+          KeyValue.Slider.Cursor_right, KeyValue.Slider.Cursor_up,
+          KeyValue.Slider.Cursor_down), pointerHandler.pressedSliders);
+    assertEquals("Center-row vertical trackpad gestures must not trigger the global learn gesture.",
+        0, pointerHandler.keyboardSwipeUpCount);
+    assertEquals("Center-row vertical trackpad gestures must not trigger the global unlearn gesture.",
+        0, pointerHandler.keyboardSwipeDownCount);
+    assertTrue("Fine movement near center must have lower gain than a farther drag.",
+        Pointers.trackpadDistanceGain(12f, 8f)
+        < Pointers.trackpadDistanceGain(64f, 8f));
+    assertEquals("Trackpad acceleration must remain capped for controllability.",
+        3.5f, Pointers.trackpadDistanceGain(1000f, 8f), 0.0001f);
+  }
+
+  private static void swipe(Pointers pointers, KeyboardData.Key key, int id,
+      float dx, float dy)
+  {
+    pointers.onTouchDown(50f, 50f, id, key, null);
+    pointers.onTouchMove(50f + dx, 50f + dy, id);
+    pointers.onTouchUp(id);
+  }
+
+  @Test
   public void swipe_up_learns_and_keyboard_down_requires_positive_confirmation()
       throws Exception
   {
@@ -263,6 +303,16 @@ public class FleksyLearningGestureTest
     return keyboard.rows.get(0).keys.get(0);
   }
 
+  private static KeyboardData.Key centerTrackpadKey()
+      throws Exception
+  {
+    KeyboardData keyboard = KeyboardData.load_string_exn(
+        "<keyboard bottom_row=\"false\" width=\"1\">"
+        + "<row><key c=\"a\" w=\"cursor_left\" e=\"cursor_right\""
+        + " n=\"cursor_up\" s=\"cursor_down\"/></row></keyboard>");
+    return keyboard.rows.get(0).keys.get(0);
+  }
+
   private static final class Harness
   {
     final RecordingReceiver receiver;
@@ -300,13 +350,27 @@ public class FleksyLearningGestureTest
     int keyboardSwipeUpCount;
     int keyboardSwipeDownCount;
     final List<String> releasedValues = new ArrayList<String>();
+    final List<KeyValue.Slider> pressedSliders =
+      new ArrayList<KeyValue.Slider>();
 
     @Override public KeyValue modifyKey(KeyValue key,
         Pointers.Modifiers modifiers) { return key; }
-    @Override public void onPointerDown(KeyValue key, boolean swipe) {}
+    @Override public void onPointerDown(KeyValue key, boolean swipe)
+    {
+      recordSlider(key, swipe);
+    }
     @Override public void onPointerFlagsChanged(boolean vibrate) {}
     @Override public void onPointerHold(KeyValue key,
-        Pointers.Modifiers modifiers, int count) {}
+        Pointers.Modifiers modifiers, int count)
+    {
+      recordSlider(key, true);
+    }
+
+    private void recordSlider(KeyValue key, boolean swipe)
+    {
+      if (swipe && key != null && key.getKind() == KeyValue.Kind.Slider)
+        pressedSliders.add(key.getSlider());
+    }
     @Override public void onPointerCancel(KeyValue key,
         Pointers.Modifiers modifiers) {}
 

@@ -37,6 +37,37 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void accepted_literal_touches_build_bounded_private_calibration()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    TouchTrace trace = new TouchTrace();
+    for (int i = 0; i < 4; ++i)
+      trace.add(TouchTrace.entry(70f, 46f, 50f, 50f, 100f, 80f));
+
+    for (int i = 0; i < 5; ++i)
+      store.record_commit("test", null, "test", trace.snapshot());
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    PersonalizationStore.Stats stats = PersonalizationStore.stats(_prefs);
+    assertEquals("Every complete accepted literal touch may contribute one calibration sample.",
+        20, stats.calibratedTouches);
+    assertEquals("The persisted horizontal bias must reflect the user's accepted touch center.",
+        0.2f, reloaded.touch_offset_x(), 0.0001f);
+    assertEquals("The persisted vertical bias must retain its normalized center.",
+        -0.05f, reloaded.touch_offset_y(), 0.0001f);
+
+    reloaded.record_commit("word", "wird", "wird", trace.snapshot());
+    assertEquals("Corrected source touches are ambiguous and must never train key geometry.",
+        20, PersonalizationStore.stats(_prefs).calibratedTouches);
+
+    PersonalizationStore.clear(_prefs);
+    PersonalizationStore cleared = new PersonalizationStore(_prefs);
+    assertEquals(0, PersonalizationStore.stats(_prefs).calibratedTouches);
+    assertEquals(0f, cleared.touch_offset_x(), 0f);
+    assertFalse(PersonalizationStore.has_data(_prefs));
+  }
+
+  @Test
   public void learned_prefixes_persist_and_order_by_count_then_text()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);

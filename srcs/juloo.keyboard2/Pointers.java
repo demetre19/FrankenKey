@@ -322,16 +322,26 @@ public final class Pointers implements Handler.Callback
         ptr.gesture = new Gesture(direction);
         if (isVerticalKeyboardSwipe(ptr))
           return;
-        KeyValue new_value = getNearestKeyAtDirection(ptr, direction);
+        KeyValue new_value = backspaceSelectionSlider(ptr, dx, dy);
+        if (new_value == null)
+          new_value = getNearestKeyAtDirection(ptr, direction);
         if (new_value != null)
         { // Pointer is swiping into a side key.
 
           ptr.value = new_value;
           ptr.flags = pointer_flags_of_kv(new_value);
-          // Start sliding mode
+          // Start sliding mode. Cursor sliders receive modifiers on their
+          // first step so Shift-drag can extend selection immediately.
           if (new_value.getKind() == KeyValue.Kind.Slider)
+          {
             startSliding(ptr, x, y, dx, dy, new_value);
-          _handler.onPointerDown(new_value, true);
+            if (isCursorSlider(new_value.getSlider()))
+              _handler.onPointerHold(new_value, ptr.modifiers, 0);
+            else
+              _handler.onPointerDown(new_value, true);
+          }
+          else
+            _handler.onPointerDown(new_value, true);
         }
 
       }
@@ -400,8 +410,48 @@ public final class Pointers implements Handler.Callback
   boolean isVerticalKeyboardSwipe(Pointer ptr)
   {
     return ptr.gesture != null
+      && !isCenterTrackpadVerticalGesture(ptr)
       && Math.abs(ptr.lastDy) >= _config.swipe_dist_px
       && Math.abs(ptr.lastDy) > Math.abs(ptr.lastDx);
+  }
+
+  private boolean isCenterTrackpadVerticalGesture(Pointer ptr)
+  {
+    int keyIndex = ptr.lastDy < 0 ? 7 : 8;
+    KeyValue value = _handler.modifyKey(ptr.key.keys[keyIndex], ptr.modifiers);
+    if (value == null || value.getKind() != KeyValue.Kind.Slider)
+      return false;
+    KeyValue.Slider slider = value.getSlider();
+    return slider == KeyValue.Slider.Cursor_up
+      || slider == KeyValue.Slider.Cursor_down;
+  }
+
+  private static KeyValue backspaceSelectionSlider(Pointer ptr,
+      float dx, float dy)
+  {
+    if (!ptr.backspaceSelectionArmed || dx >= 0
+        || Math.abs(dx) <= Math.abs(dy) || !isBackspaceKey(ptr.value))
+      return null;
+    return KeyValue.sliderKey(KeyValue.Slider.Delete_words_left, 1);
+  }
+
+  private static boolean isCursorSlider(KeyValue.Slider slider)
+  {
+    return slider == KeyValue.Slider.Cursor_left
+      || slider == KeyValue.Slider.Cursor_right
+      || slider == KeyValue.Slider.Cursor_up
+      || slider == KeyValue.Slider.Cursor_down;
+  }
+
+  private static boolean isWordSelectionSlider(KeyValue.Slider slider)
+  {
+    return slider == KeyValue.Slider.Delete_words_left;
+  }
+
+  static float trackpadDistanceGain(float axisDistance, float swipeDistance)
+  {
+    return Math.min(3.5f,
+        1.f + axisDistance / Math.max(1.f, swipeDistance * 4.f));
   }
 
   /** Make a pointer into the locked state. */
@@ -488,6 +538,21 @@ public final class Pointers implements Handler.Callback
     }
   }
 
+  private static boolean isBackspaceKey(KeyValue value)
+  {
+    if (value == null)
+      return false;
+    switch (value.getKind())
+    {
+      case Editing:
+        return value.getEditing() == KeyValue.Editing.BACKSPACE;
+      case Keyevent:
+        return value.getKeyevent() == android.view.KeyEvent.KEYCODE_DEL;
+      default:
+        return false;
+    }
+  }
+
   private static boolean isDeleteRepeatKey(KeyValue value)
   {
     if (value == null)
@@ -501,6 +566,7 @@ public final class Pointers implements Handler.Callback
           case DELETE_WORD:
           case FORWARD_DELETE_WORD:
             return true;
+
           default:
             return false;
         }
@@ -525,14 +591,21 @@ public final class Pointers implements Handler.Callback
     // Latched key, no key
     if (ptr.hasFlagsAny(FLAG_P_LATCHED) || ptr.value == null)
       return;
-    // Key is long-pressable
-    KeyValue kv = KeyModifier.modify_long_press(ptr.value);
+    // Once Backspace reaches long press, keep its normal character-repeat
+    // behavior while allowing a later left drag to enter gradual deletion.
+    // Starting the slider cancels further repeats.
+    boolean backspace = isBackspaceKey(ptr.value);
+    if (backspace)
+      ptr.backspaceSelectionArmed = true;
+    KeyValue kv = backspace
+      ? ptr.value : KeyModifier.modify_long_press(ptr.value);
     if (!kv.equals(ptr.value))
     {
       ptr.value = kv;
       _handler.onPointerDown(kv, true);
       return;
     }
+
     // Special keys remain one-shot unless explicitly assigned a repeat policy.
     if (kv.hasFlagsAny(KeyValue.FLAG_SPECIAL)
         && !hasDedicatedRepeatInterval(kv))
@@ -628,9 +701,9 @@ public final class Pointers implements Handler.Callback
     public int pointerId;
     /** The Key pressed by this Pointer */
     public final KeyboardData.Key key;
-    /** Gesture state, see [Gesture]. [null] means the pointer has not moved out of the center region. */
+    /** Gesture state, null until movement leaves the center region. */
     public Gesture gesture;
-    /** Selected value with [modifiers] applied. */
+    /** Selected value with modifiers applied. */
     public KeyValue value;
     public float downX;
     public float downY;
@@ -643,6 +716,8 @@ public final class Pointers implements Handler.Callback
     public int timeoutWhat;
     /** Number of key-repeat events fired for this pointer. */
     public int holdCount;
+    /** Backspace has reached long press and may enter gradual deletion. */
+    public boolean backspaceSelectionArmed;
     /** [null] when not in sliding mode. */
     public Sliding sliding;
     public float lastDx;
@@ -661,6 +736,7 @@ public final class Pointers implements Handler.Callback
       flags = f;
       timeoutWhat = -1;
       holdCount = 0;
+      backspaceSelectionArmed = false;
       sliding = null;
       lastDx = 0.f;
       lastDy = 0.f;
@@ -700,7 +776,7 @@ public final class Pointers implements Handler.Callback
       slider = s;
       direction_x = dirx;
       direction_y = diry;
-      last_delete_words_emit_ms = (s == KeyValue.Slider.Delete_words_left)
+      last_delete_words_emit_ms = isWordSelectionSlider(s)
         ? System.currentTimeMillis() : -1;
     }
 
@@ -728,6 +804,13 @@ public final class Pointers implements Handler.Callback
         last_move_ms = System.currentTimeMillis();
       }
       float current_speed = speed / _config.slide_step_px;
+      if (isCursorSlider(slider))
+      {
+        float axisDistance = slider.isVertical()
+          ? Math.abs(y - ptr.downY) : Math.abs(x - ptr.downX);
+        current_speed *= trackpadDistanceGain(axisDistance,
+            _config.swipe_dist_px);
+      }
       if (slider.isVertical()) {
         d += (y - last_y) * current_speed * direction_y * SPEED_VERTICAL_MULT;
       } else {
@@ -741,7 +824,7 @@ public final class Pointers implements Handler.Callback
       int d_ = (int)d;
       if (d_ != 0)
       {
-        if (slider == KeyValue.Slider.Delete_words_left)
+        if (isWordSelectionSlider(slider))
           d_ = pacedDeleteWordsDelta(d_);
         if (d_ != 0)
         {
@@ -751,6 +834,7 @@ public final class Pointers implements Handler.Callback
         }
       }
     }
+
 
     private int pacedDeleteWordsDelta(int delta)
     {
@@ -785,7 +869,7 @@ public final class Pointers implements Handler.Callback
 
     boolean commitsOnTouchUp()
     {
-      return slider == KeyValue.Slider.Delete_words_left;
+      return isWordSelectionSlider(slider);
     }
 
     /** [speed] is computed from the elapsed time and distance traveled

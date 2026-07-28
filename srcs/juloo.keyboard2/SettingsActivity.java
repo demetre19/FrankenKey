@@ -387,10 +387,13 @@ public class SettingsActivity extends PreferenceActivity
     if (status == null)
       return;
     SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+    PersonalizationStore.Stats stats = PersonalizationStore.stats(prefs);
     boolean has_data = PersonalizationStore.has_data(prefs);
-    status.setSummary(getString(has_data
-          ? R.string.pref_typing_assistance_status_with_learning
-          : R.string.pref_typing_assistance_status_empty));
+    status.setSummary(has_data
+        ? getString(R.string.pref_typing_assistance_status_with_learning,
+            stats.learnedWords, stats.nextWordPairs,
+            stats.correctionPatterns, stats.calibratedTouches)
+        : getString(R.string.pref_typing_assistance_status_empty));
   }
 
   private void showClearTypingAssistanceDialog()

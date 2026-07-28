@@ -136,6 +136,11 @@ public final class SharedDecoder implements AutoCloseable
       return _owners.clone();
     }
 
+    public boolean hasTypingDictionary()
+    {
+      return mainDictionary != null || languagePack != null;
+    }
+
     private boolean owns(Cdict dictionary)
     {
       if (dictionary == null)
@@ -1361,7 +1366,8 @@ public final class SharedDecoder implements AutoCloseable
             : is_recognized_worker(control.source, control.word);
           if (recognized)
             _workerPersonalization.record_commit(control.word,
-                control.correctedFrom);
+                control.correctedFrom, control.source.request.typed,
+                control.source.request.touches);
           else
           {
             if (control.correctedFrom != null)

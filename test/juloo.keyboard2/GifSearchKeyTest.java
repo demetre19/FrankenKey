@@ -378,7 +378,11 @@ public class GifSearchKeyTest
     @Override
     public InputConnection getCurrentInputConnection()
     {
-      return input.connection;
+      return new GifSearchView.SearchInputConnection(input.connection,
+          new Runnable()
+          {
+            @Override public void run() { searchCurrentQuery(); }
+          });
     }
 
     @Override

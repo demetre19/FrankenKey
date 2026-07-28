@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import juloo.keyboard2.suggestions.LanguageModel;
+import juloo.keyboard2.suggestions.SharedDecoder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -129,6 +130,19 @@ public class LanguagePackManagerTest
     assertNotEquals("Each locale must own its copied context resource.",
         british.next_words.getCanonicalFile(),
         american.next_words.getCanonicalFile());
+  }
+  @Test
+  public void bundled_language_pack_counts_as_an_available_typing_dictionary()
+      throws Exception
+  {
+    LanguagePackManager manager = new LanguagePackManager(
+        RuntimeEnvironment.getApplication());
+    SharedDecoder.ResourceSpec resources = new SharedDecoder.ResourceSpec(
+        "en_AU", null, null, null, manager.find("en_AU"));
+
+    assertTrue("A valid bundled Hunspell pack must suppress the false install-dictionary banner even when optional Cdict data is unavailable.",
+        resources.hasTypingDictionary());
+    assertFalse(SharedDecoder.ResourceSpec.empty("none").hasTypingDictionary());
   }
   private static void assertBundledEnglishPack(LanguagePack pack, String id,
       String affName, String dicName) throws Exception

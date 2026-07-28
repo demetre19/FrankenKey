@@ -190,8 +190,13 @@ public final class Decoder
 
         if (generateCandidates)
         {
+          float touchOffsetX = personalization == null
+            ? 0f : personalization.touch_offset_x();
+          float touchOffsetY = personalization == null
+            ? 0f : personalization.touch_offset_y();
           costs = request.geometry.cost_table(request.code_points_internal(),
-              request.touch_indexes_internal(), request.touches);
+              request.touch_indexes_internal(), request.touches,
+              touchOffsetX, touchOffsetY);
           Cdict.SpatialResult spatial = dictionary.spatial(
               costs.spatial_query(request.key.requestGeneration));
           collect_spatial(dictionary, spatial, request, merged, failure);
@@ -347,7 +352,9 @@ public final class Decoder
     }
     if (costs == null && generateCandidates && merged.size() > 1)
       costs = request.geometry.cost_table(request.code_points_internal(),
-          request.touch_indexes_internal(), request.touches);
+          request.touch_indexes_internal(), request.touches,
+          personalization == null ? 0f : personalization.touch_offset_x(),
+          personalization == null ? 0f : personalization.touch_offset_y());
 
     List<Candidate> ranked = rank_candidates(request, merged, costs,
         personalization, languageModel, previousWord, failure);
@@ -2242,7 +2249,8 @@ public final class Decoder
     int fixed_substitution_cost_q8(int sourceCodePoint,
         int targetCodePoint)
     {
-      return substitution_cost_q8(sourceCodePoint, targetCodePoint, -1, null);
+      return substitution_cost_q8(sourceCodePoint, targetCodePoint, -1, null,
+          0f, 0f);
     }
 
     public Cdict.SpatialQuery spatial_query(long sequence,
@@ -2251,12 +2259,18 @@ public final class Decoder
       if (typedCodePoints == null || typedCodePoints.length == 0
           || typedCodePoints.length > MAX_WORD_CODEPOINTS)
         throw new IllegalArgumentException("spatial input must contain 1..48 code points");
-      return cost_table(typedCodePoints.clone(), null, touches)
+      return cost_table(typedCodePoints.clone(), null, touches, 0f, 0f)
         .spatial_query(sequence);
     }
 
     private CostTable cost_table(int[] typedCodePoints, int[] touchIndexes,
         TouchTrace.Snapshot touches)
+    {
+      return cost_table(typedCodePoints, touchIndexes, touches, 0f, 0f);
+    }
+
+    private CostTable cost_table(int[] typedCodePoints, int[] touchIndexes,
+        TouchTrace.Snapshot touches, float touchOffsetX, float touchOffsetY)
     {
       int[] table = new int[typedCodePoints.length * _symbolCodePoints.length];
       for (int i = 0; i < typedCodePoints.length; i++)
@@ -2264,13 +2278,15 @@ public final class Decoder
         int touchIndex = touchIndexes == null ? i : touchIndexes[i];
         for (int j = 0; j < _symbolCodePoints.length; j++)
           table[i * _symbolCodePoints.length + j] = substitution_cost_q8(
-              typedCodePoints[i], _symbolCodePoints[j], touchIndex, touches);
+              typedCodePoints[i], _symbolCodePoints[j], touchIndex, touches,
+              touchOffsetX, touchOffsetY);
       }
       return new CostTable(typedCodePoints, _symbolCodePoints, table);
     }
 
     private int substitution_cost_q8(int typedCodePoint,
-        int candidateCodePoint, int typedIndex, TouchTrace.Snapshot touches)
+        int candidateCodePoint, int typedIndex, TouchTrace.Snapshot touches,
+        float touchOffsetX, float touchOffsetY)
     {
       if (typedCodePoint == candidateCodePoint)
         return 0;
@@ -2293,8 +2309,10 @@ public final class Decoder
           + (_y[candidatePosition] - _y[typedPosition]) * unitY;
         float sigmaX = Math.max(touch.keyWidth * 0.55f, 1f);
         float sigmaY = Math.max(touch.keyHeight * 0.55f, 1f);
-        float dx = (touch.touchX - candidateCenterX) / sigmaX;
-        float dy = (touch.touchY - candidateCenterY) / sigmaY;
+        float dx = (touch.touchX - touch.keyWidth * touchOffsetX
+            - candidateCenterX) / sigmaX;
+        float dy = (touch.touchY - touch.keyHeight * touchOffsetY
+            - candidateCenterY) / sigmaY;
         return round_q8(Math.min(64.0,
             TOUCH_SUBSTITUTION_COST_SCALE * (dx * dx + dy * dy)));
       }

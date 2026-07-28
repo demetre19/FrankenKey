@@ -21,13 +21,13 @@ public class ReleaseUpdaterResourcesTest
     "http://schemas.android.com/apk/res/android";
 
   @Test
-  public void release_metadata_is_2_0_26_version_code_77() throws Exception
+  public void release_metadata_is_2_0_65_version_code_116() throws Exception
   {
     String gradle = read("build.gradle.kts");
-    assertTrue("The updater baseline release must be versionName 2.0.26.",
-        gradle.contains("versionName = \"2.0.26\""));
-    assertTrue("The updater baseline release must be versionCode 77.",
-        gradle.contains("versionCode = 77"));
+    assertTrue("The test candidate must be versionName 2.0.65.",
+        gradle.contains("versionName = \"2.0.65\""));
+    assertTrue("The test candidate must be versionCode 116.",
+        gradle.contains("versionCode = 116"));
   }
 
   @Test
@@ -42,8 +42,8 @@ public class ReleaseUpdaterResourcesTest
     Element manual = preference(settings, "check_for_updates");
 
     assertNotNull("Settings must expose automatic update checks.", automatic);
-    assertEquals("Automatic checks must use an explicit consent-preserving checkbox.",
-        "CheckBoxPreference", automatic.getTagName());
+    assertEquals("Automatic checks must use the shared platform switch control.",
+        "SwitchPreference", automatic.getTagName());
     assertEquals("Automatic checks must default on.", "true",
         automatic.getAttributeNS(ANDROID_NS, "defaultValue"));
     assertEquals("Automatic-check copy must promise no unapproved download or install.",

@@ -25,6 +25,42 @@ public final class MultimodalVoiceInput implements RecognitionListener,
     void on_stopped(int errorCode);
   }
 
+  enum VoiceAction
+  {
+    DICTATE,
+    NEW_LINE,
+    NEW_PARAGRAPH,
+    DELETE_LAST_WORD,
+    CAPITALIZE_LAST_WORD,
+    UNDO,
+    REDO,
+    SELECT_ALL,
+    SEND,
+    NEXT_FIELD,
+    STOP,
+    REPLACE,
+    INSERT_AFTER
+  }
+
+  static final class VoiceCommand
+  {
+    final VoiceAction action;
+    final String first;
+    final String second;
+
+    private VoiceCommand(VoiceAction action_, String first_, String second_)
+    {
+      action = action_;
+      first = first_;
+      second = second_;
+    }
+
+    static VoiceCommand dictate(String text)
+    {
+      return new VoiceCommand(VoiceAction.DICTATE, text, null);
+    }
+  }
+
   private final Context _context;
   private final Handler _handler;
   private final Callback _callback;
@@ -95,8 +131,12 @@ public final class MultimodalVoiceInput implements RecognitionListener,
         RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
         600000L);
     if (VERSION.SDK_INT >= 33)
+    {
       intent.putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION,
           RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS);
+      intent.putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING,
+          RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY);
+    }
     return intent;
   }
 
@@ -153,11 +193,79 @@ public final class MultimodalVoiceInput implements RecognitionListener,
       ? null : result.trim();
   }
 
-  static String text_to_commit(CharSequence beforeCursor, String recognized)
+  static VoiceCommand parse_command(String recognized)
+  {
+    if (recognized == null)
+      return VoiceCommand.dictate("");
+    String command = recognized.trim();
+    String lower = command.toLowerCase(Locale.ROOT);
+    boolean explicit = lower.startsWith("command ");
+    if (explicit)
+    {
+      command = command.substring(8).trim();
+      lower = command.toLowerCase(Locale.ROOT);
+    }
+    if ("new line".equals(lower))
+      return new VoiceCommand(VoiceAction.NEW_LINE, null, null);
+    if ("new paragraph".equals(lower))
+      return new VoiceCommand(VoiceAction.NEW_PARAGRAPH, null, null);
+    if (explicit && ("delete last word".equals(lower)
+          || "delete that word".equals(lower)))
+      return new VoiceCommand(VoiceAction.DELETE_LAST_WORD, null, null);
+    if (explicit && ("capitalize last word".equals(lower)
+          || "capitalise last word".equals(lower)))
+      return new VoiceCommand(VoiceAction.CAPITALIZE_LAST_WORD, null, null);
+    if (explicit && ("undo that".equals(lower) || "undo".equals(lower)))
+      return new VoiceCommand(VoiceAction.UNDO, null, null);
+    if (explicit && ("redo that".equals(lower) || "redo".equals(lower)))
+      return new VoiceCommand(VoiceAction.REDO, null, null);
+    if (explicit && "select all".equals(lower))
+      return new VoiceCommand(VoiceAction.SELECT_ALL, null, null);
+    if (explicit && ("send".equals(lower) || "send message".equals(lower)))
+      return new VoiceCommand(VoiceAction.SEND, null, null);
+    if (explicit && "next field".equals(lower))
+      return new VoiceCommand(VoiceAction.NEXT_FIELD, null, null);
+    if (explicit
+        && ("stop listening".equals(lower) || "stop dictation".equals(lower)))
+      return new VoiceCommand(VoiceAction.STOP, null, null);
+    if (explicit && lower.startsWith("replace "))
+    {
+      int separator = lower.indexOf(" with ", 8);
+      if (separator > 8 && separator + 6 < command.length())
+        return new VoiceCommand(VoiceAction.REPLACE,
+            command.substring(8, separator).trim(),
+            command.substring(separator + 6).trim());
+    }
+    if (explicit && lower.startsWith("insert "))
+    {
+      int separator = lower.lastIndexOf(" after ");
+      if (separator > 7 && separator + 7 < command.length())
+        return new VoiceCommand(VoiceAction.INSERT_AFTER,
+            command.substring(7, separator).trim(),
+            command.substring(separator + 7).trim());
+    }
+    if (explicit && lower.startsWith("type "))
+      return VoiceCommand.dictate(command.substring(5).trim());
+    return VoiceCommand.dictate(command);
+  }
+
+  static String format_dictation(String recognized)
   {
     if (recognized == null)
       return "";
     String text = recognized.trim();
+    text = text.replaceAll("(?i)\\s+comma\\b", ",")
+      .replaceAll("(?i)\\s+(full stop|period)\\b", ".")
+      .replaceAll("(?i)\\s+question mark\\b", "?")
+      .replaceAll("(?i)\\s+exclamation (mark|point)\\b", "!")
+      .replaceAll("(?i)\\s+colon\\b", ":")
+      .replaceAll("(?i)\\s+semicolon\\b", ";");
+    return text;
+  }
+
+  static String text_to_commit(CharSequence beforeCursor, String recognized)
+  {
+    String text = format_dictation(recognized);
     if (text.length() == 0 || beforeCursor == null
         || beforeCursor.length() == 0)
       return text;
