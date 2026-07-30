@@ -36,6 +36,7 @@
 - Release update checks run only from unlocked launcher/settings activities, never the IME. They default to daily checks, show the GitHub Release changelog, require explicit accept/reject, authenticate the APK before installer handoff, and never clear or migrate keyboard user data.
 - `ReaderActivity` remains private. Android `ACTION_SEND` and `ACTION_PROCESS_TEXT` enter only through exported `ReaderShareActivity`, accept bounded `text/plain`, mark Process Text read-only, and hand accepted content to Reader through an opaque one-shot token. URL-only shares must use hardened on-device extraction when available or fail closed with a clear message; never speak the raw URL as article content.
 - Reader speech speed (shown as WPM), pitch, selected voice, network-voice opt-in, and playback position are private persistent preferences. User choices must survive Reader closure, service/process recreation, and later app sessions; defaults apply only before a choice has been saved.
+- `ReaderLibrary` owns the migration-versioned app-private Library database. Imports use normalized content hashes for deterministic replacement, preserve the existing stable id and progress on a duplicate hash, validate all records on read, and delete only source files beneath `files/reader_library`.
 
 ## Work Guidance
 
@@ -51,6 +52,7 @@
 
 ## Child DOX Index
 
+- `ReaderLibrary.java` — app-private Reader item/content-unit metadata, progress, deterministic import replacement, migration, and owned-file deletion.
 - `suggestions/AGENTS.md` — shared decoder, spatial scoring, personalization, stale-result control, and candidate presentation.
 - `autocorrect/AGENTS.md` — worker-confined Hunspell JNI bridge and explicit native lifetime.
 - `snippets/AGENTS.md` — snippet storage, UI rows, insertion, settings.
