@@ -41,6 +41,7 @@
       </intent-filter>
     </activity>
     <activity android:name="juloo.keyboard2.ReaderActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_activity_title" android:theme="@style/launcherTheme" android:exported="false"/>
+    <activity android:name="juloo.keyboard2.ReaderLibraryActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_library_title" android:theme="@style/launcherTheme" android:exported="false"/>
     <activity android:name="juloo.keyboard2.ReaderShareActivity" android:label="@string/reader_activity_title" android:theme="@android:style/Theme.Material.Dialog.Alert" android:exported="true" android:excludeFromRecents="true" android:noHistory="true">
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>

@@ -34,6 +34,13 @@
           android:layout_width="0dp"
           android:layout_height="1dp"
           android:layout_weight="1"/>
+      <Button
+          android:id="@+id/reader_library"
+          android:layout_width="wrap_content"
+          android:layout_height="48dp"
+          android:layout_marginEnd="8dp"
+          android:minHeight="48dp"
+          android:text="@string/reader_open_library"/>
       <TextView
           android:id="@+id/reader_status"
           android:layout_width="wrap_content"
@@ -45,6 +52,15 @@
           android:textColor="#8CE9D7"
           android:textSize="14sp"/>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/reader_item_metadata"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#A8B2BE"
+        android:textSize="13sp"
+        android:visibility="gone"/>
 
     <EditText
         android:id="@+id/reader_text"
@@ -62,6 +78,41 @@
         android:textColor="#F4F7FA"
         android:textColorHint="#A8B2BE"
         android:textSize="17sp"/>
+
+    <LinearLayout
+        android:id="@+id/reader_unit_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+      <Button
+          android:id="@+id/reader_unit_previous"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:contentDescription="@string/reader_previous_section"
+          android:minHeight="48dp"
+          android:text="‹"
+          android:textSize="24sp"/>
+      <TextView
+          android:id="@+id/reader_unit_label"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:gravity="center"
+          android:text="@string/reader_unit_plain"
+          android:textColor="#D6DCE3"
+          android:textSize="14sp"/>
+      <Button
+          android:id="@+id/reader_unit_next"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:contentDescription="@string/reader_next_section"
+          android:minHeight="48dp"
+          android:text="›"
+          android:textSize="24sp"/>
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

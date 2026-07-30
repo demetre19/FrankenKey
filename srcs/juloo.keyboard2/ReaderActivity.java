@@ -18,7 +18,9 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -33,6 +35,8 @@ public final class ReaderActivity extends Activity
     "juloo.keyboard2.extra.QUICK_READ_TOKEN";
   private static final String EXTRA_REQUEST_PLAY =
     "juloo.keyboard2.extra.REQUEST_PLAY";
+  private static final String EXTRA_LIBRARY_ITEM_ID =
+    "juloo.keyboard2.extra.LIBRARY_ITEM_ID";
   private static final Object QUICK_READ_LOCK = new Object();
   private static PendingQuickRead _pendingQuickRead;
 
@@ -81,6 +85,12 @@ public final class ReaderActivity extends Activity
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
   }
 
+  static void startLibraryItem(Context context, String itemId)
+  {
+    context.startActivity(new Intent(context, ReaderActivity.class)
+        .putExtra(EXTRA_LIBRARY_ITEM_ID, itemId));
+  }
+
   private static PendingQuickRead pendingQuickRead(String token)
   {
     synchronized (QUICK_READ_LOCK)
@@ -116,9 +126,17 @@ public final class ReaderActivity extends Activity
   private boolean _updatingControls;
   private String _displayedItemId;
   private String _quickReadToken;
+  private String _libraryItemId;
+  private ReaderLibrary.Item _libraryItem;
+  private int _libraryUnitIndex;
+  private int _librarySegmentStart;
+  private int _librarySeekOffset = -1;
+  private boolean _loadingLibraryItem;
 
   private EditText _text;
   private TextView _status;
+  private TextView _itemMetadata;
+  private TextView _unitLabel;
   private TextView _progressLabel;
   private TextView _speedLabel;
   private TextView _pitchLabel;
@@ -136,6 +154,8 @@ public final class ReaderActivity extends Activity
       _bound = true;
       _service.addListener(ReaderActivity.this);
       showPendingQuickRead();
+      if (_libraryItemId != null)
+        loadLibraryItem();
       if (_requestPlayOnConnect && _quickReadToken == null)
       {
         _requestPlayOnConnect = false;
@@ -162,6 +182,7 @@ public final class ReaderActivity extends Activity
     wireControls();
     setControlsEnabled(false);
     _quickReadToken = getIntent().getStringExtra(EXTRA_QUICK_READ_TOKEN);
+    _libraryItemId = getIntent().getStringExtra(EXTRA_LIBRARY_ITEM_ID);
     _requestPlayOnConnect =
       getIntent().getBooleanExtra(EXTRA_REQUEST_PLAY, false);
     bindService(new Intent(this, ReaderPlaybackService.class), _connection,
@@ -173,6 +194,8 @@ public final class ReaderActivity extends Activity
     _text = (EditText)findViewById(R.id.reader_text);
     _text.setSaveEnabled(false);
     _status = (TextView)findViewById(R.id.reader_status);
+    _itemMetadata = (TextView)findViewById(R.id.reader_item_metadata);
+    _unitLabel = (TextView)findViewById(R.id.reader_unit_label);
     _progressLabel = (TextView)findViewById(R.id.reader_progress_label);
     _speedLabel = (TextView)findViewById(R.id.reader_speed_label);
     _pitchLabel = (TextView)findViewById(R.id.reader_pitch_label);
@@ -187,6 +210,12 @@ public final class ReaderActivity extends Activity
   private void wireControls()
   {
     findViewById(R.id.reader_back).setOnClickListener(_view -> finish());
+    findViewById(R.id.reader_library).setOnClickListener(_view ->
+        startActivity(new Intent(this, ReaderLibraryActivity.class)));
+    findViewById(R.id.reader_unit_previous).setOnClickListener(
+        _view -> moveLibrarySection(-1));
+    findViewById(R.id.reader_unit_next).setOnClickListener(
+        _view -> moveLibrarySection(1));
     _playPause.setOnClickListener(_view -> requestPlayOrPause());
     findViewById(R.id.reader_previous).setOnClickListener(
         _view -> withService(ReaderPlaybackService.ACTION_PREVIOUS));
@@ -295,6 +324,225 @@ public final class ReaderActivity extends Activity
     }
     _text.setText(pending.text);
     requestPlayOrPause();
+  }
+
+  private void loadLibraryItem()
+  {
+    try (ReaderLibrary library = new ReaderLibrary(this))
+    {
+      ReaderLibrary.Item item = library.get(_libraryItemId);
+      if (item == null || item.importState != ReaderLibrary.ImportState.READY ||
+          item.units.isEmpty())
+      {
+        _status.setText(R.string.reader_library_item_unavailable);
+        return;
+      }
+      _libraryItem = item;
+      int[] locator = parseLibraryLocator(item);
+      _libraryUnitIndex = locator[0];
+      int unitOffset = locator[1];
+      _librarySegmentStart = segmentStart(
+          item.units.get(_libraryUnitIndex).text.length(), unitOffset);
+      _librarySeekOffset = unitOffset - _librarySegmentStart;
+      _text.setKeyListener(null);
+      _text.setFocusable(false);
+      _itemMetadata.setVisibility(View.VISIBLE);
+      String detail = item.author == null || item.author.trim().isEmpty()
+        ? DateFormat.getDateInstance(DateFormat.MEDIUM)
+            .format(new Date(item.createdAt))
+        : item.author;
+      _itemMetadata.setText(getString(R.string.reader_item_metadata,
+            item.sourceType.name().replace('_', ' ')
+              .toLowerCase(Locale.getDefault()), detail));
+      findViewById(R.id.reader_unit_navigation).setVisibility(View.VISIBLE);
+      loadLibrarySegment(false);
+    }
+    catch (ReaderLibrary.LibraryException error)
+    {
+      _status.setText(R.string.reader_library_error);
+    }
+  }
+
+  private int[] parseLibraryLocator(ReaderLibrary.Item item)
+  {
+    int unitIndex = 0;
+    int unitOffset = Math.round(item.units.get(0).text.length() *
+        item.progressFraction);
+    String locator = item.progressLocator;
+    if (locator != null && locator.startsWith("unit:"))
+    {
+      String[] parts = locator.split(":", 3);
+      try
+      {
+        unitIndex = Math.max(0, Math.min(Integer.parseInt(parts[1]),
+              item.units.size() - 1));
+        unitOffset = parts.length < 3 ? 0 : Integer.parseInt(parts[2]);
+      }
+      catch (NumberFormatException ignored)
+      {
+        unitIndex = 0;
+        unitOffset = 0;
+      }
+    }
+    else if (locator != null)
+    {
+      for (int i = 0; i < item.units.size(); i++)
+      {
+        if (locator.equals(item.units.get(i).sourceLocator))
+        {
+          unitIndex = i;
+          unitOffset = 0;
+          break;
+        }
+      }
+    }
+    unitOffset = Math.max(0,
+        Math.min(unitOffset, item.units.get(unitIndex).text.length()));
+    return new int[] { unitIndex, unitOffset };
+  }
+
+  private int segmentStart(int textLength, int offset)
+  {
+    int maximum = ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH;
+    if (textLength <= maximum)
+      return 0;
+    int clamped = Math.max(0, Math.min(offset, textLength - 1));
+    return (clamped / maximum) * maximum;
+  }
+
+  private void loadLibrarySegment(boolean play)
+  {
+    if (_service == null || _libraryItem == null)
+      return;
+    ReaderLibrary.ContentUnit unit =
+      _libraryItem.units.get(_libraryUnitIndex);
+    int end = Math.min(unit.text.length(), _librarySegmentStart +
+        ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH);
+    String text = unit.text.substring(_librarySegmentStart, end);
+    _text.setText(text);
+    updateLibraryUnitLabel();
+    _loadingLibraryItem = true;
+    ReaderPlaybackService.Snapshot current = _service.snapshot();
+    boolean replacing = !_libraryItem.id.equals(current.itemId) ||
+      !_service.activeText().equals(text);
+    if (replacing)
+    {
+      _service.load(_libraryItem.id, _libraryItem.title, text, play);
+      if (_librarySeekOffset > 0)
+        _service.seekToCharacter(_librarySeekOffset, play);
+    }
+    _librarySeekOffset = -1;
+    _loadingLibraryItem = false;
+    onReaderPlaybackChanged(_service.snapshot());
+  }
+
+  private void moveLibrarySection(int direction)
+  {
+    if (_libraryItem == null || _service == null || direction == 0)
+      return;
+    ReaderPlaybackService.Snapshot current = _service.snapshot();
+    saveLibraryProgress(current);
+    boolean play = current.status == ReaderPlaybackService.Status.PLAYING ||
+      current.status == ReaderPlaybackService.Status.PREPARING;
+    ReaderLibrary.ContentUnit unit =
+      _libraryItem.units.get(_libraryUnitIndex);
+    if (direction > 0)
+    {
+      int next = _librarySegmentStart +
+        ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH;
+      if (next < unit.text.length())
+        _librarySegmentStart = next;
+      else if (_libraryUnitIndex + 1 < _libraryItem.units.size())
+      {
+        _libraryUnitIndex++;
+        _librarySegmentStart = 0;
+      }
+      else
+        return;
+    }
+    else if (_librarySegmentStart > 0)
+      _librarySegmentStart = Math.max(0, _librarySegmentStart -
+          ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH);
+    else if (_libraryUnitIndex > 0)
+    {
+      _libraryUnitIndex--;
+      int length = _libraryItem.units.get(_libraryUnitIndex).text.length();
+      _librarySegmentStart = segmentStart(length, length);
+    }
+    else
+      return;
+    _librarySeekOffset = 0;
+    loadLibrarySegment(play);
+  }
+
+  private void updateLibraryUnitLabel()
+  {
+    ReaderLibrary.ContentUnit unit =
+      _libraryItem.units.get(_libraryUnitIndex);
+    String label;
+    if ("page".equals(unit.kind) && unit.sourceLocator != null &&
+        unit.sourceLocator.startsWith("page:"))
+      label = getString(R.string.reader_unit_page,
+          unit.sourceLocator.substring("page:".length()));
+    else if ("chapter".equals(unit.kind))
+      label = getString(R.string.reader_unit_chapter,
+          _libraryUnitIndex + 1, _libraryItem.units.size());
+    else
+      label = getString(R.string.reader_unit_plain);
+    int parts = Math.max(1, (unit.text.length() +
+          ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH - 1) /
+        ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH);
+    int part = _librarySegmentStart /
+      ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH + 1;
+    if (parts > 1)
+      label = getString(R.string.reader_unit_part, label, part, parts);
+    _unitLabel.setText(label);
+    findViewById(R.id.reader_unit_previous).setEnabled(
+        _libraryUnitIndex > 0 || _librarySegmentStart > 0);
+    findViewById(R.id.reader_unit_next).setEnabled(
+        _libraryUnitIndex + 1 < _libraryItem.units.size() ||
+        _librarySegmentStart + ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH <
+          unit.text.length());
+  }
+
+  private float libraryProgress(ReaderPlaybackService.Snapshot snapshot)
+  {
+    long complete = 0L;
+    long total = 0L;
+    for (int i = 0; i < _libraryItem.units.size(); i++)
+    {
+      int length = _libraryItem.units.get(i).text.length();
+      total += length;
+      if (i < _libraryUnitIndex)
+        complete += length;
+    }
+    complete += Math.min(_libraryItem.units.get(_libraryUnitIndex).text.length(),
+        _librarySegmentStart + snapshot.characterOffset);
+    return total == 0L ? 0f : (float)complete / (float)total;
+  }
+
+  private void saveLibraryProgress(ReaderPlaybackService.Snapshot snapshot)
+  {
+    if (_loadingLibraryItem || _libraryItem == null ||
+        !_libraryItem.id.equals(snapshot.itemId))
+      return;
+    ReaderLibrary.ContentUnit unit =
+      _libraryItem.units.get(_libraryUnitIndex);
+    int unitOffset = Math.min(unit.text.length(),
+        _librarySegmentStart + snapshot.characterOffset);
+    float fraction = libraryProgress(snapshot);
+    boolean finished = _libraryUnitIndex == _libraryItem.units.size() - 1 &&
+      unitOffset >= unit.text.length();
+    try (ReaderLibrary library = new ReaderLibrary(this))
+    {
+      library.updateProgress(_libraryItem.id,
+          "unit:" + _libraryUnitIndex + ":" + unitOffset,
+          fraction, finished, System.currentTimeMillis());
+    }
+    catch (ReaderLibrary.LibraryException error)
+    {
+      _status.setText(R.string.reader_library_error);
+    }
   }
 
   private void requestPlayOrPause()
@@ -432,7 +680,9 @@ public final class ReaderActivity extends Activity
     int progress = snapshot.textLength == 0 ? 0 :
       Math.round(1000f * snapshot.characterOffset / snapshot.textLength);
     _progress.setProgress(progress);
-    int percent = Math.round(snapshot.progress() * 100f);
+    int percent = Math.round((_libraryItem != null &&
+          _libraryItem.id.equals(snapshot.itemId)
+          ? libraryProgress(snapshot) : snapshot.progress()) * 100f);
     _progressLabel.setText(getString(R.string.reader_progress_value, percent));
     int speedProgress = Math.round((snapshot.speechRate - 0.25f) * 100f);
     _speed.setProgress(speedProgress);
@@ -443,6 +693,7 @@ public final class ReaderActivity extends Activity
     _networkVoices.setChecked(_service.allowNetworkVoices());
     _updatingControls = false;
     refreshVoices(snapshot.voiceName);
+    saveLibraryProgress(snapshot);
   }
 
   private CharSequence statusText(ReaderPlaybackService.Snapshot snapshot)
@@ -514,6 +765,8 @@ public final class ReaderActivity extends Activity
   @Override
   protected void onDestroy()
   {
+    if (_service != null)
+      saveLibraryProgress(_service.snapshot());
     if (!isChangingConfigurations())
     {
       discardQuickRead(_quickReadToken);

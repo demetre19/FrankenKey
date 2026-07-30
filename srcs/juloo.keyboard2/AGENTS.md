@@ -37,6 +37,8 @@
 - `ReaderActivity` remains private. Android `ACTION_SEND` and `ACTION_PROCESS_TEXT` enter only through exported `ReaderShareActivity`, accept bounded `text/plain`, mark Process Text read-only, and hand accepted content to Reader through an opaque one-shot token. URL-only shares must use hardened on-device extraction when available or fail closed with a clear message; never speak the raw URL as article content.
 - Reader speech speed (shown as WPM), pitch, selected voice, network-voice opt-in, and playback position are private persistent preferences. User choices must survive Reader closure, service/process recreation, and later app sessions; defaults apply only before a choice has been saved.
 - `ReaderLibrary` owns the migration-versioned app-private Library database. Imports use normalized content hashes for deterministic replacement, preserve the existing stable id and progress on a duplicate hash, validate all records on read, and delete only source files beneath `files/reader_library`.
+- `ReaderLibraryActivity` is the private Library browser. It orders items by last-opened time, exposes accessible open/delete and empty/error states, stops matching active playback before deletion, and opens saved content through `ReaderActivity`.
+- Saved documents use `unit:<ordinal>:<character-offset>` progress locators. `ReaderActivity` loads bounded segments from each content unit into the one shared playback service, maps progress back across the whole document, and exposes chapter/page navigation without widening Quick Read limits.
 
 ## Work Guidance
 
@@ -53,6 +55,8 @@
 ## Child DOX Index
 
 - `ReaderLibrary.java` — app-private Reader item/content-unit metadata, progress, deterministic import replacement, migration, and owned-file deletion.
+- `ReaderLibraryActivity.java` — private Library list, metadata, open/resume, deletion confirmation, and usable empty/error states.
+- `ReaderActivity.java` — shared Reader controls plus bounded Library chapter/page segment loading and locator restoration.
 - `suggestions/AGENTS.md` — shared decoder, spatial scoring, personalization, stale-result control, and candidate presentation.
 - `autocorrect/AGENTS.md` — worker-confined Hunspell JNI bridge and explicit native lifetime.
 - `snippets/AGENTS.md` — snippet storage, UI rows, insertion, settings.

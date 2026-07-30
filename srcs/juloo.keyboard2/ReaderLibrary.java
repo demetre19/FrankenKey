@@ -200,7 +200,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     ArrayList<Item> result = new ArrayList<>();
     SQLiteDatabase db = getReadableDatabase();
     try (Cursor cursor = db.query("reader_items", null, null, null, null, null,
-        "updated_at DESC, id ASC"))
+        "last_opened_at DESC, created_at DESC, id ASC"))
     {
       while (cursor.moveToNext())
         result.add(readItem(db, cursor));

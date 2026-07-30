@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/launcher_input"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+  <TextView
+      android:id="@+id/reader_library_row_title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:maxLines="2"
+      android:textColor="#F4F7FA"
+      android:textSize="17sp"
+      android:textStyle="bold"/>
+
+  <TextView
+      android:id="@+id/reader_library_row_metadata"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textColor="#A8B2BE"
+      android:textSize="13sp"/>
+
+  <TextView
+      android:id="@+id/reader_library_row_progress"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textColor="#8CE9D7"
+      android:textSize="13sp"/>
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:gravity="end|center_vertical"
+      android:orientation="horizontal">
+    <Button
+        android:id="@+id/reader_library_row_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:minHeight="48dp"
+        android:text="@string/reader_library_delete"/>
+    <Button
+        android:id="@+id/reader_library_row_open"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:minHeight="48dp"
+        android:text="@string/reader_library_open"/>
+  </LinearLayout>
+</LinearLayout>
