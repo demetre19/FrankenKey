@@ -1,5 +1,6 @@
 package juloo.keyboard2;
 
+import android.content.ContentValues;
 import android.content.Context;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -83,6 +84,56 @@ public class ReaderLibraryTest
     assertTrue("Deleting metadata must never delete a source outside files/reader_library.",
         outside.exists());
     assertTrue(outside.delete());
+  }
+
+  @Test
+  public void corrupt_record_fails_visibly_without_leaking_content()
+      throws Exception
+  {
+    String secret = "private-reader-content-4821";
+    ReaderLibrary.Item stored = item("corrupt-item", null, secret);
+    _library.importItem(stored);
+
+    ContentValues values = new ContentValues();
+    values.put("text", "");
+    _library.getWritableDatabase().update("reader_content_units", values,
+        "item_id = ?", new String[] { stored.id });
+
+    assertRejectedWithoutLeak(stored.id, secret,
+        "A corrupt persisted record must fail visibly.");
+  }
+
+  @Test
+  public void unsupported_record_type_fails_visibly_without_leaking_content()
+      throws Exception
+  {
+    String secret = "unsupported-reader-content-5932";
+    ReaderLibrary.Item stored = item("unsupported-item", null, secret);
+    _library.importItem(stored);
+
+    ContentValues values = new ContentValues();
+    values.put("source_type", "FUTURE_PRIVATE_TYPE_" + secret);
+    _library.getWritableDatabase().update("reader_items", values,
+        "id = ?", new String[] { stored.id });
+
+    assertRejectedWithoutLeak(stored.id, secret,
+        "An unsupported persisted record type must fail visibly.");
+  }
+
+  private void assertRejectedWithoutLeak(String id, String secret,
+      String message) throws Exception
+  {
+    try
+    {
+      _library.get(id);
+      fail(message);
+    }
+    catch (ReaderLibrary.LibraryException error)
+    {
+      assertNotNull(message, error.getMessage());
+      assertFalse("Reader failures must not expose persisted private content.",
+          error.getMessage().contains(secret));
+    }
   }
 
   private ReaderLibrary.Item item(String id, String sourceUri, String text)
