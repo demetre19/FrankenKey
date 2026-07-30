@@ -1,0 +1,79 @@
+[
+  {
+    "id": "fast-typing",
+    "observed": "Thus ia me trying to type faat .",
+    "intended": "This is me trying to type fast.",
+    "tokens": [
+      { "previous": "", "typed": "Thus", "expected": "This", "next": "is", "kind": "output-only-next-context" },
+      { "previous": "This", "typed": "ia", "expected": "is", "next": "me", "kind": "short-typo" },
+      { "previous": "type", "typed": "faat", "expected": "fast", "next": "", "kind": "adjacent-key" }
+    ],
+    "spacingObserved": "faat .",
+    "spacingExpected": "fast. "
+  },
+  {
+    "id": "context-words",
+    "observed": "Its this sort of thing that we need ti look at",
+    "intended": "It's this sort of thing that we need to look at.",
+    "tokens": [
+      { "previous": "", "typed": "Its", "expected": "It's", "next": "this", "kind": "output-only-next-context" },
+      { "previous": "need", "typed": "ti", "expected": "to", "next": "look", "kind": "short-typo" }
+    ]
+  },
+  {
+    "id": "real-word-substitution",
+    "observed": "These are examples or the autocorrect being wrong",
+    "intended": "These are examples of the autocorrect being wrong.",
+    "tokens": [
+      { "previous": "examples", "typed": "or", "expected": "of", "next": "the", "kind": "previous-context-real-word" }
+    ]
+  },
+  {
+    "id": "severe-noise",
+    "observed": "You can aww how this ahoudk be changung",
+    "intended": "You can see how this should be changing.",
+    "tokens": [
+      { "previous": "can", "typed": "aww", "expected": "see", "next": "how", "kind": "two-sided-context" },
+      { "previous": "this", "typed": "ahoudk", "expected": "should", "next": "be", "kind": "multi-key" },
+      { "previous": "be", "typed": "changung", "expected": "changing", "next": "", "kind": "adjacent-key" }
+    ]
+  },
+  {
+    "id": "punctuation-corruption",
+    "observed": "Autocorrect is not.Doug great. This us the kind if stuff we have to  watch out for.",
+    "intended": "Autocorrect is not doing great. This is the kind of stuff we have to watch out for.",
+    "tokens": [
+      { "previous": "not", "typed": "Doug", "expected": "doing", "next": "great", "kind": "output-only-punctuation-and-next-context" },
+      { "previous": "This", "typed": "us", "expected": "is", "next": "the", "kind": "previous-context-real-word" },
+      { "previous": "kind", "typed": "if", "expected": "of", "next": "stuff", "kind": "previous-context-real-word" }
+    ],
+    "spacingObserved": "to  watch",
+    "spacingExpected": "to watch"
+  },
+  {
+    "id": "protected-acronym",
+    "observed": "STM",
+    "intended": "STM",
+    "tokens": [
+      { "previous": "", "typed": "STM", "expected": "STM", "next": "", "kind": "protected-acronym" }
+    ]
+  },
+  {
+    "id": "short-word-context",
+    "observed": "Make sure that you look ar this sort od sentence structure",
+    "intended": "Make sure that you look at this sort of sentence structure.",
+    "tokens": [
+      { "previous": "look", "typed": "ar", "expected": "at", "next": "this", "kind": "short-typo" },
+      { "previous": "sort", "typed": "od", "expected": "of", "next": "sentence", "kind": "short-typo" }
+    ]
+  },
+  {
+    "id": "adaptive-not-hardcoded",
+    "observed": "Make sure nothing ia super hard coded as this sort od thing needs to be fluid and it needs to learn on the fly.",
+    "intended": "Make sure nothing is super hard-coded as this sort of thing needs to be fluid, and it needs to learn on the fly.",
+    "tokens": [
+      { "previous": "nothing", "typed": "ia", "expected": "is", "next": "super", "kind": "short-typo" },
+      { "previous": "sort", "typed": "od", "expected": "of", "next": "thing", "kind": "short-typo" }
+    ]
+  }
+]

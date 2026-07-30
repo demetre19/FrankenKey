@@ -2,9 +2,11 @@ package juloo.keyboard2;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
@@ -24,6 +26,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -44,7 +47,8 @@ import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
 
 public class Keyboard2 extends InputMethodService
-  implements SharedPreferences.OnSharedPreferenceChangeListener
+  implements SharedPreferences.OnSharedPreferenceChangeListener,
+    ReaderPlaybackService.Listener
 {
   /** The view containing the keyboard and candidates view. */
   private ViewGroup _keyboard_container_view;
@@ -80,6 +84,25 @@ public class Keyboard2 extends InputMethodService
   private boolean _emojiPaneCommitting = false;
   private Handler _handler;
   private SharedPreferences _prefs;
+  private ReaderPlaybackService _reader_service;
+  private ReaderPlaybackService.Snapshot _reader_snapshot;
+  private boolean _reader_bound;
+  private final ServiceConnection _reader_connection = new ServiceConnection()
+  {
+    @Override public void onServiceConnected(ComponentName name, IBinder binder)
+    {
+      _reader_service =
+        ((ReaderPlaybackService.LocalBinder)binder).service();
+      _reader_service.addListener(Keyboard2.this);
+    }
+
+    @Override public void onServiceDisconnected(ComponentName name)
+    {
+      _reader_service = null;
+      _reader_snapshot = null;
+      update_reader_transports();
+    }
+  };
 
   private Config _config;
 
@@ -245,6 +268,7 @@ public class Keyboard2 extends InputMethodService
   @Override
   public void onDestroy()
   {
+    unbind_reader_playback();
     _prefs.unregisterOnSharedPreferenceChangeListener(this);
     _keyeventhandler.finished();
     _decoder_session = 0;
@@ -263,6 +287,7 @@ public class Keyboard2 extends InputMethodService
     _snippet_row_view = (SnippetRowView)_keyboard_container_view.findViewById(R.id.snippet_row);
     _assistant_strip = (AssistantStripView)_keyboard_container_view
       .findViewById(R.id.assistant_strip);
+    wire_reader_button(_keyboard_container_view);
   }
 
   InputMethodManager get_imm()
@@ -594,6 +619,261 @@ public class Keyboard2 extends InputMethodService
     return Locale.getDefault();
   }
 
+  private void wire_reader_button(ViewGroup pane)
+  {
+    View button = pane.findViewById(R.id.clipboard_reader);
+    if (button == null)
+      button = pane.findViewById(R.id.keyboard_reader);
+    if (button != null)
+      button.setOnClickListener(this::show_reader_source_dialog);
+    wire_reader_transport(pane);
+  }
+
+  interface ReaderSourceAction
+  {
+    ReaderTextAccess.Result read();
+  }
+
+  interface ReaderSourceAccess
+  {
+    ReaderTextAccess.Result readClipboard();
+    ReaderTextAccess.Result readSelection();
+    ReaderTextAccess.Result readCurrentField();
+  }
+
+  static final class ReaderSourceOption
+  {
+    final int label;
+    final int title;
+    final ReaderSourceAction action;
+
+    ReaderSourceOption(int label, int title, ReaderSourceAction action)
+    {
+      this.label = label;
+      this.title = title;
+      this.action = action;
+    }
+  }
+
+  static List<ReaderSourceOption> reader_source_options(boolean readableEditor,
+      boolean hasSelection, ReaderSourceAccess access)
+  {
+    List<ReaderSourceOption> options = new ArrayList<ReaderSourceOption>();
+    options.add(new ReaderSourceOption(R.string.reader_source_clipboard,
+        R.string.reader_title_clipboard, access::readClipboard));
+    if (readableEditor)
+    {
+      if (hasSelection)
+        options.add(new ReaderSourceOption(R.string.reader_source_selection,
+            R.string.reader_title_selection, access::readSelection));
+      options.add(new ReaderSourceOption(R.string.reader_source_current_field,
+          R.string.reader_title_current_field, access::readCurrentField));
+    }
+    options.add(new ReaderSourceOption(R.string.launcher_button_reader, 0, null));
+    return options;
+  }
+
+  private void show_reader_source_dialog(View anchor)
+  {
+    IBinder token = anchor.getWindowToken();
+    if (token == null)
+      return;
+    EditorInfo editor = getCurrentInputEditorInfo();
+    boolean readableEditor = ReaderTextAccess.isUserUnlocked(this) &&
+      ReaderTextAccess.isReadableEditor(editor);
+    boolean hasSelection = _selection_start >= 0 && _selection_end >= 0 &&
+      _selection_start != _selection_end;
+    ReaderSourceAccess access = new ReaderSourceAccess()
+    {
+      @Override public ReaderTextAccess.Result readClipboard()
+      {
+        return ReaderTextAccess.readClipboard(Keyboard2.this);
+      }
+
+      @Override public ReaderTextAccess.Result readSelection()
+      {
+        return ReaderTextAccess.readSelection(Keyboard2.this,
+            getCurrentInputEditorInfo(), getCurrentInputConnection());
+      }
+
+      @Override public ReaderTextAccess.Result readCurrentField()
+      {
+        return ReaderTextAccess.readCurrentField(Keyboard2.this,
+            getCurrentInputEditorInfo(), getCurrentInputConnection());
+      }
+    };
+    List<ReaderSourceOption> options =
+      reader_source_options(readableEditor, hasSelection, access);
+    String[] labels = new String[options.size()];
+    for (int i = 0; i < options.size(); i++)
+      labels[i] = getString(options.get(i).label);
+
+    AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(
+          this, _config.theme))
+      .setTitle(R.string.reader_source_menu_title)
+      .setItems(labels, (_dialog, which) -> {
+          ReaderSourceOption option = options.get(which);
+          if (option.action == null)
+            open_reader();
+          else
+            start_reader_result(getString(option.title), option.action.read());
+        })
+      .setNegativeButton(android.R.string.cancel, null)
+      .create();
+    dialog.setCanceledOnTouchOutside(true);
+    Utils.show_dialog_on_ime(dialog, token);
+  }
+
+  private void start_reader_result(String title, ReaderTextAccess.Result result)
+  {
+    if (!result.isSuccess())
+    {
+      Toast.makeText(this, reader_error_message(result.failure),
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    startReaderText(this, "quick-read:" + System.currentTimeMillis(), title,
+        result.text);
+  }
+
+  static void startReaderText(Context context, String itemId, String title,
+      String text)
+  {
+    if (text == null ||
+        text.length() > ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH ||
+        text.trim().isEmpty())
+      return;
+    itemId = ReaderPlaybackService.bounded(itemId,
+        ReaderPlaybackService.MAX_ITEM_ID_LENGTH);
+    title = ReaderPlaybackService.bounded(title,
+        ReaderPlaybackService.MAX_TITLE_LENGTH);
+    if (ReaderPlaybackService.needsNotificationPermission(context))
+    {
+      ReaderActivity.startQuickRead(context, itemId, title, text);
+      return;
+    }
+    ReaderPlaybackService.playText(context, itemId, title, text);
+  }
+
+  private void open_reader()
+  {
+    startActivity(new Intent(this, ReaderActivity.class)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  }
+
+  private void wire_reader_transport(View root)
+  {
+    View transport = root.findViewById(R.id.reader_transport);
+    if (transport == null)
+      return;
+    root.findViewById(R.id.reader_transport_previous).setOnClickListener(
+        _view -> send_reader_action(ReaderPlaybackService.ACTION_PREVIOUS));
+    root.findViewById(R.id.reader_transport_play_pause).setOnClickListener(
+        _view -> send_reader_action(
+          _reader_snapshot != null &&
+          (_reader_snapshot.status == ReaderPlaybackService.Status.PLAYING ||
+           _reader_snapshot.status == ReaderPlaybackService.Status.PREPARING)
+          ? ReaderPlaybackService.ACTION_PAUSE
+          : ReaderPlaybackService.ACTION_PLAY));
+    root.findViewById(R.id.reader_transport_next).setOnClickListener(
+        _view -> send_reader_action(ReaderPlaybackService.ACTION_NEXT));
+    root.findViewById(R.id.reader_transport_stop).setOnClickListener(
+        _view -> send_reader_action(ReaderPlaybackService.ACTION_STOP));
+    root.findViewById(R.id.reader_transport_open).setOnClickListener(
+        _view -> open_reader());
+    update_reader_transport(root);
+  }
+
+  private void send_reader_action(String action)
+  {
+    if (ReaderPlaybackService.ACTION_PLAY.equals(action) &&
+        ReaderPlaybackService.needsNotificationPermission(this))
+    {
+      ReaderActivity.startPlaybackRequest(this);
+      return;
+    }
+    if (_reader_service != null)
+      _reader_service.handleAction(action);
+    else
+      ReaderPlaybackService.sendAction(this, action);
+  }
+
+  private void bind_reader_playback()
+  {
+    if (_reader_bound)
+      return;
+    _reader_bound = bindService(
+        new Intent(this, ReaderPlaybackService.class), _reader_connection,
+        Context.BIND_AUTO_CREATE);
+  }
+
+  private void unbind_reader_playback()
+  {
+    if (!_reader_bound)
+      return;
+    if (_reader_service != null)
+      _reader_service.removeListener(this);
+    unbindService(_reader_connection);
+    _reader_bound = false;
+    _reader_service = null;
+    _reader_snapshot = null;
+    update_reader_transports();
+  }
+
+  @Override
+  public void onReaderPlaybackChanged(
+      ReaderPlaybackService.Snapshot snapshot)
+  {
+    _reader_snapshot = snapshot;
+    update_reader_transports();
+  }
+
+  private void update_reader_transports()
+  {
+    update_reader_transport(_keyboard_container_view);
+    update_reader_transport(_clipboard_pane);
+  }
+
+  private void update_reader_transport(View root)
+  {
+    if (root == null)
+      return;
+    View transport = root.findViewById(R.id.reader_transport);
+    if (transport == null)
+      return;
+    boolean active = _reader_snapshot != null &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.EMPTY &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.STOPPED &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.ERROR;
+    transport.setVisibility(active ? View.VISIBLE : View.GONE);
+    if (!active)
+      return;
+    ((TextView)root.findViewById(R.id.reader_transport_title))
+      .setText(_reader_snapshot.title);
+    boolean playing =
+      _reader_snapshot.status == ReaderPlaybackService.Status.PLAYING ||
+      _reader_snapshot.status == ReaderPlaybackService.Status.PREPARING;
+    TextView playPause = (TextView)root.findViewById(
+        R.id.reader_transport_play_pause);
+    playPause.setText(playing ? R.string.reader_pause : R.string.reader_play);
+    playPause.setContentDescription(
+        getString(playing ? R.string.reader_pause : R.string.reader_play));
+  }
+
+  private int reader_error_message(ReaderTextAccess.Failure failure)
+  {
+    switch (failure)
+    {
+      case USER_LOCKED: return R.string.reader_error_user_locked;
+      case SENSITIVE: return R.string.reader_error_sensitive_clipboard;
+      case UNSAFE_EDITOR: return R.string.reader_error_private_editor;
+      case TOO_LARGE: return R.string.reader_error_text_too_long;
+      case EMPTY: return R.string.reader_error_empty_text;
+      default: return R.string.reader_error_unavailable_text;
+    }
+  }
+
+
   /** Might re-create the keyboard view. [_keyboard_layout_view.setKeyboard()] and
       [setInputView()] must be called soon after. */
   private void refresh_config()
@@ -667,6 +947,7 @@ public class Keyboard2 extends InputMethodService
     _selection_end = info.initialSelEnd;
     start_grammar_checker();
     setInputView(_keyboard_container_view);
+    bind_reader_playback();
     Logs.debug_startup_input_view(info, _config);
   }
 
@@ -819,6 +1100,7 @@ public class Keyboard2 extends InputMethodService
   public void onFinishInputView(boolean finishingInput)
   {
     super.onFinishInputView(finishingInput);
+    unbind_reader_playback();
     finish_input_session();
     _keyboard_layout_view.reset();
   }
@@ -965,7 +1247,10 @@ public class Keyboard2 extends InputMethodService
         case SWITCH_CLIPBOARD:
           request_screenshot_permission_if_needed();
           if (_clipboard_pane == null)
+          {
             _clipboard_pane = (ViewGroup)inflate_view(R.layout.clipboard_pane);
+            wire_reader_button(_clipboard_pane);
+          }
           setInputView(_clipboard_pane);
           break;
 

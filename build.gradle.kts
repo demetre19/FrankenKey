@@ -13,6 +13,8 @@ dependencies {
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20240303")
   testImplementation("org.robolectric:robolectric:4.15.1")
+  testImplementation("com.tom-roush:pdfbox-android:2.0.27.0")
+  testImplementation("org.jsoup:jsoup:1.22.2")
   androidTestImplementation("androidx.test:runner:1.7.0")
   androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
@@ -44,6 +46,7 @@ android {
 
     named("test") {
       java.srcDirs("test")
+      resources.srcDirs("test/assets")
     }
 
     named("androidTest") {

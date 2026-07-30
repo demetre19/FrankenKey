@@ -9,14 +9,18 @@
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-  <application android:label="@string/app_name" android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:hardwareAccelerated="false">
+  <application android:label="@string/app_name" android:allowBackup="true" android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:hardwareAccelerated="false">
     <service android:name="juloo.keyboard2.Keyboard2" android:label="@string/app_name" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.view.InputMethod"/>
       </intent-filter>
       <meta-data android:name="android.view.im" android:resource="@xml/method"/>
     </service>
+    <service android:name="juloo.keyboard2.ReaderPlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
 
     <provider android:name="juloo.keyboard2.GifContentProvider" android:authorities="${applicationId}.gifcontent" android:exported="false" android:grantUriPermissions="true"/>
     <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
@@ -36,6 +40,7 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <activity android:name="juloo.keyboard2.ReaderActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_activity_title" android:theme="@style/launcherTheme" android:exported="false"/>
 
     <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>
@@ -51,6 +56,9 @@
     </intent>
     <intent>
       <action android:name="android.speech.RecognitionService"/>
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.TTS_SERVICE"/>
     </intent>
   </queries>
 </manifest>

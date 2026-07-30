@@ -245,6 +245,8 @@ public final class ClipboardHistoryService
     ClipData clip = get_primary_clip();
     if (clip == null)
       return;
+    if (ReaderTextAccess.isSensitive(clip.getDescription()))
+      return;
     int count = clip.getItemCount();
     for (int i = 0; i < count; i++)
     {

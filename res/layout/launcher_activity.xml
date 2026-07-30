@@ -24,6 +24,7 @@
       <Button style="@style/launcher_setup_button" android:text="@string/launcher_button_imesettings" android:onClick="launch_imesettings"/>
       <Button style="@style/launcher_setup_button" android:text="@string/launcher_button_imepicker" android:onClick="launch_imepicker"/>
       <Button style="@style/launcher_setup_button" android:text="@string/launcher_button_dictionaries" android:onClick="launch_dictionaries_activity"/>
+      <Button android:id="@+id/launcher_reader" style="@style/launcher_setup_button" android:text="@string/launcher_button_reader" android:onClick="launch_reader_activity"/>
     </juloo.keyboard2.ResponsiveSetupLayout>
 
     <TextView style="@style/launcher_heading" android:text="@string/launcher_modes_heading"/>

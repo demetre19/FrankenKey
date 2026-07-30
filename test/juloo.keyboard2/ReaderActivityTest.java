@@ -8,13 +8,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.XmlResourceParser;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Switch;
+import android.widget.TextView;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +26,7 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.xmlpull.v1.XmlPullParser;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
@@ -160,6 +164,42 @@ public class ReaderActivityTest
   }
 
   @Test
+  public void keyboard_reader_transport_is_hidden_until_playback_and_accessible()
+      throws Exception
+  {
+    Context context = new ContextThemeWrapper(
+        RuntimeEnvironment.getApplication(), R.style.Light);
+    assertTrue("Main keyboard tool area exposes the Reader source menu.",
+        layoutContainsId(context, R.layout.keyboard, R.id.keyboard_reader));
+    assertTrue("Everyday keyboard mode owns the compact Reader transport.",
+        layoutIncludes(context, R.layout.keyboard,
+          R.layout.reader_transport_strip));
+    assertTrue("Clipboard mode owns the same compact Reader transport.",
+        layoutIncludes(context, R.layout.clipboard_pane,
+          R.layout.reader_transport_strip));
+
+    View transport = LayoutInflater.from(context).inflate(
+        R.layout.reader_transport_strip, null, false);
+    assertEquals("The transport must not consume keyboard height without an active item.",
+        View.GONE, transport.getVisibility());
+    int minimum = Math.round(48f *
+        context.getResources().getDisplayMetrics().density);
+    int[] controls = {
+      R.id.reader_transport_previous, R.id.reader_transport_play_pause,
+      R.id.reader_transport_next, R.id.reader_transport_stop,
+      R.id.reader_transport_open
+    };
+    for (int id : controls)
+    {
+      TextView control = (TextView)transport.findViewById(id);
+      assertTrue("Compact Reader controls retain a 48dp touch target: " + id,
+          control.getMinimumHeight() >= minimum);
+      assertFalse("Compact Reader controls require accessible labels: " + id,
+          control.getContentDescription().toString().isEmpty());
+    }
+  }
+
+  @Test
   public void launcher_opens_private_reader_activity()
       throws Exception
   {
@@ -249,6 +289,39 @@ public class ReaderActivityTest
   }
 
   @Test
+  public void keyboard_transport_play_requests_notification_permission_then_resumes()
+  {
+    Application application = RuntimeEnvironment.getApplication();
+    ShadowApplication shadowApplication = shadowOf(application);
+    shadowApplication.denyPermissions(Manifest.permission.POST_NOTIFICATIONS);
+    ReaderPlaybackService playback = service();
+    playback.load("restored-item", "Restored title",
+        "Restored private text", false);
+
+    ReaderActivity.startPlaybackRequest(application);
+    Intent launched = shadowApplication.getNextStartedActivity();
+    ReaderActivity activity = launchQuickRead(application, playback, launched);
+    ShadowActivity.PermissionsRequest request =
+      shadowOf(activity).getLastRequestedPermission();
+
+    assertNotNull("Transport Play must immediately enter the permission flow.",
+        request);
+    assertArrayEquals(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+        request.requestedPermissions);
+    assertNull("The permission Activity handoff contains no Reader content.",
+        launched.getStringExtra(ReaderPlaybackService.EXTRA_TEXT));
+    shadowApplication.getNextStartedService();
+
+    activity.onRequestPermissionsResult(request.requestCode,
+        request.requestedPermissions,
+        new int[]{PackageManager.PERMISSION_GRANTED});
+
+    Intent started = shadowApplication.getNextStartedService();
+    assertNotNull(started);
+    assertEquals(ReaderPlaybackService.ACTION_PLAY, started.getAction());
+  }
+
+  @Test
   public void quick_read_permission_grant_preserves_pending_text_and_starts_playback()
   {
     Application application = RuntimeEnvironment.getApplication();
@@ -325,6 +398,52 @@ public class ReaderActivityTest
         new int[]{PackageManager.PERMISSION_GRANTED});
     assertNull("Denied captured text cannot later bypass the one-shot holder.",
         shadowApplication.getNextStartedService());
+  }
+
+  private static boolean layoutContainsId(Context context, int layout,
+      int viewId)
+      throws Exception
+  {
+    XmlResourceParser parser = context.getResources().getLayout(layout);
+    try
+    {
+      while (parser.next() != XmlPullParser.END_DOCUMENT)
+      {
+        if (parser.getEventType() == XmlPullParser.START_TAG &&
+            parser.getAttributeResourceValue(
+              "http://schemas.android.com/apk/res/android", "id", 0) ==
+              viewId)
+          return true;
+      }
+      return false;
+    }
+    finally
+    {
+      parser.close();
+    }
+  }
+
+  private static boolean layoutIncludes(Context context, int layout,
+      int includedLayout)
+      throws Exception
+  {
+    XmlResourceParser parser = context.getResources().getLayout(layout);
+    try
+    {
+      while (parser.next() != XmlPullParser.END_DOCUMENT)
+      {
+        if (parser.getEventType() == XmlPullParser.START_TAG &&
+            "include".equals(parser.getName()) &&
+            parser.getAttributeResourceValue(null, "layout", 0) ==
+              includedLayout)
+          return true;
+      }
+      return false;
+    }
+    finally
+    {
+      parser.close();
+    }
   }
 
   private ReaderActivity launchQuickRead(Application application,

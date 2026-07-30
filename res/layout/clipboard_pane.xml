@@ -4,9 +4,11 @@
     <TextView android:text="⌨" style="@style/clipboardToolbarLabel" android:textSize="18dp"/>
     <TextView android:text="|" style="@style/clipboardToolbarLabel"/>
     <TextView android:text="@string/clipboard_panel_title" style="@style/clipboardTitle" android:layout_weight="1"/>
+    <TextView android:id="@+id/clipboard_reader" android:text="@string/reader_source_button" android:contentDescription="@string/reader_source_button" style="@style/clipboardToolbarLabel" android:minWidth="48dp" android:gravity="center" android:paddingHorizontal="8dp" android:clickable="true" android:focusable="true"/>
     <TextView android:text="@string/clipboard_history_toggle_label" style="@style/clipboardToolbarLabel"/>
     <juloo.keyboard2.ClipboardHistoryCheckBox android:contentDescription="@string/clipboard_history_toggle_label" style="@style/clipboardToolbarToggle" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
   </LinearLayout>
+  <include layout="@layout/reader_transport_strip"/>
 
   <juloo.keyboard2.ClipboardItemEditorView android:id="@+id/clipboard_item_editor" android:visibility="gone" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="10dp" android:paddingBottom="8dp" android:layout_width="fill_parent" android:layout_height="wrap_content">
     <EditText android:id="@+id/clipboard_editor_text" android:hint="@string/clipboard_editor_hint" android:singleLine="false" android:maxLines="4" android:inputType="textMultiLine|textCapSentences" android:textColor="?attr/colorLabel" android:textColorHint="?attr/colorSubLabel" android:background="@drawable/clipboard_card_background" android:padding="10dp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"/>

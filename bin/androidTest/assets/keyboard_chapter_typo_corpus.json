@@ -1,0 +1,120 @@
+{
+  "id": "chapter-general-autocorrection-v1",
+  "locale": "en-AU",
+  "scoring": "case-insensitive words with punctuation preserved separately",
+  "sentences": [
+    {
+      "classes": ["substitution", "omission", "transposition", "insertion"],
+      "typed": "ths ia a smal chaptr taht tsets hwo thre keybaords repiar mistaks whle a preson wrtes ordnary englis proze.",
+      "expected": "this is a small chapter that tests how three keyboards repair mistakes while a person writes ordinary english prose."
+    },
+    {
+      "classes": ["two-letter", "valid-word-context", "substitution", "transposition"],
+      "typed": "shrot wrds scuh ad ia aa ti od on amd qe aer hrad becuse oen wrnog leter cna from anothr vlaid wrd.",
+      "expected": "short words such as is as to of in and we are hard because one wrong letter can form another valid word."
+    },
+    {
+      "classes": ["protected-name", "substitution", "transposition", "omission"],
+      "typed": "a cautios keybaord shold corect clera slpis but shold kep naems lkie samsung gboard frankenkey omp adn cmux exaclty aa writen.",
+      "expected": "a cautious keyboard should correct clear slips but should keep names like samsung gboard frankenkey omp and cmux exactly as written."
+    },
+    {
+      "classes": ["reported-typo", "substitution", "transposition", "omission", "insertion"],
+      "typed": "teh writr ia fixinf a brokn sentnce adn workinf slwoly so eech insreted omited transpoesd or neighburing leter cna be mesured.",
+      "expected": "the writer is fixing a broken sentence and working slowly so each inserted omitted transposed or neighbouring letter can be measured."
+    },
+    {
+      "classes": ["contraction", "protected-valid-word"],
+      "typed": "contractions also mater becuse im dont cant wont adn doesnt shold be corected without changinf teh vlaid wrds well or shell.",
+      "expected": "contractions also matter because i'm don't can't won't and doesn't should be corrected without changing the valid words well or shell."
+    },
+    {
+      "classes": ["backspace-policy", "substitution", "transposition", "omission"],
+      "typed": "aftr a corection presing bakcspace ocne shold delte olny teh spaec adn msut nevr resotre teh odl mispeling behnid teh curor.",
+      "expected": "after a correction pressing backspace once should delete only the space and must never restore the old misspelling behind the cursor."
+    },
+    {
+      "classes": ["cursor-policy", "same-length-substitution", "transposition", "omission"],
+      "typed": "movinf bakcward thorugh accepetd txet shold leve evry corected wrd intcat eevn wehn teh soruce adn traget hvae teh smae lenght.",
+      "expected": "moving backward through accepted text should leave every corrected word intact even when the source and target have the same length."
+    },
+    {
+      "classes": ["substitution", "transposition", "omission", "capitalization", "punctuation"],
+      "typed": "teh fianl reslut shold raed natually adn presrve punctation captalization spaicng adn evry techncial naem in teh chaptr.",
+      "expected": "the final result should read naturally and preserve punctuation capitalisation spacing and every technical name in the chapter."
+    }
+  ],
+  "gates": {
+    "reported_recall_min": 1.0,
+    "protected_retention_min": 1.0,
+    "lifecycle_pass_min": 1.0,
+    "maximum_harmful_corrections": 1,
+    "chapter_corrections_min": 90,
+    "fast_slow_correction_delta_max": 5,
+    "post_period_recall_delta_max": 0.05
+  },
+  "targeted_sequences": [
+    {
+      "id": "reported-regressions-fast",
+      "context": "mid-sentence",
+      "classes": ["reported-typo", "maximum-throughput"],
+      "typed": "we typed ia ad aa fixinf teh ths leter writr shold quickly.",
+      "expected": "we typed is as as fixing the this letter writer should quickly."
+    },
+    {
+      "id": "live-report-fast",
+      "context": "mixed",
+      "classes": ["live-report", "maximum-throughput", "sentence-boundary"],
+      "diagnostic_only": true,
+      "typed": "it doesnt aeem to start straight away agyet w full stop. its missing a lot kt spelling errors.",
+      "expected": "it doesn't seem to start straight away after a full stop. it's missing a lot of spelling errors."
+    },
+    {
+      "id": "live-report-moderate-why",
+      "context": "mid-sentence",
+      "classes": ["live-report", "moderate-throughput", "two-word-latency"],
+      "diagnostic_only": true,
+      "reported_text": "Why font they get coccrected?",
+      "typed": "Why font they get coccrected.",
+      "expected": "Why don't they get corrected."
+    },
+    {
+      "id": "live-report-short-latent-failure",
+      "context": "mixed",
+      "classes": ["live-report", "short-word", "two-word-latency"],
+      "diagnostic_only": true,
+      "reported_text": "So far this ia not catching twi and three letter candidated there ia definitely no toe word jump back. How ia that supposed to work. Its clearly not working correctly",
+      "typed": "So far this ia not catching twi and three letter candidated there ia definitely no toe word jump back. How ia that supposed to work. Its clearly not working correctly.",
+      "expected": "So far this is not catching two and three letter candidates there is definitely no two word jump back. How is that supposed to work. It's clearly not working correctly.",
+      "safe_expected": "So far this is not catching two and three letter candidates there is definitely no toe word jump back. How is that supposed to work. Its clearly not working correctly."
+    },
+    {
+      "id": "sentence-start-aeem",
+      "context": "sentence-start",
+      "classes": ["substitution", "maximum-throughput"],
+      "typed": "aeem ready.",
+      "expected": "seem ready."
+    },
+    {
+      "id": "mid-sentence-aeem",
+      "context": "mid-sentence",
+      "classes": ["substitution", "maximum-throughput"],
+      "typed": "we aeem ready.",
+      "expected": "we seem ready."
+    },
+    {
+      "id": "post-period-aeem",
+      "context": "post-period",
+      "classes": ["substitution", "maximum-throughput", "sentence-boundary"],
+      "typed": "we stopped. aeem ready.",
+      "expected": "we stopped. seem ready."
+    },
+    {
+      "id": "uppercase-protection-fast",
+      "context": "mid-sentence",
+      "classes": ["protected-name", "maximum-throughput"],
+      "typed": "we use STM GLM API AI OMP CMUX daily.",
+      "expected": "we use STM GLM API AI OMP CMUX daily."
+    }
+  ]
+}

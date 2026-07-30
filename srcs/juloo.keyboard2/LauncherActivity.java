@@ -103,6 +103,11 @@ public class LauncherActivity extends Activity
     startActivity(new Intent(this, DictionariesActivity.class));
   }
 
+  public void launch_reader_activity(View v)
+  {
+    startActivity(new Intent(this, ReaderActivity.class));
+  }
+
   final class Tryhere_OnUnhandledKeyEventListener implements View.OnUnhandledKeyEventListener
   {
     public boolean onUnhandledKeyEvent(View v, KeyEvent ev)
