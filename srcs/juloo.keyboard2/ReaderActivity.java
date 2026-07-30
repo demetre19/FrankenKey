@@ -12,7 +12,7 @@ import android.os.IBinder;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -123,7 +123,7 @@ public final class ReaderActivity extends Activity
   private TextView _speedLabel;
   private SeekBar _progress;
   private SeekBar _speed;
-  private Button _playPause;
+  private ImageButton _playPause;
   private Spinner _voice;
   private Switch _networkVoices;
 
@@ -178,7 +178,7 @@ public final class ReaderActivity extends Activity
     _speedLabel = (TextView)findViewById(R.id.reader_speed_label);
     _progress = (SeekBar)findViewById(R.id.reader_progress);
     _speed = (SeekBar)findViewById(R.id.reader_speed);
-    _playPause = (Button)findViewById(R.id.reader_play_pause);
+    _playPause = (ImageButton)findViewById(R.id.reader_play_pause);
     _voice = (Spinner)findViewById(R.id.reader_voice);
     _networkVoices = (Switch)findViewById(R.id.reader_network_voices);
   }
@@ -398,9 +398,13 @@ public final class ReaderActivity extends Activity
       }
     }
     _status.setText(statusText(snapshot));
-    _playPause.setText(snapshot.status == ReaderPlaybackService.Status.PLAYING ||
-        snapshot.status == ReaderPlaybackService.Status.PREPARING
-        ? R.string.reader_pause : R.string.reader_play);
+    boolean playing =
+      snapshot.status == ReaderPlaybackService.Status.PLAYING ||
+      snapshot.status == ReaderPlaybackService.Status.PREPARING;
+    _playPause.setImageResource(playing
+        ? R.drawable.ic_reader_pause : R.drawable.ic_reader_play);
+    _playPause.setContentDescription(getString(
+        playing ? R.string.reader_pause : R.string.reader_play));
     int progress = snapshot.textLength == 0 ? 0 :
       Math.round(1000f * snapshot.characterOffset / snapshot.textLength);
     _progress.setProgress(progress);

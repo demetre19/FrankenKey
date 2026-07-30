@@ -28,6 +28,7 @@
 - Adaptive-learning status and clear/forget copy must accurately describe learned words, correction patterns, and touch calibration; destructive actions remain wired to explicit platform confirmation dialogs.
 - Settings exposes default-on automatic update checks, in-app or GitHub delivery, current update status, and a manual check. Update notices must show release changelog text and require explicit acceptance or rejection.
 - Snippet icon drawables are the curated Lucide set mapped by stable IDs in `SnippetIcons`; preserve their shared 24×24 stroke treatment and the packaged Lucide/Feather license notice.
+- Mobile screens must preserve vertical space with compact spacing, minimal branding and headings, and familiar icon-only actions where the symbol is unambiguous. Keep visible text only when it is needed for clarity, while every icon action retains a descriptive accessibility label and at least a 48dp touch target.
 
 ## Work Guidance
 

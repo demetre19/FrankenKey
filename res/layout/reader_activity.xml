@@ -9,52 +9,52 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical"
-      android:padding="20dp">
+      android:paddingStart="12dp"
+      android:paddingTop="8dp"
+      android:paddingEnd="12dp"
+      android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-      <Button
+      <ImageButton
           android:id="@+id/reader_back"
           android:layout_width="48dp"
           android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
           android:contentDescription="@string/reader_back"
-          android:minHeight="48dp"
-          android:minWidth="48dp"
-          android:text="‹"
-          android:textSize="24sp"/>
-      <TextView
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_back"
+          android:tint="#F4F7FA"/>
+      <Space
           android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:text="@string/reader_activity_title"
-          android:textColor="#F4F7FA"
-          android:textSize="22sp"
-          android:textStyle="bold"/>
+          android:layout_height="1dp"
+          android:layout_weight="1"/>
       <TextView
           android:id="@+id/reader_status"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:accessibilityLiveRegion="polite"
           android:gravity="end"
+          android:maxLines="2"
           android:text="@string/reader_status_stopped"
           android:textColor="#8CE9D7"
-          android:textSize="15sp"/>
+          android:textSize="14sp"/>
     </LinearLayout>
 
     <EditText
         android:id="@+id/reader_title"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
         android:background="@drawable/launcher_input"
         android:hint="@string/reader_title_hint"
         android:inputType="textCapSentences"
         android:maxLines="1"
         android:minHeight="48dp"
-        android:padding="12dp"
+        android:paddingHorizontal="10dp"
         android:textColor="#F4F7FA"
         android:textColorHint="#A8B2BE"/>
 
@@ -62,97 +62,113 @@
         android:id="@+id/reader_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:background="@drawable/launcher_input"
         android:gravity="top|start"
         android:hint="@string/reader_text_hint"
         android:inputType="textCapSentences|textMultiLine"
         android:maxLength="200000"
-        android:minHeight="180dp"
-        android:padding="14dp"
+        android:minHeight="160dp"
+        android:padding="12dp"
         android:scrollbars="vertical"
         android:textColor="#F4F7FA"
         android:textColorHint="#A8B2BE"
-        android:textSize="18sp"/>
-
-    <TextView
-        android:id="@+id/reader_progress_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:text="@string/reader_progress_zero"
-        android:textColor="#D6DCE3"
-        android:textSize="14sp"/>
-
-    <SeekBar
-        android:id="@+id/reader_progress"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:contentDescription="@string/reader_progress_seek"
-        android:max="1000"/>
+        android:textSize="17sp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
-      <Button
-          android:id="@+id/reader_previous"
-          android:layout_width="0dp"
+      <TextView
+          android:id="@+id/reader_progress_label"
+          android:layout_width="48dp"
           android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:minHeight="48dp"
-          android:text="@string/reader_previous"/>
-      <Button
-          android:id="@+id/reader_play_pause"
+          android:gravity="center_vertical"
+          android:text="@string/reader_progress_zero"
+          android:textColor="#D6DCE3"
+          android:textSize="13sp"/>
+      <SeekBar
+          android:id="@+id/reader_progress"
           android:layout_width="0dp"
-          android:layout_height="wrap_content"
+          android:layout_height="48dp"
           android:layout_weight="1"
-          android:minHeight="48dp"
-          android:text="@string/reader_play"/>
-      <Button
-          android:id="@+id/reader_next"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:minHeight="48dp"
-          android:text="@string/reader_next"/>
-      <Button
-          android:id="@+id/reader_stop"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:minHeight="48dp"
-          android:text="@string/reader_stop"/>
+          android:contentDescription="@string/reader_progress_seek"
+          android:max="1000"/>
     </LinearLayout>
 
-
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="22dp"
-        android:text="@string/reader_voice_heading"
-        android:textColor="#F4F7FA"
-        android:textSize="18sp"
-        android:textStyle="bold"/>
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+      <ImageButton
+          android:id="@+id/reader_previous"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/reader_previous"
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_previous"
+          android:tint="#F4F7FA"/>
+      <ImageButton
+          android:id="@+id/reader_play_pause"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/reader_play"
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_play"
+          android:tint="#8CE9D7"/>
+      <ImageButton
+          android:id="@+id/reader_next"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/reader_next"
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_next"
+          android:tint="#F4F7FA"/>
+      <ImageButton
+          android:id="@+id/reader_stop"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/reader_stop"
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_stop"
+          android:tint="#F4F7FA"/>
+    </LinearLayout>
 
-    <Spinner
-        android:id="@+id/reader_voice"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/reader_voice_select"
-        android:minHeight="48dp"/>
-
-    <Button
-        android:id="@+id/reader_preview_voice"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="48dp"
-        android:text="@string/reader_voice_preview"/>
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+      <Spinner
+          android:id="@+id/reader_voice"
+          android:layout_width="0dp"
+          android:layout_height="48dp"
+          android:layout_weight="1"
+          android:contentDescription="@string/reader_voice_select"
+          android:minHeight="48dp"/>
+      <ImageButton
+          android:id="@+id/reader_preview_voice"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/reader_voice_preview"
+          android:padding="12dp"
+          android:src="@drawable/ic_reader_play"
+          android:tint="#F4F7FA"/>
+    </LinearLayout>
 
     <Switch
         android:id="@+id/reader_network_voices"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:minHeight="48dp"
         android:text="@string/reader_network_voices"/>
 
@@ -162,23 +178,30 @@
         android:layout_height="wrap_content"
         android:text="@string/reader_network_voices_explanation"
         android:textColor="#A8B2BE"
-        android:textSize="14sp"/>
+        android:textSize="12sp"/>
 
-    <TextView
-        android:id="@+id/reader_speed_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:text="@string/reader_speed_default"
-        android:textColor="#F4F7FA"
-        android:textSize="16sp"/>
-
-    <SeekBar
-        android:id="@+id/reader_speed"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:contentDescription="@string/reader_speed_control"
-        android:max="275"
-        android:progress="75"/>
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+      <TextView
+          android:id="@+id/reader_speed_label"
+          android:layout_width="64dp"
+          android:layout_height="wrap_content"
+          android:gravity="center_vertical"
+          android:text="@string/reader_speed_default"
+          android:textColor="#F4F7FA"
+          android:textSize="14sp"/>
+      <SeekBar
+          android:id="@+id/reader_speed"
+          android:layout_width="0dp"
+          android:layout_height="48dp"
+          android:layout_weight="1"
+          android:contentDescription="@string/reader_speed_control"
+          android:max="275"
+          android:progress="75"/>
+    </LinearLayout>
   </LinearLayout>
 </ScrollView>
