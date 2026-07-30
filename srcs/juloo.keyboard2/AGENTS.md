@@ -34,6 +34,8 @@
 - Destructive learning controls require explicit confirmation: Settings clear-all uses an activity dialog, and live candidate/keyboard word-unlearn actions use an IME-attached dialog whose delayed positive action revalidates the exact request.
 - `SettingsActivity` uses the dark platform Material theme by default independently of the keyboard theme preference, which remains system-controlled unless explicitly changed.
 - Release update checks run only from unlocked launcher/settings activities, never the IME. They default to daily checks, show the GitHub Release changelog, require explicit accept/reject, authenticate the APK before installer handoff, and never clear or migrate keyboard user data.
+- `ReaderActivity` remains private. Android `ACTION_SEND` and `ACTION_PROCESS_TEXT` enter only through exported `ReaderShareActivity`, accept bounded `text/plain`, mark Process Text read-only, and hand accepted content to Reader through an opaque one-shot token. URL-only shares must use hardened on-device extraction when available or fail closed with a clear message; never speak the raw URL as article content.
+- Reader speech speed (shown as WPM), pitch, selected voice, network-voice opt-in, and playback position are private persistent preferences. User choices must survive Reader closure, service/process recreation, and later app sessions; defaults apply only before a choice has been saved.
 
 ## Work Guidance
 

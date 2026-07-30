@@ -25,6 +25,7 @@
 - Treat clipboard/snippets/personalization data as user data; preserve privacy and avoid unnecessary persistence.
 - Suggestion display and autocorrect share one bounded asynchronous decoder; never perform dictionary/Hunspell decoding or wait for results on the IME main thread.
 - Reference-keyboard evidence lives under `androidTest/assets/`. Keep the full Gboard oracle and limited physical-Samsung spot-check explicitly scoped apart, and record the exact package version, APK hash, input method, and observed outputs for each refresh.
+- The manifest keeps `ReaderActivity` non-exported and exposes only `ReaderShareActivity` for `text/plain` Share and read-only Process Text entry; `srcs/juloo.keyboard2/AGENTS.md` owns the detailed input-validation and opaque-handoff contract.
 
 ## Work Guidance
 

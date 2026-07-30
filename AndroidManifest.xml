@@ -41,6 +41,19 @@
       </intent-filter>
     </activity>
     <activity android:name="juloo.keyboard2.ReaderActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_activity_title" android:theme="@style/launcherTheme" android:exported="false"/>
+    <activity android:name="juloo.keyboard2.ReaderShareActivity" android:label="@string/reader_activity_title" android:theme="@android:style/Theme.NoDisplay" android:exported="true" android:excludeFromRecents="true" android:noHistory="true">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/plain"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.PROCESS_TEXT"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/plain"/>
+      </intent-filter>
+      <meta-data android:name="android.intent.extra.PROCESS_TEXT_READONLY" android:value="true"/>
+    </activity>
 
     <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>

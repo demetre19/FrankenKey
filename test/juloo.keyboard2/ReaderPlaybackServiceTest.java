@@ -122,6 +122,40 @@ public class ReaderPlaybackServiceTest
   }
 
   @Test
+  public void playback_settings_are_bounded_and_survive_service_recreation()
+  {
+    ServiceController<ReaderPlaybackService> firstController =
+      Robolectric.buildService(ReaderPlaybackService.class).create();
+    ReaderPlaybackService first = firstController.get();
+    first.onTtsInitialized(TextToSpeech.SUCCESS);
+    first.setSpeechRate(8f);
+    first.setPitch(0.1f);
+    assertEquals("Speech speed must stay inside the TTS-safe range.",
+        3f, first.snapshot().speechRate, 0.001f);
+    assertEquals("Voice pitch must stay inside the TTS-safe range.",
+        0.5f, first.snapshot().pitch, 0.001f);
+    first.setSpeechRate(1.35f);
+    first.setPitch(1.2f);
+    first.setAllowNetworkVoices(true);
+    assertTrue("A selected installed voice must be accepted before persistence.",
+        first.setVoice("reader-test-offline"));
+    firstController.destroy();
+
+    ServiceController<ReaderPlaybackService> secondController =
+      Robolectric.buildService(ReaderPlaybackService.class).create();
+    ReaderPlaybackService restored = secondController.get();
+    assertEquals("A user's WPM setting must survive normal service recreation.",
+        1.35f, restored.snapshot().speechRate, 0.001f);
+    assertEquals("A user's voice pitch must survive normal service recreation.",
+        1.2f, restored.snapshot().pitch, 0.001f);
+    assertTrue("The network-voice opt-in must survive normal service recreation.",
+        restored.allowNetworkVoices());
+    assertEquals("The selected voice must survive normal service recreation.",
+        "reader-test-offline", restored.snapshot().voiceName);
+    secondController.destroy();
+  }
+
+  @Test
   public void keyboard_reader_and_notification_commands_share_one_service_state()
   {
     ServiceController<ReaderPlaybackService> controller =

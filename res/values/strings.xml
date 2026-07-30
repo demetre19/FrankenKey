@@ -365,10 +365,12 @@
     <string name="reader_source_current_field">Read Current Field</string>
     <string name="reader_title_clipboard">Clipboard</string>
     <string name="reader_title_selection">Selected text</string>
+    <string name="reader_title_share">Shared text</string>
     <string name="reader_title_current_field">Current field</string>
     <string name="reader_error_sensitive_clipboard">This clipboard item is marked sensitive and cannot be read.</string>
     <string name="reader_error_private_editor">Reader is unavailable in password, terminal, numeric, and structured fields.</string>
     <string name="reader_error_unavailable_text">This app did not provide readable text.</string>
+    <string name="reader_error_url_import_unavailable">This link could not be imported yet. Share selected page text instead.</string>
     <string name="reader_error_notification_permission">Allow FrankenKey notifications in Android settings before starting Reader playback.</string>
     <string name="launcher_button_reader">Open Reader</string>
     <string name="reader_activity_title">FrankenKey Reader</string>

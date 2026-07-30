@@ -15,8 +15,10 @@ import android.speech.tts.Voice;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 import java.util.Collections;
@@ -139,8 +141,8 @@ public class ReaderActivityTest
     int[] touchTargets = {
       R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
       R.id.reader_next, R.id.reader_stop, R.id.reader_preview_voice,
-      R.id.reader_progress, R.id.reader_speed, R.id.reader_voice,
-      R.id.reader_network_voices
+      R.id.reader_progress, R.id.reader_speed, R.id.reader_pitch,
+      R.id.reader_voice, R.id.reader_network_voices
     };
     for (int id : touchTargets)
     {
@@ -150,11 +152,18 @@ public class ReaderActivityTest
           control.getMinimumHeight() >= minimum || declaredHeight >= minimum);
     }
 
+    assertEquals("Reader keeps one text editor and derives its title from the source.",
+        1, countViewsOfType(root, EditText.class));
+    assertTrue("Reading speed is shown as words per minute, not only an opaque multiplier.",
+        ((TextView)root.findViewById(R.id.reader_speed_label)).getText()
+          .toString().contains("wpm"));
     assertFalse(root.findViewById(R.id.reader_back).getContentDescription()
         .toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_progress).getContentDescription()
         .toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_speed).getContentDescription()
+        .toString().isEmpty());
+    assertFalse(root.findViewById(R.id.reader_pitch).getContentDescription()
         .toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_voice).getContentDescription()
         .toString().isEmpty());
@@ -169,6 +178,10 @@ public class ReaderActivityTest
           control instanceof ImageButton);
       assertNotNull("Every Reader icon control has a visible icon: " + id,
           ((ImageButton)control).getDrawable());
+      assertNotNull("Every Reader icon control has a rounded surface: " + id,
+          control.getBackground());
+      assertEquals("Reader icons stay exactly centered inside their touch targets: " + id,
+          ImageView.ScaleType.CENTER, ((ImageButton)control).getScaleType());
       assertFalse("Every Reader icon keeps an accessible label: " + id,
           control.getContentDescription().toString().isEmpty());
     }
@@ -206,11 +219,28 @@ public class ReaderActivityTest
     };
     for (int id : controls)
     {
-      TextView control = (TextView)transport.findViewById(id);
+      View control = transport.findViewById(id);
+      int declaredHeight = control.getLayoutParams().height;
       assertTrue("Compact Reader controls retain a 48dp touch target: " + id,
-          control.getMinimumHeight() >= minimum);
+          control.getMinimumHeight() >= minimum || declaredHeight >= minimum);
+      assertNotNull("Compact Reader controls use a rounded surface: " + id,
+          control.getBackground());
       assertFalse("Compact Reader controls require accessible labels: " + id,
           control.getContentDescription().toString().isEmpty());
+    }
+    int[] iconControls = {
+      R.id.reader_transport_previous, R.id.reader_transport_play_pause,
+      R.id.reader_transport_next, R.id.reader_transport_stop
+    };
+    for (int id : iconControls)
+    {
+      View control = transport.findViewById(id);
+      assertTrue("Keyboard transport uses centered icon controls: " + id,
+          control instanceof ImageButton);
+      assertNotNull("Keyboard transport icons must be visible: " + id,
+          ((ImageButton)control).getDrawable());
+      assertEquals("Keyboard transport icons remain exactly centered: " + id,
+          ImageView.ScaleType.CENTER, ((ImageButton)control).getScaleType());
     }
   }
 
@@ -231,6 +261,73 @@ public class ReaderActivityTest
     assertNotNull(launched);
     assertEquals(ReaderActivity.class.getName(),
         launched.getComponent().getClassName());
+  }
+
+  @Test
+  public void share_and_process_text_use_an_exported_validator_and_opaque_handoff()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    ActivityInfo shareInfo = context.getPackageManager().getActivityInfo(
+        new ComponentName(context, ReaderShareActivity.class),
+        PackageManager.GET_META_DATA);
+    assertTrue("Android must be able to discover the dedicated Reader share target.",
+        shareInfo.exported);
+    assertTrue("Highlighted-text hosts must know Reader never mutates the selection.",
+        shareInfo.metaData.getBoolean(Intent.EXTRA_PROCESS_TEXT_READONLY));
+
+    Intent share = new Intent(Intent.ACTION_SEND)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_TEXT, "Shared private article text");
+    ComponentName shareTarget = share.resolveActivity(context.getPackageManager());
+    assertNotNull("Reader appears in Android's text share targets.", shareTarget);
+    assertEquals(ReaderShareActivity.class.getName(), shareTarget.getClassName());
+    ReaderShareActivity shareActivity = Robolectric.buildActivity(
+        ReaderShareActivity.class, share).create().get();
+    Intent launched = shadowOf((Activity)shareActivity).getNextStartedActivity();
+    assertOpaqueReaderLaunch(launched, "Shared private article text");
+
+    Intent processText = new Intent(Intent.ACTION_PROCESS_TEXT)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_PROCESS_TEXT, "Highlighted private text");
+    ComponentName processTarget =
+      processText.resolveActivity(context.getPackageManager());
+    assertNotNull("Reader appears in Android's highlighted-text actions.",
+        processTarget);
+    assertEquals(ReaderShareActivity.class.getName(),
+        processTarget.getClassName());
+    ReaderShareActivity processActivity = Robolectric.buildActivity(
+        ReaderShareActivity.class, processText).create().get();
+    assertOpaqueReaderLaunch(
+        shadowOf((Activity)processActivity).getNextStartedActivity(),
+        "Highlighted private text");
+  }
+
+  @Test
+  public void external_reader_entry_rejects_missing_oversized_and_url_only_text()
+  {
+    Intent missing = new Intent(Intent.ACTION_SEND).setType("text/plain");
+    ReaderShareActivity missingActivity = Robolectric.buildActivity(
+        ReaderShareActivity.class, missing).create().get();
+    assertNull("Missing shared text never reaches the private Reader activity.",
+        shadowOf((Activity)missingActivity).getNextStartedActivity());
+
+    Intent oversized = new Intent(Intent.ACTION_SEND)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_TEXT,
+          repeat('x', ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH + 1));
+    ReaderShareActivity oversizedActivity = Robolectric.buildActivity(
+        ReaderShareActivity.class, oversized).create().get();
+    assertNull("Unbounded shared text never enters the in-memory Reader holder.",
+        shadowOf((Activity)oversizedActivity).getNextStartedActivity());
+
+    Intent urlOnly = new Intent(Intent.ACTION_SEND)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_TEXT, "https://example.com/private-article");
+    ReaderShareActivity urlActivity = Robolectric.buildActivity(
+        ReaderShareActivity.class, urlOnly).create().get();
+    assertNull("A URL-only share must not be spoken as raw text before hardened extraction exists.",
+        shadowOf((Activity)urlActivity).getNextStartedActivity());
   }
 
   @Test
@@ -400,8 +497,6 @@ public class ReaderActivityTest
         new int[]{PackageManager.PERMISSION_DENIED});
 
     assertEquals("", ((EditText)activity.findViewById(
-        R.id.reader_title)).getText().toString());
-    assertEquals("", ((EditText)activity.findViewById(
         R.id.reader_text)).getText().toString());
     assertNull(shadowApplication.getNextStartedService());
 
@@ -413,6 +508,32 @@ public class ReaderActivityTest
         new int[]{PackageManager.PERMISSION_GRANTED});
     assertNull("Denied captured text cannot later bypass the one-shot holder.",
         shadowApplication.getNextStartedService());
+  }
+
+  private static void assertOpaqueReaderLaunch(Intent launched,
+      String privateText)
+  {
+    assertNotNull(launched);
+    assertEquals(ReaderActivity.class.getName(),
+        launched.getComponent().getClassName());
+    Bundle extras = launched.getExtras();
+    assertNotNull(extras);
+    assertEquals("External text crosses into Reader as one opaque token only.",
+        1, extras.size());
+    for (String key : extras.keySet())
+      assertNotEquals("Private shared text must not appear in activity extras.",
+          privateText, extras.get(key));
+  }
+
+  private static int countViewsOfType(View root, Class<?> type)
+  {
+    int count = type.isInstance(root) ? 1 : 0;
+    if (!(root instanceof ViewGroup))
+      return count;
+    ViewGroup group = (ViewGroup)root;
+    for (int i = 0; i < group.getChildCount(); i++)
+      count += countViewsOfType(group.getChildAt(i), type);
+    return count;
   }
 
   private static boolean layoutContainsId(Context context, int layout,
