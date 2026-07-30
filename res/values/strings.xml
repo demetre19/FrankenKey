@@ -371,6 +371,13 @@
     <string name="reader_error_private_editor">Reader is unavailable in password, terminal, numeric, and structured fields.</string>
     <string name="reader_error_unavailable_text">This app did not provide readable text.</string>
     <string name="reader_error_url_import_unavailable">This link could not be imported yet. Share selected page text instead.</string>
+    <string name="reader_import_confirm_title">Add to Reader Library?</string>
+    <string name="reader_import_confirm_message">Review the source, then choose Add to save “%1$s” in FrankenKey’s private Library.</string>
+    <string name="reader_import_confirm_add">Add</string>
+    <string name="reader_import_confirm_cancel">Cancel</string>
+    <string name="reader_import_saved">Added to Reader Library.</string>
+    <string name="reader_import_failed">This item could not be imported.</string>
+    <string name="reader_import_unsupported">This document type is not supported.</string>
     <string name="reader_error_notification_permission">Allow FrankenKey notifications in Android settings before starting Reader playback.</string>
     <string name="launcher_button_reader">Open Reader</string>
     <string name="reader_activity_title">FrankenKey Reader</string>
