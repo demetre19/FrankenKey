@@ -70,8 +70,8 @@ public class ReaderLibraryCorruptionTest
 
     ReaderLibrary.LibraryException error = readFailure();
 
-    assertNotNull("An unsupported Library version must produce a visible failure.",
-        error.getMessage());
+    assertEquals("An unsupported Library version must fail with a stable, safe message.",
+        "Reader Library record is corrupt.", error.getMessage());
     assertFalse("Unsupported-version errors must not expose stored private content.",
         error.toString().contains(PRIVATE_MARKER));
   }
