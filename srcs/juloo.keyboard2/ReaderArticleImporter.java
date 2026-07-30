@@ -52,7 +52,8 @@ final class ReaderArticleImporter
           if (location == null || location.trim().isEmpty())
             throw new ReaderImportPipeline.ImportException(
                 "This link returned an invalid redirect.");
-          current = new URL(current, location);
+          current = parsePublicUrl(
+              new URL(current, location).toExternalForm());
           continue;
         }
         if (status < 200 || status >= 300)
@@ -229,11 +230,11 @@ final class ReaderArticleImporter
   private static boolean supportedContentType(String value)
   {
     if (value == null)
-      return true;
-    String type = value.toLowerCase(Locale.ROOT);
-    return type.startsWith("text/html") ||
-      type.startsWith("application/xhtml+xml") ||
-      type.startsWith("text/plain");
+      return false;
+    String type = value.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+    return "text/html".equals(type) ||
+      "application/xhtml+xml".equals(type) ||
+      "text/plain".equals(type);
   }
 
   private static byte[] readBounded(InputStream input, int maximum)

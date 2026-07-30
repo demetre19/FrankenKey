@@ -39,6 +39,11 @@
 - `ReaderLibrary` owns the migration-versioned app-private Library database. Imports use normalized content hashes for deterministic replacement, preserve the existing stable id and progress on a duplicate hash, validate all records on read, and delete only source files beneath `files/reader_library`.
 - `ReaderLibraryActivity` is the private Library browser. It orders items by last-opened time, exposes accessible open/delete and empty/error states, stops matching active playback before deletion, and opens saved content through `ReaderActivity`.
 - Saved documents use `unit:<ordinal>:<character-offset>` progress locators. `ReaderActivity` loads bounded segments from each content unit into the one shared playback service, maps progress back across the whole document, and exposes chapter/page navigation without widening Quick Read limits.
+- External Reader documents are accepted only from granted `content://` streams. Reads are size-bounded, text is strict UTF-8, and PDF/EPUB parsers must validate the actual container instead of trusting a filename or declared MIME type.
+- EPUB intake never extracts archive entries to disk. It rejects unsafe paths, excessive entry counts, oversized entries or aggregate expansion, unsafe compression ratios, XML external entities, encrypted content, and malformed spine references.
+- Article import permits only public HTTP(S) hosts on ports 80/443, disables automatic redirects, reapplies the complete URL policy and public-address check to every redirect, requires an exact supported response media type, and bounds redirects, time, response bytes, and extracted text.
+- Reader database, preferences, temporary imports, and retained source files remain in credential-protected app-private storage. Deletion may remove only canonical descendants of `files/reader_library`.
+- Reader parser dependencies stay pinned to reviewed, non-dynamic coordinates; dependency additions or upgrades require source/health review and focused malformed-input verification.
 
 ## Work Guidance
 
@@ -57,6 +62,11 @@
 - `ReaderLibrary.java` — app-private Reader item/content-unit metadata, progress, deterministic import replacement, migration, and owned-file deletion.
 - `ReaderLibraryActivity.java` — private Library list, metadata, open/resume, deletion confirmation, and usable empty/error states.
 - `ReaderActivity.java` — shared Reader controls plus bounded Library chapter/page segment loading and locator restoration.
+- `ReaderShareActivity.java` — exported, grant-checked and size-bounded external text/document intake.
+- `ReaderArticleImporter.java` — bounded public-network article fetch, redirect revalidation, strict media types, and HTML text extraction.
+- `ReaderEpubImporter.java` — non-extracting EPUB validation with traversal, expansion, compression, XML, and spine limits.
+- `ReaderPdfImporter.java` — bounded PDF parsing and OCR-required classification.
+- `ReaderImportPipeline.java` — confirmation, normalized aggregate limits, private import persistence, and opaque Reader handoff.
 - `suggestions/AGENTS.md` — shared decoder, spatial scoring, personalization, stale-result control, and candidate presentation.
 - `autocorrect/AGENTS.md` — worker-confined Hunspell JNI bridge and explicit native lifetime.
 - `snippets/AGENTS.md` — snippet storage, UI rows, insertion, settings.
