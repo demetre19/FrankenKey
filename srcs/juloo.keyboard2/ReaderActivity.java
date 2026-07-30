@@ -28,6 +28,7 @@ public final class ReaderActivity extends Activity
     implements ReaderPlaybackService.Listener
 {
   private static final int REQUEST_NOTIFICATIONS = 81;
+  private static final int BASE_WORDS_PER_MINUTE = 180;
   private static final String EXTRA_QUICK_READ_TOKEN =
     "juloo.keyboard2.extra.QUICK_READ_TOKEN";
   private static final String EXTRA_REQUEST_PLAY =
@@ -116,17 +117,17 @@ public final class ReaderActivity extends Activity
   private String _displayedItemId;
   private String _quickReadToken;
 
-  private EditText _title;
   private EditText _text;
   private TextView _status;
   private TextView _progressLabel;
   private TextView _speedLabel;
+  private TextView _pitchLabel;
   private SeekBar _progress;
   private SeekBar _speed;
+  private SeekBar _pitch;
   private ImageButton _playPause;
   private Spinner _voice;
   private Switch _networkVoices;
-
   private final ServiceConnection _connection = new ServiceConnection()
   {
     @Override public void onServiceConnected(ComponentName name, IBinder binder)
@@ -169,15 +170,15 @@ public final class ReaderActivity extends Activity
 
   private void bindViews()
   {
-    _title = (EditText)findViewById(R.id.reader_title);
     _text = (EditText)findViewById(R.id.reader_text);
-    _title.setSaveEnabled(false);
     _text.setSaveEnabled(false);
     _status = (TextView)findViewById(R.id.reader_status);
     _progressLabel = (TextView)findViewById(R.id.reader_progress_label);
     _speedLabel = (TextView)findViewById(R.id.reader_speed_label);
+    _pitchLabel = (TextView)findViewById(R.id.reader_pitch_label);
     _progress = (SeekBar)findViewById(R.id.reader_progress);
     _speed = (SeekBar)findViewById(R.id.reader_speed);
+    _pitch = (SeekBar)findViewById(R.id.reader_pitch);
     _playPause = (ImageButton)findViewById(R.id.reader_play_pause);
     _voice = (Spinner)findViewById(R.id.reader_voice);
     _networkVoices = (Switch)findViewById(R.id.reader_network_voices);
@@ -220,9 +221,23 @@ public final class ReaderActivity extends Activity
           boolean fromUser)
       {
         float rate = 0.25f + progress / 100f;
-        _speedLabel.setText(getString(R.string.reader_speed_value, rate));
+        updateSpeedLabel(rate);
         if (fromUser && _service != null)
           _service.setSpeechRate(rate);
+      }
+      @Override public void onStartTrackingTouch(SeekBar bar) {}
+      @Override public void onStopTrackingTouch(SeekBar bar) {}
+    });
+
+    _pitch.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+    {
+      @Override public void onProgressChanged(SeekBar bar, int progress,
+          boolean fromUser)
+      {
+        float pitch = 0.5f + progress / 100f;
+        updatePitchLabel(pitch);
+        if (fromUser && _service != null)
+          _service.setPitch(pitch);
       }
       @Override public void onStartTrackingTouch(SeekBar bar) {}
       @Override public void onStopTrackingTouch(SeekBar bar) {}
@@ -252,6 +267,21 @@ public final class ReaderActivity extends Activity
     });
   }
 
+  private void updateSpeedLabel(float rate)
+  {
+    int wordsPerMinute = Math.round(BASE_WORDS_PER_MINUTE * rate);
+    _speedLabel.setText(getString(R.string.reader_speed_value, wordsPerMinute));
+    _speed.setContentDescription(getString(
+        R.string.reader_speed_accessibility, wordsPerMinute, rate));
+  }
+
+  private void updatePitchLabel(float pitch)
+  {
+    String label = getString(R.string.reader_pitch_value, pitch);
+    _pitchLabel.setText(label);
+    _pitch.setContentDescription(label);
+  }
+
   private void showPendingQuickRead()
   {
     if (_quickReadToken == null)
@@ -263,7 +293,6 @@ public final class ReaderActivity extends Activity
       _status.setText(R.string.reader_error_unavailable_text);
       return;
     }
-    _title.setText(pending.title);
     _text.setText(pending.text);
     requestPlayOrPause();
   }
@@ -324,11 +353,8 @@ public final class ReaderActivity extends Activity
       _status.setText(R.string.reader_error_empty_text);
       return;
     }
-    String title = _title.getText().toString().trim();
-    if (title.isEmpty())
-      title = getString(R.string.reader_default_title);
-    ReaderPlaybackService.Snapshot snapshot = _service.snapshot();
-    if (!text.equals(_service.activeText()) || !title.equals(snapshot.title))
+    String title = getString(R.string.reader_default_title);
+    if (!text.equals(_service.activeText()))
       ReaderPlaybackService.playText(this,
           "reader-screen:" + System.currentTimeMillis(), title, text);
     else
@@ -353,7 +379,6 @@ public final class ReaderActivity extends Activity
       {
         discardQuickRead(_quickReadToken);
         clearQuickReadToken();
-        _title.setText("");
         _text.setText("");
       }
       _status.setText(R.string.reader_error_notification_permission);
@@ -393,7 +418,6 @@ public final class ReaderActivity extends Activity
       _displayedItemId = snapshot.itemId;
       if (!_service.activeText().isEmpty())
       {
-        _title.setText(snapshot.title);
         _text.setText(_service.activeText());
       }
     }
@@ -412,8 +436,10 @@ public final class ReaderActivity extends Activity
     _progressLabel.setText(getString(R.string.reader_progress_value, percent));
     int speedProgress = Math.round((snapshot.speechRate - 0.25f) * 100f);
     _speed.setProgress(speedProgress);
-    _speedLabel.setText(getString(R.string.reader_speed_value,
-        snapshot.speechRate));
+    updateSpeedLabel(snapshot.speechRate);
+    int pitchProgress = Math.round((snapshot.pitch - 0.5f) * 100f);
+    _pitch.setProgress(pitchProgress);
+    updatePitchLabel(snapshot.pitch);
     _networkVoices.setChecked(_service.allowNetworkVoices());
     _updatingControls = false;
     refreshVoices(snapshot.voiceName);
@@ -480,6 +506,7 @@ public final class ReaderActivity extends Activity
     findViewById(R.id.reader_preview_voice).setEnabled(enabled);
     _progress.setEnabled(enabled);
     _speed.setEnabled(enabled);
+    _pitch.setEnabled(enabled);
     _voice.setEnabled(enabled);
     _networkVoices.setEnabled(enabled);
   }

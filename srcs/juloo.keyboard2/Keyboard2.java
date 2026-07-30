@@ -25,6 +25,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -853,9 +854,10 @@ public class Keyboard2 extends InputMethodService
     boolean playing =
       _reader_snapshot.status == ReaderPlaybackService.Status.PLAYING ||
       _reader_snapshot.status == ReaderPlaybackService.Status.PREPARING;
-    TextView playPause = (TextView)root.findViewById(
+    ImageButton playPause = (ImageButton)root.findViewById(
         R.id.reader_transport_play_pause);
-    playPause.setText(playing ? R.string.reader_pause : R.string.reader_play);
+    playPause.setImageResource(playing
+        ? R.drawable.ic_reader_pause : R.drawable.ic_reader_play);
     playPause.setContentDescription(
         getString(playing ? R.string.reader_pause : R.string.reader_play));
   }

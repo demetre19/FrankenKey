@@ -16,6 +16,7 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import java.util.Collections;
@@ -157,6 +158,20 @@ public class ReaderActivityTest
         .toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_voice).getContentDescription()
         .toString().isEmpty());
+    int[] iconControls = {
+      R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
+      R.id.reader_next, R.id.reader_stop, R.id.reader_preview_voice
+    };
+    for (int id : iconControls)
+    {
+      View control = root.findViewById(id);
+      assertTrue("Familiar Reader actions use compact icon controls: " + id,
+          control instanceof ImageButton);
+      assertNotNull("Every Reader icon control has a visible icon: " + id,
+          ((ImageButton)control).getDrawable());
+      assertFalse("Every Reader icon keeps an accessible label: " + id,
+          control.getContentDescription().toString().isEmpty());
+    }
     assertFalse("Network voices must be visibly and functionally off by default.",
         ((Switch)root.findViewById(R.id.reader_network_voices)).isChecked());
     assertEquals(View.ACCESSIBILITY_LIVE_REGION_POLITE,

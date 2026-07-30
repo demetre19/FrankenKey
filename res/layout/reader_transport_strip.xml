@@ -1,70 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/reader_transport"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingHorizontal="8dp"
-    android:paddingVertical="4dp"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="4dp"
     android:visibility="gone">
   <TextView
       android:id="@+id/reader_transport_title"
       android:layout_width="0dp"
       android:layout_height="wrap_content"
       android:layout_weight="1"
-      android:maxLines="1"
       android:ellipsize="end"
+      android:maxLines="1"
       android:textColor="?attr/colorLabel"/>
-  <TextView
+  <ImageButton
       android:id="@+id/reader_transport_previous"
-      android:text="◀"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:layout_marginEnd="4dp"
+      android:background="@drawable/reader_icon_button"
       android:contentDescription="@string/reader_previous"
-      style="@style/clipboardToolbarLabel"
-      android:minWidth="48dp"
-      android:minHeight="48dp"
-      android:gravity="center"
-      android:clickable="true"
-      android:focusable="true"/>
-  <TextView
+      android:padding="0dp"
+      android:scaleType="center"
+      android:src="@drawable/ic_reader_previous"
+      android:tint="?attr/colorLabel"/>
+  <ImageButton
       android:id="@+id/reader_transport_play_pause"
-      android:text="@string/reader_pause"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:layout_marginEnd="4dp"
+      android:background="@drawable/reader_icon_button"
       android:contentDescription="@string/reader_pause"
-      style="@style/clipboardToolbarLabel"
-      android:minWidth="48dp"
-      android:minHeight="48dp"
-      android:gravity="center"
-      android:clickable="true"
-      android:focusable="true"/>
-  <TextView
+      android:padding="0dp"
+      android:scaleType="center"
+      android:src="@drawable/ic_reader_pause"
+      android:tint="?attr/colorLabel"/>
+  <ImageButton
       android:id="@+id/reader_transport_next"
-      android:text="▶"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:layout_marginEnd="4dp"
+      android:background="@drawable/reader_icon_button"
       android:contentDescription="@string/reader_next"
-      style="@style/clipboardToolbarLabel"
-      android:minWidth="48dp"
-      android:minHeight="48dp"
-      android:gravity="center"
-      android:clickable="true"
-      android:focusable="true"/>
-  <TextView
+      android:padding="0dp"
+      android:scaleType="center"
+      android:src="@drawable/ic_reader_next"
+      android:tint="?attr/colorLabel"/>
+  <ImageButton
       android:id="@+id/reader_transport_stop"
-      android:text="■"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:layout_marginEnd="4dp"
+      android:background="@drawable/reader_icon_button"
       android:contentDescription="@string/reader_stop"
-      style="@style/clipboardToolbarLabel"
-      android:minWidth="48dp"
-      android:minHeight="48dp"
-      android:gravity="center"
-      android:clickable="true"
-      android:focusable="true"/>
+      android:padding="0dp"
+      android:scaleType="center"
+      android:src="@drawable/ic_reader_stop"
+      android:tint="?attr/colorLabel"/>
   <TextView
       android:id="@+id/reader_transport_open"
-      android:text="@string/reader_transport_open"
-      android:contentDescription="@string/launcher_button_reader"
       style="@style/clipboardToolbarLabel"
-      android:minWidth="48dp"
-      android:minHeight="48dp"
-      android:gravity="center"
-      android:paddingHorizontal="6dp"
+      android:layout_width="wrap_content"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:layout_marginEnd="4dp"
+      android:background="@drawable/reader_icon_button"
       android:clickable="true"
-      android:focusable="true"/>
+      android:contentDescription="@string/launcher_button_reader"
+      android:focusable="true"
+      android:gravity="center"
+      android:minWidth="56dp"
+      android:paddingHorizontal="8dp"
+      android:text="@string/reader_transport_open"/>
 </LinearLayout>

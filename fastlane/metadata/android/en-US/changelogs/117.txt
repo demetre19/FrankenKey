@@ -1,0 +1,5 @@
+Added FrankenKey Reader for private, on-device text-to-speech.
+
+Read ordinary clipboard text or the current prose field from the keyboard, or open Reader from the launcher. Playback continues through one shared session with pause, resume, progress, speed, offline voice selection, and media notification controls.
+
+Sensitive clipboard content, password fields, terminal-style editors, locked-device data, and unavailable text fail closed. Reader content stays app-private and is excluded from backup and device transfer.

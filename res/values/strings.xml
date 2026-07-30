@@ -341,7 +341,7 @@
     <string name="update_install_permission_failed">Could not open Android’s install-permission settings.</string>
     <string name="update_install_failed">Could not open the Android package installer.</string>
     <string name="reader_notification_channel">Reader playback</string>
-    <string name="reader_default_title">FrankenKey Reader</string>
+    <string name="reader_default_title">Reader</string>
     <string name="reader_error_user_locked">Unlock this device before reading private text.</string>
     <string name="reader_play">Play</string>
     <string name="reader_pause">Pause</string>
@@ -373,7 +373,6 @@
     <string name="launcher_button_reader">Open Reader</string>
     <string name="reader_activity_title">FrankenKey Reader</string>
     <string name="reader_back">Back</string>
-    <string name="reader_title_hint">Title</string>
     <string name="reader_text_hint">Paste or type text to read aloud</string>
     <string name="reader_progress_zero">0%</string>
     <string name="reader_progress_value">%1$d%%</string>
@@ -387,9 +386,13 @@
     <string name="reader_voice_network_label">%1$s — %2$s — Network required</string>
     <string name="reader_network_voices">Network voices</string>
     <string name="reader_network_voices_explanation">Off by default. Network voices may send text to the provider and require data.</string>
-    <string name="reader_speed_default">1.00×</string>
-    <string name="reader_speed_value">%1$.2f×</string>
+    <string name="reader_speed_default">~180 wpm</string>
+    <string name="reader_speed_value">~%1$d wpm</string>
     <string name="reader_speed_control">Reading speed</string>
+    <string name="reader_speed_accessibility">Reading speed, approximately %1$d words per minute, %2$.2f times</string>
+    <string name="reader_pitch_default">Pitch 1.00×</string>
+    <string name="reader_pitch_value">Pitch %1$.2f×</string>
+    <string name="reader_pitch_control">Voice pitch</string>
     <string name="reader_error_voice_preview">This installed voice could not be previewed.</string>
     <string name="reader_error_no_offline_voice">Install an offline Android text-to-speech voice, or explicitly enable a network-required system voice.</string>
 </resources>
