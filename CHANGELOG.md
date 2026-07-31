@@ -2,6 +2,13 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.79 - version code 130
+
+- Added the optional, default-off Reader for private text-to-speech from clipboard text, prose fields, imported files, and saved public articles.
+- Added persistent playback, follow-along highlighting, tap-to-seek, speeds up to 800 words per minute, clear voice availability, and a searchable Library.
+- Improved article extraction so reading starts with the article, lazy-loaded images are retained in order, and large images fill the reading column.
+- Added a full-screen article image viewer with pinch zoom, panning, and double-tap reset.
+
 ## 2.0.65 — version code 116
 
 - Fixed the incorrect dictionary-install message and made English (Australia), English (United Kingdom), and English (United States) consistently available from local bundled data.
@@ -47,8 +54,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Improved adjacent-key, transposition, omission, and trailing-letter correction without hardcoded word pairs.
 - Prevented accepted corrections from reverting when Backspace was pressed or the cursor moved.
-
-## 2.0.54 — version code 105
-
-- Let repeated explicit corrections override stale learned history and persist across restarts.
-- Added guarded correction for clear short-word mistakes and missing negative contractions while protecting ambiguous valid words.

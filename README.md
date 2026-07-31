@@ -133,6 +133,18 @@ To delete a selection:
 
 For progressive deletion, you can still hold Delete to repeat letters, continue left to highlight words and sentences, reverse to shrink the highlight, and lift to delete it.
 
+## Reader
+
+Reader is an optional, private text-to-speech experience that is disabled by default. Enable **Reader and text-to-speech controls** in Settings when you want it.
+
+- Read ordinary clipboard text or prose from the current field without leaving the keyboard.
+- Import text, PDF, and EPUB documents, or save supported public articles to the searchable Library.
+- Pause, resume, seek, follow highlighted text, change speed up to 800 words per minute, and choose available voices.
+- Keep playback progress and Reader preferences across sessions.
+- View retained article images in reading order. Large images fill the reading column and open in a full-screen viewer with pinch zoom, panning, and double-tap reset.
+
+Reader content, progress, and retained files stay in FrankenKey's private app storage. Sensitive fields and unavailable content fail closed.
+
 ## Snippets
 
 Save phrases as snippet buttons above the keyboard, then tap to insert them at the cursor.
@@ -171,9 +183,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.65
-Version code: 116
-SHA-256: 5d1a33b3e516d226d59e8f51763d11d102d59dc349b40c7fdb51f045662ed382
+Version: 2.0.79
+Version code: 130
+SHA-256: 9d6a4b9904e56b4342b639c123d65638ee79ea4e92d8b94f0b505dc10539855e
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
