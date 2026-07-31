@@ -14,6 +14,8 @@ import android.content.res.XmlResourceParser;
 import android.os.UserManager;
 import android.text.InputType;
 import android.view.inputmethod.EditorInfo;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import org.junit.After;
@@ -173,6 +175,59 @@ public class ReaderSecurityAuditTest
     {
       controller.destroy();
     }
+  }
+
+  @Test
+  public void article_preview_metadata_is_resolved_and_private_addresses_fail()
+      throws Exception
+  {
+    String html = "<html><head><title>Safe article</title>" +
+      "<meta property='og:image' content='/media/card.png'></head>" +
+      "<body><article>Readable article text that is long enough.</article></body></html>";
+    ReaderImportPipeline.Candidate candidate = ReaderArticleImporter.extract(
+        html.getBytes(StandardCharsets.UTF_8), "text/html; charset=utf-8",
+        "https://example.com/news/story");
+
+    assertEquals("Relative Open Graph previews resolve against the approved article URL.",
+        "https://example.com/media/card.png", candidate.imageUrl);
+    assertFalse("Loopback preview targets must remain blocked by the SSRF policy.",
+        ReaderArticleImporter.isPublicAddress(
+          InetAddress.getByName("127.0.0.1")));
+    assertFalse("Private preview targets must remain blocked by the SSRF policy.",
+        ReaderArticleImporter.isPublicAddress(
+          InetAddress.getByName("192.168.1.10")));
+    assertTrue("Ordinary public addresses remain eligible for validated fetching.",
+        ReaderArticleImporter.isPublicAddress(
+          InetAddress.getByName("93.184.216.34")));
+  }
+
+  @Test
+  public void article_body_selection_skips_page_chrome_and_keeps_inline_images()
+      throws Exception
+  {
+    String html = "<html><head><title>Focused article</title></head><body>" +
+      "<main><section><h2>Languages</h2><ul><li>Page chrome</li></ul></section>" +
+      "<div id='mw-content-text'><div class='mw-parser-output'>" +
+      "<div role='navigation'><ul><li>Related topic chrome</li></ul></div>" +
+      "<h1>Focused story</h1>" +
+      "<p>The complete article body remains readable without navigation noise.</p>" +
+      "<img data-original='/media/body.webp' alt='Body diagram'>" +
+      "</div></div></main></body></html>";
+    ReaderImportPipeline.Candidate candidate = ReaderArticleImporter.extract(
+        html.getBytes(StandardCharsets.UTF_8), "text/html; charset=utf-8",
+        "https://example.com/news/story");
+
+    assertFalse("Article extraction must not speak page chrome before the article body.",
+        candidate.readingText().contains("Page chrome"));
+    assertFalse("Navigation widgets inside the article container must not be spoken.",
+        candidate.readingText().contains("Related topic chrome"));
+    assertEquals("The article heading remains first.", "Focused story",
+        candidate.units.get(0).text);
+    assertEquals("An inline article image remains in reading order.", "image",
+        candidate.units.get(2).kind);
+    assertEquals("Lazy image sources resolve against the approved article URL.",
+        "https://example.com/media/body.webp",
+        candidate.units.get(2).sourceLocator);
   }
 
   private static String rootName(XmlResourceParser parser) throws Exception

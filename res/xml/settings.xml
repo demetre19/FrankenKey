@@ -5,6 +5,7 @@
     <SwitchPreference android:key="suggestions" android:title="@string/pref_suggestions_title" android:summary="@string/pref_suggestions_summary" android:defaultValue="true"/>
     <SwitchPreference android:key="grammar_corrections" android:title="@string/pref_grammar_corrections_title" android:summary="@string/pref_grammar_corrections_summary" android:defaultValue="false"/>
     <SwitchPreference android:key="multimodal_voice_typing" android:title="@string/pref_multimodal_voice_title" android:summary="@string/pref_multimodal_voice_summary" android:defaultValue="false"/>
+    <SwitchPreference android:key="reader_keyboard_controls" android:title="@string/pref_reader_keyboard_controls_title" android:summary="@string/pref_reader_keyboard_controls_summary" android:defaultValue="false"/>
     <Preference android:key="typing_assistance_status" android:title="@string/pref_typing_assistance_status_title" android:selectable="false"/>
     <Preference android:key="clear_typing_assistance_data" android:title="@string/pref_clear_typing_assistance_title" android:summary="@string/pref_clear_typing_assistance_summary"/>
   </PreferenceCategory>

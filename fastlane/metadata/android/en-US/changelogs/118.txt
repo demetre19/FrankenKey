@@ -1,0 +1,3 @@
+Reader now has a responsive setup grid, compact persistent playback controls, live speed changes, adaptive seeking, follow-along highlighting, clearer installed voice choices, and a searchable Library with article previews.
+
+Fixed installed dictionaries appearing unavailable after a device restart.

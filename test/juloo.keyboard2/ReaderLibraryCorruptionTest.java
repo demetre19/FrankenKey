@@ -65,7 +65,7 @@ public class ReaderLibraryCorruptionTest
     SQLiteDatabase raw = SQLiteDatabase.openDatabase(
         _context.getDatabasePath("reader_library.db").getPath(), null,
         SQLiteDatabase.OPEN_READWRITE);
-    raw.setVersion(3);
+    raw.setVersion(4);
     raw.close();
 
     ReaderLibrary.LibraryException error = readFailure();

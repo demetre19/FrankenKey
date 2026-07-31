@@ -1,0 +1,1 @@
+Reader titles now stay centered when they fit and scroll only when they overflow, with clearer spacing above keyboard playback controls. Read Clipboard and Library are now always available from the keyboard on any page, and long Reader articles provide a jump-to-bottom control only when the article exceeds the screen.

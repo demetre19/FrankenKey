@@ -1,0 +1,1 @@
+Reader keyboard actions now sit flush above the keyboard without extra outer spacing. Read Clipboard and Library use compact dark buttons with the same small corner treatment and colors as the keyboard.

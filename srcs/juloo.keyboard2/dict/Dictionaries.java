@@ -40,6 +40,9 @@ public final class Dictionaries
       is not installed or the dictionary couldn't be loaded. */
   public Cdict[] load(String dict_name)
   {
+    ensure_prefs_loaded();
+    if (_shared_prefs == null)
+      return null;
     if (_loaded_dictionaries.containsKey(dict_name))
       return _loaded_dictionaries.get(dict_name);
     ensure_bundled_dictionary_file(dict_name);
@@ -52,10 +55,15 @@ public final class Dictionaries
     return dict;
   }
 
-  public Set<String> get_installed() { return _installed_dictionaries; }
+  public Set<String> get_installed()
+  {
+    ensure_prefs_loaded();
+    return _installed_dictionaries;
+  }
 
   public void install(String dict_name, byte[] data) throws IOException
   {
+    ensure_prefs_loaded();
     FileOutputStream outp = _context.openFileOutput(dict_file_name(dict_name),
         Context.MODE_PRIVATE);
     outp.write(data);
@@ -74,6 +82,7 @@ public final class Dictionaries
       path returned by [get_install_location(dict_name)]. */
   public void set_installed(String dict_name)
   {
+    ensure_prefs_loaded();
     _installed_dictionaries.add(dict_name);
     _loaded_dictionaries.remove(dict_name);
     save();
@@ -81,6 +90,7 @@ public final class Dictionaries
 
   public void uninstall(String dict_name)
   {
+    ensure_prefs_loaded();
     _context.deleteFile(dict_file_name(dict_name));
     _installed_dictionaries.remove(dict_name);
     _loaded_dictionaries.remove(dict_name);
@@ -116,16 +126,28 @@ public final class Dictionaries
     seed_bundled_english_dictionaries();
   }
 
+  void ensure_prefs_loaded()
+  {
+    if (_shared_prefs != null)
+      return;
+    load_prefs();
+    if (_shared_prefs != null)
+      seed_bundled_english_dictionaries();
+  }
+
   void load_prefs()
   {
     _shared_prefs = null;
     try
     {
-      _shared_prefs =
+      SharedPreferences prefs =
         _context.getSharedPreferences("dictionaries", Context.MODE_PRIVATE);
-      Set<String> s = _shared_prefs.getStringSet(PREF_INSTALLED_DICTS, null);
+      Set<String> s = prefs.getStringSet(PREF_INSTALLED_DICTS, null);
+      _installed_dictionaries.clear();
       if (s != null)
         _installed_dictionaries.addAll(s);
+      _shared_prefs = prefs;
+      _loaded_dictionaries.clear();
     }
     catch (Exception e)
     {
@@ -191,6 +213,7 @@ public final class Dictionaries
 
   boolean ensure_bundled_dictionary_file(String name)
   {
+    ensure_prefs_loaded();
     if (!is_bundled_english(name)
         || !_installed_dictionaries.contains(name))
       return false;
@@ -218,7 +241,8 @@ public final class Dictionaries
     if (_shared_prefs == null)
       return;
     _shared_prefs.edit()
-      .putStringSet(PREF_INSTALLED_DICTS, _installed_dictionaries)
+      .putStringSet(PREF_INSTALLED_DICTS,
+          new HashSet<String>(_installed_dictionaries))
       .commit();
   }
 

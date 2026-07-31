@@ -1,0 +1,1 @@
+Reader titles now remain fully available with a slow scrolling banner, keyboard playback controls include direct Library access, and Reader can start reading clipboard text with one tap. Voice gender labels now appear only for documented exact system voice IDs, preventing guessed Female or Male labels.

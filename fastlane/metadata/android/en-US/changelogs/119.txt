@@ -1,0 +1,1 @@
+Reader now stays compact when the keyboard opens: only the Read button is shown, and playback controls appear only after Read is pressed.

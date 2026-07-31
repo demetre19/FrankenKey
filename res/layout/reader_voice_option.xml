@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+  <TextView
+      android:id="@+id/reader_voice_group"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingStart="12dp"
+      android:paddingTop="10dp"
+      android:paddingEnd="12dp"
+      android:paddingBottom="6dp"
+      android:textColor="#8CE9D7"
+      android:textSize="12sp"
+      android:textStyle="bold"
+      android:visibility="gone"/>
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:paddingStart="12dp"
+      android:paddingEnd="12dp">
+    <ImageView
+        android:id="@+id/reader_voice_flag"
+        android:layout_width="24dp"
+        android:layout_height="16dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"/>
+    <TextView
+        android:id="@+id/reader_voice_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#F4F7FA"
+        android:textSize="16sp"/>
+    <ImageView
+        android:id="@+id/reader_voice_status_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="8dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"/>
+  </LinearLayout>
+</LinearLayout>

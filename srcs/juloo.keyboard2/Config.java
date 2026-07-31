@@ -48,6 +48,7 @@ public final class Config
   public boolean suggestions_enabled;
   public boolean grammar_corrections_enabled;
   public boolean multimodal_voice_typing_enabled;
+  public boolean reader_keyboard_controls_enabled;
   // Let the system handle vibration when false.
   public boolean vibrate_custom;
   // Control the vibration if [vibrate_custom] is true.
@@ -155,6 +156,8 @@ public final class Config
       _prefs.getBoolean("grammar_corrections", false);
     multimodal_voice_typing_enabled =
       _prefs.getBoolean("multimodal_voice_typing", false);
+    reader_keyboard_controls_enabled =
+      _prefs.getBoolean("reader_keyboard_controls", false);
     // The baseline for the swipe distance correspond to approximately the
     // width of a key in portrait mode, as most layouts have 10 columns.
     // Multipled by the DPI ratio because most swipes are made in the diagonals.

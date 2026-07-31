@@ -28,13 +28,30 @@
     <TextView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="16dp"
         android:layout_weight="1"
         android:text="@string/reader_library_title"
         android:textColor="#F4F7FA"
         android:textSize="20sp"
         android:textStyle="bold"/>
   </LinearLayout>
+
+  <EditText
+      android:id="@+id/reader_library_search"
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:layout_marginBottom="8dp"
+      android:background="@drawable/launcher_input"
+      android:hint="@string/reader_library_search_hint"
+      android:importantForAutofill="no"
+      android:inputType="text"
+      android:maxLines="1"
+      android:paddingStart="12dp"
+      android:paddingEnd="12dp"
+      android:singleLine="true"
+      android:textColor="#F4F7FA"
+      android:textColorHint="#A8B2BE"/>
 
   <TextView
       android:id="@+id/reader_library_message"

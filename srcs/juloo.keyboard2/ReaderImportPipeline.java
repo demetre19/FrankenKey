@@ -26,10 +26,20 @@ final class ReaderImportPipeline
     final String author;
     final String languageTag;
     final List<ReaderLibrary.ContentUnit> units;
+    final String imageUrl;
 
     Candidate(String title, ReaderLibrary.SourceType sourceType,
         String sourceUri, String mimeType, String author, String languageTag,
         List<ReaderLibrary.ContentUnit> units) throws ImportException
+    {
+      this(title, sourceType, sourceUri, mimeType, author, languageTag,
+          units, null);
+    }
+
+    Candidate(String title, ReaderLibrary.SourceType sourceType,
+        String sourceUri, String mimeType, String author, String languageTag,
+        List<ReaderLibrary.ContentUnit> units, String imageUrl)
+        throws ImportException
     {
       this.title = cleanTitle(title);
       this.sourceType = sourceType;
@@ -39,6 +49,7 @@ final class ReaderImportPipeline
       this.languageTag = emptyToNull(languageTag);
       this.units = Collections.unmodifiableList(
           new ArrayList<ReaderLibrary.ContentUnit>(units));
+      this.imageUrl = emptyToNull(imageUrl);
       validate();
     }
 
@@ -52,12 +63,31 @@ final class ReaderImportPipeline
       return new Candidate(title, sourceType, sourceUri, "text/plain", null,
           null, units);
     }
+    static Candidate article(String title, String sourceUri, String text,
+        String imageUrl) throws ImportException
+    {
+      String normalized = ReaderLibrary.normalizeText(text);
+      ArrayList<ReaderLibrary.ContentUnit> units = new ArrayList<>();
+      units.add(new ReaderLibrary.ContentUnit(0, "article", normalized, null,
+            sourceUri));
+      return article(title, sourceUri, units, imageUrl);
+    }
+
+    static Candidate article(String title, String sourceUri,
+        List<ReaderLibrary.ContentUnit> units, String imageUrl)
+        throws ImportException
+    {
+      return new Candidate(title, ReaderLibrary.SourceType.URL, sourceUri,
+          "text/html", null, null, units, imageUrl);
+    }
 
     String readingText()
     {
       StringBuilder text = new StringBuilder();
       for (ReaderLibrary.ContentUnit unit : units)
       {
+        if ("image".equals(unit.kind))
+          continue;
         if (text.length() > 0)
           text.append("\n\n");
         text.append(unit.text);
@@ -111,18 +141,34 @@ final class ReaderImportPipeline
       throws ImportException
   {
     long now = System.currentTimeMillis();
+    String id = UUID.randomUUID().toString();
+    List<ReaderLibrary.ContentUnit> units =
+      ReaderArticleImporter.cacheInlineImages(context, candidate.units, id);
+    if (units.isEmpty())
+      units = candidate.units;
+    String imageUri = ReaderArticleImporter.cachePreviewImage(
+        context, candidate.imageUrl, id);
+    if (imageUri == null)
+      for (ReaderLibrary.ContentUnit unit : units)
+        if (unit.assetUri != null)
+        {
+          imageUri = unit.assetUri;
+          break;
+        }
     try (ReaderLibrary library = new ReaderLibrary(context))
     {
       String hash = ReaderLibrary.contentHash(candidate.units);
       ReaderLibrary.Item incoming = new ReaderLibrary.Item(
-          UUID.randomUUID().toString(), candidate.title, candidate.sourceType,
+          id, candidate.title, candidate.sourceType,
           candidate.sourceUri, candidate.mimeType, candidate.author,
           candidate.languageTag, now, now, 0L, null, 0f, false, hash,
-          ReaderLibrary.ImportState.READY, null, candidate.units);
+          ReaderLibrary.ImportState.READY, null, units, imageUri);
       return library.importItem(incoming);
     }
     catch (ReaderLibrary.LibraryException error)
     {
+      ReaderArticleImporter.deleteCachedPreview(context, imageUri);
+      ReaderArticleImporter.deleteCachedInlineImages(context, units);
       throw new ImportException("Reader Library could not save this item.",
           error);
     }
@@ -137,12 +183,7 @@ final class ReaderImportPipeline
         ReaderLibrary.Item stored = importNow(activity, candidate);
         activity.runOnUiThread(() ->
         {
-          String text = candidate.readingText();
-          Toast.makeText(activity, R.string.reader_import_saved,
-              Toast.LENGTH_SHORT).show();
-          if (text.length() <= ReaderPlaybackService.MAX_ACTIVE_TEXT_LENGTH)
-            ReaderActivity.startQuickRead(activity, stored.id, stored.title,
-                text);
+          ReaderActivity.startLibraryItem(activity, stored.id);
           activity.finish();
         });
       }

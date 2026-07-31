@@ -55,6 +55,7 @@ public final class ReaderPlaybackService extends Service
   private static final String CHANNEL_ID = "reader_playback";
   private static final String STORE_NAME = "reader_playback";
   private static final int QUEUE_CAPACITY = 2;
+  private static final float MAX_SPEECH_RATE = 800f / 180f;
   private static final long MEDIA_ACTIONS = PlaybackState.ACTION_PLAY |
     PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_STOP |
     PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
@@ -77,10 +78,12 @@ public final class ReaderPlaybackService extends Service
     public final float pitch;
     public final String voiceName;
     public final String error;
+    public final int highlightStart;
+    public final int highlightEnd;
 
     Snapshot(String itemId, String title, Status status, int characterOffset,
         int textLength, float speechRate, float pitch, String voiceName,
-        String error)
+        String error, int highlightStart, int highlightEnd)
     {
       this.itemId = itemId;
       this.title = title;
@@ -91,6 +94,8 @@ public final class ReaderPlaybackService extends Service
       this.pitch = pitch;
       this.voiceName = voiceName;
       this.error = error;
+      this.highlightStart = highlightStart;
+      this.highlightEnd = highlightEnd;
     }
 
     public float progress()
@@ -146,6 +151,11 @@ public final class ReaderPlaybackService extends Service
   private Status _status = Status.EMPTY;
   private int _characterOffset;
   private int _utteranceGeneration;
+  private int _highlightStart = -1;
+  private int _highlightEnd = -1;
+  private int _lastRelativeSeekFrom = -1;
+  private int _lastRelativeSeekTo = -1;
+  private int _lastRelativeSeekDirection;
   private float _speechRate = 1f;
   private float _pitch = 1f;
   private boolean _ttsReady;
@@ -253,7 +263,8 @@ public final class ReaderPlaybackService extends Service
   public Snapshot snapshot()
   {
     return new Snapshot(_itemId, _title, _status, _characterOffset,
-        _text.length(), _speechRate, _pitch, _voiceName, _error);
+        _text.length(), _speechRate, _pitch, _voiceName, _error,
+        _highlightStart, _highlightEnd);
   }
 
   public void load(String itemId, String title, String text, boolean play)
@@ -275,6 +286,8 @@ public final class ReaderPlaybackService extends Service
       ? getString(R.string.reader_default_title) : safeTitle;
     _text = text;
     _characterOffset = 0;
+    _highlightStart = -1;
+    _highlightEnd = -1;
     _chunks = new ReaderChunkQueue(_text, safeSpeechLimit(), QUEUE_CAPACITY, 0);
     _error = "";
     _playWhenReady = play;
@@ -301,11 +314,24 @@ public final class ReaderPlaybackService extends Service
 
   public void setSpeechRate(float rate)
   {
-    _speechRate = clamp(rate, 0.25f, 3f);
+    boolean restart = _status == Status.PLAYING ||
+      _status == Status.PREPARING;
+    _speechRate = clamp(rate, 0.25f, MAX_SPEECH_RATE);
     if (_ttsReady)
       _tts.setSpeechRate(_speechRate);
     persistProgress();
-    publish();
+    if (restart && _ttsReady && _chunks != null)
+    {
+      _utteranceGeneration++;
+      _tts.stop();
+      _chunks.seek(_characterOffset);
+      _highlightStart = -1;
+      _highlightEnd = -1;
+      _playWhenReady = true;
+      speakCurrent();
+    }
+    else
+      publish();
   }
 
   public void setPitch(float pitch)
@@ -399,6 +425,11 @@ public final class ReaderPlaybackService extends Service
     _characterOffset = Math.max(0,
       Math.min(characterOffset, _text.length()));
     _chunks.seek(_characterOffset);
+    _highlightStart = -1;
+    _highlightEnd = -1;
+    _lastRelativeSeekFrom = -1;
+    _lastRelativeSeekTo = -1;
+    _lastRelativeSeekDirection = 0;
     _status = Status.PAUSED;
     persistProgress();
     publish();
@@ -482,37 +513,69 @@ public final class ReaderPlaybackService extends Service
 
   public void next()
   {
-    if (_chunks == null)
-      return;
-    boolean wasPlaying = _status == Status.PLAYING || _status == Status.PREPARING;
-    _utteranceGeneration++;
-    if (_tts != null)
-      _tts.stop();
-    ReaderChunkQueue.Span next = _chunks.advance();
-    _characterOffset = next == null ? _text.length() : next.start;
-    persistProgress();
-    if (_characterOffset >= _text.length())
-      finishPlayback();
-    else if (wasPlaying)
-      play();
-    else
-      publish();
+    seekRelative(1);
   }
 
   public void previous()
   {
-    if (_chunks == null)
+    seekRelative(-1);
+  }
+
+  private void seekRelative(int direction)
+  {
+    if (_chunks == null || _text.isEmpty())
       return;
-    boolean wasPlaying = _status == Status.PLAYING || _status == Status.PREPARING;
-    _utteranceGeneration++;
-    if (_tts != null)
-      _tts.stop();
-    _characterOffset = _chunks.movePrevious();
-    persistProgress();
-    if (wasPlaying)
-      play();
+    boolean wasPlaying = _status == Status.PLAYING ||
+      _status == Status.PREPARING;
+    int from = _characterOffset;
+    if (_lastRelativeSeekDirection == -direction &&
+        _lastRelativeSeekTo == from)
+    {
+      int target = _lastRelativeSeekFrom;
+      seekToCharacter(target, wasPlaying);
+      return;
+    }
+    int target = adaptiveSeekCharacter(_text, from, direction);
+    seekToCharacter(target, wasPlaying);
+    _lastRelativeSeekFrom = from;
+    _lastRelativeSeekTo = target;
+    _lastRelativeSeekDirection = direction;
+  }
+
+  static int adaptiveSeekCharacter(String text, int offset, int direction)
+  {
+    if (text == null || text.isEmpty())
+      return 0;
+    int length = text.length();
+    float fraction;
+    if (length <= 2000)
+      fraction = 0.05f;
+    else if (length >= 20000)
+      fraction = 0.02f;
     else
-      publish();
+      fraction = 0.05f - ((length - 2000) / 18000f) * 0.03f;
+    int step = Math.max(1, Math.round(length * fraction));
+    int target = Math.max(0, Math.min(length,
+        offset + (direction < 0 ? -step : step)));
+    if (direction < 0)
+    {
+      while (target > 0 && Character.isWhitespace(text.charAt(target - 1)))
+        target--;
+      while (target > 0 && !Character.isWhitespace(text.charAt(target - 1)))
+        target--;
+    }
+    else
+    {
+      while (target < length && !Character.isWhitespace(text.charAt(target)))
+        target++;
+      while (target < length && Character.isWhitespace(text.charAt(target)))
+        target++;
+    }
+    if (target > 0 && target < length &&
+        Character.isLowSurrogate(text.charAt(target)) &&
+        Character.isHighSurrogate(text.charAt(target - 1)))
+      target--;
+    return target;
   }
 
   private void speakCurrent()
@@ -549,6 +612,28 @@ public final class ReaderPlaybackService extends Service
     publish();
   }
 
+  void onUtteranceRange(String utteranceId, int start, int end)
+  {
+    String[] fields = utteranceId == null ? new String[0] : utteranceId.split(":");
+    if (fields.length != 3)
+      return;
+    int generation;
+    int spanStart;
+    try
+    {
+      generation = Integer.parseInt(fields[0]);
+      spanStart = Integer.parseInt(fields[1]);
+    }
+    catch (NumberFormatException e) { return; }
+    if (_destroyed || generation != _utteranceGeneration ||
+        !_playWhenReady)
+      return;
+    _highlightStart = Math.max(0, Math.min(_text.length(), spanStart + start));
+    _highlightEnd = Math.max(_highlightStart,
+      Math.min(_text.length(), spanStart + end));
+    _characterOffset = _highlightStart;
+    publish();
+  }
   private void onUtteranceDone(String utteranceId)
   {
     String[] fields = utteranceId == null ? new String[0] : utteranceId.split(":");
@@ -611,6 +696,11 @@ public final class ReaderPlaybackService extends Service
     _tts.setOnUtteranceProgressListener(new UtteranceProgressListener()
     {
       @Override public void onStart(String utteranceId) {}
+      @Override public void onRangeStart(String utteranceId, int start,
+          int end, int frame)
+      {
+        _mainHandler.post(() -> onUtteranceRange(utteranceId, start, end));
+      }
       @Override public void onDone(String utteranceId)
       {
         _mainHandler.post(() -> onUtteranceDone(utteranceId));
@@ -737,7 +827,8 @@ public final class ReaderPlaybackService extends Service
     _text = _store.getString("text", "");
     _voiceName = _store.getString("voice", "");
     _allowNetworkVoices = _store.getBoolean("allow_network_voices", false);
-    _speechRate = clamp(_store.getFloat("rate", 1f), 0.25f, 3f);
+    _speechRate = clamp(_store.getFloat("rate", 1f), 0.25f,
+        MAX_SPEECH_RATE);
     _pitch = clamp(_store.getFloat("pitch", 1f), 0.5f, 2f);
     _characterOffset = Math.max(0,
       Math.min(_store.getInt("offset", 0), _text.length()));

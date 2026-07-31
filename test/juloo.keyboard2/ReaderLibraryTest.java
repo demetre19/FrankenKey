@@ -87,6 +87,40 @@ public class ReaderLibraryTest
   }
 
   @Test
+  public void duplicate_import_replaces_preview_without_leaking_old_file()
+      throws Exception
+  {
+    File oldPreview = _library.privateSourceFile("previews/old.img");
+    File newPreview = _library.privateSourceFile("previews/new.img");
+    write(oldPreview, "old preview");
+    write(newPreview, "new preview");
+    ReaderLibrary.Item original = item("original-item", null,
+        "Duplicate content", "private:previews/old.img");
+    _library.importItem(original);
+
+    ReaderLibrary.Item replacement = item("replacement-item", null,
+        "Duplicate content", "private:previews/new.img");
+    ReaderLibrary.Item stored = _library.importItem(replacement);
+
+    assertEquals("Duplicate content keeps its stable Library id.",
+        original.id, stored.id);
+    assertEquals("The refreshed article card uses the new preview.",
+        "private:previews/new.img", stored.imageUri);
+    assertFalse("Replacing a duplicate preview removes the obsolete private file.",
+        oldPreview.exists());
+    assertTrue("The replacement preview remains available to the Library card.",
+        newPreview.exists());
+
+    ReaderLibrary.Item withoutPreview = item("third-item", null,
+        "Duplicate content", null);
+    ReaderLibrary.Item preserved = _library.importItem(withoutPreview);
+    assertEquals("A later metadata refresh without an image preserves the card preview.",
+        stored.imageUri, preserved.imageUri);
+    assertTrue("Preserving a preview must not delete its private file.",
+        newPreview.exists());
+  }
+
+  @Test
   public void corrupt_record_fails_visibly_without_leaking_content()
       throws Exception
   {
@@ -145,6 +179,18 @@ public class ReaderLibraryTest
         sourceUri, "text/plain", null, "en", 100L, 200L, 0L, null, 0f,
         false, ReaderLibrary.contentHash(Arrays.asList(unit)),
         ReaderLibrary.ImportState.READY, null, Arrays.asList(unit));
+  }
+
+  private ReaderLibrary.Item item(String id, String sourceUri, String text,
+      String imageUri) throws Exception
+  {
+    ReaderLibrary.Item base = item(id, sourceUri, text);
+    return new ReaderLibrary.Item(base.id, base.title, base.sourceType,
+        base.sourceUri, base.mimeType, base.author, base.languageTag,
+        base.createdAt, base.updatedAt, base.lastOpenedAt,
+        base.progressLocator, base.progressFraction, base.finished,
+        base.contentHash, base.importState, base.errorMessage, base.units,
+        imageUri);
   }
 
   private static void write(File file, String content) throws Exception

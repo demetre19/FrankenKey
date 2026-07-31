@@ -199,6 +199,58 @@ public class ReaderPlaybackServiceTest
   }
 
   @Test
+  public void range_callbacks_publish_follow_along_and_live_speed_restarts_in_place()
+  {
+    ServiceController<ReaderPlaybackService> controller =
+      Robolectric.buildService(ReaderPlaybackService.class).create();
+    ReaderPlaybackService service = controller.get();
+    service.onTtsInitialized(TextToSpeech.SUCCESS);
+    String text = "Alpha bravo charlie delta echo.";
+    service.load("follow", "Follow", text, true);
+    int generation = service.utteranceGenerationForTest();
+
+    service.onUtteranceRange(generation + ":0:" + text.length(), 6, 11);
+    assertEquals("TTS word ranges drive the visible follow-along start.",
+        6, service.snapshot().highlightStart);
+    assertEquals("TTS word ranges drive the visible follow-along end.",
+        11, service.snapshot().highlightEnd);
+    assertEquals("Follow-along progress tracks the spoken word.",
+        6, service.snapshot().characterOffset);
+
+    service.setSpeechRate(1.5f);
+    assertTrue("Changing speed during playback restarts the active utterance.",
+        service.utteranceGenerationForTest() > generation);
+    assertEquals("A live speed change keeps playback active.",
+        ReaderPlaybackService.Status.PLAYING, service.snapshot().status);
+    assertEquals("A live speed change resumes at the tracked word.",
+        6, service.snapshot().characterOffset);
+    controller.destroy();
+  }
+
+  @Test
+  public void relative_seek_uses_five_to_two_percent_and_never_splits_surrogates()
+  {
+    String shortText = largeText(1000);
+    String longText = largeText(100000);
+    int shortTarget = ReaderPlaybackService.adaptiveSeekCharacter(
+        shortText, 0, 1);
+    int longTarget = ReaderPlaybackService.adaptiveSeekCharacter(
+        longText, 0, 1);
+    assertTrue("Short Reader items seek approximately five percent.",
+        shortTarget >= 45 && shortTarget <= 60);
+    assertTrue("Long Reader items seek approximately two percent.",
+        longTarget >= 1950 && longTarget <= 2050);
+
+    String emoji = "word ".repeat(10) + "\uD83D\uDE00" + " tail ".repeat(10);
+    int target = ReaderPlaybackService.adaptiveSeekCharacter(
+        emoji, 49, 1);
+    assertFalse("Relative seeking must never land between UTF-16 surrogates.",
+        target > 0 && target < emoji.length() &&
+        Character.isHighSurrogate(emoji.charAt(target - 1)) &&
+        Character.isLowSurrogate(emoji.charAt(target)));
+  }
+
+  @Test
   public void disabling_an_active_network_only_voice_stops_and_fails_closed()
   {
     ShadowTextToSpeech.reset();

@@ -4,7 +4,6 @@
     <TextView android:text="⌨" style="@style/clipboardToolbarLabel" android:textSize="18dp"/>
     <TextView android:text="|" style="@style/clipboardToolbarLabel"/>
     <TextView android:text="@string/clipboard_panel_title" style="@style/clipboardTitle" android:layout_weight="1"/>
-    <TextView android:id="@+id/clipboard_reader" android:text="@string/reader_source_button" android:contentDescription="@string/reader_source_button" style="@style/clipboardToolbarLabel" android:minWidth="48dp" android:gravity="center" android:paddingHorizontal="8dp" android:clickable="true" android:focusable="true"/>
     <TextView android:text="@string/clipboard_history_toggle_label" style="@style/clipboardToolbarLabel"/>
     <juloo.keyboard2.ClipboardHistoryCheckBox android:contentDescription="@string/clipboard_history_toggle_label" style="@style/clipboardToolbarToggle" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
   </LinearLayout>

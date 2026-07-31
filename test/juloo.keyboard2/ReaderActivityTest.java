@@ -2,14 +2,17 @@ package juloo.keyboard2;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Application;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.XmlResourceParser;
 import android.os.Bundle;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.view.ContextThemeWrapper;
@@ -37,6 +40,7 @@ import org.robolectric.android.controller.ActivityController;
 import org.robolectric.android.controller.ServiceController;
 import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowApplication;
+import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowTextToSpeech;
 import static org.junit.Assert.*;
 import static org.robolectric.Shadows.shadowOf;
@@ -63,22 +67,55 @@ public class ReaderActivityTest
   {
     Voice offline = voice("offline-en-au", Locale.forLanguageTag("en-AU"),
         false, Collections.<String>emptySet());
+    Voice british = voice("offline-en-gb", Locale.UK,
+        false, Collections.<String>emptySet());
     Voice network = voice("network-en-us", Locale.US, true,
         Collections.<String>emptySet());
     Voice missing = voice("missing-en-gb", Locale.UK, false,
         Collections.singleton(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED));
     ShadowTextToSpeech.addVoice(network);
     ShadowTextToSpeech.addVoice(missing);
+    ShadowTextToSpeech.addVoice(british);
     ShadowTextToSpeech.addVoice(offline);
 
     ReaderPlaybackService service = service();
     List<ReaderPlaybackService.VoiceOption> defaults =
       service.availableVoices();
 
-    assertEquals("Only installed offline voices are shown by default.",
-        1, defaults.size());
+    assertEquals("Installed Australian and UK offline voices are shown by default.",
+        2, defaults.size());
     assertEquals("offline-en-au", defaults.get(0).name);
+    assertEquals("offline-en-gb", defaults.get(1).name);
     assertFalse(defaults.get(0).networkRequired);
+    assertFalse(defaults.get(1).networkRequired);
+    ReaderActivity.VoiceIdentity known = ReaderActivity.voiceIdentity(
+        "en-au-x-aub-local", Locale.forLanguageTag("en-AU"));
+    assertEquals("A documented exact voice ID uses its stable human label.",
+        "William", known.name);
+    assertEquals("A documented exact voice ID uses its documented gender.",
+        "Male", known.gender);
+    ReaderActivity.VoiceIdentity unknown = ReaderActivity.voiceIdentity(
+        "offline-en-gb", Locale.UK);
+    assertEquals("Unknown voice IDs keep a truthful regional label.",
+        "British voice", unknown.name);
+    assertEquals("Unknown voice IDs never receive a guessed gender.",
+        "", unknown.gender);
+    ReaderActivity.VoiceIdentity networkIdentity =
+        ReaderActivity.voiceIdentity(
+          "en-us-x-tpf-network", Locale.US);
+    assertEquals("A network voice keeps the matching human label.",
+        "Harper", networkIdentity.name);
+    assertEquals("A network voice keeps the matching gender.",
+        "Female", networkIdentity.gender);
+    Context context = RuntimeEnvironment.getApplication();
+    assertEquals("Offline availability remains explicit without relying on its icon.",
+        "Harper · Female · Available offline",
+        context.getString(R.string.reader_voice_offline_label,
+          "Harper", "Female"));
+    assertEquals("Network availability stays explicit beside name and gender.",
+        "Harper · Female · Uses network",
+        context.getString(R.string.reader_voice_network_label,
+          "Harper", "Female"));
     assertFalse("A network-required voice cannot be selected before opt-in.",
         service.setVoice("network-en-us"));
 
@@ -86,10 +123,11 @@ public class ReaderActivityTest
     List<ReaderPlaybackService.VoiceOption> optedIn =
       service.availableVoices();
     assertEquals("Opt-in reveals installed network voices but not uninstalled voices.",
-        2, optedIn.size());
+        3, optedIn.size());
     assertFalse("Offline voices remain first in the system voice list.",
         optedIn.get(0).networkRequired);
-    assertTrue(optedIn.get(1).networkRequired);
+    assertFalse(optedIn.get(1).networkRequired);
+    assertTrue(optedIn.get(2).networkRequired);
     assertTrue(service.setVoice("network-en-us"));
 
     service.setAllowNetworkVoices(false);
@@ -140,9 +178,9 @@ public class ReaderActivityTest
         context.getResources().getDisplayMetrics().density);
     int[] touchTargets = {
       R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
-      R.id.reader_next, R.id.reader_stop, R.id.reader_preview_voice,
-      R.id.reader_progress, R.id.reader_speed, R.id.reader_pitch,
-      R.id.reader_voice, R.id.reader_network_voices
+      R.id.reader_next, R.id.reader_stop, R.id.reader_jump_bottom,
+      R.id.reader_preview_voice, R.id.reader_speed, R.id.reader_pitch,
+      R.id.reader_follow_mode, R.id.reader_voice, R.id.reader_network_voices
     };
     for (int id : touchTargets)
     {
@@ -159,8 +197,8 @@ public class ReaderActivityTest
           .toString().contains("wpm"));
     assertFalse(root.findViewById(R.id.reader_back).getContentDescription()
         .toString().isEmpty());
-    assertFalse(root.findViewById(R.id.reader_progress).getContentDescription()
-        .toString().isEmpty());
+    assertFalse(root.findViewById(R.id.reader_jump_bottom)
+        .getContentDescription().toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_speed).getContentDescription()
         .toString().isEmpty());
     assertFalse(root.findViewById(R.id.reader_pitch).getContentDescription()
@@ -169,7 +207,8 @@ public class ReaderActivityTest
         .toString().isEmpty());
     int[] iconControls = {
       R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
-      R.id.reader_next, R.id.reader_stop, R.id.reader_preview_voice
+      R.id.reader_next, R.id.reader_stop, R.id.reader_jump_bottom,
+      R.id.reader_preview_voice
     };
     for (int id : iconControls)
     {
@@ -192,13 +231,11 @@ public class ReaderActivityTest
   }
 
   @Test
-  public void keyboard_reader_transport_is_hidden_until_playback_and_accessible()
+  public void keyboard_reader_transport_requires_explicit_read_activation()
       throws Exception
   {
     Context context = new ContextThemeWrapper(
         RuntimeEnvironment.getApplication(), R.style.Light);
-    assertTrue("Main keyboard tool area exposes the Reader source menu.",
-        layoutContainsId(context, R.layout.keyboard, R.id.keyboard_reader));
     assertTrue("Everyday keyboard mode owns the compact Reader transport.",
         layoutIncludes(context, R.layout.keyboard,
           R.layout.reader_transport_strip));
@@ -208,14 +245,76 @@ public class ReaderActivityTest
 
     View transport = LayoutInflater.from(context).inflate(
         R.layout.reader_transport_strip, null, false);
-    assertEquals("The transport must not consume keyboard height without an active item.",
+    assertEquals("The transport must not consume keyboard height before state is known.",
         View.GONE, transport.getVisibility());
+    assertFalse("Active playback stays collapsed until a Reader action is pressed.",
+        Keyboard2.reader_transport_visible(true, true, false));
+    assertTrue("An explicit Reader action reveals active playback controls.",
+        Keyboard2.reader_transport_visible(true, true, true));
+    assertFalse("Reader actions cannot expose empty playback controls.",
+        Keyboard2.reader_transport_visible(true, false, true));
+    assertFalse("The default-off setting suppresses playback controls.",
+        Keyboard2.reader_transport_visible(false, true, true));
+    assertFalse("The empty candidates bar is removed above Reader actions.",
+        Keyboard2.candidate_strip_visible(true, true));
+    assertFalse("The empty candidates bar is removed above playback controls.",
+        Keyboard2.candidate_strip_visible(true, true));
+    assertTrue("The candidates bar returns when the Reader strip hides.",
+        Keyboard2.candidate_strip_visible(true, false));
+    assertFalse("The Reader strip never forces a disabled candidates bar on.",
+        Keyboard2.candidate_strip_visible(false, false));
+    View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
+    View library = transport.findViewById(R.id.reader_transport_library);
+    int compactHeight = Math.round(36f *
+        context.getResources().getDisplayMetrics().density);
+    int verticalPadding = Math.round(4f *
+        context.getResources().getDisplayMetrics().density);
+    int horizontalPadding = Math.round(16f *
+        context.getResources().getDisplayMetrics().density);
+    int actionGap = Math.round(8f *
+        context.getResources().getDisplayMetrics().density);
+    assertEquals("Read Clipboard uses the requested compact 36dp height.",
+        compactHeight, clipboard.getLayoutParams().height);
+    assertEquals("Library uses the requested compact 36dp height.",
+        compactHeight, library.getLayoutParams().height);
+    assertEquals("The Reader strip keeps an 8dp breathing space above its controls.",
+        actionGap, transport.getPaddingTop());
+    assertEquals("The Reader strip keeps an 8dp breathing space below its controls.",
+        actionGap, transport.getPaddingBottom());
+    assertEquals("Read Clipboard uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_clipboard, "background"));
+    assertEquals("Library uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_library, "background"));
+    android.util.TypedValue labelColor = new android.util.TypedValue();
+    assertTrue(context.getTheme().resolveAttribute(
+        R.attr.colorLabel, labelColor, true));
+    assertEquals("Read Clipboard uses the keyboard label color.",
+        labelColor.data, ((TextView)clipboard).getCurrentTextColor());
+    assertEquals("Library uses the keyboard label color.",
+        labelColor.data, ((TextView)library).getCurrentTextColor());
+    assertEquals("Compact actions keep 4dp top and bottom padding.",
+        verticalPadding, clipboard.getPaddingTop());
+    assertEquals("Read Clipboard keeps professional horizontal padding.",
+        horizontalPadding, clipboard.getPaddingLeft());
+    assertEquals("Read Clipboard text stays clear of its right edge.",
+        horizontalPadding, clipboard.getPaddingRight());
+    assertEquals("Library keeps professional horizontal padding.",
+        horizontalPadding, library.getPaddingLeft());
+    assertEquals("Library text stays clear of its right edge.",
+        horizontalPadding, library.getPaddingRight());
+    assertEquals("Compact actions keep a visible 8dp gap.",
+        actionGap,
+        ((ViewGroup.MarginLayoutParams)library.getLayoutParams())
+          .getMarginStart());
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     int[] controls = {
       R.id.reader_transport_previous, R.id.reader_transport_play_pause,
-      R.id.reader_transport_next, R.id.reader_transport_stop,
-      R.id.reader_transport_open
+      R.id.reader_transport_next, R.id.reader_transport_stop
     };
     for (int id : controls)
     {
@@ -242,6 +341,35 @@ public class ReaderActivityTest
       assertEquals("Keyboard transport icons remain exactly centered: " + id,
           ImageView.ScaleType.CENTER, ((ImageButton)control).getScaleType());
     }
+  }
+
+  @Test
+  public void keyboard_reader_actions_appear_only_for_an_empty_readable_editor()
+  {
+    assertTrue("An enabled Reader exposes actions in an empty readable editor.",
+        Keyboard2.reader_entry_visible(
+          true, true, true, false, false, false));
+    assertFalse("Reader actions stay absent until the user enables them.",
+        Keyboard2.reader_entry_visible(
+          false, true, true, false, false, false));
+    assertFalse("The first editor text immediately hides both Reader actions.",
+        Keyboard2.reader_entry_visible(
+          true, true, false, false, false, false));
+    assertFalse("Composing text hides both Reader actions.",
+        Keyboard2.reader_entry_visible(
+          true, true, true, true, false, false));
+    assertFalse("Visible candidates take precedence over Reader actions.",
+        Keyboard2.reader_entry_visible(
+          true, true, true, false, true, false));
+    assertTrue("Collapsed playback leaves the empty-editor actions available.",
+        Keyboard2.reader_entry_visible(
+          true, true, true, false, false, false));
+    assertFalse("Expanded playback controls replace the compact action row.",
+        Keyboard2.reader_entry_visible(
+          true, true, true, false, false, true));
+    assertFalse("Private or unsupported editors never expose Reader text access.",
+        Keyboard2.reader_entry_visible(
+          true, false, true, false, false, false));
   }
 
   @Test
@@ -284,8 +412,10 @@ public class ReaderActivityTest
     assertEquals(ReaderShareActivity.class.getName(), shareTarget.getClassName());
     ReaderShareActivity shareActivity = Robolectric.buildActivity(
         ReaderShareActivity.class, share).create().get();
-    Intent launched = shadowOf((Activity)shareActivity).getNextStartedActivity();
-    assertOpaqueReaderLaunch(launched, "Shared private article text");
+    assertNull("Shared text must wait for explicit import confirmation.",
+        shadowOf((Activity)shareActivity).getNextStartedActivity());
+    assertOpaqueReaderLaunch(confirmImportAndAwait(shareActivity),
+        "Shared private article text");
 
     Intent processText = new Intent(Intent.ACTION_PROCESS_TEXT)
       .setType("text/plain")
@@ -298,8 +428,7 @@ public class ReaderActivityTest
         processTarget.getClassName());
     ReaderShareActivity processActivity = Robolectric.buildActivity(
         ReaderShareActivity.class, processText).create().get();
-    assertOpaqueReaderLaunch(
-        shadowOf((Activity)processActivity).getNextStartedActivity(),
+    assertOpaqueReaderLaunch(confirmImportAndAwait(processActivity),
         "Highlighted private text");
   }
 
@@ -510,6 +639,32 @@ public class ReaderActivityTest
         shadowApplication.getNextStartedService());
   }
 
+  private static Intent confirmImportAndAwait(ReaderShareActivity activity)
+      throws Exception
+  {
+    AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+    assertNotNull("External Reader text must require explicit import confirmation.",
+        dialog);
+    assertTrue("The import confirmation must remain visible for a user decision.",
+        dialog.isShowing());
+    assertTrue("The confirmation must expose an affirmative import action.",
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick());
+
+    long deadline = System.nanoTime() + 3_000_000_000L;
+    do
+    {
+      shadowOf(Looper.getMainLooper()).idle();
+      Intent launched =
+        shadowOf((Activity)activity).getNextStartedActivity();
+      if (launched != null)
+        return launched;
+      Thread.sleep(2L);
+    }
+    while (System.nanoTime() < deadline);
+    fail("Timed out waiting for confirmed Reader import to launch.");
+    return null;
+  }
+
   private static void assertOpaqueReaderLaunch(Intent launched,
       String privateText)
   {
@@ -558,6 +713,31 @@ public class ReaderActivityTest
       parser.close();
     }
   }
+
+  private static int layoutAttributeResource(Context context, int layout,
+      int viewId, String attribute)
+      throws Exception
+  {
+    XmlResourceParser parser = context.getResources().getLayout(layout);
+    try
+    {
+      while (parser.next() != XmlPullParser.END_DOCUMENT)
+      {
+        if (parser.getEventType() == XmlPullParser.START_TAG &&
+            parser.getAttributeResourceValue(
+              "http://schemas.android.com/apk/res/android", "id", 0) ==
+              viewId)
+          return parser.getAttributeResourceValue(
+              "http://schemas.android.com/apk/res/android", attribute, 0);
+      }
+      return 0;
+    }
+    finally
+    {
+      parser.close();
+    }
+  }
+
 
   private static boolean layoutIncludes(Context context, int layout,
       int includedLayout)

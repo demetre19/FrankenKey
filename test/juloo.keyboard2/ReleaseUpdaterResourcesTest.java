@@ -21,13 +21,13 @@ public class ReleaseUpdaterResourcesTest
     "http://schemas.android.com/apk/res/android";
 
   @Test
-  public void release_metadata_is_2_0_65_version_code_116() throws Exception
+  public void release_metadata_is_2_0_68_version_code_119() throws Exception
   {
     String gradle = read("build.gradle.kts");
-    assertTrue("The test candidate must be versionName 2.0.65.",
-        gradle.contains("versionName = \"2.0.65\""));
-    assertTrue("The test candidate must be versionCode 116.",
-        gradle.contains("versionCode = 116"));
+    assertTrue("The test candidate must be versionName 2.0.68.",
+        gradle.contains("versionName = \"2.0.68\""));
+    assertTrue("The test candidate must be versionCode 119.",
+        gradle.contains("versionCode = 119"));
   }
 
   @Test

@@ -31,6 +31,8 @@ public class SettingsUiContractsTest
         "Show sentence-level fixes from Android’s selected grammar service. Text leaves FrankenKey only when you enable this." },
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
+      { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",
+        "Show Read Clipboard, Library and playback controls above the keyboard. Turn off for a clean keyboard." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "frankenkey_snippets_enabled", "pref_snippets_enabled_summary",
@@ -64,6 +66,20 @@ public class SettingsUiContractsTest
       assertEquals(contract[0] + " summary must stay concise and accurate.",
           contract[2], resourceString(contract[1]));
     }
+  }
+
+  @Test
+  public void keyboard_reader_controls_are_explicit_opt_in() throws Exception
+  {
+    Element preference = preferenceWithKey(settingsRoot(),
+        "reader_keyboard_controls");
+    assertNotNull("Settings must expose the Reader keyboard control toggle.",
+        preference);
+    assertEquals("Reader controls must default off so the keyboard stays clean.",
+        "false", preference.getAttribute("android:defaultValue"));
+    assertTrue("Runtime config must use the same disabled default.",
+        readSource("srcs/juloo.keyboard2/Config.java").contains(
+          "_prefs.getBoolean(\"reader_keyboard_controls\", false)"));
   }
 
   @Test

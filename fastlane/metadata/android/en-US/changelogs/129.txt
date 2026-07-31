@@ -1,0 +1,1 @@
+Reader article imports now start with the actual article instead of page navigation, keep more lazy-loaded images, and display retained images in reading order.

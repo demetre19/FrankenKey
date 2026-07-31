@@ -19,7 +19,7 @@ import java.util.Locale;
 public final class ReaderLibrary extends SQLiteOpenHelper
 {
   private static final String DATABASE_NAME = "reader_library.db";
-  private static final int DATABASE_VERSION = 2;
+  private static final int DATABASE_VERSION = 4;
   private static final String CORRUPT_MESSAGE =
     "Reader Library record is corrupt.";
   private static final String UNSUPPORTED_MESSAGE =
@@ -39,15 +39,23 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     public final String text;
     public final String languageTag;
     public final String sourceLocator;
+    public final String assetUri;
 
     public ContentUnit(int ordinal, String kind, String text,
         String languageTag, String sourceLocator)
+    {
+      this(ordinal, kind, text, languageTag, sourceLocator, null);
+    }
+
+    public ContentUnit(int ordinal, String kind, String text,
+        String languageTag, String sourceLocator, String assetUri)
     {
       this.ordinal = ordinal;
       this.kind = kind;
       this.text = text;
       this.languageTag = languageTag;
       this.sourceLocator = sourceLocator;
+      this.assetUri = assetUri;
     }
   }
 
@@ -70,12 +78,26 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     public final ImportState importState;
     public final String errorMessage;
     public final List<ContentUnit> units;
+    public final String imageUri;
 
     public Item(String id, String title, SourceType sourceType, String sourceUri,
         String mimeType, String author, String languageTag, long createdAt,
         long updatedAt, long lastOpenedAt, String progressLocator,
         float progressFraction, boolean finished, String contentHash,
         ImportState importState, String errorMessage, List<ContentUnit> units)
+    {
+      this(id, title, sourceType, sourceUri, mimeType, author, languageTag,
+          createdAt, updatedAt, lastOpenedAt, progressLocator,
+          progressFraction, finished, contentHash, importState, errorMessage,
+          units, null);
+    }
+
+    public Item(String id, String title, SourceType sourceType, String sourceUri,
+        String mimeType, String author, String languageTag, long createdAt,
+        long updatedAt, long lastOpenedAt, String progressLocator,
+        float progressFraction, boolean finished, String contentHash,
+        ImportState importState, String errorMessage, List<ContentUnit> units,
+        String imageUri)
     {
       this.id = id;
       this.title = title;
@@ -94,6 +116,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       this.importState = importState;
       this.errorMessage = errorMessage;
       this.units = Collections.unmodifiableList(new ArrayList<>(units));
+      this.imageUri = imageUri;
     }
   }
 
@@ -134,6 +157,17 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       db.execSQL("ALTER TABLE reader_items ADD COLUMN error_message TEXT");
       oldVersion = 2;
     }
+    if (oldVersion == 2)
+    {
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN image_uri TEXT");
+      oldVersion = 3;
+    }
+    if (oldVersion == 3)
+    {
+      db.execSQL(
+          "ALTER TABLE reader_content_units ADD COLUMN asset_uri TEXT");
+      oldVersion = 4;
+    }
     if (oldVersion != newVersion)
       throw new SQLiteException(UNSUPPORTED_MESSAGE);
   }
@@ -152,24 +186,37 @@ public final class ReaderLibrary extends SQLiteOpenHelper
   {
     validateIncoming(incoming);
     SQLiteDatabase db = getWritableDatabase();
+    Item stored;
+    String obsoleteImageUri = null;
+    ArrayList<String> obsoleteAssetUris = new ArrayList<>();
     db.beginTransaction();
     try
     {
       Item duplicate = findByHash(db, incoming.contentHash);
-      Item stored = duplicate == null ? incoming :
+      String imageUri = duplicate != null && incoming.imageUri == null
+        ? duplicate.imageUri : incoming.imageUri;
+      stored = duplicate == null ? incoming :
         new Item(duplicate.id, incoming.title, incoming.sourceType,
             incoming.sourceUri, incoming.mimeType, incoming.author,
             incoming.languageTag, duplicate.createdAt, incoming.updatedAt,
             duplicate.lastOpenedAt, duplicate.progressLocator,
             duplicate.progressFraction, duplicate.finished,
             incoming.contentHash, incoming.importState, incoming.errorMessage,
-            incoming.units);
+            incoming.units, imageUri);
+      if (duplicate != null)
+      {
+        if (duplicate.imageUri != null && !duplicate.imageUri.equals(imageUri))
+          obsoleteImageUri = duplicate.imageUri;
+        for (ContentUnit unit : duplicate.units)
+          if (unit.assetUri != null &&
+              !containsAsset(stored.units, unit.assetUri))
+            obsoleteAssetUris.add(unit.assetUri);
+      }
       if (duplicate == null)
         deleteRows(db, incoming.id);
       putItem(db, stored);
       replaceUnits(db, stored.id, stored.units);
       db.setTransactionSuccessful();
-      return stored;
     }
     catch (SQLiteException error)
     {
@@ -179,6 +226,11 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     {
       db.endTransaction();
     }
+    if (obsoleteImageUri != null)
+      deleteOwnedSourceQuietly(obsoleteImageUri);
+    for (String assetUri : obsoleteAssetUris)
+      deleteOwnedSourceQuietly(assetUri);
+    return stored;
   }
 
   public Item get(String id) throws LibraryException
@@ -238,6 +290,9 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     {
       deleteRows(db, id);
       deleteOwnedSource(item.sourceUri);
+      deleteOwnedSource(item.imageUri);
+      for (ContentUnit unit : item.units)
+        deleteOwnedSource(unit.assetUri);
       db.setTransactionSuccessful();
       return true;
     }
@@ -316,7 +371,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       "updated_at INTEGER NOT NULL, last_opened_at INTEGER NOT NULL, " +
       "progress_locator TEXT, progress_fraction REAL NOT NULL DEFAULT 0, " +
       "finished INTEGER NOT NULL DEFAULT 0, content_hash TEXT NOT NULL UNIQUE, " +
-      "import_state TEXT NOT NULL, error_message TEXT)");
+      "import_state TEXT NOT NULL, error_message TEXT, image_uri TEXT)");
   }
 
   private static void createUnits(SQLiteDatabase db)
@@ -324,7 +379,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     db.execSQL("CREATE TABLE reader_content_units (" +
       "item_id TEXT NOT NULL REFERENCES reader_items(id) ON DELETE CASCADE, " +
       "ordinal INTEGER NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL, " +
-      "language_tag TEXT, source_locator TEXT, " +
+      "language_tag TEXT, source_locator TEXT, asset_uri TEXT, " +
       "PRIMARY KEY(item_id, ordinal))");
   }
 
@@ -340,7 +395,8 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     for (ContentUnit unit : item.units)
     {
       if (unit == null || unit.ordinal != expected++ || empty(unit.kind) ||
-          empty(normalizeText(unit.text)))
+          empty(normalizeText(unit.text)) ||
+          (unit.assetUri != null && !unit.assetUri.startsWith("private:")))
         throw new LibraryException(CORRUPT_MESSAGE);
     }
   }
@@ -365,6 +421,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     v.put("content_hash", item.contentHash);
     v.put("import_state", item.importState.name());
     v.put("error_message", item.errorMessage);
+    v.put("image_uri", item.imageUri);
     db.insertWithOnConflict("reader_items", null, v,
         SQLiteDatabase.CONFLICT_REPLACE);
   }
@@ -380,6 +437,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       v.put("kind", unit.kind); v.put("text", normalizeText(unit.text));
       v.put("language_tag", unit.languageTag);
       v.put("source_locator", unit.sourceLocator);
+      v.put("asset_uri", unit.assetUri);
       db.insertOrThrow("reader_content_units", null, v);
     }
   }
@@ -418,7 +476,8 @@ public final class ReaderLibrary extends SQLiteOpenHelper
             throw new LibraryException(CORRUPT_MESSAGE);
           units.add(new ContentUnit(ordinal, string(uc, "kind"),
                 string(uc, "text"), nullable(uc, "language_tag"),
-                nullable(uc, "source_locator")));
+                nullable(uc, "source_locator"),
+                nullable(uc, "asset_uri")));
         }
       }
       Item item = new Item(id, string(c, "title"),
@@ -433,7 +492,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
           c.getInt(c.getColumnIndexOrThrow("finished")) != 0,
           string(c, "content_hash"),
           ImportState.valueOf(string(c, "import_state")),
-          nullable(c, "error_message"), units);
+          nullable(c, "error_message"), units, nullable(c, "image_uri"));
       validateIncoming(item);
       return item;
     }
@@ -462,6 +521,27 @@ public final class ReaderLibrary extends SQLiteOpenHelper
   {
     db.delete("reader_content_units", "item_id = ?", new String[] { id });
     db.delete("reader_items", "id = ?", new String[] { id });
+  }
+
+  private static boolean containsAsset(List<ContentUnit> units,
+      String assetUri)
+  {
+    for (ContentUnit unit : units)
+      if (assetUri.equals(unit.assetUri))
+        return true;
+    return false;
+  }
+
+  private void deleteOwnedSourceQuietly(String sourceUri)
+  {
+    try
+    {
+      deleteOwnedSource(sourceUri);
+    }
+    catch (IOException ignored)
+    {
+      // A committed Library replacement remains valid if cleanup fails.
+    }
   }
 
   private void deleteOwnedSource(String sourceUri) throws IOException

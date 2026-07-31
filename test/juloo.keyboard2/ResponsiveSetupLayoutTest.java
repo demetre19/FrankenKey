@@ -14,52 +14,31 @@ import static org.junit.Assert.*;
 public class ResponsiveSetupLayoutTest
 {
   @Test
-  public void button_margins_are_included_when_deciding_to_stack()
-  {
-    ResponsiveSetupLayout layout = setupLayout();
-
-    layout.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-    assertEquals("Three buttons whose real widths overflow must stack.",
-        LinearLayout.VERTICAL, layout.getOrientation());
-
-    layout.measure(View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY),
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-    assertEquals("The same complete buttons should stay three-across when they fit.",
-        LinearLayout.HORIZONTAL, layout.getOrientation());
-  }
-
-  private ResponsiveSetupLayout setupLayout()
+  public void setup_actions_remain_equal_two_column_pairs_on_small_phones()
   {
     Context context = RuntimeEnvironment.getApplication();
     ResponsiveSetupLayout layout = new ResponsiveSetupLayout(context, null);
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
-      FixedWidthView child = new FixedWidthView(context, 100);
+      View child = new View(context);
       LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-          LinearLayout.LayoutParams.WRAP_CONTENT,
-          LinearLayout.LayoutParams.WRAP_CONTENT);
-      params.leftMargin = 10;
-      params.rightMargin = 10;
+          LinearLayout.LayoutParams.WRAP_CONTENT, 48);
+      params.leftMargin = 4;
+      params.rightMargin = 4;
       layout.addView(child, params);
     }
-    return layout;
-  }
 
-  private static final class FixedWidthView extends View
-  {
-    private final int _width;
+    layout.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+    layout.layout(0, 0, 320, layout.getMeasuredHeight());
 
-    FixedWidthView(Context context, int width)
-    {
-      super(context);
-      _width = width;
-    }
-
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
-    {
-      setMeasuredDimension(_width, 48);
-    }
+    assertEquals(152, layout.getChildAt(0).getMeasuredWidth());
+    assertEquals(layout.getChildAt(0).getMeasuredWidth(),
+        layout.getChildAt(3).getMeasuredWidth());
+    assertEquals("Four 48dp actions must occupy exactly two compact rows.",
+        96, layout.getMeasuredHeight());
+    assertEquals(layout.getChildAt(0).getLeft(),
+        layout.getChildAt(2).getLeft());
+    assertTrue(layout.getChildAt(1).getLeft() > layout.getChildAt(0).getLeft());
   }
 }

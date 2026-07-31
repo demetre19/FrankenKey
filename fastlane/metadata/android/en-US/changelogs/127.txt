@@ -1,0 +1,1 @@
+Reader keyboard actions now have balanced 8dp spacing above and below the button row. Voice choices explicitly state Available offline or Uses network, retain human labels and sourced gender only for exact documented system voices, and avoid guessing metadata for unknown online voices.

@@ -1,0 +1,1 @@
+Reader controls now replace the otherwise empty candidates bar instead of appearing below it, removing the blank strip above both source actions and playback controls. Read Clipboard and Library retain the dark keyboard style with comfortable left and right text padding.

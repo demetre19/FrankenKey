@@ -6,30 +6,49 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-  <TextView
-      android:id="@+id/reader_library_row_title"
+  <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:maxLines="2"
-      android:textColor="#F4F7FA"
-      android:textSize="17sp"
-      android:textStyle="bold"/>
-
-  <TextView
-      android:id="@+id/reader_library_row_metadata"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="4dp"
-      android:textColor="#A8B2BE"
-      android:textSize="13sp"/>
-
-  <TextView
-      android:id="@+id/reader_library_row_progress"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="4dp"
-      android:textColor="#8CE9D7"
-      android:textSize="13sp"/>
+      android:gravity="top"
+      android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/reader_library_row_image"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginEnd="12dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone"/>
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+      <TextView
+          android:id="@+id/reader_library_row_title"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:maxLines="2"
+          android:textColor="#F4F7FA"
+          android:textSize="17sp"
+          android:textStyle="bold"/>
+      <TextView
+          android:id="@+id/reader_library_row_metadata"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:textColor="#A8B2BE"
+          android:textSize="13sp"/>
+      <TextView
+          android:id="@+id/reader_library_row_progress"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:textColor="#8CE9D7"
+          android:textSize="13sp"/>
+    </LinearLayout>
+  </LinearLayout>
 
   <LinearLayout
       android:layout_width="match_parent"
@@ -38,16 +57,25 @@
       android:gravity="end|center_vertical"
       android:orientation="horizontal">
     <Button
-        android:id="@+id/reader_library_row_delete"
-        android:layout_width="wrap_content"
+        android:id="@+id/reader_library_row_original"
+        android:layout_width="0dp"
         android:layout_height="48dp"
+        android:layout_weight="1"
+        android:minHeight="48dp"
+        android:text="@string/reader_open_original"
+        android:visibility="gone"/>
+    <Button
+        android:id="@+id/reader_library_row_delete"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
         android:minHeight="48dp"
         android:text="@string/reader_library_delete"/>
     <Button
         android:id="@+id/reader_library_row_open"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="48dp"
-        android:layout_marginStart="8dp"
+        android:layout_weight="1"
         android:minHeight="48dp"
         android:text="@string/reader_library_open"/>
   </LinearLayout>

@@ -1,0 +1,4 @@
+Reader articles now use a full-height reading view with a compact two-row playback dock and settings placed after the article.
+Tap any article paragraph to continue reading from that point, with speeds up to 800 words per minute.
+Imported articles can retain bounded inline images, Library cards show source previews and hosts, and original pages open directly.
+Voice choices are grouped into offline and online sections with human names, region flags, gender labels, and availability icons.

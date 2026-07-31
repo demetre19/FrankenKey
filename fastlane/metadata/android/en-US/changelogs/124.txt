@@ -1,0 +1,1 @@
+Reader and text-to-speech keyboard controls are now optional and disabled by default. Enable them in Settings to show Read Clipboard, Library, and playback controls above the keyboard; leave them off for the original clean keyboard.

@@ -88,6 +88,8 @@ public class Keyboard2 extends InputMethodService
   private ReaderPlaybackService _reader_service;
   private ReaderPlaybackService.Snapshot _reader_snapshot;
   private boolean _reader_bound;
+  private boolean _reader_composing;
+  private boolean _reader_controls_expanded;
   private final ServiceConnection _reader_connection = new ServiceConnection()
   {
     @Override public void onServiceConnected(ComponentName name, IBinder binder)
@@ -371,18 +373,29 @@ public class Keyboard2 extends InputMethodService
         _config.editor_config.should_use_typing_assistance);
   }
 
-  private void refresh_candidates_view()
+  private boolean candidates_view_enabled()
   {
-    boolean should_show =
-      _config.suggestions_enabled
+    return _config.suggestions_enabled
       && _config.editor_config.should_show_candidates_view
       && !_config.split_layout
       && !_assistant_strip.is_showing();
+  }
+
+  static boolean candidate_strip_visible(boolean enabled,
+      boolean readerStripVisible)
+  {
+    return enabled && !readerStripVisible;
+  }
+
+  private void refresh_candidates_view()
+  {
+    boolean should_show = candidates_view_enabled();
     if (should_show)
       _candidates_view.refresh_config(_config,
           _resource_spec.hasTypingDictionary());
     _candidates_view.set_decoder_state(_decoder.current_presentation());
     _candidates_view.setVisibility(should_show ? View.VISIBLE : View.GONE);
+    update_reader_entry();
   }
 
   private void grammar_correction_changed(
@@ -622,12 +635,16 @@ public class Keyboard2 extends InputMethodService
 
   private void wire_reader_button(ViewGroup pane)
   {
-    View button = pane.findViewById(R.id.clipboard_reader);
-    if (button == null)
-      button = pane.findViewById(R.id.keyboard_reader);
-    if (button != null)
-      button.setOnClickListener(this::show_reader_source_dialog);
     wire_reader_transport(pane);
+  }
+
+  private void show_reader_controls_or_sources(View anchor)
+  {
+    boolean active = reader_playback_active();
+    _reader_controls_expanded = true;
+    update_reader_transports();
+    if (!active)
+      show_reader_source_dialog(anchor);
   }
 
   interface ReaderSourceAction
@@ -762,6 +779,19 @@ public class Keyboard2 extends InputMethodService
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
   }
 
+  private void open_reader_library()
+  {
+    startActivity(new Intent(this, ReaderLibraryActivity.class)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  }
+
+  private void read_reader_clipboard()
+  {
+    _reader_controls_expanded = true;
+    start_reader_result(getString(R.string.reader_title_clipboard),
+        ReaderTextAccess.readClipboard(this));
+  }
+
   private void wire_reader_transport(View root)
   {
     View transport = root.findViewById(R.id.reader_transport);
@@ -780,8 +810,10 @@ public class Keyboard2 extends InputMethodService
         _view -> send_reader_action(ReaderPlaybackService.ACTION_NEXT));
     root.findViewById(R.id.reader_transport_stop).setOnClickListener(
         _view -> send_reader_action(ReaderPlaybackService.ACTION_STOP));
-    root.findViewById(R.id.reader_transport_open).setOnClickListener(
-        _view -> open_reader());
+    root.findViewById(R.id.reader_transport_library).setOnClickListener(
+        _view -> open_reader_library());
+    root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
+        _view -> read_reader_clipboard());
     update_reader_transport(root);
   }
 
@@ -801,6 +833,11 @@ public class Keyboard2 extends InputMethodService
 
   private void bind_reader_playback()
   {
+    if (!_config.reader_keyboard_controls_enabled)
+    {
+      update_reader_transports();
+      return;
+    }
     if (_reader_bound)
       return;
     _reader_bound = bindService(
@@ -835,6 +872,20 @@ public class Keyboard2 extends InputMethodService
     update_reader_transport(_clipboard_pane);
   }
 
+  static boolean reader_transport_visible(boolean readerEnabled,
+      boolean playbackActive, boolean controlsExpanded)
+  {
+    return readerEnabled && playbackActive && controlsExpanded;
+  }
+
+  private boolean reader_playback_active()
+  {
+    return _reader_snapshot != null &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.EMPTY &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.STOPPED &&
+      _reader_snapshot.status != ReaderPlaybackService.Status.ERROR;
+  }
+
   private void update_reader_transport(View root)
   {
     if (root == null)
@@ -842,15 +893,32 @@ public class Keyboard2 extends InputMethodService
     View transport = root.findViewById(R.id.reader_transport);
     if (transport == null)
       return;
-    boolean active = _reader_snapshot != null &&
-      _reader_snapshot.status != ReaderPlaybackService.Status.EMPTY &&
-      _reader_snapshot.status != ReaderPlaybackService.Status.STOPPED &&
-      _reader_snapshot.status != ReaderPlaybackService.Status.ERROR;
-    transport.setVisibility(active ? View.VISIBLE : View.GONE);
-    if (!active)
+    boolean active = reader_playback_active();
+    boolean visible = reader_transport_visible(
+        _config.reader_keyboard_controls_enabled, active,
+        _reader_controls_expanded);
+    boolean actionsVisible = reader_actions_visible(root, visible);
+    if (root == _keyboard_container_view && _candidates_view != null)
+      _candidates_view.setVisibility(candidate_strip_visible(
+          candidates_view_enabled(), visible || actionsVisible)
+        ? View.VISIBLE : View.GONE);
+    transport.setVisibility(
+        visible || actionsVisible ? View.VISIBLE : View.GONE);
+    root.findViewById(R.id.reader_transport_actions)
+      .setVisibility(actionsVisible ? View.VISIBLE : View.GONE);
+    TextView title = (TextView)root.findViewById(
+        R.id.reader_transport_title);
+    title.setVisibility(visible ? View.VISIBLE : View.GONE);
+    root.findViewById(R.id.reader_transport_playback_controls)
+      .setVisibility(visible ? View.VISIBLE : View.GONE);
+    if (!visible)
+    {
+      title.setSelected(false);
       return;
-    ((TextView)root.findViewById(R.id.reader_transport_title))
-      .setText(_reader_snapshot.title);
+    }
+    title.setSelected(false);
+    title.setText(_reader_snapshot.title);
+    update_reader_title_marquee(title);
     boolean playing =
       _reader_snapshot.status == ReaderPlaybackService.Status.PLAYING ||
       _reader_snapshot.status == ReaderPlaybackService.Status.PREPARING;
@@ -860,6 +928,77 @@ public class Keyboard2 extends InputMethodService
         ? R.drawable.ic_reader_pause : R.drawable.ic_reader_play);
     playPause.setContentDescription(
         getString(playing ? R.string.reader_pause : R.string.reader_play));
+  }
+
+  private static void update_reader_title_marquee(TextView title)
+  {
+    title.post(() ->
+    {
+      int available = title.getWidth() - title.getPaddingLeft() -
+        title.getPaddingRight();
+      boolean overflow = available > 0 &&
+        title.getPaint().measureText(title.getText().toString()) > available;
+      title.setGravity((overflow ? Gravity.START : Gravity.CENTER) |
+          Gravity.CENTER_VERTICAL);
+      title.setSelected(overflow);
+    });
+  }
+
+  static boolean reader_entry_visible(boolean readerEnabled,
+      boolean readableEditor, boolean editorEmpty, boolean composing,
+      boolean hasCandidates, boolean transportVisible)
+  {
+    return readerEnabled && readableEditor && editorEmpty && !composing &&
+      !hasCandidates && !transportVisible;
+  }
+
+  private void update_reader_entry()
+  {
+    update_reader_transport(_keyboard_container_view);
+  }
+
+  private boolean reader_actions_visible(View root, boolean transportVisible)
+  {
+    if (!_config.reader_keyboard_controls_enabled)
+      return false;
+    if (root == _clipboard_pane)
+      return !transportVisible;
+    if (root != _keyboard_container_view)
+      return false;
+    EditorInfo editor = getCurrentInputEditorInfo();
+    SharedDecoder.Presentation presentation =
+      _decoder == null ? null : _decoder.current_presentation();
+    boolean hasCandidates = presentation != null &&
+      (presentation.state == SharedDecoder.Presentation.State.PENDING ||
+       presentation.state == SharedDecoder.Presentation.State.READY &&
+       presentation.result != null &&
+       (presentation.result.words().length != 0 ||
+        presentation.result.emoji != null));
+    return reader_entry_visible(
+        _config.reader_keyboard_controls_enabled,
+        ReaderTextAccess.isReadableEditor(editor), editor_is_empty(),
+        _reader_composing, hasCandidates, transportVisible);
+  }
+
+  private boolean editor_is_empty()
+  {
+    InputConnection connection = getCurrentInputConnection();
+    if (connection == null)
+      return false;
+    if (_selection_start >= 0 && _selection_end >= 0 &&
+        _selection_start != _selection_end)
+      return false;
+    try
+    {
+      CharSequence before = connection.getTextBeforeCursor(1, 0);
+      CharSequence after = connection.getTextAfterCursor(1, 0);
+      return before != null && after != null &&
+        before.length() == 0 && after.length() == 0;
+    }
+    catch (RuntimeException error)
+    {
+      return false;
+    }
   }
 
   private int reader_error_message(ReaderTextAccess.Failure failure)
@@ -934,6 +1073,8 @@ public class Keyboard2 extends InputMethodService
   @Override
   public void onStartInputView(EditorInfo info, boolean restarting)
   {
+    _reader_composing = false;
+    _reader_controls_expanded = false;
     _keyeventhandler.finished();
     _decoder_session = 0;
     _config.editor_config.refresh(info, getResources());
@@ -947,6 +1088,7 @@ public class Keyboard2 extends InputMethodService
     refresh_candidates_view();
     _selection_start = info.initialSelStart;
     _selection_end = info.initialSelEnd;
+    update_reader_entry();
     start_grammar_checker();
     setInputView(_keyboard_container_view);
     bind_reader_playback();
@@ -1081,12 +1223,16 @@ public class Keyboard2 extends InputMethodService
       _keyboard_layout_view.set_selection_state(newSelStart != newSelEnd);
     _selection_start = newSelStart;
     _selection_end = newSelEnd;
+    _reader_composing = candidatesStart >= 0 && candidatesEnd > candidatesStart;
+    update_reader_entry();
     _grammar_checker.request(getCurrentInputConnection(),
         newSelStart, newSelEnd);
   }
 
   private void finish_input_session()
   {
+    _reader_composing = false;
+    _reader_controls_expanded = false;
     _keyeventhandler.finished();
     _decoder_session = 0;
     if (_candidates_view != null)
@@ -1121,6 +1267,14 @@ public class Keyboard2 extends InputMethodService
     if (!_config.multimodal_voice_typing_enabled
         && _voice_input.is_active())
       _voice_input.stop();
+    if (_config.reader_keyboard_controls_enabled && isInputViewShown())
+      bind_reader_playback();
+    else if (!_config.reader_keyboard_controls_enabled)
+    {
+      _reader_controls_expanded = false;
+      unbind_reader_playback();
+    }
+    update_reader_transports();
     apply_layout(current_layout());
     if (_decoder_session != 0)
       start_grammar_checker();
@@ -1399,6 +1553,7 @@ public class Keyboard2 extends InputMethodService
     {
       if (_candidates_view != null)
         _candidates_view.set_decoder_state(_decoder.current_presentation());
+      update_reader_entry();
     }
 
     @Override
