@@ -1,0 +1,1 @@
+Reader now offers comfortable light and dark reading modes and automatically scrolls the page to keep the spoken passage in view while following along.

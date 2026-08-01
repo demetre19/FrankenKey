@@ -63,6 +63,7 @@ public final class ReaderLibraryActivity extends Activity
   @Override
   protected void onCreate(Bundle savedInstanceState)
   {
+    setTheme(ReaderActivity.themeResource(this));
     super.onCreate(savedInstanceState);
     if (getActionBar() != null)
       getActionBar().hide();

@@ -8,12 +8,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.IBinder;
+import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.BackgroundColorSpan;
@@ -22,6 +22,7 @@ import android.text.method.KeyListener;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.LayoutInflater;
@@ -55,6 +56,21 @@ public final class ReaderActivity extends Activity
   private static final int MAX_WORDS_PER_MINUTE = 800;
   private static final String UI_STORE_NAME = "reader_ui";
   private static final String STORE_FOLLOW_WORDS = "follow_words";
+  private static final String STORE_DARK_MODE = "dark_mode";
+  static int themeResource(Context context)
+  {
+    boolean darkMode = context.getSharedPreferences(
+        UI_STORE_NAME, Context.MODE_PRIVATE).getBoolean(STORE_DARK_MODE, true);
+    return darkMode ? R.style.readerThemeDark : R.style.readerThemeLight;
+  }
+
+  // The visible icon names the current mode, as requested; the content
+  // description names the mode that activating the toggle will enter.
+  static int themeIconResource(boolean darkMode)
+  {
+    return darkMode ? R.drawable.ic_reader_dark_mode
+      : R.drawable.ic_reader_light_mode;
+  }
   private static final String EXTRA_QUICK_READ_TOKEN =
     "juloo.keyboard2.extra.QUICK_READ_TOKEN";
   private static final String EXTRA_REQUEST_PLAY =
@@ -225,6 +241,7 @@ public final class ReaderActivity extends Activity
   private int _librarySeekOffset = -1;
   private boolean _loadingLibraryItem;
   private boolean _followWords;
+  private boolean _darkMode;
   private String _speechText = "";
   private int _tapOffset = -1;
   private float _tapDownX;
@@ -275,6 +292,10 @@ public final class ReaderActivity extends Activity
   @Override
   protected void onCreate(Bundle savedInstanceState)
   {
+    _darkMode = getSharedPreferences(
+        UI_STORE_NAME, Context.MODE_PRIVATE).getBoolean(
+        STORE_DARK_MODE, true);
+    setTheme(themeResource(this));
     super.onCreate(savedInstanceState);
     if (getActionBar() != null)
       getActionBar().hide();
@@ -319,6 +340,17 @@ public final class ReaderActivity extends Activity
   private void wireControls()
   {
     findViewById(R.id.reader_back).setOnClickListener(_view -> finish());
+    ImageButton theme = (ImageButton)findViewById(R.id.reader_theme);
+    theme.setImageResource(themeIconResource(_darkMode));
+    theme.setContentDescription(getString(_darkMode
+          ? R.string.reader_use_light_mode : R.string.reader_use_dark_mode));
+    theme.setOnClickListener(_view -> {
+      _darkMode = !_darkMode;
+      getSharedPreferences(UI_STORE_NAME, Context.MODE_PRIVATE).edit()
+        .putBoolean(STORE_DARK_MODE, _darkMode)
+        .apply();
+      recreate();
+    });
     findViewById(R.id.reader_library).setOnClickListener(_view ->
         startActivity(new Intent(this, ReaderLibraryActivity.class)));
     findViewById(R.id.reader_clipboard).setOnClickListener(
@@ -1258,10 +1290,50 @@ public final class ReaderActivity extends Activity
     }
     else
       return;
-    text.setSpan(new BackgroundColorSpan(Color.rgb(31, 91, 83)),
+    text.setSpan(new BackgroundColorSpan(themeColor(
+          R.attr.readerHighlightColor)),
         start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-    final int visibleStart = start;
-    _text.post(() -> _text.bringPointIntoView(visibleStart));
+    if (snapshot.status == ReaderPlaybackService.Status.PLAYING)
+      scrollHighlightIntoReadingBand(start, end);
+  }
+
+  private int themeColor(int attribute)
+  {
+    TypedValue value = new TypedValue();
+    getTheme().resolveAttribute(attribute, value, true);
+    return value.data;
+  }
+
+  private void scrollHighlightIntoReadingBand(int start, int end)
+  {
+    _text.post(() -> {
+      Layout layout = _text.getLayout();
+      if (layout == null || _articleScroll.getHeight() <= 0)
+        return;
+      int startLine = layout.getLineForOffset(start);
+      int endLine = layout.getLineForOffset(Math.max(start, end - 1));
+      int textTop = _text.getTop() + _text.getTotalPaddingTop();
+      int lineTop = textTop + layout.getLineTop(startLine);
+      int lineBottom = textTop + layout.getLineBottom(endLine);
+      int target = readingScrollTarget(_articleScroll.getScrollY(),
+          lineTop, lineBottom, _articleScroll.getHeight(),
+          _articleScroll.getChildAt(0).getHeight());
+      if (target != _articleScroll.getScrollY())
+        _articleScroll.smoothScrollTo(0, target);
+    });
+  }
+
+  static int readingScrollTarget(int currentScroll, int lineTop,
+      int lineBottom, int viewportHeight, int contentHeight)
+  {
+    if (viewportHeight <= 0 || contentHeight <= viewportHeight)
+      return 0;
+    int bandTop = currentScroll + viewportHeight / 3;
+    int bandBottom = currentScroll + viewportHeight * 2 / 3;
+    if (lineTop >= bandTop && lineBottom <= bandBottom)
+      return currentScroll;
+    int target = lineTop - viewportHeight / 3;
+    return Math.max(0, Math.min(target, contentHeight - viewportHeight));
   }
 
   private CharSequence statusText(ReaderPlaybackService.Snapshot snapshot)

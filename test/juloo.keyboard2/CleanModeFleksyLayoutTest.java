@@ -63,8 +63,8 @@ public class CleanModeFleksyLayoutTest
         primaryNames(directKeys(rows.get(2))));
     assertCenterRowTrackpad(rows.get(1));
 
-    assertEquals("Clean text bottom row must be Fleksy's 123/Fn/space/punctuation/enter row with no Ctrl or arrow cluster.",
-        Arrays.asList("switch_numeric", "fn", "space", ".", "enter"),
+    assertEquals("Clean text bottom row must keep its compact actions while exposing the explicit Extra Keys trigger.",
+        Arrays.asList("switch_numeric", "fn", "extra_keys", "space", ".", "enter"),
         primaryNames(directKeys(rows.get(3))));
     assertEquals("Fleksy 123 top-left swipe must retain the numeric-page action without rendering a secondary legend.",
         "hide switch_number", directKeys(rows.get(3)).get(0).getAttribute("key1"));
@@ -149,6 +149,24 @@ public class CleanModeFleksyLayoutTest
         switchNumeric);
     assertEquals("FrankenKey numeric switch must render with Fleksy's compact 123 label.",
         "123", switchNumeric.getString());
+  }
+
+  @Test
+  public void both_typing_layouts_expose_the_extra_keys_panel()
+      throws Exception
+  {
+    Element cleanRow = directRows(parseLayout(CLEAN_TEXT).getDocumentElement()).get(3);
+    Element frankenRow = parseLayout(BOTTOM_ROW).getDocumentElement();
+
+    assertNotNull("Clean mode must expose a visible Extra Keys key.",
+        key(cleanRow, "extra_keys"));
+    assertNotNull("Computer/SSH mode must expose a visible Extra Keys key.",
+        key(frankenRow, "extra_keys"));
+    KeyValue extraKeys = KeyValue.getSpecialKeyByName("extra_keys");
+    assertEquals("The explicit ellipsis key opens the Extra Keys panel.",
+        KeyValue.Event.TOGGLE_EXTRA_KEYS, extraKeys.getEvent());
+    assertEquals("The trigger must remain visibly identifiable.",
+        "…", extraKeys.getString());
   }
 
   @Test

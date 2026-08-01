@@ -57,6 +57,7 @@ public class Keyboard2 extends InputMethodService
   private CandidatesView _candidates_view;
   private SnippetRowView _snippet_row_view;
   private AssistantStripView _assistant_strip;
+  private ExtraKeysPanelView _extra_keys_panel;
   private SystemGrammarChecker _grammar_checker;
   private SystemGrammarChecker.Correction _grammar_correction;
   private MultimodalVoiceInput _voice_input;
@@ -290,6 +291,9 @@ public class Keyboard2 extends InputMethodService
     _snippet_row_view = (SnippetRowView)_keyboard_container_view.findViewById(R.id.snippet_row);
     _assistant_strip = (AssistantStripView)_keyboard_container_view
       .findViewById(R.id.assistant_strip);
+    _extra_keys_panel = (ExtraKeysPanelView)_keyboard_container_view
+      .findViewById(R.id.extra_keys_panel);
+    _extra_keys_panel.bind(_keyboard_layout_view, _keyeventhandler);
     wire_reader_button(_keyboard_container_view);
   }
 
@@ -1085,6 +1089,7 @@ public class Keyboard2 extends InputMethodService
     _decoder_session = _decoder.start_session(decoder_config(),
         _resource_spec, layout, session_personalization_spec());
     _keyeventhandler.started(_config, _decoder_session);
+    _extra_keys_panel.onStartInput();
     refresh_candidates_view();
     _selection_start = info.initialSelStart;
     _selection_end = info.initialSelEnd;
@@ -1342,6 +1347,9 @@ public class Keyboard2 extends InputMethodService
     {
       switch (ev)
       {
+        case TOGGLE_EXTRA_KEYS:
+          _extra_keys_panel.toggle();
+          break;
         case CONFIG:
           start_activity(SettingsActivity.class);
           break;

@@ -1,0 +1,3 @@
+Added comfortable light and dark Reader modes, automatic follow-along scrolling, clearer spacing, compact source actions, and current-mode icons.
+Added an Extra Keys panel with holdable modifiers, navigation and function keys, and common shortcuts behind a visible keyboard button.
+Fixed a crash when opening Reader Library and improved separation between adaptive-learning cards.

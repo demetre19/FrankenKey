@@ -35,6 +35,8 @@ public class Keyboard2View extends View
   private Pointers _pointers;
 
   private Pointers.Modifiers _mods;
+  private Runnable _external_key_pressed;
+  private Runnable _external_key_released;
 
   private static int _currentWhat = 0;
 
@@ -129,6 +131,18 @@ public class Keyboard2View extends View
     _pointers.set_fake_pointer_state(key, kv, latched, lock);
   }
 
+  public void set_external_modifier(KeyValue.Modifier modifier, boolean active)
+  {
+    set_fake_ptr_latched(KeyboardData.Key.EMPTY,
+        KeyValue.makeInternalModifier(modifier), active, false);
+  }
+
+  public void set_external_key_listeners(Runnable pressed, Runnable released)
+  {
+    _external_key_pressed = pressed;
+    _external_key_released = released;
+  }
+
   /** Called by auto-capitalisation. */
   public void set_shift_state(boolean latched, boolean lock)
   {
@@ -156,6 +170,8 @@ public class Keyboard2View extends View
 
   public void onPointerDown(KeyValue k, boolean isSwipe)
   {
+    if (_external_key_pressed != null)
+      _external_key_pressed.run();
     updateFlags();
     _config.handler.key_down(k, isSwipe);
     invalidate();
@@ -167,6 +183,8 @@ public class Keyboard2View extends View
     // [key_up] must be called before [updateFlags]. The latter might disable
     // flags.
     _config.handler.key_up(k, mods, touch);
+    if (_external_key_released != null)
+      _external_key_released.run();
     updateFlags();
     invalidate();
   }

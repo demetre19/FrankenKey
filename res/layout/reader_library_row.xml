@@ -52,31 +52,48 @@
 
   <LinearLayout
       android:layout_width="match_parent"
-      android:layout_height="48dp"
+      android:layout_height="36dp"
       android:layout_marginTop="8dp"
       android:gravity="end|center_vertical"
       android:orientation="horizontal">
     <Button
         android:id="@+id/reader_library_row_original"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_weight="1"
-        android:minHeight="48dp"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/reader_themed_icon_button"
+        android:includeFontPadding="false"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="0dp"
         android:text="@string/reader_open_original"
+        android:textColor="?attr/readerTextColor"
         android:visibility="gone"/>
     <Button
         android:id="@+id/reader_library_row_delete"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_weight="1"
-        android:minHeight="48dp"
-        android:text="@string/reader_library_delete"/>
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/reader_themed_icon_button"
+        android:includeFontPadding="false"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="0dp"
+        android:text="@string/reader_library_delete"
+        android:textColor="?attr/readerTextColor"/>
     <Button
         android:id="@+id/reader_library_row_open"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_weight="1"
-        android:minHeight="48dp"
-        android:text="@string/reader_library_open"/>
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:background="@drawable/reader_themed_icon_button"
+        android:includeFontPadding="false"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="0dp"
+        android:text="@string/reader_library_open"
+        android:textColor="?attr/readerTextColor"/>
   </LinearLayout>
 </LinearLayout>

@@ -3,4 +3,9 @@
   <declare-styleable name="ExtraKeyCheckBoxPreference">
     <attr name="index" format="integer"/>
   </declare-styleable>
+  <attr name="readerTextColor" format="color"/>
+  <attr name="readerSecondaryTextColor" format="color"/>
+  <attr name="readerSurfaceColor" format="color"/>
+  <attr name="readerBorderColor" format="color"/>
+  <attr name="readerHighlightColor" format="color"/>
 </resources>

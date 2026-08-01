@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0B0D10"
+    android:background="?android:attr/colorBackground"
     android:fitsSystemWindows="true"
     android:orientation="vertical"
     android:paddingStart="12dp"
@@ -24,12 +24,12 @@
           android:layout_width="48dp"
           android:layout_height="48dp"
           android:layout_marginEnd="8dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_back"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_back"
-          android:tint="#F4F7FA"/>
+          android:tint="?attr/readerTextColor"/>
       <TextView
           android:id="@+id/reader_document_title"
           android:layout_width="0dp"
@@ -41,31 +41,66 @@
           android:scrollHorizontally="true"
           android:singleLine="true"
           android:text="@string/reader_activity_title"
-          android:textColor="#F4F7FA"
+          android:textColor="?attr/readerTextColor"
           android:textSize="18sp"
           android:textStyle="bold"/>
-      <Space
-          android:layout_width="56dp"
-          android:layout_height="1dp"/>
+      <ImageButton
+          android:id="@+id/reader_theme"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:layout_marginStart="8dp"
+          android:background="@drawable/reader_themed_icon_button"
+          android:contentDescription="@string/reader_use_light_mode"
+          android:padding="12dp"
+          android:scaleType="center"
+          android:src="@drawable/ic_reader_dark_mode"
+          android:tint="?attr/readerTextColor"/>
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="8dp"
         android:gravity="end|center_vertical"
         android:orientation="horizontal">
       <Button
+          android:id="@+id/reader_open_original"
+          android:layout_width="wrap_content"
+          android:layout_height="36dp"
+          android:background="@drawable/reader_themed_icon_button"
+          android:includeFontPadding="false"
+          android:minHeight="0dp"
+          android:minWidth="0dp"
+          android:paddingHorizontal="20dp"
+          android:paddingVertical="0dp"
+          android:text="@string/reader_open_original"
+          android:textColor="?attr/readerTextColor"
+          android:visibility="gone"/>
+      <Button
           android:id="@+id/reader_clipboard"
           android:layout_width="wrap_content"
-          android:layout_height="48dp"
-          android:minHeight="48dp"
-          android:text="@string/reader_source_clipboard"/>
+          android:layout_height="36dp"
+          android:layout_marginStart="8dp"
+          android:background="@drawable/reader_themed_icon_button"
+          android:includeFontPadding="false"
+          android:minHeight="0dp"
+          android:minWidth="0dp"
+          android:paddingHorizontal="20dp"
+          android:paddingVertical="0dp"
+          android:text="@string/reader_source_clipboard"
+          android:textColor="?attr/readerTextColor"/>
       <Button
           android:id="@+id/reader_library"
           android:layout_width="wrap_content"
-          android:layout_height="48dp"
+          android:layout_height="36dp"
           android:layout_marginStart="8dp"
-          android:minHeight="48dp"
-          android:text="@string/reader_open_library"/>
+          android:background="@drawable/reader_themed_icon_button"
+          android:includeFontPadding="false"
+          android:minHeight="0dp"
+          android:minWidth="0dp"
+          android:paddingHorizontal="20dp"
+          android:paddingVertical="0dp"
+          android:text="@string/reader_open_library"
+          android:textColor="?attr/readerTextColor"/>
     </LinearLayout>
   </LinearLayout>
 
@@ -90,7 +125,7 @@
           android:gravity="end"
           android:maxLines="2"
           android:text="@string/reader_status_stopped"
-          android:textColor="#8CE9D7"
+          android:textColor="?android:attr/colorAccent"
           android:textSize="13sp"/>
 
       <LinearLayout
@@ -102,19 +137,10 @@
           android:visibility="gone">
         <TextView
             android:id="@+id/reader_item_metadata"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="#A8B2BE"
+            android:textColor="?attr/readerSecondaryTextColor"
             android:textSize="13sp"/>
-        <Button
-            android:id="@+id/reader_open_original"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:minHeight="48dp"
-            android:text="@string/reader_open_original"
-            android:visibility="gone"/>
       </LinearLayout>
 
       <LinearLayout
@@ -130,6 +156,8 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="@string/reader_previous_section"
+            android:background="@drawable/reader_themed_icon_button"
+            android:textColor="?attr/readerTextColor"
             android:minHeight="48dp"
             android:text="‹"
             android:textSize="24sp"/>
@@ -140,13 +168,15 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/reader_unit_plain"
-            android:textColor="#D6DCE3"
+            android:textColor="?attr/readerSecondaryTextColor"
             android:textSize="14sp"/>
         <Button
             android:id="@+id/reader_unit_next"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="@string/reader_next_section"
+            android:background="@drawable/reader_themed_icon_button"
+            android:textColor="?attr/readerTextColor"
             android:minHeight="48dp"
             android:text="›"
             android:textSize="24sp"/>
@@ -164,13 +194,13 @@
           android:maxLength="200000"
           android:minHeight="320dp"
           android:nestedScrollingEnabled="false"
-          android:paddingStart="4dp"
+          android:paddingStart="12dp"
           android:paddingTop="12dp"
-          android:paddingEnd="4dp"
+          android:paddingEnd="12dp"
           android:paddingBottom="16dp"
           android:scrollbars="none"
-          android:textColor="#F4F7FA"
-          android:textColorHint="#A8B2BE"
+          android:textColor="?attr/readerTextColor"
+          android:textColorHint="?attr/readerSecondaryTextColor"
           android:textIsSelectable="true"
           android:textSize="18sp"/>
 
@@ -180,7 +210,7 @@
           android:layout_marginTop="16dp"
           android:layout_marginBottom="8dp"
           android:text="@string/reader_reading_settings"
-          android:textColor="#F4F7FA"
+          android:textColor="?attr/readerTextColor"
           android:textSize="16sp"
           android:textStyle="bold"/>
 
@@ -188,7 +218,7 @@
           android:id="@+id/reader_end_settings"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:background="@drawable/launcher_input"
+          android:background="@drawable/reader_settings_surface"
           android:orientation="vertical"
           android:paddingStart="12dp"
           android:paddingTop="8dp"
@@ -205,7 +235,7 @@
               android:layout_width="88dp"
               android:layout_height="wrap_content"
               android:text="@string/reader_pitch_default"
-              android:textColor="#F4F7FA"
+              android:textColor="?attr/readerTextColor"
               android:textSize="14sp"/>
           <SeekBar
               android:id="@+id/reader_pitch"
@@ -226,7 +256,7 @@
               android:layout_width="88dp"
               android:layout_height="wrap_content"
               android:text="@string/reader_follow_along"
-              android:textColor="#F4F7FA"
+              android:textColor="?attr/readerTextColor"
               android:textSize="14sp"/>
           <Spinner
               android:id="@+id/reader_follow_mode"
@@ -254,12 +284,12 @@
               android:layout_width="48dp"
               android:layout_height="48dp"
               android:layout_marginStart="8dp"
-              android:background="@drawable/reader_icon_button"
+              android:background="@drawable/reader_themed_icon_button"
               android:contentDescription="@string/reader_voice_preview"
               android:padding="0dp"
               android:scaleType="center"
               android:src="@drawable/ic_reader_play"
-              android:tint="#F4F7FA"/>
+              android:tint="?attr/readerTextColor"/>
         </LinearLayout>
 
         <Switch
@@ -274,7 +304,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/reader_network_voices_explanation"
-            android:textColor="#A8B2BE"
+            android:textColor="?attr/readerSecondaryTextColor"
             android:textSize="12sp"/>
       </LinearLayout>
     </LinearLayout>
@@ -284,10 +314,10 @@
       android:id="@+id/reader_control_dock"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:background="@drawable/launcher_input"
+      android:background="@drawable/reader_settings_surface"
       android:orientation="vertical"
       android:paddingStart="8dp"
-      android:paddingTop="4dp"
+      android:paddingTop="8dp"
       android:paddingEnd="8dp"
       android:paddingBottom="4dp">
 
@@ -302,60 +332,60 @@
           android:layout_height="48dp"
           android:layout_marginStart="4dp"
           android:layout_marginEnd="4dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_previous"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_previous"
-          android:tint="#F4F7FA"/>
+          android:tint="?attr/readerTextColor"/>
       <ImageButton
           android:id="@+id/reader_play_pause"
           android:layout_width="48dp"
           android:layout_height="48dp"
           android:layout_marginStart="4dp"
           android:layout_marginEnd="4dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_play"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_play"
-          android:tint="#8CE9D7"/>
+          android:tint="?android:attr/colorAccent"/>
       <ImageButton
           android:id="@+id/reader_next"
           android:layout_width="48dp"
           android:layout_height="48dp"
           android:layout_marginStart="4dp"
           android:layout_marginEnd="4dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_next"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_next"
-          android:tint="#F4F7FA"/>
+          android:tint="?attr/readerTextColor"/>
       <ImageButton
           android:id="@+id/reader_stop"
           android:layout_width="48dp"
           android:layout_height="48dp"
           android:layout_marginStart="4dp"
           android:layout_marginEnd="4dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_stop"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_stop"
-          android:tint="#F4F7FA"/>
+          android:tint="?attr/readerTextColor"/>
       <ImageButton
           android:id="@+id/reader_jump_bottom"
           android:layout_width="48dp"
           android:layout_height="48dp"
           android:layout_marginStart="4dp"
           android:layout_marginEnd="4dp"
-          android:background="@drawable/reader_icon_button"
+          android:background="@drawable/reader_themed_icon_button"
           android:contentDescription="@string/reader_jump_to_bottom"
           android:padding="0dp"
           android:scaleType="center"
           android:src="@drawable/ic_reader_bottom"
-          android:tint="#F4F7FA"
+          android:tint="?attr/readerTextColor"
           android:visibility="gone"/>
     </LinearLayout>
 
@@ -370,7 +400,7 @@
           android:layout_height="wrap_content"
           android:gravity="center_vertical"
           android:text="@string/reader_speed_default"
-          android:textColor="#F4F7FA"
+          android:textColor="?attr/readerTextColor"
           android:textSize="14sp"/>
       <SeekBar
           android:id="@+id/reader_speed"

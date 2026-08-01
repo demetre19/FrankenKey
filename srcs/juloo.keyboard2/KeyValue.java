@@ -13,6 +13,7 @@ public final class KeyValue implements Comparable<KeyValue>
     SWITCH_NUMBER_ENTRY,
     SWITCH_CLEAN_SYMBOLS,
     TOGGLE_CLEAN_MODE,
+    TOGGLE_EXTRA_KEYS,
     SWITCH_EMOJI,
     SWITCH_BACK_EMOJI,
     SWITCH_CLIPBOARD,
@@ -653,6 +654,8 @@ public final class KeyValue implements Comparable<KeyValue>
       case "switch_clean_text": return eventKey("abc", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
       case "switch_clean_numeric": return eventKey("123", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
       case "switch_clean_symbols": return eventKey("=<", Event.SWITCH_CLEAN_SYMBOLS, FLAG_SMALLER_FONT);
+      case "extra_keys": return eventKey("…", Event.TOGGLE_EXTRA_KEYS,
+          FLAG_SPECIAL | FLAG_SMALLER_FONT);
       case "switch_emoji": return eventKey(0xE001, Event.SWITCH_EMOJI, FLAG_SMALLER_FONT);
       case "switch_back_emoji": return eventKey("ABC", Event.SWITCH_BACK_EMOJI, 0);
       case "switch_clipboard": return eventKey(0xE017, Event.SWITCH_CLIPBOARD, 0);

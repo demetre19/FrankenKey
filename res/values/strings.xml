@@ -383,6 +383,10 @@
     <string name="launcher_button_reader">Open Reader</string>
     <string name="reader_activity_title">FrankenKey Reader</string>
     <string name="reader_back">Back</string>
+    <string name="reader_use_light_mode">Use light mode</string>
+    <string name="reader_use_dark_mode">Use dark mode</string>
+    <string name="reader_light_mode">Light</string>
+    <string name="reader_dark_mode">Dark</string>
     <string name="reader_text_hint">Paste or type text to read aloud</string>
     <string name="reader_image_close">Close image</string>
     <string name="reader_image_content_description">Article image. Pinch to zoom and drag to move.</string>

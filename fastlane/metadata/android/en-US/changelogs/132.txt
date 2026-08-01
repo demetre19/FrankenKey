@@ -1,0 +1,3 @@
+Added an Extra Keys panel with holdable modifiers, navigation and function keys, and common shortcuts behind a visible keyboard button.
+Improved Reader spacing, rounded controls, and source-action placement.
+Added clearer separation between Adaptive learning cards.

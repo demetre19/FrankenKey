@@ -169,15 +169,72 @@ public class ReaderActivityTest
   }
 
   @Test
-  public void reader_controls_have_accessible_labels_and_48dp_touch_targets()
+  public void reader_library_activity_and_rows_inflate_with_manifest_theme()
+      throws Exception
   {
-    Context context = RuntimeEnvironment.getApplication();
+    Context application = RuntimeEnvironment.getApplication();
+    ActivityInfo info = application.getPackageManager().getActivityInfo(
+        new ComponentName(application, ReaderLibraryActivity.class), 0);
+    Context context = new ContextThemeWrapper(application, info.theme);
+    View activity = LayoutInflater.from(context).inflate(
+        R.layout.reader_library_activity, null, false);
+    View row = LayoutInflater.from(context).inflate(
+        R.layout.reader_library_row, null, false);
+
+    assertNotNull("Library must inflate its complete activity layout.",
+        activity.findViewById(R.id.reader_library_list));
+    assertNotNull("A stored item row must inflate under the Library activity theme.",
+        row.findViewById(R.id.reader_library_row_open));
+  }
+
+  @Test
+  public void reader_library_item_actions_are_compact_content_sized_and_separated()
+  {
+    Context context = new ContextThemeWrapper(
+        RuntimeEnvironment.getApplication(), R.style.readerThemeDark);
+    View row = LayoutInflater.from(context).inflate(
+        R.layout.reader_library_row, null, false);
+    int compactHeight = Math.round(36f *
+        context.getResources().getDisplayMetrics().density);
+    int eightDp = Math.round(8f *
+        context.getResources().getDisplayMetrics().density);
+    int horizontalPadding = Math.round(20f *
+        context.getResources().getDisplayMetrics().density);
+    View original = row.findViewById(R.id.reader_library_row_original);
+    View delete = row.findViewById(R.id.reader_library_row_delete);
+    View open = row.findViewById(R.id.reader_library_row_open);
+
+    for (View action : new View[] { original, delete, open })
+    {
+      assertEquals("Library item actions use the smaller requested height.",
+          compactHeight, action.getLayoutParams().height);
+      assertEquals("Library item actions size to their own labels.",
+          ViewGroup.LayoutParams.WRAP_CONTENT, action.getLayoutParams().width);
+      assertEquals("Library item actions keep stronger horizontal padding.",
+          horizontalPadding, action.getPaddingLeft());
+      assertEquals(horizontalPadding, action.getPaddingRight());
+    }
+    assertTrue("Original keeps 8dp from Delete when visible.",
+        ((ViewGroup.MarginLayoutParams)original.getLayoutParams()).rightMargin
+          >= eightDp);
+    assertTrue("Delete keeps 8dp from Open.",
+        ((ViewGroup.MarginLayoutParams)delete.getLayoutParams()).rightMargin
+          >= eightDp);
+  }
+
+  @Test
+  public void reader_controls_have_accessible_labels_and_48dp_touch_targets()
+      throws Exception
+  {
+    Context context = new ContextThemeWrapper(
+        RuntimeEnvironment.getApplication(), R.style.readerThemeDark);
     View root = LayoutInflater.from(context).inflate(
         R.layout.reader_activity, null, false);
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     int[] touchTargets = {
-      R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
+      R.id.reader_back, R.id.reader_theme, R.id.reader_unit_previous,
+      R.id.reader_unit_next, R.id.reader_previous, R.id.reader_play_pause,
       R.id.reader_next, R.id.reader_stop, R.id.reader_jump_bottom,
       R.id.reader_preview_voice, R.id.reader_speed, R.id.reader_pitch,
       R.id.reader_follow_mode, R.id.reader_voice, R.id.reader_network_voices
@@ -206,9 +263,9 @@ public class ReaderActivityTest
     assertFalse(root.findViewById(R.id.reader_voice).getContentDescription()
         .toString().isEmpty());
     int[] iconControls = {
-      R.id.reader_back, R.id.reader_previous, R.id.reader_play_pause,
-      R.id.reader_next, R.id.reader_stop, R.id.reader_jump_bottom,
-      R.id.reader_preview_voice
+      R.id.reader_back, R.id.reader_theme, R.id.reader_previous,
+      R.id.reader_play_pause, R.id.reader_next, R.id.reader_stop,
+      R.id.reader_jump_bottom, R.id.reader_preview_voice
     };
     for (int id : iconControls)
     {
@@ -224,10 +281,81 @@ public class ReaderActivityTest
       assertFalse("Every Reader icon keeps an accessible label: " + id,
           control.getContentDescription().toString().isEmpty());
     }
+    int twelveDp = Math.round(12f *
+        context.getResources().getDisplayMetrics().density);
+    int eightDp = Math.round(8f *
+        context.getResources().getDisplayMetrics().density);
+    EditText readerText = root.findViewById(R.id.reader_text);
+    assertEquals("Reader prose keeps 12dp of breathing room from the left edge.",
+        twelveDp, readerText.getPaddingLeft());
+    assertEquals("Reader prose keeps 12dp of breathing room from the right edge.",
+        twelveDp, readerText.getPaddingRight());
+    assertEquals("Playback controls must not touch the top of their dock.",
+        eightDp, root.findViewById(R.id.reader_control_dock).getPaddingTop());
+    View original = root.findViewById(R.id.reader_open_original);
+    View clipboard = root.findViewById(R.id.reader_clipboard);
+    ViewGroup sourceActions = (ViewGroup)original.getParent();
+    assertTrue("Original must sit to the left of Read Clipboard in the source actions.",
+        sourceActions.indexOfChild(original) < sourceActions.indexOfChild(clipboard));
+    assertEquals("Original and Reader actions share the rounded themed surface.",
+        R.drawable.reader_themed_icon_button,
+        layoutAttributeResource(context, R.layout.reader_activity,
+          R.id.reader_open_original, "background"));
+    int compactHeight = Math.round(36f *
+        context.getResources().getDisplayMetrics().density);
+    int horizontalPadding = Math.round(20f *
+        context.getResources().getDisplayMetrics().density);
+    View library = root.findViewById(R.id.reader_library);
+    assertEquals("Reader source actions use the requested smaller height.",
+        compactHeight, clipboard.getLayoutParams().height);
+    assertEquals(compactHeight, library.getLayoutParams().height);
+    assertEquals("Reader source actions use content-sized widths.",
+        ViewGroup.LayoutParams.WRAP_CONTENT, clipboard.getLayoutParams().width);
+    assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT,
+        library.getLayoutParams().width);
+    assertEquals("Reader source actions keep stronger horizontal padding.",
+        horizontalPadding, clipboard.getPaddingLeft());
+    assertEquals(horizontalPadding, clipboard.getPaddingRight());
+    assertEquals(horizontalPadding, library.getPaddingLeft());
+    assertEquals(horizontalPadding, library.getPaddingRight());
+    assertTrue("The source-action row stays at least 8dp below the header.",
+        ((ViewGroup.MarginLayoutParams)sourceActions.getLayoutParams()).topMargin
+          >= eightDp);
+    assertTrue("The theme toggle is an icon control, not a word button.",
+        root.findViewById(R.id.reader_theme) instanceof ImageButton);
+    assertEquals("Dark mode shows the dark-state icon.",
+        R.drawable.ic_reader_dark_mode,
+        ReaderActivity.themeIconResource(true));
+    assertEquals("Light mode shows the light-state icon.",
+        R.drawable.ic_reader_light_mode,
+        ReaderActivity.themeIconResource(false));
+    assertTrue("The theme icon stays at least 8dp from the title.",
+        ((ViewGroup.MarginLayoutParams)root.findViewById(
+            R.id.reader_theme).getLayoutParams()).leftMargin >= eightDp);
+    assertTrue("Read Clipboard stays at least 8dp from the preceding action.",
+        ((ViewGroup.MarginLayoutParams)clipboard.getLayoutParams()).leftMargin
+          >= eightDp);
+    assertTrue("Library stays at least 8dp from Read Clipboard.",
+        ((ViewGroup.MarginLayoutParams)library.getLayoutParams()).leftMargin
+          >= eightDp);
     assertFalse("Network voices must be visibly and functionally off by default.",
         ((Switch)root.findViewById(R.id.reader_network_voices)).isChecked());
     assertEquals(View.ACCESSIBILITY_LIVE_REGION_POLITE,
         root.findViewById(R.id.reader_status).getAccessibilityLiveRegion());
+  }
+
+  @Test
+  public void spoken_highlight_stays_in_a_stable_reading_band()
+  {
+    assertEquals("A passage already in the middle reading band must not jitter.",
+        300, ReaderActivity.readingScrollTarget(300, 650, 690, 900, 2400));
+    assertEquals("A passage below the viewport moves into the upper reading zone.",
+        900, ReaderActivity.readingScrollTarget(300, 1200, 1240, 900, 2400));
+    assertEquals("Following the final passage clamps to the page bottom.",
+        1500, ReaderActivity.readingScrollTarget(
+          900, 2100, 2140, 900, 2400));
+    assertEquals("Short pages never produce a negative or unnecessary scroll.",
+        0, ReaderActivity.readingScrollTarget(0, 100, 140, 900, 700));
   }
 
   @Test

@@ -76,7 +76,7 @@
 
     <TextView style="@style/launcher_heading" android:text="@string/launcher_learning_heading"/>
     <TextView style="@style/launcher_feature_card" android:text="@string/launcher_learning_summary"/>
-    <TextView style="@style/launcher_feature_card" android:text="@string/launcher_teach_forget_summary"/>
+    <TextView style="@style/launcher_feature_card" android:layout_marginTop="8dp" android:text="@string/launcher_teach_forget_summary"/>
 
     <TextView android:id="@+id/launcher_tryhere_text" style="@style/launcher_heading" android:text="@string/launcher_tryhere"/>
     <EditText

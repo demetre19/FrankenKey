@@ -329,6 +329,34 @@
     <item name="android:windowActionModeOverlay">true</item>
     <item name="android:windowBackground">#0B0D10</item>
   </style>
+  <style name="readerThemeDark" parent="@android:style/Theme.Material">
+    <item name="android:colorAccent">#55D6BE</item>
+    <item name="android:colorBackground">#0B0D10</item>
+    <item name="android:colorButtonNormal">#252A31</item>
+    <item name="android:colorControlHighlight">#33FFFFFF</item>
+    <item name="android:navigationBarColor">#0B0D10</item>
+    <item name="android:windowActionModeOverlay">true</item>
+    <item name="android:windowBackground">#0B0D10</item>
+    <item name="readerTextColor">#F4F7FA</item>
+    <item name="readerSecondaryTextColor">#A8B2BE</item>
+    <item name="readerSurfaceColor">#1C2229</item>
+    <item name="readerBorderColor">#495460</item>
+    <item name="readerHighlightColor">#1F5B53</item>
+  </style>
+  <style name="readerThemeLight" parent="@android:style/Theme.Material.Light">
+    <item name="android:colorAccent">#087F6B</item>
+    <item name="android:colorBackground">#F7F8FA</item>
+    <item name="android:colorButtonNormal">#E6EAEE</item>
+    <item name="android:colorControlHighlight">#22000000</item>
+    <item name="android:navigationBarColor">#F7F8FA</item>
+    <item name="android:windowActionModeOverlay">true</item>
+    <item name="android:windowBackground">#F7F8FA</item>
+    <item name="readerTextColor">#161A1E</item>
+    <item name="readerSecondaryTextColor">#56616C</item>
+    <item name="readerSurfaceColor">#E9EDF1</item>
+    <item name="readerBorderColor">#C8D0D8</item>
+    <item name="readerHighlightColor">#A9E8DC</item>
+  </style>
   <style name="settingsTheme" parent="@android:style/Theme.Material">
     <!-- Setting this in the activity theme so it propagate to nested
          preference screens. -->
