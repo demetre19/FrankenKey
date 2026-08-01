@@ -2,6 +2,12 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.82 — version code 133
+
+- Added comfortable light and dark Reader modes, automatic follow-along scrolling, clearer spacing, compact source actions, and current-mode icons.
+- Added an Extra Keys panel with holdable modifiers, navigation and function keys, and common shortcuts behind a visible keyboard button.
+- Fixed a crash when opening Reader Library and improved separation between adaptive-learning cards.
+
 ## 2.0.79 - version code 130
 
 - Added the optional, default-off Reader for private text-to-speech from clipboard text, prose fields, imported files, and saved public articles.
@@ -49,8 +55,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Improved autocorrect during continuous typing, including transpositions and missing or extra letters.
 - Preserved ambiguous short words and protected technical terms during editor refreshes.
-
-## 2.0.55 — version code 106
-
-- Improved adjacent-key, transposition, omission, and trailing-letter correction without hardcoded word pairs.
-- Prevented accepted corrections from reverting when Backspace was pressed or the cursor moved.

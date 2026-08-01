@@ -183,9 +183,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.79
-Version code: 130
-SHA-256: 9d6a4b9904e56b4342b639c123d65638ee79ea4e92d8b94f0b505dc10539855e
+Version: 2.0.82
+Version code: 133
+SHA-256: 417891feaa103a95360d99c47ae5734b0e7498220378dcad3de2e6b5714abd07
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
