@@ -24,6 +24,7 @@
     <juloo.keyboard2.prefs.LayoutsPreference/>
     <SwitchPreference android:key="clean_mode" android:title="@string/pref_clean_mode_title" android:summary="@string/pref_clean_mode_summary" android:defaultValue="true"/>
     <ListPreference android:key="number_entry_layout" android:title="@string/pref_number_entry_title" android:summary="%s" android:defaultValue="pin" android:entries="@array/pref_number_entry_entries" android:entryValues="@array/pref_number_entry_values"/>
+    <juloo.keyboard2.prefs.ExtraKeysBarPreference android:key="extra_keys_bar" android:title="@string/pref_extra_keys_bar_title" android:summary="@string/pref_extra_keys_bar_summary"/>
     <PreferenceScreen android:title="@string/pref_extra_keys_title">
       <PreferenceCategory android:title="@string/pref_extra_keys_custom">
         <juloo.keyboard2.prefs.CustomExtraKeysPreference/>

@@ -1,0 +1,1 @@
+Extra Keys now supports a configurable shortcut bar: show or hide every key, drag to reorder, and add custom Ctrl/Alt/Shift/Cmd combinations. The expanded panel is capped at three horizontally scrollable rows.

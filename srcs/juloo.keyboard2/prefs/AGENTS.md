@@ -14,6 +14,7 @@
 - Preference widgets must reflect persisted config accurately and avoid surprising side effects.
 - Color selector UI should use compact square chips beside labels per user preference.
 - Dynamic extra-key checkboxes must use the shared concise summary explaining that the selected key is added only where absent.
+- The Extra Keys Bar manager persists every shortcut's visibility and order, exposes a drag handle per row, and accepts bounded custom Ctrl/Alt/Shift/Cmd combinations only for supported key or keyboard-command names.
 
 ## Work Guidance
 

@@ -24,6 +24,7 @@ import android.widget.Toast;
 import android.view.View;
 import android.view.ViewGroup;
 import juloo.keyboard2.suggestions.PersonalizationStore;
+import juloo.keyboard2.prefs.ExtraKeysBarPreference;
 
 public class SettingsActivity extends PreferenceActivity
 {
@@ -37,6 +38,8 @@ public class SettingsActivity extends PreferenceActivity
     "juloo.keyboard2.REQUEST_SCREENSHOT_PERMISSION";
   static final String EXTRA_REQUEST_VOICE_PERMISSION =
     "juloo.keyboard2.REQUEST_VOICE_PERMISSION";
+  public static final String EXTRA_OPEN_EXTRA_KEYS_BAR =
+    "juloo.keyboard2.OPEN_EXTRA_KEYS_BAR";
   private ReleaseUpdater _releaseUpdater;
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -61,6 +64,7 @@ public class SettingsActivity extends PreferenceActivity
     setupVoiceTypingPreference();
     setupClipboardPreferences();
     setupBackupPreferences();
+    setupExtraKeysBarPreference();
     requestScreenshotPermissionFromIntent();
     requestVoicePermissionFromIntent();
 
@@ -72,6 +76,16 @@ public class SettingsActivity extends PreferenceActivity
     findPreference("keyboard_height_unfolded").setEnabled(foldableDevice);
     findPreference("keyboard_height_landscape_unfolded").setEnabled(foldableDevice);
     styleSettingsList();
+  }
+
+  private void setupExtraKeysBarPreference()
+  {
+    if (!getIntent().getBooleanExtra(EXTRA_OPEN_EXTRA_KEYS_BAR, false))
+      return;
+    Preference preference = findPreference("extra_keys_bar");
+    if (preference instanceof ExtraKeysBarPreference)
+      getListView().post(() ->
+          ((ExtraKeysBarPreference)preference).showManager());
   }
 
   @Override
