@@ -88,7 +88,16 @@ Coding mode adds compact access to:
 - Arrow and navigation keys.
 - Tab and Esc.
 - Brackets, braces, pipes, slashes, quotes, operators, and shell punctuation.
-- Extra keys that can be enabled individually in Settings.
+- A configurable Extra Keys strip with navigation, editing, modifier, shortcut, and function keys.
+
+### Extra Keys
+
+Tap `…` on the keyboard to open the Extra Keys strip. Tap it again to expand up to three horizontally scrollable rows.
+
+- Use `+` to open **Extra Keys Bar** settings.
+- Show or hide every shortcut.
+- Drag shortcuts into your preferred order.
+- Add custom combinations using `Ctrl`, `Alt`, `Shift`, or `Cmd` with a supported key or keyboard command.
 
 ## Spacebar shortcuts
 
@@ -183,9 +192,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.82
-Version code: 133
-SHA-256: 417891feaa103a95360d99c47ae5734b0e7498220378dcad3de2e6b5714abd07
+Version: 2.0.87
+Version code: 138
+SHA-256: 8267c263696a444728ce6b88c1ae9f829f60cb202d43d052e5d8477083cb4df2
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

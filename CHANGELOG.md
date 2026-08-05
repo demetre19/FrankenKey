@@ -2,6 +2,12 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.87 — version code 138
+
+- Made the Extra Keys bar configurable: every shortcut can be shown or hidden and dragged into a preferred order.
+- Added custom `Ctrl`, `Alt`, `Shift`, and `Cmd` combinations with supported keys and keyboard commands.
+- Limited the expanded Extra Keys panel to three horizontally scrollable rows.
+
 ## 2.0.82 — version code 133
 
 - Added comfortable light and dark Reader modes, automatic follow-along scrolling, clearer spacing, compact source actions, and current-mode icons.
@@ -51,7 +57,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 - Completed full-word spellchecks after continued typing.
 - Corrected well-supported longer typos while avoiding guesses when multiple words were equally plausible.
 
-## 2.0.56 — version code 107
-
-- Improved autocorrect during continuous typing, including transpositions and missing or extra letters.
-- Preserved ambiguous short words and protected technical terms during editor refreshes.
