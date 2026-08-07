@@ -647,6 +647,18 @@
       "sha256": "5d1a33b3e516d226d59e8f51763d11d102d59dc349b40c7fdb51f045662ed382",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release fixing bundled English dictionary status and availability while updating launcher navigation, selection, and deletion guidance."
+    },
+    {
+      "label": "keyboard-reader-speed-slider-release",
+      "file": "FrankenKey-2.0.88-vc139-new-release-key-9fdb3633-9be865b7.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "139",
+      "versionName": "2.0.88",
+      "size": 14103999,
+      "sha256": "9be865b79e18f349e56bb7f09e78a83f15aae9164f900035a87a5cdc79bd6aed",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release adding immediate thumb-friendly reading-speed adjustment beneath the keyboard and clipboard Reader playback controls."
     }
   ]
 }

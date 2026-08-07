@@ -2,6 +2,11 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.88 — version code 139
+
+- Added a full-width reading-speed slider directly below the keyboard and clipboard Reader playback controls.
+- Made speed changes immediately available from the minimal playback view while keeping the current WPM visible.
+
 ## 2.0.87 — version code 138
 
 - Made the Extra Keys bar configurable: every shortcut can be shown or hidden and dragged into a preferred order.
@@ -51,9 +56,4 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Improved responsiveness and accuracy for decisive three-letter corrections.
 - Prevented short prefix completions from outranking stronger same-length corrections and bounded late replacements to unchanged recent text.
-
-## 2.0.57 — version code 108
-
-- Completed full-word spellchecks after continued typing.
-- Corrected well-supported longer typos while avoiding guesses when multiple words were equally plausible.
 

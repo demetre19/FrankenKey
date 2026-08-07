@@ -148,7 +148,7 @@ Reader is an optional, private text-to-speech experience that is disabled by def
 
 - Read ordinary clipboard text or prose from the current field without leaving the keyboard.
 - Import text, PDF, and EPUB documents, or save supported public articles to the searchable Library.
-- Pause, resume, seek, follow highlighted text, change speed up to 800 words per minute, and choose available voices.
+- Pause, resume, seek, follow highlighted text, adjust reading speed from the full Reader or directly beneath the keyboard and clipboard playback controls, and choose available voices.
 - Keep playback progress and Reader preferences across sessions.
 - View retained article images in reading order. Large images fill the reading column and open in a full-screen viewer with pinch zoom, panning, and double-tap reset.
 
@@ -192,9 +192,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.87
-Version code: 138
-SHA-256: 8267c263696a444728ce6b88c1ae9f829f60cb202d43d052e5d8477083cb4df2
+Version: 2.0.88
+Version code: 139
+SHA-256: 9be865b79e18f349e56bb7f09e78a83f15aae9164f900035a87a5cdc79bd6aed
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
