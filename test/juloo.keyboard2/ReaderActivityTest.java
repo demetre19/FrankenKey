@@ -440,6 +440,21 @@ public class ReaderActivityTest
           .getMarginStart());
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
+    View speedRow = transport.findViewById(
+        R.id.reader_transport_speed_row);
+    View speed = transport.findViewById(R.id.reader_transport_speed);
+    assertEquals("The speed control spans the keyboard below transport buttons.",
+        ViewGroup.LayoutParams.MATCH_PARENT, speedRow.getLayoutParams().width);
+    assertEquals("The speed slider itself spans the keyboard width.",
+        ViewGroup.LayoutParams.MATCH_PARENT, speed.getLayoutParams().width);
+    assertEquals("The compact speed slider keeps a 48dp thumb target.",
+        minimum, speed.getLayoutParams().height);
+    assertFalse("The compact speed slider announces its purpose.",
+        speed.getContentDescription().toString().isEmpty());
+    assertTrue("The compact speed readout stays in thumb-scannable WPM.",
+        ((TextView)transport.findViewById(
+          R.id.reader_transport_speed_label)).getText().toString()
+          .contains("wpm"));
     int[] controls = {
       R.id.reader_transport_previous, R.id.reader_transport_play_pause,
       R.id.reader_transport_next, R.id.reader_transport_stop

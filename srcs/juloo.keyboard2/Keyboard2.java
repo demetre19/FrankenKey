@@ -27,6 +27,7 @@ import android.view.inputmethod.InputMethodSubtype;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.AbstractMap.SimpleEntry;
@@ -51,6 +52,9 @@ public class Keyboard2 extends InputMethodService
   implements SharedPreferences.OnSharedPreferenceChangeListener,
     ReaderPlaybackService.Listener
 {
+  private static final int BASE_WORDS_PER_MINUTE = 180;
+  private static final int MIN_WORDS_PER_MINUTE = 45;
+  private static final int MAX_WORDS_PER_MINUTE = 800;
   /** The view containing the keyboard and candidates view. */
   private ViewGroup _keyboard_container_view;
   private Keyboard2View _keyboard_layout_view;
@@ -818,6 +822,22 @@ public class Keyboard2 extends InputMethodService
         _view -> open_reader_library());
     root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
         _view -> read_reader_clipboard());
+    SeekBar speed = (SeekBar)root.findViewById(
+        R.id.reader_transport_speed);
+    speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+    {
+      @Override public void onProgressChanged(SeekBar bar, int progress,
+          boolean fromUser)
+      {
+        float rate = (MIN_WORDS_PER_MINUTE + progress) /
+          (float)BASE_WORDS_PER_MINUTE;
+        update_reader_speed(root, rate);
+        if (fromUser && _reader_service != null)
+          _reader_service.setSpeechRate(rate);
+      }
+      @Override public void onStartTrackingTouch(SeekBar bar) {}
+      @Override public void onStopTrackingTouch(SeekBar bar) {}
+    });
     update_reader_transport(root);
   }
 
@@ -915,6 +935,8 @@ public class Keyboard2 extends InputMethodService
     title.setVisibility(visible ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.reader_transport_playback_controls)
       .setVisibility(visible ? View.VISIBLE : View.GONE);
+    root.findViewById(R.id.reader_transport_speed_row)
+      .setVisibility(visible ? View.VISIBLE : View.GONE);
     if (!visible)
     {
       title.setSelected(false);
@@ -932,6 +954,24 @@ public class Keyboard2 extends InputMethodService
         ? R.drawable.ic_reader_pause : R.drawable.ic_reader_play);
     playPause.setContentDescription(
         getString(playing ? R.string.reader_pause : R.string.reader_play));
+    int speedProgress = Math.round(
+        _reader_snapshot.speechRate * BASE_WORDS_PER_MINUTE) -
+      MIN_WORDS_PER_MINUTE;
+    ((SeekBar)root.findViewById(R.id.reader_transport_speed)).setProgress(
+        Math.max(0, Math.min(
+            MAX_WORDS_PER_MINUTE - MIN_WORDS_PER_MINUTE, speedProgress)));
+    update_reader_speed(root, _reader_snapshot.speechRate);
+  }
+
+  private void update_reader_speed(View root, float rate)
+  {
+    int wordsPerMinute = Math.max(MIN_WORDS_PER_MINUTE,
+        Math.min(MAX_WORDS_PER_MINUTE,
+          Math.round(BASE_WORDS_PER_MINUTE * rate)));
+    ((TextView)root.findViewById(R.id.reader_transport_speed_label))
+      .setText(getString(R.string.reader_speed_value, wordsPerMinute));
+    root.findViewById(R.id.reader_transport_speed).setContentDescription(
+        getString(R.string.reader_speed_accessibility, wordsPerMinute, rate));
   }
 
   private static void update_reader_title_marquee(TextView title)

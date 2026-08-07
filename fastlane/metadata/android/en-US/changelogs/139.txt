@@ -1,0 +1,1 @@
+Adjust reading speed quickly from the keyboard or clipboard Reader with a full-width slider directly below the playback controls.

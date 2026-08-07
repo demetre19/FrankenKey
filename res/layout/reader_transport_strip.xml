@@ -76,6 +76,29 @@
         android:tint="?attr/colorLabel"/>
   </LinearLayout>
   <LinearLayout
+      android:id="@+id/reader_transport_speed_row"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:orientation="vertical"
+      android:visibility="gone">
+    <TextView
+        android:id="@+id/reader_transport_speed_label"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:gravity="center"
+        android:text="@string/reader_speed_default"
+        android:textColor="?attr/colorLabel"
+        android:textSize="13sp"/>
+    <SeekBar
+        android:id="@+id/reader_transport_speed"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:contentDescription="@string/reader_speed_control"
+        android:max="755"
+        android:progress="135"/>
+  </LinearLayout>
+  <LinearLayout
       android:id="@+id/reader_transport_actions"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
