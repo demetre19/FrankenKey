@@ -976,6 +976,48 @@ public class AutocorrectScoringTest
   }
 
   @Test
+  public void clearLexicalEvidenceRepairsOnlyNonLexiconTwoAndThreeLetterTypos()
+      throws Exception
+  {
+    String[][] cases = {
+      { "ti", "to" },
+      { "ut", "it" },
+      { "tje", "the" }
+    };
+    for (String[] item : cases)
+    {
+      Decoder.Request request = request(item[0]);
+      boolean hunspellOnly = "ti".equals(item[0]);
+      Decoder.Candidate literal = contextPriorCandidate(item[0],
+          Decoder.SOURCE_LITERAL
+            | (hunspellOnly ? Decoder.SOURCE_HUNSPELL : 0),
+          -1920, 0, 0, 0, hunspellOnly);
+      Decoder.Candidate correction = spatialCandidateWithFrequency(item[1],
+          item[1], Decoder.SOURCE_CDICT_SPATIAL,
+          -3072, 1536, 15, 0, 1, Decoder.EDIT_SUBSTITUTION);
+
+      Decoder.Candidate chosen = choose(request,
+          Arrays.asList(correction, literal), literal, true,
+          Decoder.Failure.NONE);
+
+      assertNotNull("A unique nearby frequent dictionary substitution must repair short non-lexicon typo "
+          + item[0], chosen);
+      assertEquals(item[1], chosen.canonical);
+    }
+
+    Decoder.Request learnedRequest = request("ut");
+    Decoder.Candidate learnedLiteral = candidate("ut", "ut",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_PERSONAL,
+        -1920, 0, 0, false, true, true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate learnedCorrection = spatialCandidateWithFrequency("it",
+        "it", Decoder.SOURCE_CDICT_SPATIAL,
+        -3072, 1536, 15, 0, 1, Decoder.EDIT_SUBSTITUTION);
+    assertNull("Explicitly learned short tokens must keep the stronger established-word protection.",
+        choose(learnedRequest, Arrays.asList(learnedCorrection,
+              learnedLiteral), learnedLiteral, true, Decoder.Failure.NONE));
+  }
+
+  @Test
   public void weakPreviousWordPriorMustPreserveARecognizedLiteral()
       throws Exception
   {

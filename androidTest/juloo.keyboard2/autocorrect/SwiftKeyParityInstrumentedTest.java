@@ -440,6 +440,20 @@ public final class SwiftKeyParityInstrumentedTest
     assertEquals("if", decodeWithPrevious(generation++, "ask", "if"));
   }
 
+  @Test
+  public void packagedContextRepairsReportedShortWordTypos()
+  {
+    PersonalizationStore going = PersonalizationStore.empty();
+    going.record_word("going");
+    Decoder.Result ti = decodeFixed(3050, "ti", going);
+    assertEquals(candidateSummary(ti), "to", decodedSurface(ti, "ti"));
+
+    PersonalizationStore how = PersonalizationStore.empty();
+    how.record_word("how");
+    Decoder.Result ut = decodeFixed(3051, "ut", how);
+    assertEquals(candidateSummary(ut), "it", decodedSurface(ut, "ut"));
+  }
+
 
   @Test
   public void sameLengthTwoEditRepairCommitsHello()

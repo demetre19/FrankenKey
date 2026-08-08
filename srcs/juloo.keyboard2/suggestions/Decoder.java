@@ -1331,30 +1331,64 @@ public final class Decoder
   private static Candidate primary_short_lexical_repair(Request request,
       Candidate literal, List<Candidate> ranked)
   {
-    if (request.codePointCount != 2
-        || casing(request.typed) != Casing.LOWER
-        || !literal.recognized || literal.learned
+    Casing requestCasing = casing(request.typed);
+    if (request.codePointCount < 2 || request.codePointCount > 3
+        || (requestCasing != Casing.LOWER
+          && requestCasing != Casing.INITIAL)
+        || literal.learned
         || (literal.sourceMask & SOURCE_CDICT_EXACT) != 0)
       return null;
-    int completeRepair = SOURCE_HUNSPELL_PRIMARY;
+    if (request.codePointCount == 2 && literal.recognized)
+      for (Candidate candidate : ranked)
+        if (is_autocorrection_candidate_text(candidate, literal)
+            && is_case_compatible_autocorrection(request, candidate)
+            && (candidate.sourceMask & SOURCE_CDICT_EXACT) != 0
+            && (candidate.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
+            && candidate.completeEvidence
+            && candidate.editCount == 1
+            && candidate.editMask == EDIT_SUBSTITUTION
+            && candidate.spatialQ8 <= NEARBY_SUBSTITUTION_COST_Q8)
+          return candidate;
+    Candidate selected = null;
     for (Candidate candidate : ranked)
     {
-      boolean hunspellPrimary =
-        (candidate.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0;
-      if (is_autocorrection_candidate_text(candidate, literal)
-          && is_case_compatible_autocorrection(request, candidate)
-          && (candidate.sourceMask & SOURCE_CDICT_EXACT) != 0
-          && (candidate.sourceMask & completeRepair) != 0
-          && candidate.recognized && candidate.completeEvidence
-          && candidate.editCount == 1
-          && candidate.editMask == EDIT_SUBSTITUTION
-          && candidate.spatialQ8 <= NEARBY_SUBSTITUTION_COST_Q8
-          && (hunspellPrimary
-            || !has_decisively_closer_short_competitor(
-              request, literal, candidate, ranked)))
-        return candidate;
+      int candidateLength = candidate.canonical.codePointCount(
+          0, candidate.canonical.length());
+      if (!is_autocorrection_candidate_text(candidate, literal)
+          || !is_case_compatible_autocorrection(request, candidate)
+          || candidateLength != request.normalizedCodePointCount
+          || (candidate.sourceMask & SOURCE_CDICT_SPATIAL) == 0
+          || candidate.cdictFrequency < BOUNDARY_PREVIEW_MIN_CDICT_FREQUENCY
+          || !candidate.completeEvidence
+          || candidate.editCount != 1
+          || candidate.editMask != EDIT_SUBSTITUTION
+          || candidate.spatialQ8 > NEARBY_SUBSTITUTION_COST_Q8
+          || (long)literal.totalQ8 - candidate.totalQ8
+            < AUTOCORRECT_LITERAL_MARGIN_Q8)
+        continue;
+      if (selected == null
+          || ranking_total_q8(request, candidate)
+            < ranking_total_q8(request, selected))
+        selected = candidate;
     }
-    return null;
+    if (selected == null)
+      return null;
+    long selectedScore = ranking_total_q8(request, selected);
+    for (Candidate candidate : ranked)
+    {
+      int candidateLength = candidate.canonical.codePointCount(
+          0, candidate.canonical.length());
+      if (candidate == selected || candidate == literal
+          || candidateLength != request.normalizedCodePointCount
+          || !is_autocorrection_candidate_text(candidate, literal)
+          || !is_case_compatible_autocorrection(request, candidate)
+          || !is_safe_autocorrection_edit(candidate))
+        continue;
+      if (ranking_total_q8(request, candidate) - selectedScore
+          < AUTOCORRECT_RUNNER_MARGIN_Q8)
+        return null;
+    }
+    return selected;
   }
 
   private static Candidate clear_short_transposition(Request request,

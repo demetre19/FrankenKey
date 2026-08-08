@@ -1,0 +1,1 @@
+Two- and three-letter spelling corrections now use stronger dictionary and previous-word evidence, including common slips such as “going ti” and “how ut”, while preserving real and explicitly learned short words.

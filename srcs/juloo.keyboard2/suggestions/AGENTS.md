@@ -23,10 +23,10 @@
 - Ranking deterministically combines dictionary, geometry, frequency, unigram/bigram, and bounded typo evidence; no debug labels. Candidate UI stays ≤3 single-line words plus emoji slot.
 - Credential-protected learning stays reversible. Explicit learning persists exact casing only for 2–3-letter tokens; automatic accepted-word learning remains case-normalized. Correction-only targets are not unigrams/next-word anchors; learning runs when Suggestions or Autocorrect is enabled.
 - Touch calibration is worker-confined, bounded, complete-evidence-only, active after minimum samples, subtracted from coordinates, and cleared with personalization; corrected-source touches never train.
-- Correction IDs use NFC lowercase exact editor text, not accent-folded keys. Context evidence is an exact previous/source/target triple; no phrase hardcoding/cross-products.
+- Correction IDs use NFC lowercase exact editor text, not accent-folded keys. Context evidence is an exact previous/source/target triple; packaged locale priors may cover high-confidence common sequences, but code must not hardcode phrases or synthesize cross-products.
 - Exact evidence outranks related evidence from first acceptance; four accepted exact corrections may override protected literals. Related adjacent-key evidence never unlocks override.
 - Protect cold short all-caps tokens, valid/learned/technical/proper-name literals, ambiguous short repairs, and lowercase requests from improper casing.
-- Narrow exceptions remain explicit: lowercase `j`→`I`; decisive unknown two-letter repair; supported 3-letter adjacent transposition; validated contraction/apostrophe repairs; exact learned policy for `im`→`I'm`; validated deterministic English inflections.
+- Narrow exceptions remain explicit: lowercase `j`→`I`; a unique nearby frequent Cdict substitution for unlearned lowercase 2–3-letter tokens absent from Cdict; decisive context repair; supported 3-letter adjacent transposition; validated contraction/apostrophe repairs; exact learned policy for `im`→`I'm`; validated deterministic English inflections.
 - Changed replacements retain learning tokens only until the next accepted action. Backspace/cursor movement settle replacements and never restore source.
 - Forgetting removes evidence where the word is source/target; clear-all also clears inactive prewarmed state.
 
