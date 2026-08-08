@@ -72,6 +72,35 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void manual_shift_off_blocks_case_only_word_correction()
+      throws Exception
+  {
+    Harness harness = harness("Done. ", true, true,
+        TextUtils.CAP_MODE_SENTENCES, false, true);
+    assertTrue("The phone-path fixture must begin with automatic sentence Shift enabled.",
+        harness.handler._autocap._should_enable_shift);
+
+    harness.handler.key_down(
+        KeyValue.getSpecialKeyByName("shift"), false);
+    assertFalse("The user's Shift tap must turn automatic sentence Shift off.",
+        harness.handler._autocap._should_enable_shift);
+    assertTrue(harness.handler.send_text("o"));
+    assertTrue(harness.handler.send_text("m"));
+    assertTrue(harness.handler.send_text("p"));
+    Shadows.shadowOf(Looper.getMainLooper()).idle();
+
+    assertEquals("Shift-off must survive actual sentence-start typing after a full stop.",
+        "Done. omp", harness.receiver.input.text.toString());
+    Decoder.RequestKey typedKey = harness.handler._current_request_key;
+    assertNotNull(typedKey);
+    installCorrection(harness.decoder, typedKey, "omp", "Omp");
+    harness.handler.handle_space_bar();
+
+    assertEquals("A deliberate lowercase sentence start must win over a case-only learned-word correction.",
+        "Done. omp ", harness.receiver.input.text.toString());
+  }
+
+  @Test
   public void prose_punctuation_removes_a_plain_space_and_keeps_one_afterward()
       throws Exception
   {
@@ -137,6 +166,91 @@ public class KeyEventHandlerAutocorrectContractTest
 
     assertEquals("Termux raw input must preserve literal user spacing.",
         "word . ", termux.receiver.input.text.toString());
+  }
+
+  @Test
+  public void sentence_case_unspaced_period_becomes_space_before_next_word()
+      throws Exception
+  {
+    Harness harness = harness("Notive how many", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.key_up(KeyValue.getKeyByName("."),
+        Pointers.Modifiers.EMPTY, null);
+    assertTrue(harness.handler.send_text("spelling"));
+    harness.handler.handle_space_bar();
+
+    assertEquals("An unspaced period inside sentence-case prose must become the intended word boundary when the following word completes.",
+        "Notive how many spelling ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void lowercase_dotted_text_remains_literal()
+      throws Exception
+  {
+    Harness harness = harness("notive how many", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.key_up(KeyValue.getKeyByName("."),
+        Pointers.Modifiers.EMPTY, null);
+    assertTrue(harness.handler.send_text("spelling"));
+    harness.handler.handle_space_bar();
+
+    assertEquals("Fully lowercase dotted text may be a URL or domain and must remain literal.",
+        "notive how many.spelling ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void period_repair_keeps_the_completed_word_eligible_for_late_correction()
+      throws Exception
+  {
+    Harness harness = harness("This teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.key_up(KeyValue.getKeyByName("."),
+        Pointers.Modifiers.EMPTY, null);
+    assertTrue(harness.handler.send_text("x"));
+    harness.handler.handle_space_bar();
+    Decoder.Result late = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, late);
+    harness.handler.decoder_result_ready(late);
+
+    assertEquals("Repairing the accidental period must preserve the prior word's exact delayed-correction request.",
+        "This the x ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void real_sentence_spacing_ellipses_and_structured_text_keep_periods()
+      throws Exception
+  {
+    Harness sentence = harness("This ends", false, true);
+    assertTrue(sentence.handler.send_text(". "));
+    assertTrue(sentence.handler.send_text("next"));
+    sentence.handler.handle_space_bar();
+    assertEquals("A period followed by a real space is a sentence ending, not an accidental word boundary.",
+        "This ends. next ", sentence.receiver.input.text.toString());
+
+    Harness ellipsis = harness("This pauses", false, true);
+    assertTrue(ellipsis.handler.send_text("..."));
+    assertTrue(ellipsis.handler.send_text("next"));
+    ellipsis.handler.handle_space_bar();
+    assertEquals("An ellipsis must remain deliberate punctuation.",
+        "This pauses...next ", ellipsis.receiver.input.text.toString());
+
+    Harness structured = harness("Visit Domain", false, true);
+    structured.config.editor_config.should_use_sentence_assistance = false;
+    assertTrue(structured.handler.send_text("."));
+    assertTrue(structured.handler.send_text("com"));
+    structured.handler.handle_space_bar();
+    assertEquals("Structured editors must never receive prose period repair.",
+        "Visit Domain.com ", structured.receiver.input.text.toString());
+
+    Harness domain = harness("Visit example", false, true);
+    assertTrue(domain.handler.send_text("."));
+    assertTrue(domain.handler.send_text("com"));
+    domain.handler.handle_space_bar();
+    assertEquals("A recognized domain in normal prose must remain dotted even when the sentence contains capitals.",
+        "Visit example.com ", domain.receiver.input.text.toString());
   }
 
   @Test
@@ -317,6 +431,53 @@ public class KeyEventHandlerAutocorrectContractTest
 
     assertEquals("A full spellcheck may repair an exact word while preserving two subsequently typed words.",
         "prefix the x y", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void latent_correction_reaches_back_across_three_recent_sentences()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    assertTrue(harness.handler.send_text("x"));
+    harness.handler.handle_space_bar();
+    String following = "one two. three four. five six. seven";
+    assertTrue(harness.handler.send_text(following));
+    int cursorBeforeCorrection = harness.receiver.input.cursor;
+
+    Decoder.Result latent = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, latent);
+    harness.handler.decoder_result_ready(latent);
+
+    assertEquals("A completed full spellcheck may repair an unchanged word up to three recent sentences behind the cursor.",
+        "prefix the x " + following,
+        harness.receiver.input.text.toString());
+    assertEquals("A backward correction must restore the cursor after the complete following text.",
+        cursorBeforeCorrection, harness.receiver.input.cursor);
+  }
+
+  @Test
+  public void latent_correction_stays_bounded_beyond_three_sentences()
+      throws Exception
+  {
+    Harness harness = harness("prefix teh", true, true);
+    clearResult(harness.decoder);
+
+    harness.handler.handle_space_bar();
+    assertTrue(harness.handler.send_text("x"));
+    harness.handler.handle_space_bar();
+    String following = "one. two. three. four. five";
+    assertTrue(harness.handler.send_text(following));
+
+    Decoder.Result latent = correctionResult(harness.key, "teh", "the");
+    installResult(harness.decoder, latent);
+    harness.handler.decoder_result_ready(latent);
+
+    assertEquals("The backward scanner must fail closed after its three-sentence safety window.",
+        "prefix teh x " + following,
+        harness.receiver.input.text.toString());
   }
 
   @Test
@@ -1111,11 +1272,19 @@ public class KeyEventHandlerAutocorrectContractTest
       boolean safeEditor, int capsMode)
       throws Exception
   {
-    return harness(text, autocorrect, safeEditor, capsMode, false);
+    return harness(text, autocorrect, safeEditor, capsMode, false, false);
   }
 
   private Harness harness(String text, boolean autocorrect,
       boolean safeEditor, int capsMode, boolean termux)
+      throws Exception
+  {
+    return harness(text, autocorrect, safeEditor, capsMode, termux, false);
+  }
+
+  private Harness harness(String text, boolean autocorrect,
+      boolean safeEditor, int capsMode, boolean termux,
+      boolean capsInitiallyEnabled)
       throws Exception
   {
     Context context = RuntimeEnvironment.getApplication();
@@ -1132,7 +1301,7 @@ public class KeyEventHandlerAutocorrectContractTest
     config.autocorrect_enabled = autocorrect;
     config.autocapitalisation = true;
     config.editor_config.caps_mode = capsMode;
-    config.editor_config.caps_initially_enabled = false;
+    config.editor_config.caps_initially_enabled = capsInitiallyEnabled;
     config.editor_config.caps_initially_updated = false;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;

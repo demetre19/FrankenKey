@@ -11,6 +11,9 @@ public final class Autocapitalisation
   boolean _should_enable_shift = false;
   boolean _should_disable_shift = false;
   boolean _should_update_caps_mode = false;
+  /** One deliberate Shift tap may suppress automatic case for the next word. */
+  boolean _suppress_next_lowercase_rewrite = false;
+  boolean _manual_case_override_in_word = false;
 
   Handler _handler;
   InputConnection _ic;
@@ -41,6 +44,8 @@ public final class Autocapitalisation
   public void started(Config config, InputConnection ic)
   {
     cancel_pending_rewrite();
+    _suppress_next_lowercase_rewrite = false;
+    _manual_case_override_in_word = false;
     _ic = ic;
     EditorConfig ec = config.editor_config;
     _cursor = Math.max(0, ec.initial_sel_start);
@@ -64,6 +69,8 @@ public final class Autocapitalisation
     _should_enable_shift = false;
     _should_disable_shift = false;
     _should_update_caps_mode = false;
+    _suppress_next_lowercase_rewrite = false;
+    _manual_case_override_in_word = false;
     _ic = null;
     _cursor = 0;
   }
@@ -98,6 +105,12 @@ public final class Autocapitalisation
     else
       for (int i = 0; i < c.length(); i++)
         type_one_char(c.charAt(i));
+    for (int i = 0; i < c.length(); i++)
+      if (Character.isLetter(c.charAt(i)))
+      {
+        _suppress_next_lowercase_rewrite = false;
+        break;
+      }
     callback(false);
   }
 
@@ -122,12 +135,29 @@ public final class Autocapitalisation
     }
     callback(true);
   }
+  /** A deliberate Shift tap wins over the editor's automatic sentence caps. */
+  void manual_shift_toggled()
+  {
+    cancel_pending_rewrite();
+    _suppress_next_lowercase_rewrite = true;
+    _manual_case_override_in_word = true;
+    _should_enable_shift = false;
+    _should_update_caps_mode = false;
+    callback_now(true);
+  }
+
+  boolean has_manual_case_override_for_word()
+  {
+    return _manual_case_override_in_word;
+  }
 
   public void stop()
   {
     cancel_pending_rewrite();
     _should_enable_shift = false;
     _should_update_caps_mode = false;
+    _suppress_next_lowercase_rewrite = false;
+    _manual_case_override_in_word = false;
     callback_now(true);
   }
 
@@ -163,6 +193,8 @@ public final class Autocapitalisation
     if (new_cursor == _cursor) // Just typing
       return;
     cancel_pending_rewrite();
+    _suppress_next_lowercase_rewrite = false;
+    _manual_case_override_in_word = false;
     if (new_cursor == 0 && _ic != null)
     {
       // Detect whether the input box has been cleared
@@ -211,6 +243,8 @@ public final class Autocapitalisation
 
   boolean should_rewrite_lowercase(char c)
   {
+    if (_suppress_next_lowercase_rewrite)
+      return false;
     if (!_enabled || !Character.isLowerCase(c))
       return false;
     if ((_caps_mode & TextUtils.CAP_MODE_CHARACTERS) != 0
@@ -277,6 +311,8 @@ public final class Autocapitalisation
   void type_one_char(char c)
   {
     _cursor++;
+    if (is_trigger_character(c))
+      _manual_case_override_in_word = false;
     if (should_refresh_caps_mode_after(c))
       _should_update_caps_mode = true;
     else

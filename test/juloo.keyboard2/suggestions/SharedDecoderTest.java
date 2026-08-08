@@ -118,7 +118,7 @@ public class SharedDecoderTest
 
     synchronized (lock)
     {
-      for (int i = 1; i <= 4; ++i)
+      for (int i = 1; i <= 50; ++i)
       {
         Decoder.RequestKey key = decoder.request(session,
             snapshot(i, "word" + i, false));
@@ -126,8 +126,8 @@ public class SharedDecoderTest
       }
       java.util.ArrayDeque<?> retained =
         (java.util.ArrayDeque<?>)retainedField.get(decoder);
-      assertEquals("The worker must retain only the two boundaries the editor can still revalidate.",
-          2, retained.size());
+      assertEquals("The worker must retain a bounded few-sentence correction window without dropping the immediately preceding words.",
+          48, retained.size());
     }
   }
 

@@ -2,82 +2,59 @@
 
 ## Purpose
 
-- Own FrankenKey Java app logic: IME service, keyboard view, input handling, clipboard, snippets, settings, GIF/emoji, layouts, themes, and app integration.
+- Own FrankenKey app/IME Java behavior.
 
 ## Ownership
 
-- This package owns runtime behavior for the Android keyboard.
-- Child packages own focused domains listed below.
+- Parent owns runtime integration; indexed children own focused domains and Reader files own their named responsibilities.
 
 ## Local Contracts
 
-- Preserve the clean/Fleksy default path and optional dense FrankenKey path.
-- Clipboard history is capped at 50 and user-data handling must remain local/private.
-- Backspace, gestures, snippets, suggestions, and settings are user-visible contracts; update focused tests for changes.
-- Avoid compatibility shims; migrate callsites cleanly.
-- Suggestions and autocorrect use one session-scoped asynchronous decoder; visible layout geometry, resources, privacy gates, and request identity must be updated atomically through the IME lifecycle.
-- Suggestions and autocorrect are enabled for every non-secret text variation, including Google/search fields, URI/browser omniboxes, email addresses, filters, and web-edit text, even when apps set `TYPE_TEXT_FLAG_NO_SUGGESTIONS`. Passwords, numbers, phone, unknown input classes, and unknown raw editors remain excluded. Structured URI/email fields get stateless correction but no persistent personalization, sentence grammar, or multimodal voice; `IME_FLAG_NO_PERSONALIZED_LEARNING` disables persistence without hiding correction.
-- System grammar correction is explicit opt-in. It uses Android's selected `SpellCheckerSession`, one bounded current-sentence request at a time, exact request identity, timeout/debounce, and cursor/text revalidation before applying an offered replacement.
-- Multimodal voice typing is explicit opt-in and requires a Settings-activity microphone disclosure and runtime permission. It uses an in-process `SpeechRecognizer` (preferring on-device recognition), requests provider formatting, keeps the keyboard visible and usable, and must not switch to a replacement voice IME. Safe new-line/new-paragraph phrases may be bare; every destructive or editor-mutating action requires the explicit `command …` prefix and must fail closed when its target is unavailable.
-- Paste and destructive delete holds use independent repeat intervals; after a hold emits at least one repeat, release must not emit an extra paste or delete action. Backspace begins letter-by-letter repeat at the long-press threshold. A later left drag remains available throughout the same finger-down hold and must cancel further repeats as soon as sliding starts.
-  The held-Delete drag reuses `delete_words_left`: it highlights three word tiers before expanding by complete sentence tiers with the gradual word-slider acceleration; reversing shrinks deterministically, and lifting deletes exactly the highlighted range. Quick authored Backspace swipes before long press remain separate.
-- The official Termux `TYPE_NULL` editor uses raw `KEYCODE_DEL` events for Backspace and locally tracked raw replacement for suggestions/autocorrect. Keep Termux and matched CMUX terminal assistance stateless: terminal text may contain hidden passwords, so never read, display, or write persistent personalization or run sentence grammar/voice there. CMUX deletion remains on its dedicated `deleteSurroundingText(1, 0)` callback contract.
-- Normal-editor Backspace must verify the editor mutation after each deletion API call before falling back; an editor that deletes text but returns `false` must never cause a second deletion. When an editor accepts a semantic deletion but readback has not updated yet, defer verification briefly before emitting DEL, and cancel that fallback on subsequent input, selection updates, or editor-session changes. Keep Termux raw `KEYCODE_DEL` behavior unchanged.
-- Every `delete_words_left` assignment keeps absolute selection preview where the editor supports extracted text, grows from word tiers into complete sentence tiers, and deletes exactly the previewed range on lift. Limited URL/search editors use cursor-local relative deletion with mutation verification plus exact DEL-event fallback. CMUX terminal editors expose no readable buffer and guarantee only `deleteSurroundingText(1, 0)` as their IME Backspace callback, so ordinary Backspace and assigned swipe deletion must route exclusively through that callback and update local tracking synchronously after each accepted call. Never derive absolute selection offsets from `getTextBeforeCursor`.
-- In clean and dense text layouts, deliberate drags starting on the middle letter row act as a four-direction cursor touchpad. Continued movement accelerates with capped distance-from-origin gain; Shift-drag retains Shift on horizontal and vertical DPAD events for reversible editor selection. The spacebar's existing authored tools remain unchanged, and global vertical learn/unlearn gestures remain available from non-trackpad rows. Numeric/symbol middle-row word deletion keeps its existing contract.
-- The visible keyboard `…` key opens a one-button-high Extra Keys strip. Its compact horizontal lane renders enabled shortcuts in the user's saved order between `…` and `+`. A second `…` toggles at most three horizontally scrollable rows without changing key state; `+` opens the Extra Keys Bar manager. Settings must let users show or hide every shortcut, drag to reorder, and add or remove arbitrary supported Ctrl/Alt/Shift/Cmd plus key or keyboard-command combinations. Return always inserts a literal newline instead of triggering the editor action; Shift+Tab applies Shift only to that Tab dispatch. Ctrl, Alt, Shift, and Cmd are persistent toggles: one tap activates a modifier across repeated key dispatches, and only another tap on that modifier deactivates it; a new editor session still clears modifiers. Pin remains separately persistent. Extra Keys surfaces must preserve saved visibility, order, and custom combinations across process restarts.
-- Autocapitalisation uses delayed, editor-verified suffix repair for sentence/word starts. Normal, long-message, and short-message text fields missing caps flags fall back to sentence mode; URI, web, email, and password fields do not. Exact standalone lowercase `i` is promoted only at a verified word boundary in non-password text fields. Every surrounding-text correction or undo must synchronise autocap with the actual UTF-16 removal length and inserted text.
-- Adaptive learning records editor-verified typo corrections through prepare-before-mutation commit tokens whenever Suggestions or Autocorrect is active; repeated exact pairs may cover up to two textual edits. Before a normal-editor replacement or learning action, readable text must prove that the tracked word matches the complete word at the cursor; a proven stale suffix is refreshed instead of replaced, while unavailable readback and Termux raw input retain their existing paths. Accepted replacements commit their changed target; Backspace and cursor movement never restore the misspelled source. Passive learned-word history remains protected from cold or related guesses, but four exact editor-verified source-to-target choices are explicit training and must override stale literal history, including apostrophe preferences.
-- Adaptive touch calibration is credential-protected personalization. Learn only bounded normalized offsets from complete touch traces on accepted recognized literal words; corrected sources, unavailable/incomplete evidence, secret/structured/terminal fields, and direct-boot storage must never train geometry. Apply calibration only after a minimum evidence count, cap both offset and sample count, expose aggregate local counts in Settings, and clear it with all adaptive-learning data.
-- In readable normal editors, separator-time full spellcheck may finish after at most two following words. It must revalidate the unchanged absolute source range, preserve all intervening text, restore the cursor with the exact UTF-16 length delta, and fail closed after cursor/editor mutation. Raw Termux, CMUX, and unavailable readback retain their existing immediate paths.
-- Editor word snapshots distinguish local, complete, incomplete capped suffix, and unavailable readback. Incomplete suffixes fail closed before candidate publication, replacement, or learning; unavailable readback preserves legacy limited-editor behavior.
-- Backspace always commits any accepted correction and then performs ordinary deletion, so neither immediate Backspace nor later cursor movement may reintroduce the misspelled source. Sentence-assisted prose suppresses duplicate spaces and removes one plain space before `. , ! ? ; :`; URI/email/search-safe structured fields and Termux keep literal spacing.
-- Destructive learning controls require explicit confirmation: Settings clear-all uses an activity dialog, and live candidate/keyboard word-unlearn actions use an IME-attached dialog whose delayed positive action revalidates the exact request.
-- `SettingsActivity` uses the dark platform Material theme by default independently of the keyboard theme preference, which remains system-controlled unless explicitly changed.
-- Release update checks run only from unlocked launcher/settings activities, never the IME. They default to daily checks, show the GitHub Release changelog, require explicit accept/reject, authenticate the APK before installer handoff, and never clear or migrate keyboard user data.
-- `ReaderActivity` remains private. Android `ACTION_SEND` and `ACTION_PROCESS_TEXT` enter only through exported `ReaderShareActivity`, accept bounded `text/plain`, mark Process Text read-only, and hand accepted content to Reader through an opaque one-shot token. URL-only shares must use hardened on-device extraction when available or fail closed with a clear message; never speak the raw URL as article content.
-- Reader speech speed (shown as WPM), pitch, selected voice, network-voice opt-in, and playback position are private persistent preferences. User choices must survive Reader closure, service/process recreation, and later app sessions; defaults apply only before a choice has been saved.
-- `ReaderLibrary` owns the migration-versioned app-private Library database and retained article assets. Imports use normalized content hashes for deterministic replacement, preserve the existing stable id and progress on a duplicate hash, validate records and private asset locators on read, and delete only owned files beneath `files/reader_library`.
-- `ReaderLibraryActivity` is the private Library browser and applies the stored Reader theme before inflation so every themed row attribute resolves safely. It orders items by last-opened time, shows bounded previews, source host/date and a safe Original action for URL articles, exposes accessible open/delete and empty/error states, stops matching active playback before deletion, and opens saved content through `ReaderActivity`.
-- Saved documents use `unit:<ordinal>:<character-offset>` progress locators; URL articles use `article:<character-offset>` across their complete rendered text. `ReaderActivity` loads bounded document segments into the shared playback service, renders retained article images in reading order, and maps progress without widening Quick Read limits.
-- External Reader documents are accepted only from granted `content://` streams. Reads are size-bounded, text is strict UTF-8, and PDF/EPUB parsers must validate the actual container instead of trusting a filename or declared MIME type.
-- EPUB intake never extracts archive entries to disk. It rejects unsafe paths, excessive entry counts, oversized entries or aggregate expansion, unsafe compression ratios, XML external entities, encrypted content, and malformed spine references.
-- Article import permits only public HTTP(S) hosts on ports 80/443, disables automatic redirects, reapplies the complete URL policy and public-address check to every redirect, requires an exact supported response media type, and bounds redirects, time, response bytes, and extracted text.
-- Reader database, preferences, temporary imports, and retained source files remain in credential-protected app-private storage. Deletion may remove only canonical descendants of `files/reader_library`.
-- The keyboard Reader and text-to-speech surface is an explicit, default-off opt-in controlled by `reader_keyboard_controls`. When disabled, the normal keyboard and clipboard pane expose no Reader actions or playback transport and the IME must not bind the Reader service. When enabled, each empty readable editor focus shows one compact Read Clipboard and Library row. Source actions appear only when there are no real candidates; the source row and explicitly expanded playback transport replace the candidates strip so no empty bar remains above Reader controls. Source buttons use 36dp height, 4dp internal vertical padding, 16dp horizontal padding, an 8dp gap, 8dp source-strip padding above and below, and the keyboard theme's key color, label color, ripple, and small corner radius. The source row disappears as soon as text, composing state, or candidates appear so the keyboard immediately reclaims its height. Active playback controls replace the action row only after an explicit Reader action; their title centers when it fits, enables marquee only when measured overflow exists, and stays 8dp above previous/play-next/stop.
-- Full Reader source actions order Original before Read Clipboard and Library. Source and Library-row text actions are content-sized, 36dp high, use 20dp horizontal padding and the shared 12dp rounded themed surface, and keep at least 8dp from adjacent controls or content. Reader article text keeps 12dp horizontal insets, and the sticky playback dock retains explicit top separation from article content. The Light/Dark toggle uses a current-state sun or moon icon instead of words while its accessibility label names the mode the tap will activate.
-- Reader playback keeps previous/play-next/stop and speed in the full Reader sticky dock. The keyboard and clipboard minimal playback strip exposes the same transport actions with a full-width thumb-friendly WPM slider directly below them. Pitch, follow mode, voice, and network-voice opt-in live after the article in the full Reader scrolling settings card. The Reader has a persistent Light/Dark reading-mode toggle with theme-aware text, controls, settings surfaces, and follow highlight. During playback, follow-along scrolls the outer article page only when the spoken passage leaves the stable middle reading band; it must not rely on the nested editor viewport. A jump-to-bottom key appears only when the rendered article text exceeds the viewport and more content remains below; activating it reaches the bottom settings and hides the key. The full Reader header centers fitting titles, enables marquee only for measured overflow, and keeps the theme action distinct from the title.
-- Reader Library search is local and case-insensitive across metadata and normalized content. URL article extraction prefers semantic article-body containers over generic page shells, excludes navigation-role chrome, and recognizes common lazy-image attributes. Optional article-card previews and up to eight inline article images follow the same public-host/redirect policy as article HTML, are image-type/dimension/byte bounded, remain beneath `files/reader_library`, reject explicit decorative/tiny image signals before applying the bound, and are deleted on failed or replaced imports.
-- Large retained Reader article images fit the reading column while preserving aspect ratio. Tapping any retained article image opens the private full-screen viewer without moving playback; bounded image decode runs off the UI thread, and the viewer supports pinch zoom, pan, double-tap reset, Back, and an accessible close action.
-- Reader voice choices use human names, AU/US/UK flags where applicable, explicit Available offline or Uses network text, and small availability icons under conditional Offline and Online group headings. Exact `-network` counterparts reuse the matching named local voice family's Female or Male presentation; unknown voice families use a regional label and omit gender rather than guessing. Engine identifiers are never the primary label.
-- Reader parser dependencies stay pinned to reviewed, non-dynamic coordinates; dependency additions or upgrades require source/health review and focused malformed-input verification.
+- Preserve clean/dense modes and local/private user data. Migrate callsites cleanly; no compatibility shims.
+- Suggestions/autocorrect use one async session decoder with atomic request/layout/resource/privacy identity. Enable for non-secret text (including search/URI/email/web) despite no-suggestions flags; exclude passwords/numeric/phone/unknown. Structured/terminal fields remain stateless.
+- Grammar and multimodal voice are explicit opt-ins with bounded exact requests, revalidation, Android-service disclosure, safe command grammar, and fail-closed destructive actions.
+- Paste/delete holds use independent intervals; repeated holds emit no release action. Backspace repeats letters, then supports reversible word/sentence selection; release deletes exactly the preview.
+- Termux `TYPE_NULL` uses raw DEL/local replacement and no persistence/grammar/voice. CMUX uses only `deleteSurroundingText(1,0)`. Normal editors verify mutation before DEL fallback to prevent double deletion.
+- Middle-row drags provide accelerated four-direction cursor movement; Shift extends/reverses selection. Preserve global learn gestures and numeric/symbol word deletion.
+- Extra Keys uses one saved-order row, ≤3 expanded rows, and manager-driven visibility/order/custom modifier combinations. Return inserts newline; Shift+Tab is temporary; modifiers toggle persistently until retapped/session reset.
+- Autocapitalization and standalone `i` repair only verified prose boundaries; URI/web/email/password excluded. A deliberate Shift toggle overrides automatic sentence case for the current word. UTF-16 deltas synchronize state.
+- Adaptive learning requires editor-verified complete words/tokens; incomplete suffixes fail closed. Explicitly taught 2–3-letter tokens retain exact casing across sentence autocapitalization. Exact corrections, personalization, and touch calibration remain bounded, credential-protected, privacy-gated, reversible, and explicitly confirm destructive actions.
+- Late spellcheck retains ≤48 completed-word requests and may repair an unchanged exact range within ≤3 following sentences/768 UTF-16 units after connection, selection, cursor, source, and suffix revalidation.
+- Sentence-case prose converts unspaced `word.word` periods only when the following word completes; preserve lowercase dotted text, ellipses, recognized common domains, URL/email markers, structured fields, and terminals. Backspace/cursor movement settles accepted corrections and never restores misspellings.
+- Settings uses independent dark Material theme. Update checks run only from unlocked launcher/Settings, default daily, show changelog, require accept/reject, authenticate APK, and preserve data.
+- Reader entry: private `ReaderActivity`; exported `ReaderShareActivity` accepts bounded `text/plain` Share/read-only Process Text via opaque one-shot token. URL-only shares use hardened extraction or fail closed.
+- Reader speed/WPM, pitch, voice, network opt-in, theme, and progress persist privately. Playback state survives activity/service/process recreation.
+- Library uses migration-versioned private storage, normalized-hash replacement with stable ID/progress, validated locators, owned-file deletion, local search, and safe URL Original actions.
+- Documents accept granted `content://` only with bounded strict parsing. EPUB rejects traversal/expansion/encryption/XXE/spine abuse; article fetches permit public HTTP(S) 80/443 only with redirect/address/media/time/size bounds; PDF/EPUB validate content, not names.
+- Saved progress uses `unit:<ordinal>:<offset>` or `article:<offset>`. Reader renders bounded units/images and maps progress without widening Quick Read.
+- Keyboard Reader is default-off. Enabled empty readable editors show compact Read Clipboard/Library; input/candidates hide them. Explicit playback replaces candidates with title, transport, and full-width WPM slider.
+- Full Reader source actions order Original/Read Clipboard/Library. Sticky transport keeps previous/play-next/stop/speed; pitch/follow/voice/network follow content. Theme/follow/highlight/scroll/jump-to-bottom/header marquee remain contrast- and overflow-aware.
+- Retained images are bounded, private, ordered, aspect-fit, and open a private background-decoded zoom/pan viewer without moving playback.
+- Voice rows use human names, flags, truthful offline/network status, and gender only for documented exact IDs.
+- Parser dependencies stay pinned/reviewed; additions/upgrades require source/health and malformed-input verification.
 
 ## Work Guidance
 
-- Use LSP/code navigation for exported symbols when available.
-- Prefer small feature-local changes over cross-package refactors.
-- Keep Android API guards explicit for version-specific behavior.
+- Use LSP for exported symbols; prefer feature-local changes and explicit API guards.
 
 ## Verification
 
-- Run focused tests for touched behavior under `test/juloo.keyboard2`.
-- For release-visible behavior, build release and copy the APK to the delivery root before asking for device testing.
-- Updater logic changes must satisfy the source-root version-to-version device verification.
+- Run focused `test/juloo.keyboard2` classes; release-visible changes require signed release build and canonical APK copy. Updater changes require version-to-version device verification.
 
 ## Child DOX Index
 
-- `ReaderLibrary.java` — app-private Reader item/content-unit metadata, progress, deterministic import replacement, migration, and owned-file deletion.
-- `ReaderLibraryActivity.java` — private Library list, metadata, open/resume, deletion confirmation, and usable empty/error states.
-- `ReaderActivity.java` — shared Reader controls plus bounded Library chapter/page segment loading and locator restoration.
-- `ReaderImageViewer.java` — private full-screen retained-image viewer with bounded background decode, pinch zoom, pan, reset, and bitmap cleanup.
-- `ReaderShareActivity.java` — exported, grant-checked and size-bounded external text/document intake.
-- `ReaderArticleImporter.java` — bounded public-network article fetch, redirect revalidation, strict media types, and HTML text extraction.
-- `ReaderEpubImporter.java` — non-extracting EPUB validation with traversal, expansion, compression, XML, and spine limits.
-- `ReaderPdfImporter.java` — bounded PDF parsing and OCR-required classification.
-- `ReaderImportPipeline.java` — confirmation, normalized aggregate limits, private import persistence, and opaque Reader handoff.
-- `suggestions/AGENTS.md` — shared decoder, spatial scoring, personalization, stale-result control, and candidate presentation.
-- `autocorrect/AGENTS.md` — worker-confined Hunspell JNI bridge and explicit native lifetime.
-- `snippets/AGENTS.md` — snippet storage, UI rows, insertion, settings.
-- `prefs/AGENTS.md` — custom preference widgets and settings controls.
-- `dict/AGENTS.md` — dictionary list/loading UI and supported dictionaries.
-- `lang/AGENTS.md` — language pack model and manager.
+- `ReaderLibrary.java` — private library/progress/assets.
+- `ReaderLibraryActivity.java` — library UI/open/delete.
+- `ReaderActivity.java` — Reader UI/playback/document mapping.
+- `ReaderImageViewer.java` — private image viewer.
+- `ReaderShareActivity.java` — bounded external intake.
+- `ReaderArticleImporter.java` — hardened article import.
+- `ReaderEpubImporter.java` — safe EPUB parsing.
+- `ReaderPdfImporter.java` — bounded PDF parsing.
+- `ReaderImportPipeline.java` — confirmation/persistence/handoff.
+- `suggestions/AGENTS.md` — decoder/ranking/personalization.
+- `autocorrect/AGENTS.md` — Hunspell JNI.
+- `snippets/AGENTS.md` — snippets.
+- `prefs/AGENTS.md` — settings widgets.
+- `dict/AGENTS.md` — dictionaries.
+- `lang/AGENTS.md` — language packs.

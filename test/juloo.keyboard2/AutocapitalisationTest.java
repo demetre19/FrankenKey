@@ -77,6 +77,30 @@ public class AutocapitalisationTest
   }
 
   @Test
+  public void manual_shift_off_preserves_a_lowercase_sentence_start()
+  {
+    MutableInputConnection input = new MutableInputConnection("Done. ", 0);
+    RecordingCallback callback = new RecordingCallback(input);
+    Autocapitalisation autocap = autocap(callback, input,
+        TextUtils.CAP_MODE_SENTENCES);
+
+    autocap.manual_shift_toggled();
+    autocap.typed("t");
+    input.editorInsert("t");
+    autocap.delayed_callback.run();
+
+    assertEquals("Turning automatic Shift off must keep the next sentence-initial letter lowercase.",
+        "Done. t", input.text.toString());
+    assertEquals("A deliberate lowercase sentence start must not schedule a hidden rewrite.",
+        0, input.deleteSurroundingCalls);
+    assertTrue("The manual case choice must remain authoritative through the current word.",
+        autocap.has_manual_case_override_for_word());
+    autocap.typed(".");
+    assertFalse("The next word gets a fresh capitalization decision.",
+        autocap.has_manual_case_override_for_word());
+  }
+
+  @Test
   public void sentence_initial_rewrite_keeps_up_with_extra_letters_before_delay()
   {
     MutableInputConnection input = new MutableInputConnection("Done. ", 0);

@@ -1,0 +1,1 @@
+Turning Shift off now overrides sentence-start capitalization for the current word, including after full stops, while explicitly learned lowercase short commands remain lowercase.

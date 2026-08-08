@@ -1560,8 +1560,8 @@ public final class SharedDecoder implements AutoCloseable
   private boolean _workerPersonalizationFailed = false;
 
   private static final int MAX_CONTROLS = 64;
-  private static final int MAX_RETAINED_BOUNDARIES = 2;
-  private static final int MAX_COMPLETED_RESULTS = 8;
+  private static final int MAX_RETAINED_BOUNDARIES = 48;
+  private static final int MAX_COMPLETED_RESULTS = 64;
 
   private static final class PendingDecode
   {

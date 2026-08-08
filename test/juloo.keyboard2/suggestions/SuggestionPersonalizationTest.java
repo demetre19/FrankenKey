@@ -152,6 +152,23 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void explicitly_learned_short_commands_keep_the_taught_case()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("omp");
+
+    Decoder.Result result = decode("Omp", store, enabledConfig(), 32);
+
+    assertNotNull("An explicitly taught lowercase command must override only the automatic initial capital at commit.",
+        result.autocorrection);
+    assertEquals("omp", result.autocorrection.surface);
+    Decoder.Candidate learned = find(result, "omp");
+    assertNotNull("The taught short command must remain visible.", learned);
+    assertEquals("The candidate strip must display the exact taught casing.",
+        "omp", learned.surface);
+  }
+
+  @Test
   public void disabled_or_unsafe_decoder_gates_publish_no_candidates_but_retain_literal()
   {
     PersonalizationStore store = PersonalizationStore.empty();

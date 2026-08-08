@@ -61,7 +61,9 @@ public final class KeyEventHandler
   private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
   private static final int SELECT_WORDS_BEFORE_SENTENCES = 3;
   private static final int PENDING_BOUNDARY_FOLLOWING_CODEPOINTS = 8;
-  private static final int MAX_LATENT_AUTOCORRECT_BOUNDARIES = 2;
+  private static final int MAX_LATENT_AUTOCORRECT_BOUNDARIES = 48;
+  private static final int MAX_LATE_CORRECTION_SENTENCES = 3;
+  private static final int MAX_LATE_CORRECTION_UTF16 = 768;
 
   private static final class DeleteSelection
   {
@@ -407,6 +409,9 @@ public final class KeyEventHandler
       case Modifier:
         switch (key.getModifier())
         {
+          case SHIFT:
+            _autocap.manual_shift_toggled();
+            break;
           case CTRL:
           case ALT:
           case META:
@@ -969,18 +974,25 @@ public final class KeyEventHandler
         || !pending.source.contentEquals(
           text.text.subSequence(local_start, local_end)))
       return false;
-    int following_words = 0;
-    boolean in_word = false;
-    for (int i = local_end; i < local_cursor;)
+    if (local_cursor - local_end > MAX_LATE_CORRECTION_UTF16)
+      return false;
+    int following_sentences = 0;
+    boolean after_terminator = false;
+    for (int i = local_end; i < local_cursor; ++i)
     {
-      int cp = Character.codePointAt(text.text, i);
-      boolean word = CurrentlyTypedWord.is_word_char(cp);
-      if (word && !in_word)
-        following_words++;
-      if (following_words > 2)
-        return false;
-      in_word = word;
-      i += Character.charCount(cp);
+      char c = text.text.charAt(i);
+      if (is_sentence_terminator(c))
+        after_terminator = true;
+      else if (Character.isWhitespace(c))
+      {
+        if (after_terminator
+            && ++following_sentences > MAX_LATE_CORRECTION_SENTENCES)
+          return false;
+        after_terminator = false;
+      }
+      else if (c != '"' && c != '\'' && c != '”' && c != '’'
+          && c != ')' && c != ']')
+        after_terminator = false;
     }
     int delta = target.length() - pending.source.length();
     boolean replaced = false;
@@ -1118,6 +1130,16 @@ public final class KeyEventHandler
     int codePoints = source.codePointCount(0, source.length());
     return codePoints <= 4;
   }
+  private boolean should_preserve_manual_word_case(String source,
+      Decoder.Candidate correction)
+  {
+    return _autocap.has_manual_case_override_for_word()
+      && source != null && source.length() != 0
+      && Character.isLowerCase(source.codePointAt(0))
+      && correction != null
+      && source.equalsIgnoreCase(correction.surface);
+  }
+
 
   private boolean stage_pending_autocorrect_boundary(
       CurrentlyTypedWord.Snapshot snapshot, Decoder.RequestKey key,
@@ -1347,6 +1369,133 @@ public final class KeyEventHandler
       if (!send_untracked_key_down_up(KeyEvent.KEYCODE_DEL))
         return false;
     return SnippetInserter.insert(conn, replacement);
+  }
+
+  private void normalize_accidental_period_before_separator()
+  {
+    if (!should_normalize_prose_spacing())
+      return;
+    CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    if (snapshot == null || snapshot.word.length() == 0
+        || snapshot.hasSelection || snapshot.cursorRelative != 0
+        || snapshot.completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(
+        MAX_LATE_CORRECTION_UTF16, 0);
+    String right = snapshot.word;
+    if (before == null || before.length() <= right.length() + 1)
+      return;
+    int dot = before.length() - right.length() - 1;
+    if (before.charAt(dot) != '.' || dot == 0
+        || before.charAt(dot - 1) == '.'
+        || !right.contentEquals(before.subSequence(dot + 1, before.length())))
+      return;
+    int left_start = dot;
+    while (left_start > 0)
+    {
+      int cp = Character.codePointBefore(before, left_start);
+      if (!CurrentlyTypedWord.is_word_char(cp))
+        break;
+      left_start -= Character.charCount(cp);
+    }
+    if (left_start == dot)
+      return;
+    String left = before.subSequence(left_start, dot).toString();
+    String dotted = left + "." + right;
+    if ("www".equalsIgnoreCase(left) || is_common_domain_suffix(right)
+        || has_url_marker_before(before, left_start)
+        || !recent_sentence_has_uppercase(before, dot))
+      return;
+    PendingAutocorrectBoundary pending = _pending_autocorrect_boundary;
+    boolean pending_matches = pending != null
+      && left.equals(pending.source) && ".".equals(pending.separator)
+      && pending_autocorrect_boundary_matches_editor(pending, right);
+    boolean was_preserving_boundary =
+      _preserve_autocorrect_boundary_transition;
+    _preserve_autocorrect_boundary_transition = true;
+    boolean replaced;
+    try
+    {
+      replaced = replace_recent_text(dotted, left + " " + right);
+    }
+    finally
+    {
+      _preserve_autocorrect_boundary_transition = was_preserving_boundary;
+    }
+    if (!replaced)
+      return;
+    if (pending_matches)
+      _pending_autocorrect_boundary = new PendingAutocorrectBoundary(
+          pending.sessionEpoch, pending.key, pending.literalToken,
+          pending.source, " ", pending.connection, pending.cursor,
+          pending.correctionOffset, pending.mayLearnSourceOnUndo);
+    _autocap.text_replaced(dotted.length(), left + " " + right);
+  }
+
+  private static boolean is_common_domain_suffix(String value)
+  {
+    switch (value.toLowerCase(Locale.ROOT))
+    {
+      case "com":
+      case "org":
+      case "net":
+      case "edu":
+      case "gov":
+      case "io":
+      case "ai":
+      case "co":
+      case "au":
+      case "uk":
+      case "nz":
+      case "dev":
+      case "app":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private static boolean has_url_marker_before(CharSequence text,
+      int label_start)
+  {
+    int token_start = label_start;
+    while (token_start > 0
+        && !Character.isWhitespace(text.charAt(token_start - 1)))
+      --token_start;
+    String prefix = text.subSequence(token_start, label_start).toString();
+    return prefix.indexOf('@') >= 0 || prefix.indexOf("://") >= 0;
+  }
+
+  private boolean recent_sentence_has_uppercase(CharSequence before, int end)
+  {
+    int start = 0;
+    for (int i = end - 1; i >= 0; --i)
+    {
+      char c = before.charAt(i);
+      if (c == '\n' || c == '\r')
+      {
+        start = i + 1;
+        break;
+      }
+      if (Character.isWhitespace(c) && i > 0
+          && is_sentence_terminator(before.charAt(i - 1)))
+      {
+        start = i + 1;
+        break;
+      }
+    }
+    for (int i = start; i < end;)
+    {
+      int cp = Character.codePointAt(before, i);
+      if (Character.isUpperCase(cp))
+        return true;
+      i += Character.charCount(cp);
+    }
+    return false;
   }
 
   boolean send_text(String text)
@@ -2102,6 +2251,7 @@ public final class KeyEventHandler
 
   void handle_word_separator(String separator)
   {
+    normalize_accidental_period_before_separator();
     normalize_space_before_punctuation(separator);
     if (_manual_correction != null
         && !manual_target_matches_snapshot(_typedword.snapshot()))
@@ -2128,6 +2278,8 @@ public final class KeyEventHandler
     Decoder.Candidate correction = should_try_autocorrect() && result != null
       ? result.autocorrection : null;
     if (should_preserve_short_all_caps_source(snapshot.word, correction))
+      correction = null;
+    if (should_preserve_manual_word_case(snapshot.word, correction))
       correction = null;
     boolean should_record = should_record_personalization() && key != null;
     String literal_corrected_from = manual_correction_source(snapshot,
@@ -2184,6 +2336,7 @@ public final class KeyEventHandler
         commit_prepared(literal_token);
     }
     else if (should_try_autocorrect()
+        && !_autocap.has_manual_case_override_for_word()
         && stage_pending_autocorrect_boundary(
           snapshot, key, literal_token, separator,
           literal_corrected_from == null))

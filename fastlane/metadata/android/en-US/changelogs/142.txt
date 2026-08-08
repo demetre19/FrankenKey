@@ -1,0 +1,1 @@
+Spelling corrections can now safely catch up across several recent sentences. Accidental unspaced periods in sentence-case prose become spaces after the following word completes, while lowercase dotted text, real sentence endings, ellipses, URLs, email addresses, and common domains remain unchanged.

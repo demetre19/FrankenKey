@@ -2,6 +2,7 @@ package juloo.keyboard2.suggestions;
 
 import android.content.SharedPreferences;
 import juloo.keyboard2.TouchTrace;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -242,6 +243,8 @@ public final class PersonalizationStore
     _prefs = prefs;
     _word_counts = prefs == null ? new HashMap<String, Integer>()
       : load_counts(PREF_WORDS);
+    _word_surfaces = prefs == null ? new HashMap<String, String>()
+      : load_word_surfaces();
     _bigram_counts = prefs == null ? new HashMap<String, Integer>()
       : load_counts(PREF_BIGRAMS);
     _correction_counts = prefs == null
@@ -267,7 +270,7 @@ public final class PersonalizationStore
 
   public void record_word(String word)
   {
-    record_commit(word, null, null, null);
+    record_commit(word, null, null, null, word);
   }
 
   /**
@@ -277,11 +280,18 @@ public final class PersonalizationStore
    */
   public void record_commit(String word, String correctedFrom)
   {
-    record_commit(word, correctedFrom, null, null);
+    record_commit(word, correctedFrom, null, null, null);
   }
 
   void record_commit(String word, String correctedFrom, String typedWord,
       TouchTrace.Snapshot touches)
+  {
+    record_commit(word, correctedFrom, typedWord, touches, null);
+  }
+
+  private void record_commit(String word, String correctedFrom,
+      String typedWord, TouchTrace.Snapshot touches,
+      String explicitlyLearnedSurface)
   {
     String normalizedWord = normalize(word);
     if (!is_learnable(normalizedWord))
@@ -289,6 +299,14 @@ public final class PersonalizationStore
     String normalizedCorrection = normalize(correctedFrom);
     String previousWord = _last_word;
     boolean changed = increment(_word_counts, normalizedWord);
+    String preferredSurface = explicit_short_surface(
+        explicitlyLearnedSurface, normalizedWord);
+    if (preferredSurface != null
+        && !preferredSurface.equals(_word_surfaces.get(normalizedWord)))
+    {
+      _word_surfaces.put(normalizedWord, preferredSurface);
+      changed = true;
+    }
     if (previousWord != null)
       changed |= increment(_bigram_counts, previousWord + " " + normalizedWord);
     if (!normalizedWord.equals(previousWord))
@@ -340,10 +358,17 @@ public final class PersonalizationStore
     return _word_counts.containsKey(word);
   }
 
+  String preferred_surface(String word)
+  {
+    return _word_surfaces.get(normalize(word));
+  }
+
+
   public boolean unlearn_word(String word)
   {
     word = normalize(word);
     boolean changed = _word_counts.remove(word) != null;
+    changed |= _word_surfaces.remove(word) != null;
     changed |= remove_bigrams_containing(word);
     changed |= remove_corrections_involving(word);
     changed |= remove_contextual_corrections_involving(word);
@@ -577,11 +602,12 @@ public final class PersonalizationStore
 
   public void clear()
   {
-    boolean changed = !_word_counts.isEmpty() || !_bigram_counts.isEmpty()
-      || !_correction_counts.isEmpty()
+    boolean changed = !_word_counts.isEmpty() || !_word_surfaces.isEmpty()
+      || !_bigram_counts.isEmpty() || !_correction_counts.isEmpty()
       || !_contextual_correction_counts.isEmpty() || _last_word != null
       || _touch_samples != 0 || has_data(_prefs);
     _word_counts.clear();
+    _word_surfaces.clear();
     _bigram_counts.clear();
     _correction_counts.clear();
     _contextual_correction_counts.clear();
@@ -600,6 +626,7 @@ public final class PersonalizationStore
       return;
     prefs.edit()
       .remove(PREF_WORDS)
+      .remove(PREF_WORD_SURFACES)
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
       .remove(PREF_CONTEXTUAL_CORRECTIONS)
@@ -612,8 +639,8 @@ public final class PersonalizationStore
   public static boolean has_data(SharedPreferences prefs)
   {
     return prefs != null
-      && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_BIGRAMS)
-        || prefs.contains(PREF_CORRECTIONS)
+      && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_WORD_SURFACES)
+        || prefs.contains(PREF_BIGRAMS) || prefs.contains(PREF_CORRECTIONS)
         || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS)
         || prefs.getInt(PREF_TOUCH_SAMPLES, 0) > 0);
   }
@@ -755,6 +782,29 @@ public final class PersonalizationStore
     return out;
   }
 
+  private Map<String, String> load_word_surfaces()
+  {
+    Map<String, String> out = new HashMap<String, String>();
+    Set<String> entries = _prefs.getStringSet(PREF_WORD_SURFACES, null);
+    if (entries == null)
+      return out;
+    for (String entry : entries)
+    {
+      if (entry == null)
+        continue;
+      int sep = entry.indexOf('\t');
+      if (sep <= 0 || sep != entry.lastIndexOf('\t')
+          || sep == entry.length() - 1)
+        continue;
+      String canonical = normalize(entry.substring(0, sep));
+      String surface = explicit_short_surface(
+          entry.substring(sep + 1), canonical);
+      if (surface != null && _word_counts.containsKey(canonical))
+        out.put(canonical, surface);
+    }
+    return out;
+  }
+
   private Map<CorrectionPair, Integer> load_corrections()
   {
     Map<CorrectionPair, Integer> out =
@@ -868,6 +918,11 @@ public final class PersonalizationStore
       return;
     SharedPreferences.Editor editor = _prefs.edit();
     save_counts(editor, PREF_WORDS, _word_counts);
+    if (_word_surfaces.isEmpty())
+      editor.remove(PREF_WORD_SURFACES);
+    else
+      editor.putStringSet(PREF_WORD_SURFACES,
+          encode_word_surfaces(_word_surfaces));
     save_counts(editor, PREF_BIGRAMS, _bigram_counts);
     if (_correction_counts.isEmpty())
       editor.remove(PREF_CORRECTIONS);
@@ -907,6 +962,15 @@ public final class PersonalizationStore
   {
     Set<String> out = new HashSet<String>();
     for (Map.Entry<String, Integer> entry : counts.entrySet())
+      out.add(entry.getKey() + "\t" + entry.getValue());
+    return out;
+  }
+
+  private static Set<String> encode_word_surfaces(
+      Map<String, String> surfaces)
+  {
+    Set<String> out = new HashSet<String>();
+    for (Map.Entry<String, String> entry : surfaces.entrySet())
       out.add(entry.getKey() + "\t" + entry.getValue());
     return out;
   }
@@ -1110,6 +1174,16 @@ public final class PersonalizationStore
     return Decoder.normalize_correction_text(word);
   }
 
+  private static String explicit_short_surface(String word, String canonical)
+  {
+    if (word == null || canonical == null)
+      return null;
+    String surface = Normalizer.normalize(word, Normalizer.Form.NFC);
+    int count = surface.codePointCount(0, surface.length());
+    return count >= 2 && count <= 3 && is_learnable(surface)
+      && normalize(surface).equals(canonical) ? surface : null;
+  }
+
   private static boolean comes_before(String value, int offset, int count,
       String otherValue, int otherOffset, int otherCount)
   {
@@ -1187,6 +1261,7 @@ public final class PersonalizationStore
 
   private final SharedPreferences _prefs;
   private final Map<String, Integer> _word_counts;
+  private final Map<String, String> _word_surfaces;
   private final Map<String, Integer> _bigram_counts;
   private final Map<CorrectionPair, Integer> _correction_counts;
   private final Map<ContextualCorrection, Integer>
@@ -1209,6 +1284,8 @@ public final class PersonalizationStore
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;
   public static final String PREF_WORDS = "typing_model_words";
+  public static final String PREF_WORD_SURFACES =
+    "typing_model_word_surfaces_v1";
   public static final String PREF_BIGRAMS = "typing_model_bigrams";
   public static final String PREF_CORRECTIONS =
     "typing_model_corrections_v1";

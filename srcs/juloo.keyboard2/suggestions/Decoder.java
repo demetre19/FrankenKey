@@ -413,12 +413,18 @@ public final class Decoder
     if (boundaryPreview && !is_safe_boundary_autocorrection(
           request, literalCandidate, autocorrection, ranked))
       autocorrection = null;
+    String preferredShortSurface = preferred_short_surface(
+        request, literalCandidate, personalization);
+    if (autocorrection == null && autocorrectEnabled
+        && preferredShortSurface != null
+        && !preferredShortSurface.equals(request.typed))
+      autocorrection = literalCandidate.with_surface(preferredShortSurface);
     String emoji = displayEnabled && boundedInput
       ? query_emoji(emojiDictionary, request.normalized, failure) : null;
     if (autocorrection != null)
       promote_candidate(ranked, autocorrection.canonical);
     Candidate[] words = displayEnabled && inputLength >= 2
-      ? visible_words(ranked, request) : new Candidate[0];
+      ? visible_words(ranked, request, personalization) : new Candidate[0];
 
     boolean autocorrectionComplete = fast
       ? is_proven_fast_autocorrection(autocorrection)
@@ -821,19 +827,37 @@ public final class Decoder
   }
 
   private static Candidate[] visible_words(List<Candidate> ranked,
-      Request request)
+      Request request, PersonalizationStore personalization)
   {
     Candidate[] out = new Candidate[Math.min(MAX_VISIBLE_WORDS, ranked.size())];
     int count = 0;
     for (Candidate candidate : ranked)
     {
-      out[count++] = present_candidate(candidate, request, false);
+      Candidate presented = present_candidate(candidate, request, false);
+      String preferred = preferred_short_surface(
+          request, candidate, personalization);
+      out[count++] = preferred == null
+        ? presented : presented.with_surface(preferred);
       if (count == MAX_VISIBLE_WORDS)
         break;
     }
     if (count == out.length)
       return out;
     return Arrays.copyOf(out, count);
+  }
+
+  private static String preferred_short_surface(Request request,
+      Candidate candidate, PersonalizationStore personalization)
+  {
+    if (request == null || candidate == null || personalization == null)
+      return null;
+    int count = candidate.canonical.codePointCount(
+        0, candidate.canonical.length());
+    Casing typedCasing = casing(request.typed);
+    if (count < 2 || count > 3 || typedCasing == Casing.UPPER
+        || typedCasing == Casing.MIXED)
+      return null;
+    return personalization.preferred_surface(candidate.canonical);
   }
 
 

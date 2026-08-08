@@ -1,0 +1,1 @@
+Teach two- and three-letter commands with their exact casing so lowercase terms such as “omp” stay lowercase even at sentence starts.
