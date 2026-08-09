@@ -2,27 +2,25 @@
 
 ## Purpose
 
-- Own developer/user documentation inherited from and extending the keyboard project.
+- Own durable inherited and FrankenKey user/developer documentation.
 
 ## Ownership
 
-- This folder owns durable docs under `doc/`.
-- Release-facing README/listing copy is owned by the source root or `fastlane/` as appropriate.
+- `doc/` owns its docs; root/`fastlane/` own release-facing copy.
 
 ## Local Contracts
 
-- Preserve upstream technical accuracy and attribution.
-- Update docs when changing durable custom-layout or key-value behavior.
+- Preserve upstream accuracy/attribution.
+- Update durable custom-layout and key-value behavior docs with code changes.
 
 ## Work Guidance
 
-- Keep docs concise and operational.
-- Do not add changelog-style diary entries here unless the document already serves that purpose.
+- Be concise and operational; avoid diary entries outside changelog documents.
 
 ## Verification
 
-- Read back changed docs and ensure examples match current key names/resources.
+- Read back changes; ensure examples match current keys/resources.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Documentation files are owned here.
+- None.

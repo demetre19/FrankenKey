@@ -2,29 +2,26 @@
 
 ## Purpose
 
-- Own dictionary list/loading UI and supported dictionary metadata.
+- Own dictionary metadata, list UI, installation, and loading.
 
 ## Ownership
 
-- This folder owns dictionary-domain Java classes.
-- Vendored dictionary engines/data live under `vendor/` and `assets/`.
+- This folder owns dictionary Java; engines/data belong to `vendor/` and `assets/`.
 
 ## Local Contracts
 
-- Dictionary metadata must match available language assets and supported downloads.
-- Do not break offline/local typing behavior when changing dictionary integration.
-- Australian (`en_AU`), UK (`en_GB`), and US (`en_US`) production Cdict assets are bundled. AU/UK and US use separate once-per-generation seed markers so updates add new assets without restoring dictionaries the user removed. If a bundled dictionary remains marked installed but its private file is missing or invalid, loading repairs it from the bundled asset. The dictionary manager must always show all three English options and reinstall them from local assets without requiring Internet access.
-- Installed dictionary selections are credential-protected durable state. If the IME process starts before credential storage is available, dictionary loading must fail without caching a missing result and retry persisted state after unlock so reboot does not make installed dictionaries appear absent.
+- Metadata must match local/downloadable assets; preserve offline typing.
+- Bundle and always list separate `en_AU`, `en_GB`, `en_US` Cdict assets. Independent generation seed markers add updates without restoring user-removed dictionaries; missing/invalid installed files self-repair locally.
+- Installed selections are credential-protected. Pre-unlock loads fail without caching absence, then retry after unlock.
 
 ## Work Guidance
 
-- Keep download/list UI separate from scoring/ranking logic.
-- Preserve user dictionaries and personalization behavior.
+- Keep list/download UI outside scoring; preserve user dictionaries/personalization.
 
 ## Verification
 
-- Run focused dictionary/language-pack tests when dictionary behavior changes.
+- Run focused dictionary/language-pack tests.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Dictionary classes are owned here.
+- None.

@@ -35,6 +35,8 @@ public class SettingsUiContractsTest
         "Show Read Clipboard, Library and playback controls above the keyboard. Turn off for a clean keyboard." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
+      { "show_period_key", "pref_show_period_key_summary",
+        "Turn off if you often hit the dedicated full-stop key by mistake." },
       { "frankenkey_snippets_enabled", "pref_snippets_enabled_summary",
         "Show your snippet buttons above the keyboard." },
       { "keyrepeat_enabled", "pref_keyrepeat_enabled_summary",
@@ -69,6 +71,37 @@ public class SettingsUiContractsTest
   }
 
   @Test
+  public void bordered_input_text_keeps_explicit_horizontal_insets()
+      throws Exception
+  {
+    Element settingsSearch = (Element)layoutRoot(
+        "res/layout/settings_search_header.xml")
+      .getElementsByTagName("EditText").item(0);
+    assertEquals("Settings search text must stay 12dp inside its bordered surface.",
+        "12dp", settingsSearch.getAttribute("android:paddingStart"));
+    assertEquals("Settings search text must keep the same trailing inset.",
+        "12dp", settingsSearch.getAttribute("android:paddingEnd"));
+
+    Element learnedWords = layoutRoot(
+        "res/layout/learned_words_activity.xml");
+    NodeList fields = learnedWords.getElementsByTagName("EditText");
+    assertTrue("Learned Words must keep both teaching and search fields.",
+        fields.getLength() >= 2);
+    for (int i = 0; i < fields.getLength(); i++)
+    {
+      Element field = (Element)fields.item(i);
+      assertEquals("Learned Words field text must stay 12dp inside its bordered container.",
+          "12dp", field.getAttribute("android:layout_marginStart"));
+      assertEquals("Learned Words field text must keep the same trailing inset.",
+          "12dp", field.getAttribute("android:layout_marginEnd"));
+    }
+
+    Element learnedRow = layoutRoot("res/layout/learned_words_row.xml");
+    assertEquals("Learned-word labels must stay 12dp inside the row border.",
+        "12dp", learnedRow.getAttribute("android:paddingStart"));
+  }
+
+  @Test
   public void keyboard_reader_controls_are_explicit_opt_in() throws Exception
   {
     Element preference = preferenceWithKey(settingsRoot(),
@@ -88,9 +121,10 @@ public class SettingsUiContractsTest
   {
     assertEquals("Launcher guidance must name the current text-editing workflow.",
         "Navigate and delete", resourceString("launcher_delete_heading"));
-    assertEquals("Users must be told how to navigate from G or any middle-row letter, select with Shift, and delete.",
-        "Swipe from G or any middle-row letter to move the cursor up, down, left or right. "
-          + "Tap Shift first to select text while swiping, then tap Delete.",
+    assertEquals("Users must be told that G owns navigation while other letters retain teaching, and that Shift selects.",
+        "Swipe from G to move the cursor up, down, left or right. "
+          + "Tap Shift first to select text while swiping, then tap Delete. "
+          + "Swipe up or down from other letters to teach or forget the current word.",
         resourceString("launcher_delete_summary"));
   }
 
@@ -582,7 +616,7 @@ public class SettingsUiContractsTest
   }
 
   @Test
-  public void typing_assistance_status_and_clear_controls_are_exposed_in_settings()
+  public void typing_assistance_management_status_and_clear_controls_are_exposed_in_settings()
       throws Exception
   {
     Element root = settingsRoot();
@@ -590,13 +624,19 @@ public class SettingsUiContractsTest
         "@string/pref_category_typing_assistance");
     Element status = directChildWithKey(typingAssistance,
         "typing_assistance_status");
+    Element manage = directChildWithKey(typingAssistance,
+        "manage_learned_words");
     Element clear = directChildWithKey(typingAssistance,
         "clear_typing_assistance_data");
 
     assertNotNull("Settings must expose a non-clickable typing-assistance status row.",
         status);
+    assertNotNull("Learned words must be reachable from a standalone management row.",
+        manage);
     assertNotNull("Clear adaptive learning must be a standalone row in the typing-assistance category, not hidden in a nested settings manager.",
         clear);
+    assertEquals("Learned-word management must remain a normal one-tap Preference row.",
+        "Preference", manage.getTagName());
     assertEquals("Clear adaptive learning must remain a normal one-tap Preference row.",
         "Preference", clear.getTagName());
     assertEquals("Typing-assistance status must use the status title resource.",
@@ -604,6 +644,11 @@ public class SettingsUiContractsTest
         status.getAttribute("android:title"));
     assertEquals("Typing-assistance status must be read-only, not an action row.",
         "false", status.getAttribute("android:selectable"));
+    assertEquals("The learned-word row must use explicit management copy.",
+        "@string/pref_manage_learned_words_title",
+        manage.getAttribute("android:title"));
+    assertEquals("@string/pref_manage_learned_words_summary",
+        manage.getAttribute("android:summary"));
     assertEquals("Clear adaptive learning must use the explicit clear-action title.",
         "@string/pref_clear_typing_assistance_title",
         clear.getAttribute("android:title"));
@@ -657,7 +702,7 @@ public class SettingsUiContractsTest
   }
 
   @Test
-  public void adaptive_learning_status_and_clear_copy_name_every_deleted_data_type()
+  public void adaptive_learning_copy_names_retained_data_and_omits_retired_pairs()
       throws Exception
   {
     for (String resource : new String[] {
@@ -669,9 +714,9 @@ public class SettingsUiContractsTest
     {
       String copy = resourceString(resource)
         .toLowerCase(java.util.Locale.US);
-      assertTrue(resource + " must name learned-word data.",
-          copy.contains("learned words"));
-      assertTrue(resource + " must name next-word memory.",
+      assertTrue(resource + " must name taught or correction-backed word data.",
+          copy.contains("words"));
+      assertFalse(resource + " must not advertise retired next-word learning.",
           copy.contains("next-word"));
       assertTrue(resource + " must name correction patterns.",
           copy.contains("correction patterns"));
@@ -751,6 +796,17 @@ public class SettingsUiContractsTest
         Pattern.compile("\\bspace_bar_auto_complete\\s*=")
           .matcher(config)
           .find());
+  }
+
+  private static Element layoutRoot(String path)
+      throws Exception
+  {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl",
+        true);
+    return factory.newDocumentBuilder()
+      .parse(new File(path))
+      .getDocumentElement();
   }
 
   private static String readSource(String path)

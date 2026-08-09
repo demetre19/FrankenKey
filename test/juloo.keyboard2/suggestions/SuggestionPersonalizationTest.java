@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -68,7 +69,7 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void learned_prefixes_persist_and_order_by_count_then_text()
+  public void deliberate_correction_targets_persist_and_order_by_count_then_text()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
     record(store, "cazoo", 3);
@@ -77,51 +78,128 @@ public class SuggestionPersonalizationTest
 
     PersonalizationStore reloaded = new PersonalizationStore(_prefs);
 
-    assertEquals("Learned completions must survive a keyboard restart and use count-first, deterministic alphabetical tie-breaking.",
+    assertEquals("Deliberate correction targets must survive a keyboard restart and use count-first, deterministic alphabetical tie-breaking.",
         Arrays.asList("cazoo", "cabin", "camel"),
         reloaded.suggest_words("CA", 3));
   }
+  @Test
+  public void settings_word_management_separates_explicit_teaching()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.record_commit("ordinary", null);
+
+    assertTrue(store.learn_word("zebra"));
+    assertTrue(store.learn_word("OMP"));
+    assertTrue(store.learn_word("alpha"));
+    assertFalse("Adding the same explicitly taught word twice must not inflate its adaptive weight.",
+        store.learn_word("ALPHA"));
+    assertFalse("The settings boundary must reject tokens the keyboard cannot safely learn.",
+        store.learn_word("a"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("The taught list must contain only explicit Teach entries.",
+        Arrays.asList("alpha", "OMP", "zebra"), reloaded.taught_words());
+    assertEquals("Ordinary typing and explicit Teach entries must not appear in Adaptive.",
+        Collections.emptyList(), reloaded.learned_words());
+    assertFalse(reloaded.is_taught("ordinary"));
+    assertTrue(reloaded.is_taught("OMP"));
+    assertNull("Direct settings entry must not fabricate a previous-word context.",
+        reloaded.previous_word());
+    assertEquals("Direct settings entry must not fabricate next-word evidence between consecutively added words.",
+        0, reloaded.bigram_count("OMP", "alpha"));
+
+    long revision = PersonalizationStore.external_revision(_prefs);
+    PersonalizationStore.notify_external_change(_prefs);
+    assertEquals("An external settings mutation must publish a new revision for an active IME worker.",
+        revision + 1L, PersonalizationStore.external_revision(_prefs));
+  }
 
   @Test
-  public void next_word_predictions_expose_bigram_counts_in_deterministic_order()
+  public void repeated_ordinary_words_and_fragments_never_enter_vocabulary()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    for (int i = 0; i < 20; i++)
+    {
+      store.record_commit("kn", null);
+      store.record_commit("ordinary", null);
+    }
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals(0, reloaded.word_count("kn"));
+    assertEquals(0, reloaded.word_count("ordinary"));
+    assertEquals(0, reloaded.bigram_count("kn", "ordinary"));
+    assertEquals(Collections.emptyList(), reloaded.learned_words());
+  }
+
+  @Test
+  public void vocabulary_policy_migration_removes_passive_history_once()
+  {
+    _prefs.edit()
+      .putStringSet(PersonalizationStore.PREF_WORDS,
+          setOf("kn\t9", "passive\t4", "omp\t2"))
+      .putStringSet(PersonalizationStore.PREF_TAUGHT_WORDS, setOf("omp"))
+      .putStringSet(PersonalizationStore.PREF_BIGRAMS,
+          setOf("kn\tpassive\t3"))
+      .putStringSet(PersonalizationStore.PREF_CORRECTIONS,
+          setOf("teh\tthe\t2"))
+      .putStringSet(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS,
+          setOf("say\twrod\tword\t1"))
+      .putInt(PersonalizationStore.PREF_TOUCH_SAMPLES, 17)
+      .putFloat(PersonalizationStore.PREF_TOUCH_OFFSET_X, 0.1f)
+      .commit();
+
+    PersonalizationStore migrated = new PersonalizationStore(_prefs);
+
+    assertEquals("Explicit teaching must survive cleanup.",
+        Arrays.asList("omp"), migrated.taught_words());
+    assertEquals("Historical correction targets must survive cleanup because old evidence cannot distinguish automatic from deliberate corrections.",
+        Arrays.asList("the", "word"), migrated.learned_words());
+    assertEquals(0, migrated.word_count("kn"));
+    assertEquals(0, migrated.word_count("passive"));
+    assertEquals(0, migrated.bigram_count("kn", "passive"));
+    assertEquals("Touch calibration is unrelated to vocabulary pollution and must be preserved.",
+        17, PersonalizationStore.stats(_prefs).calibratedTouches);
+    assertEquals(1, _prefs.getInt(
+          PersonalizationStore.PREF_VOCABULARY_POLICY_VERSION, 0));
+
+    migrated.record_selected_correction("sally", "silly");
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("The one-time migration must not delete later deliberate corrections on restart.",
+        Arrays.asList("silly", "the", "word"), reloaded.learned_words());
+  }
+
+
+  @Test
+  public void ordinary_commits_do_not_create_bigram_or_next_word_evidence()
   {
     PersonalizationStore store = PersonalizationStore.empty();
     pair(store, "good", "morning", 3);
-    pair(store, "good", "night", 2);
-    pair(store, "good", "noon", 2);
     store.reset_context();
     store.record_word("good");
 
     Decoder.Result result = decode("", store, enabledConfig(), 1);
-    Decoder.Candidate[] words = result.words();
 
-    assertEquals("Only the deterministic top three next words belong in the candidate strip.",
-        3, words.length);
-    assertEquals("The strongest learned phrase must be first.",
-        "morning", words[0].surface);
-    assertEquals("Equal-count next words must use stable lexical ordering.",
-        "night", words[1].surface);
-    assertEquals("Equal-count next words must use stable lexical ordering.",
-        "noon", words[2].surface);
-    assertEquals(3, words[0].bigramCount);
-    assertEquals(2, words[1].bigramCount);
-    assertEquals(Decoder.Role.NEXT_WORD, words[0].role);
+    assertEquals("Ordinary commits must not persist next-word anchors.",
+        0, store.bigram_count("good", "morning"));
+    assertEquals("Without deliberate vocabulary evidence, an empty request has no next-word candidates.",
+        0, result.words().length);
   }
 
   @Test
-  public void decoder_keeps_literal_and_returns_the_same_top_three_every_time()
+  public void decoder_keeps_literal_and_returns_the_same_top_six_every_time()
   {
     PersonalizationStore store = PersonalizationStore.empty();
     record(store, "cazoo", 5);
     record(store, "cabin", 4);
     record(store, "camel", 3);
     record(store, "candle", 2);
+    record(store, "cacao", 1);
 
     Decoder.Result first = decode("ca", store, enabledConfig(), 7);
     List<String> expected = surfaces(first);
 
-    assertEquals("The visible decoder contract is exactly three deterministic word slots.",
-        3, expected.size());
+    assertEquals("The decoder contract retains two deterministic pages of three word slots.",
+        6, expected.size());
     assertTrue("The exact text the user typed must remain available even when learned completions compete for the top slots.",
         expected.contains("ca"));
     assertNotNull("Literal metadata must remain available for commit and learning decisions.",
@@ -130,7 +208,7 @@ public class SuggestionPersonalizationTest
     assertEquals(Decoder.Role.ENTERED_LITERAL, first.literal.role);
 
     for (int generation = 8; generation < 28; generation++)
-      assertEquals("Hash-map iteration or provider timing must never reshuffle the same top-three result.",
+      assertEquals("Hash-map iteration or provider timing must never reshuffle the same top-six result.",
           expected, surfaces(decode("ca", store, enabledConfig(), generation)));
   }
 
@@ -155,7 +233,7 @@ public class SuggestionPersonalizationTest
   public void explicitly_learned_short_commands_keep_the_taught_case()
   {
     PersonalizationStore store = PersonalizationStore.empty();
-    store.record_word("omp");
+    store.learn_word("omp");
 
     Decoder.Result result = decode("Omp", store, enabledConfig(), 32);
 
@@ -213,17 +291,17 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void correction_only_evidence_survives_restart_and_can_fix_unknown_text()
+  public void deliberate_correction_targets_survive_restart_and_fix_unknown_text()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
     record(store, "thus", 5);
     for (int i = 0; i < 4; i++)
-      store.record_correction("thus", "this");
+      store.record_selected_correction("thus", "this");
 
-    assertEquals("Editor-verified typo evidence must not teach every unrecognized target as an ordinary unigram.",
-        0, store.word_count("this"));
+    assertEquals("A deliberate backspace-and-selection correction must add its target to Adaptive.",
+        4, store.word_count("this"));
     PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-    assertEquals("Correction-only evidence must survive restart without a separate learned-word row.",
+    assertEquals("Deliberate correction evidence must survive restart.",
         4, reloaded.correction_count("thus", "this"));
 
     Decoder.Result result = decode("thus", reloaded, enabledConfig(), 99);
@@ -277,16 +355,13 @@ public class SuggestionPersonalizationTest
 
     reloaded.reset_context();
     reloaded.record_word("drim");
-    reloaded.record_word("zep");
-    reloaded.reset_context();
-    reloaded.record_word("drim");
-    assertTrue("The regression setup must contain the separately learned previous-target bigram.",
-        reloaded.bigram_count("drim", "zep") > 0);
     assertEquals("No exact correction was ever observed in the unrelated context.",
         0, reloaded.contextual_correction_count("drim", "zip", "zep"));
+    assertEquals("Unrelated context commits must not fabricate next-word evidence.",
+        0, reloaded.bigram_count("drim", "zep"));
     Decoder.Result unrelated =
       decode("zip", reloaded, enabledConfig(), 1002);
-    assertNull("A global exact pair and separate previous-target bigram must not cross-product into a phrase rule.",
+    assertNull("A global exact pair must not leak into a different previous-word context.",
         unrelated.autocorrection);
   }
 
@@ -410,10 +485,10 @@ public class SuggestionPersonalizationTest
       .commit();
 
     PersonalizationStore store = new PersonalizationStore(_prefs);
-    assertEquals("Reload must NFC-normalize equivalent learned-word rows without losing the stronger count.",
-        2, store.word_count("résumé"));
-    assertEquals("Reload must NFC-normalize both words in persisted bigram keys.",
-        3, store.bigram_count("café", "résumé"));
+    assertEquals("The policy migration must remove passive Unicode word rows.",
+        0, store.word_count("résumé"));
+    assertEquals("The policy migration must clear historical passive bigrams.",
+        0, store.bigram_count("café", "résumé"));
     assertEquals("Equivalent decomposed and precomposed correction rows must merge without inflating observations.",
         4, store.correction_count("thýs", "this"));
 
@@ -578,11 +653,13 @@ public class SuggestionPersonalizationTest
   public void clear_removes_all_model_keys_and_resets_context()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.learn_word("alpha");
     store.record_word("alpha");
-    store.record_commit("beta", "beto");
+    store.record_selected_correction("beto", "beta");
 
     assertTrue(_prefs.contains(PersonalizationStore.PREF_WORDS));
-    assertTrue(_prefs.contains(PersonalizationStore.PREF_BIGRAMS));
+    assertFalse("The correction-only policy must not persist bigram rows.",
+        _prefs.contains(PersonalizationStore.PREF_BIGRAMS));
     assertTrue(_prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
     assertTrue(_prefs.contains(
           PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
@@ -641,7 +718,7 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void repeated_exact_training_overrides_passive_learned_literal()
+  public void selected_corrections_build_target_without_passive_source_learning()
   {
     PersonalizationStore store = PersonalizationStore.empty();
     store.record_word("gello");
@@ -652,18 +729,13 @@ public class SuggestionPersonalizationTest
       Decoder.Result result =
         decode("gello", store, enabledConfig(), 300 + count);
       Decoder.Candidate suggestion = find(result, "hello");
-      assertNotNull("Correction evidence must keep ranking the explicitly taught target.",
+      assertNotNull("Deliberate correction evidence must keep its target visible.",
           suggestion);
       assertEquals(count, suggestion.exactCorrectionCount);
-      if (count < 4)
-        assertNull("Passive learned-word history stays protected before four exact corrections.",
-            result.autocorrection);
-      else
-      {
-        assertNotNull("Four explicit source-to-target corrections must override stale passive word history.",
-            result.autocorrection);
-        assertEquals("hello", result.autocorrection.canonical);
-      }
+      assertEquals("Ordinary source commits must never become vocabulary.",
+          0, store.word_count("gello"));
+      assertEquals("Each deliberate selection contributes one Adaptive target observation.",
+          count, store.word_count("hello"));
     }
   }
 
@@ -671,10 +743,10 @@ public class SuggestionPersonalizationTest
   public void repeated_apostrophe_preference_overrides_only_learned_spelling()
   {
     PersonalizationStore store = PersonalizationStore.empty();
-    store.record_word("im");
+    store.record_commit("im", null);
     for (int count = 1; count <= 4; count++)
     {
-      store.record_commit("i'm", "Im");
+      store.record_selected_correction("Im", "i'm");
       Decoder.Result result =
         decode("Im", store, enabledConfig(), 400 + count);
       Decoder.Candidate suggestion = find(result, "i'm");
@@ -684,15 +756,8 @@ public class SuggestionPersonalizationTest
           "I'm", suggestion.surface);
       assertEquals("Every accepted Im to I'm correction must retain exact punctuation evidence.",
           count, suggestion.exactCorrectionCount);
-      if (count < 4)
-        assertNull("Apostrophe autocorrect must retain the repeated-evidence threshold.",
-            result.autocorrection);
-      else
-      {
-        assertNotNull("Repeated apostrophe preference must become separator autocorrect.",
-            result.autocorrection);
-        assertEquals("I'm", result.autocorrection.surface);
-      }
+      assertEquals("Only deliberate selections may contribute apostrophe correction evidence.",
+          count, store.correction_count("Im", "i'm"));
     }
     Decoder.Result lowercase =
       decode("im", store, enabledConfig(), 405);
@@ -772,21 +837,21 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
-  public void unlearning_removes_word_and_every_bigram_that_contains_it()
+  public void unlearning_removes_only_the_selected_adaptive_word()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
-    pair(store, "good", "morning", 2);
-    pair(store, "good", "night", 1);
+    record(store, "morning", 2);
+    record(store, "night", 1);
 
     assertTrue(store.unlearn_word("MORNING"));
     PersonalizationStore reloaded = new PersonalizationStore(_prefs);
-    reloaded.reset_context();
-    reloaded.record_word("good");
 
     assertFalse("Unlearning is case-insensitive and must remove the selected word itself.",
         reloaded.is_learned("morning"));
-    assertEquals("Unlearning one word must remove phrases containing it without erasing unrelated next-word history.",
-        Arrays.asList("night"), reloaded.suggest_next_words(3));
+    assertTrue("Unlearning one Adaptive word must preserve unrelated deliberate vocabulary.",
+        reloaded.is_learned("night"));
+    assertEquals("The correction-only policy never carries passive phrase evidence.",
+        0, reloaded.bigram_count("good", "night"));
   }
 
   private static Decoder.Result decode(String typed, PersonalizationStore store,
@@ -831,10 +896,12 @@ public class SuggestionPersonalizationTest
 
   private static void record(PersonalizationStore store, String word, int count)
   {
+    String source = (word.startsWith("x") ? "y" : "x")
+      + word.substring(1);
     for (int i = 0; i < count; i++)
     {
       store.reset_context();
-      store.record_word(word);
+      store.record_selected_correction(source, word);
     }
   }
 
@@ -855,7 +922,7 @@ public class SuggestionPersonalizationTest
     for (int i = 0; i < count; i++)
     {
       store.reset_context();
-      store.record_commit(target, source);
+      store.record_selected_correction(source, target);
     }
   }
 

@@ -7,6 +7,7 @@
     <SwitchPreference android:key="multimodal_voice_typing" android:title="@string/pref_multimodal_voice_title" android:summary="@string/pref_multimodal_voice_summary" android:defaultValue="false"/>
     <SwitchPreference android:key="reader_keyboard_controls" android:title="@string/pref_reader_keyboard_controls_title" android:summary="@string/pref_reader_keyboard_controls_summary" android:defaultValue="false"/>
     <Preference android:key="typing_assistance_status" android:title="@string/pref_typing_assistance_status_title" android:selectable="false"/>
+    <Preference android:key="manage_learned_words" android:title="@string/pref_manage_learned_words_title" android:summary="@string/pref_manage_learned_words_summary"/>
     <Preference android:key="clear_typing_assistance_data" android:title="@string/pref_clear_typing_assistance_title" android:summary="@string/pref_clear_typing_assistance_summary"/>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_updates">
@@ -23,6 +24,7 @@
   <PreferenceCategory android:title="@string/pref_category_layout">
     <juloo.keyboard2.prefs.LayoutsPreference/>
     <SwitchPreference android:key="clean_mode" android:title="@string/pref_clean_mode_title" android:summary="@string/pref_clean_mode_summary" android:defaultValue="true"/>
+    <SwitchPreference android:key="show_period_key" android:title="@string/pref_show_period_key_title" android:summary="@string/pref_show_period_key_summary" android:defaultValue="true"/>
     <ListPreference android:key="number_entry_layout" android:title="@string/pref_number_entry_title" android:summary="%s" android:defaultValue="pin" android:entries="@array/pref_number_entry_entries" android:entryValues="@array/pref_number_entry_values"/>
     <juloo.keyboard2.prefs.ExtraKeysBarPreference android:key="extra_keys_bar" android:title="@string/pref_extra_keys_bar_title" android:summary="@string/pref_extra_keys_bar_summary"/>
     <PreferenceScreen android:title="@string/pref_extra_keys_title">

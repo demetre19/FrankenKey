@@ -2,57 +2,47 @@
 
 ## Purpose
 
-- Own the Android source checkout for FrankenKey: keyboard app code, resources, tests, build configuration, assets, vendor code, release metadata, and helper scripts.
-- Keep source work reproducible from this DOX tree without relying on chat history or memory.
+- Own Android source, resources, tests, build/release configuration, assets, vendor code, and metadata.
 
 ## Ownership
 
-- This root owns project-wide Android build/release workflow, Gradle files, manifest, top-level scripts, and cross-cutting source conventions.
-- The sibling `../FrankenKey` folder owns delivered APK artifacts and public release packaging.
-- Child AGENTS.md files own local contracts for durable subtrees listed below.
+- This root owns build/release wiring; `../FrankenKey` owns delivered artifacts/public packaging; children own indexed domains.
 
 ## Local Contracts
 
-- Package is `dev.frankenkey.keyboard`.
-- Release builds use the persistent local release key loaded from `/Users/apple/.android/frankenkey-release-signing/frankenkey-release.env`; do not print secret values.
-- Never deliver, copy to the release root, commit as the installable artifact, attach, publish, or offer a debug/dev APK. Delivery must come from the signed `assembleRelease` output and pass `verifyReleaseIdentity`; the internal update-compatible package remains `dev.frankenkey.keyboard`, while every user-facing label and launcher icon must be the production FrankenKey identity.
-- Current installable APK must be copied to `../FrankenKey/FrankenKey-installable-release.apk` before asking the user to test a build.
-- When producing release APKs, update `../FrankenKey/apk-backups/manifest.json` and archive a backup when the release should be preserved.
-- Android source/resource changes must preserve both clean Fleksy-style everyday mode and optional dense FrankenKey mode unless the user explicitly narrows scope.
-- In-app update checks use the public GitHub latest-release API only from unlocked launcher/settings activities. Releases use tag `v<versionName>-vc<versionCode>`, attach `FrankenKey-installable-release.apk`, and place user-visible changelog text in the release body.
-- Every published version must include `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`; keep its user-facing message consistent with the GitHub Release body.
-- Automatic update checks default on, but download and installer handoff always require explicit user acceptance. Update APKs must match the package, a higher version code, the declared SHA-256/size, and the persistent release signer before Android receives them.
-- Treat clipboard/snippets/personalization data as user data; preserve privacy and avoid unnecessary persistence.
-- Suggestion display and autocorrect share one bounded asynchronous decoder; never perform dictionary/Hunspell decoding or wait for results on the IME main thread.
-- Reference-keyboard evidence lives under `androidTest/assets/`. Keep the full Gboard oracle and limited physical-Samsung spot-check explicitly scoped apart, and record the exact package version, APK hash, input method, and observed outputs for each refresh.
-- The manifest keeps `ReaderActivity` non-exported and exposes only `ReaderShareActivity` for `text/plain` Share and read-only Process Text entry; `srcs/juloo.keyboard2/AGENTS.md` owns the detailed input-validation and opaque-handoff contract.
+- Package stays `dev.frankenkey.keyboard`; user identity is FrankenKey with production icons.
+- Release signing loads `/Users/apple/.android/frankenkey-release-signing/frankenkey-release.env` without printing secrets. Never deliver debug/dev APKs.
+- User-test builds require signed `assembleRelease`, `verifyReleaseIdentity`, and copy to `../FrankenKey/FrankenKey-installable-release.apk`.
+- Preserve release APKs in `../FrankenKey/apk-backups/manifest.json` when required.
+- Keep clean everyday and dense coding modes unless scope explicitly narrows.
+- Update checks use GitHub latest release only from unlocked launcher/Settings. Tags are `v<versionName>-vc<versionCode>`; releases attach `FrankenKey-installable-release.apk` and consistent Fastlane/GitHub changelogs.
+- Update checks default on; downloads/installers require acceptance and validate package, higher code, declared hash/size, and release signer.
+- Clipboard/snippets/personalization remain private/local.
+- Suggestions/autocorrect share one bounded async decoder; never decode/wait on IME main thread.
+- Reference evidence stays in `androidTest/assets/` with package/version/hash/input/outputs and separate full-reference vs physical spot-check scope.
+- `ReaderActivity` remains private; only `ReaderShareActivity` accepts read-only `text/plain` Share/Process Text through opaque handoff.
 
 ## Work Guidance
 
-- Match existing Java and XML style; make surgical changes.
-- Use focused unit tests for touched behavior; do not run broad suites unless necessary.
-- Use `JAVA_HOME=/opt/homebrew/opt/openjdk@17` for Gradle commands.
-- Gradle generators invoke `python`; keep `/Users/apple/.local/bin/python` executable and resolving to Python 3 (`exec python3 "$@"`) instead of creating task-local shims.
-- Android SDK tools may live at `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk`.
-- Prefer existing app patterns over new frameworks or abstractions.
-- For live phone testing, use direct LAN Termux SSH at `deme-s23-ultra.modem:8022`; do not assume RustDesk or a localhost `2222` tunnel. Termux SSH is unprivileged and cannot run privileged Android shell commands.
+- Match Java/XML style; prefer existing patterns and focused changes/tests.
+- Gradle uses `JAVA_HOME=/opt/homebrew/opt/openjdk@17`; `/Users/apple/.local/bin/python` must resolve to Python 3. SDK may be `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk`.
+- Phone delivery uses direct Termux SSH `deme-s23-ultra.modem:8022` (or online Tailscale IP), never localhost tunnel.
 
 ## Verification
 
-- Focused tests: `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache testDebugUnitTest --tests <TestClass>`.
-- Real-IME throughput changes must pass both targeted and chapter `RealImeThroughputInstrumentedTest` gates at zero artificial key interval on the signed release candidate.
-- Release build: load release signing env without echoing secrets, then run `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleRelease`; its mandatory `verifyReleaseIdentity` finalizer must pass.
-- Verify release APK with Android build tools when relevant: package/version via `aapt2`, signature via `apksigner`, and SHA-256 via `shasum -a 256`.
-- Local emulator AVD is `FrankenKeyParity`; emulator binary is `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk/emulator/emulator`.
-- When updater or release-delivery contracts change, repeat an installed-old-version to published-new-version device test covering announcement, authenticated download, Android installer handoff, and successful in-place update.
+- Focused test: `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache testDebugUnitTest --tests <TestClass>`.
+- Release: load signing env; run `assembleRelease`/`verifyReleaseIdentity`; verify package/version/signature/SHA-256 with Android tools.
+- Throughput changes require focused and chapter `RealImeThroughputInstrumentedTest` at zero artificial interval.
+- Updater changes require old-installed → published-new announcement, authenticated download, installer, and in-place update.
+- Emulator: `FrankenKeyParity`; binary `/Volumes/TheHoneyBadger/AndroidTooling/android-sdk/emulator/emulator`.
 
 ## Child DOX Index
 
-- `srcs/AGENTS.md` — generated/source-input tree and main Java package source boundaries.
-- `res/AGENTS.md` — Android packaged resources, layouts, strings, icons, raw media, and localization.
-- `test/AGENTS.md` — Robolectric/unit test contracts and focused behavior coverage.
-- `assets/AGENTS.md` — language packs and source image/font assets.
-- `fastlane/AGENTS.md` — store metadata, screenshots, icon metadata, and listing assets.
-- `vendor/AGENTS.md` — vendored Hunspell/cdict code and third-party source boundaries.
-- `scripts/AGENTS.md` — helper scripts for generated data/resources.
-- `doc/AGENTS.md` — user/developer docs inherited from the keyboard project.
+- `srcs/AGENTS.md` — source inputs/app code.
+- `res/AGENTS.md` — packaged resources.
+- `test/AGENTS.md` — unit/Robolectric tests.
+- `assets/AGENTS.md` — language/image/font assets.
+- `fastlane/AGENTS.md` — store metadata/media.
+- `vendor/AGENTS.md` — vendored code/data.
+- `scripts/AGENTS.md` — generators/helpers.
+- `doc/AGENTS.md` — durable docs.

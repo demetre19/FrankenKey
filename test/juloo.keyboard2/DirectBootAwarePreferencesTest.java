@@ -27,24 +27,28 @@ public class DirectBootAwarePreferencesTest
       .put(SnippetStore.PREF_SLOTS,
           "[{\"index\":0,\"phrase\":\"door code 1234\"}]")
       .put(PersonalizationStore.PREF_WORDS, setOf("cazoo:3"))
+      .put(PersonalizationStore.PREF_TAUGHT_WORDS, setOf("cazoo"))
       .put(PersonalizationStore.PREF_BIGRAMS, setOf("good morning:2"))
       .put(PersonalizationStore.PREF_CORRECTIONS, setOf("cazoo\tcasino\t4"))
       .put(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS,
           setOf("good\tcazoo\tcasino\t2"))
       .put(PersonalizationStore.PREF_TOUCH_SAMPLES, 32)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_X, 0.1f)
-      .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, -0.1f);
+      .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, -0.1f)
+      .put(PersonalizationStore.PREF_EXTERNAL_REVISION, 8L);
     FakeSharedPreferences dst = new FakeSharedPreferences()
       .put(SnippetStore.PREF_SLOTS,
           "[{\"index\":0,\"phrase\":\"old secret\"}]")
       .put(PersonalizationStore.PREF_WORDS, setOf("old:1"))
+      .put(PersonalizationStore.PREF_TAUGHT_WORDS, setOf("old"))
       .put(PersonalizationStore.PREF_BIGRAMS, setOf("old pair:1"))
       .put(PersonalizationStore.PREF_CORRECTIONS, setOf("old\todd\t2"))
       .put(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS,
           setOf("before\told\todd\t2"))
       .put(PersonalizationStore.PREF_TOUCH_SAMPLES, 4)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_X, 0.2f)
-      .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, 0.2f);
+      .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, 0.2f)
+      .put(PersonalizationStore.PREF_EXTERNAL_REVISION, 3L);
 
     DirectBootAwarePreferences.copy_shared_preferences(src, dst);
 
@@ -53,6 +57,8 @@ public class DirectBootAwarePreferencesTest
         copied.containsKey(SnippetStore.PREF_SLOTS));
     assertFalse("Learned words must never be present in direct-boot shared preferences.",
         copied.containsKey(PersonalizationStore.PREF_WORDS));
+    assertFalse("Explicitly taught words must remain credential-protected.",
+        copied.containsKey(PersonalizationStore.PREF_TAUGHT_WORDS));
     assertFalse("Learned next-word pairs must never be present in direct-boot shared preferences.",
         copied.containsKey(PersonalizationStore.PREF_BIGRAMS));
     assertFalse("Learned typo-correction pairs must never be present in direct-boot shared preferences.",
@@ -65,6 +71,8 @@ public class DirectBootAwarePreferencesTest
         copied.containsKey(PersonalizationStore.PREF_TOUCH_OFFSET_X));
     assertFalse("Vertical touch calibration must never be present in direct-boot shared preferences.",
         copied.containsKey(PersonalizationStore.PREF_TOUCH_OFFSET_Y));
+    assertFalse("Personalization refresh metadata must remain credential-protected with the learned model.",
+        copied.containsKey(PersonalizationStore.PREF_EXTERNAL_REVISION));
     assertEquals(true, copied.get("bool_setting"));
     assertEquals(1.25f, copied.get("float_setting"));
     assertEquals(7, copied.get("int_setting"));

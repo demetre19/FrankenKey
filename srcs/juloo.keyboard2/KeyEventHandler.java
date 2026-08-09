@@ -512,31 +512,26 @@ public final class KeyEventHandler
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
-    Decoder.Result result = _decoder.current_result(key);
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
-    String corrected_from = plausible_correction_source(snapshot.word, text);
-    if (corrected_from == null)
-      corrected_from = manual_correction_source(snapshot, text);
-    String undo_corrected_from = manual_correction_source(
-        snapshot, snapshot.word);
+    String corrected_from = manual_selected_correction_source(snapshot, text);
     boolean should_record = should_use_personalization();
     SharedDecoder.CommitToken token = should_record
-      ? _decoder.prepare_commit(_decoder_session, key, text, corrected_from)
+      ? corrected_from == null
+        ? _decoder.prepare_commit(_decoder_session, key, text, null)
+        : _decoder.prepare_selected_correction(
+            _decoder_session, key, text, corrected_from)
       : null;
     SharedDecoder.CommitToken undo_token =
       should_record && !text.equals(snapshot.word)
-      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word,
-          undo_corrected_from)
+      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
-    boolean learn_source_on_undo = undo_corrected_from == null
-      && should_learn_source_on_undo(result == null ? null : result.literal);
     if (!commit_correction(text, " ", false))
       return;
     if (text.equals(snapshot.word))
       commit_prepared(token);
     else
       stage_pending_replacement(token, undo_token, snapshot.word, text, " ",
-          learn_source_on_undo);
+          false);
   }
 
   @Override
@@ -867,6 +862,14 @@ public final class KeyEventHandler
     return plausible_correction_source(_manual_correction.source, target);
   }
 
+  private String manual_selected_correction_source(
+      CurrentlyTypedWord.Snapshot snapshot, String target)
+  {
+    if (!manual_target_matches_snapshot(snapshot))
+      return null;
+    return plausible_correction_source(_manual_correction.source, target);
+  }
+
   private void commit_prepared(SharedDecoder.CommitToken token)
   {
     if (token != null)
@@ -1042,11 +1045,9 @@ public final class KeyEventHandler
       commit_prepared(pending.literalToken);
       return;
     }
-    String corrected_from = plausible_correction_source(
-        pending.source, correction.surface);
     SharedDecoder.CommitToken correction_token = should_use_personalization()
       ? _decoder.prepare_commit(pending.sessionEpoch, pending.key,
-          correction.surface, corrected_from)
+          correction.surface, null)
       : null;
     if (replace_latent_word(latent, correction.surface))
       commit_prepared(correction_token);
@@ -1220,11 +1221,9 @@ public final class KeyEventHandler
       return;
     }
 
-    String corrected_from = plausible_correction_source(pending.source,
-        correction.surface);
     SharedDecoder.CommitToken correction_token = should_use_personalization()
       ? _decoder.prepare_commit(pending.sessionEpoch, pending.key,
-          correction.surface, corrected_from)
+          correction.surface, null)
       : null;
     String expected = pending.source + pending.separator + following;
     String replacement = correction.surface + pending.separator + following;
@@ -2282,22 +2281,13 @@ public final class KeyEventHandler
     if (should_preserve_manual_word_case(snapshot.word, correction))
       correction = null;
     boolean should_record = should_record_personalization() && key != null;
-    String literal_corrected_from = manual_correction_source(snapshot,
-        snapshot.word);
     SharedDecoder.CommitToken literal_token = should_record
-      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word,
-          literal_corrected_from)
+      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
     SharedDecoder.CommitToken correction_token = null;
     if (should_record && correction != null)
-    {
-      String corrected_from = plausible_correction_source(snapshot.word,
-          correction.surface);
-      if (corrected_from == null)
-        corrected_from = manual_correction_source(snapshot, correction.surface);
       correction_token = _decoder.prepare_commit(_decoder_session, key,
-          correction.surface, corrected_from);
-    }
+          correction.surface, null);
     boolean should_capitalize_i = correction == null && _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
@@ -2316,9 +2306,7 @@ public final class KeyEventHandler
           commit_prepared(correction_token);
         else
           stage_pending_replacement(correction_token, literal_token,
-              snapshot.word, correction.surface, separator,
-              literal_corrected_from == null
-              && should_learn_source_on_undo(result.literal));
+              snapshot.word, correction.surface, separator, false);
       }
       else if (send_text(separator))
         commit_prepared(literal_token);
@@ -2338,8 +2326,7 @@ public final class KeyEventHandler
     else if (should_try_autocorrect()
         && !_autocap.has_manual_case_override_for_word()
         && stage_pending_autocorrect_boundary(
-          snapshot, key, literal_token, separator,
-          literal_corrected_from == null))
+          snapshot, key, literal_token, separator, false))
     {
       // The literal separator is already visible; READY may safely refine it.
     }

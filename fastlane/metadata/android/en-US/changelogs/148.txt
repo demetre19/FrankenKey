@@ -1,0 +1,7 @@
+Adaptive vocabulary now learns only from explicit teaching or when you edit a word and choose the intended suggestion. Repeated ordinary typing, automatic autocorrection, and consecutive words no longer teach vocabulary.
+
+The first launch cleans old passive-only Adaptive words and word-pair history while preserving explicitly taught words, historical correction-backed words, and touch calibration.
+
+Swipe left across Suggestions to bring the next three ranked words in from the right; swipe right to return to the first three.
+
+Keyboard settings can now hide the dedicated full-stop key beside the spacebar. Settings search, Learned Words fields, and learned-word rows now keep their text visibly inset from bordered edges.

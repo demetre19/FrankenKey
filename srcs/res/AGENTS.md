@@ -2,26 +2,24 @@
 
 ## Purpose
 
-- Own helper sources for generating resource drawables from source assets.
+- Own source-side drawable/resource generators.
 
 ## Ownership
 
-- This folder owns source-side resource generators such as SVG-to-vector helpers.
-- Runtime packaged resources live under top-level `res/`.
+- This folder owns generator inputs/helpers; top-level `res/` owns packaged output.
 
 ## Local Contracts
 
-- Generated drawable output must remain reproducible from these inputs.
-- Do not edit generated runtime resources when the generator/source should change.
+- Outputs must be reproducible; edit source/generator instead of generated runtime files.
 
 ## Work Guidance
 
-- Keep generator behavior simple and deterministic.
+- Keep generation simple and deterministic.
 
 ## Verification
 
-- Run the relevant generator and inspect changed outputs when modifying this folder.
+- Run the relevant generator and inspect changed outputs.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Source resource helpers are owned here.
+- None.

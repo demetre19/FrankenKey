@@ -25,6 +25,22 @@ public class QwertyUsLayoutTest
     assertNoPunctuationSideLabel(key(layout, "c"));
     assertNoPunctuationSideLabel(key(layout, "v"));
   }
+  @Test
+  public void qwerty_us_starts_four_direction_navigation_only_from_g()
+      throws Exception
+  {
+    Document layout = parseLayout("srcs/layouts/latn_qwerty_us.xml");
+    for (String center : new String[]{"a", "s", "d", "f", "g", "h", "j", "k", "l"})
+    {
+      Element key = key(layout, center);
+      boolean isG = "g".equals(center);
+      assertEquals(isG ? "loc cursor_left" : "", key.getAttribute("w"));
+      assertEquals(isG ? "loc cursor_right" : "", key.getAttribute("e"));
+      assertEquals(isG ? "loc cursor_up" : "", key.getAttribute("n"));
+      assertEquals(isG ? "loc cursor_down" : "", key.getAttribute("s"));
+    }
+  }
+
 
   private static void assertNoPunctuationSideLabel(Element key)
   {

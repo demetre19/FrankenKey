@@ -2,30 +2,26 @@
 
 ## Purpose
 
-- Own Android store metadata, screenshots, icons, and listing assets used for distribution.
+- Own Android store metadata and listing media.
 
 ## Ownership
 
-- This folder owns `fastlane/metadata/android` and related store-facing media.
-- App runtime resources live under `res/`.
+- `fastlane/metadata/android/` owns listing copy/media; runtime resources belong to `res/`.
 
 ## Local Contracts
 
-- Do not overwrite store icon/screenshots unless the user explicitly requests store asset changes.
-- Keep metadata truthful to the shipped APK behavior and version.
-- Preserve upstream/Fleksy attribution language where present.
-- Every release adds `metadata/android/en-US/changelogs/<versionCode>.txt`; its user-visible message must agree with the corresponding GitHub Release body.
+- Never replace store icons/screenshots without explicit approval.
+- Metadata must match shipped behavior/version and preserve attribution.
+- Every release adds `en-US/changelogs/<versionCode>.txt` consistent with its GitHub Release body.
 
 ## Work Guidance
 
-- Treat store screenshots as release artifacts; verify visuals after replacement.
-- Avoid broad metadata rewrites for code-only changes.
+- Verify visual assets; avoid broad metadata rewrites for code-only changes.
 
 ## Verification
 
-- For screenshot/image changes, visually inspect rendered assets.
-- For listing copy, read back the exact changed file.
+- Inspect changed images; read back listing copy.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Fastlane metadata is owned here.
+- None.

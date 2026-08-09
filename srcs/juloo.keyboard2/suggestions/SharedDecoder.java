@@ -192,12 +192,14 @@ public final class SharedDecoder implements AutoCloseable
     private final PendingDecode _source;
     private final String _committedWord;
     private final String _correctedFrom;
+    private final boolean _selectedCorrection;
     private final Boolean _recognized;
     private boolean _consumed;
 
     private CommitToken(SharedDecoder owner, long sessionEpoch,
         long personalizationDomainEpoch, PendingDecode source,
-        String committedWord, String correctedFrom, Boolean recognized)
+        String committedWord, String correctedFrom, boolean selectedCorrection,
+        Boolean recognized)
     {
       _owner = owner;
       _sessionEpoch = sessionEpoch;
@@ -205,6 +207,7 @@ public final class SharedDecoder implements AutoCloseable
       _source = source;
       _committedWord = committedWord;
       _correctedFrom = correctedFrom;
+      _selectedCorrection = selectedCorrection;
       _recognized = recognized;
     }
   }
@@ -541,6 +544,21 @@ public final class SharedDecoder implements AutoCloseable
   public CommitToken prepare_commit(long sessionEpoch,
       Decoder.RequestKey source, String committedWord, String correctedFrom)
   {
+    return prepare_commit(sessionEpoch, source, committedWord, correctedFrom,
+        false);
+  }
+
+  public CommitToken prepare_selected_correction(long sessionEpoch,
+      Decoder.RequestKey source, String committedWord, String correctedFrom)
+  {
+    return prepare_commit(sessionEpoch, source, committedWord, correctedFrom,
+        true);
+  }
+
+  private CommitToken prepare_commit(long sessionEpoch,
+      Decoder.RequestKey source, String committedWord, String correctedFrom,
+      boolean selectedCorrection)
+  {
     if (source == null || committedWord == null)
       return null;
     synchronized (_lock)
@@ -555,11 +573,15 @@ public final class SharedDecoder implements AutoCloseable
         return null;
       Boolean recognized = recognized_from_result_locked(source,
           committedWord, sourceEnvelope);
-      String acceptedCorrection = accepted_correction_source_locked(source,
-          sourceEnvelope, committedWord, correctedFrom);
+      String acceptedCorrection = selectedCorrection
+        ? accepted_correction_source_locked(source, sourceEnvelope,
+            committedWord, correctedFrom)
+        : null;
+      if (selectedCorrection && acceptedCorrection == null)
+        return null;
       return new CommitToken(this, sessionEpoch,
           _personalizationDomainEpoch, sourceEnvelope, committedWord,
-          acceptedCorrection, recognized);
+          acceptedCorrection, selectedCorrection, recognized);
     }
   }
 
@@ -584,7 +606,8 @@ public final class SharedDecoder implements AutoCloseable
       _personalizationEpoch++;
       enqueue_control_locked(Control.record(token._sessionEpoch,
             token._source, _personalizationSpecEpoch, _personalization,
-            token._committedWord, token._correctedFrom, token._recognized,
+            token._committedWord, token._correctedFrom,
+            token._selectedCorrection, token._recognized,
             _personalizationEpoch));
       resubmit_latest_locked();
       ensure_drain_locked();
@@ -854,6 +877,12 @@ public final class SharedDecoder implements AutoCloseable
     Decoder.Result accepted = result_for_key_locked(key);
     if (accepted != null)
     {
+      Decoder.Candidate selected = accepted.autocorrection;
+      if (is_selected_correction_target(selected, target, targetCanonical))
+        return correctedFrom;
+      for (Decoder.Candidate candidate : accepted.words())
+        if (is_selected_correction_target(candidate, target, targetCanonical))
+          return correctedFrom;
       if (source.equals(queried) && !target.equals(queried))
       {
         Decoder.Candidate correction = accepted.autocorrection;
@@ -915,6 +944,14 @@ public final class SharedDecoder implements AutoCloseable
     return _lastCompletedResult != null
       && _lastCompletedResult.key.equals(key) ? _lastCompletedResult : null;
   }
+  private static boolean is_selected_correction_target(
+      Decoder.Candidate candidate, String target, String targetCanonical)
+  {
+    return candidate != null && candidate.canonical.equals(targetCanonical)
+      && Decoder.normalize_correction_text(candidate.surface).equals(target)
+      && (candidate.recognized || candidate.learned);
+  }
+
   private static boolean is_accepted_correction_target(
       Decoder.Candidate candidate, String target, String targetCanonical,
       String queried)
@@ -1361,25 +1398,26 @@ public final class SharedDecoder implements AutoCloseable
         case RECORD:
           install_resources(control.source.request.key.resourceEpoch,
               control.source.resources);
-          boolean recognized = control.recognized != null
-            ? control.recognized.booleanValue()
-            : is_recognized_worker(control.source, control.word);
-          if (recognized)
-            _workerPersonalization.record_commit(control.word,
-                control.correctedFrom, control.source.request.typed,
-                control.source.request.touches);
+          if (control.selectedCorrection && control.correctedFrom != null)
+            _workerPersonalization.record_selected_correction(
+                control.correctedFrom, control.word);
           else
           {
-            if (control.correctedFrom != null)
-              _workerPersonalization.record_correction(control.correctedFrom,
-                  control.word);
-            _workerPersonalization.reset_context();
+            boolean recognized = control.recognized != null
+              ? control.recognized.booleanValue()
+              : is_recognized_worker(control.source, control.word);
+            if (recognized)
+              _workerPersonalization.record_commit(control.word, null,
+                  control.source.request.typed,
+                  control.source.request.touches);
+            else
+              _workerPersonalization.reset_context();
           }
           break;
         case LEARN:
         {
           long generation = _workerPersonalization.generation();
-          _workerPersonalization.record_word(control.word);
+          _workerPersonalization.learn_word(control.word);
           feedback = _workerPersonalization.generation() != generation;
           break;
         }
@@ -1676,6 +1714,7 @@ public final class SharedDecoder implements AutoCloseable
     final PendingDecode source;
     final String word;
     final String correctedFrom;
+    final boolean selectedCorrection;
     final Boolean recognized;
     final Decoder.RequestKey feedbackKey;
 
@@ -1683,7 +1722,8 @@ public final class SharedDecoder implements AutoCloseable
         ResourceSpec resources_, long personalizationSpecEpoch_,
         long personalizationEpoch_, PersonalizationSpec personalization_,
         PendingDecode source_, String word_, String correctedFrom_,
-        Boolean recognized_, Decoder.RequestKey feedbackKey_)
+        boolean selectedCorrection_, Boolean recognized_,
+        Decoder.RequestKey feedbackKey_)
     {
       kind = kind_;
       sessionEpoch = sessionEpoch_;
@@ -1695,6 +1735,7 @@ public final class SharedDecoder implements AutoCloseable
       source = source_;
       word = word_;
       correctedFrom = correctedFrom_;
+      selectedCorrection = selectedCorrection_;
       recognized = recognized_;
       feedbackKey = feedbackKey_;
     }
@@ -1702,12 +1743,13 @@ public final class SharedDecoder implements AutoCloseable
     static Control record(long sessionEpoch, PendingDecode source,
         long personalizationSpecEpoch,
         PersonalizationSpec personalization, String word,
-        String correctedFrom, Boolean recognized, long personalizationEpoch)
+        String correctedFrom, boolean selectedCorrection, Boolean recognized,
+        long personalizationEpoch)
     {
       return new Control(ControlKind.RECORD, sessionEpoch,
           source.request.key.resourceEpoch, source.resources,
           personalizationSpecEpoch, personalizationEpoch, personalization,
-          source, word, correctedFrom, recognized, null);
+          source, word, correctedFrom, selectedCorrection, recognized, null);
     }
 
     static Control learn(long sessionEpoch, long resourceEpoch,
@@ -1717,7 +1759,7 @@ public final class SharedDecoder implements AutoCloseable
     {
       return new Control(ControlKind.LEARN, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
-          personalization, null, word, null, null, feedbackKey);
+          personalization, null, word, null, false, null, feedbackKey);
     }
 
     static Control unlearn(long sessionEpoch, long resourceEpoch,
@@ -1727,7 +1769,7 @@ public final class SharedDecoder implements AutoCloseable
     {
       return new Control(ControlKind.UNLEARN, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
-          personalization, null, word, null, null, feedbackKey);
+          personalization, null, word, null, false, null, feedbackKey);
     }
 
     static Control clear(long sessionEpoch, long resourceEpoch,
@@ -1736,7 +1778,7 @@ public final class SharedDecoder implements AutoCloseable
     {
       return new Control(ControlKind.CLEAR, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
-          personalization, null, null, null, null, null);
+          personalization, null, null, null, false, null, null);
     }
 
     static Control reset(long sessionEpoch, long resourceEpoch,
@@ -1745,7 +1787,7 @@ public final class SharedDecoder implements AutoCloseable
     {
       return new Control(ControlKind.RESET, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
-          personalization, null, null, null, null, null);
+          personalization, null, null, null, false, null, null);
     }
   }
 }

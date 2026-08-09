@@ -45,6 +45,7 @@ import juloo.keyboard2.lang.LanguagePackManager;
 import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
 import juloo.keyboard2.suggestions.Decoder;
+import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
 
@@ -90,6 +91,12 @@ public class Keyboard2 extends InputMethodService
   private boolean _emojiPaneCommitting = false;
   private Handler _handler;
   private SharedPreferences _prefs;
+  private SharedPreferences _personalization_prefs;
+  private final SharedPreferences.OnSharedPreferenceChangeListener
+    _personalization_listener = (_preferences, key) -> {
+      if (PersonalizationStore.PREF_EXTERNAL_REVISION.equals(key))
+        onSharedPreferenceChanged(_preferences, key);
+    };
   private ReaderPlaybackService _reader_service;
   private ReaderPlaybackService.Snapshot _reader_snapshot;
   private boolean _reader_bound;
@@ -278,6 +285,9 @@ public class Keyboard2 extends InputMethodService
   {
     unbind_reader_playback();
     _prefs.unregisterOnSharedPreferenceChangeListener(this);
+    if (_personalization_prefs != null && _personalization_prefs != _prefs)
+      _personalization_prefs.unregisterOnSharedPreferenceChangeListener(
+          _personalization_listener);
     _keyeventhandler.finished();
     _decoder_session = 0;
     _decoder.close();
@@ -325,14 +335,36 @@ public class Keyboard2 extends InputMethodService
 
   private SharedDecoder.PersonalizationSpec create_personalization_spec()
   {
+    SharedPreferences prefs = credential_personalization_preferences();
+    if (prefs == null)
+      return SharedDecoder.PersonalizationSpec.empty("locked");
+    return new SharedDecoder.PersonalizationSpec("credential:"
+        + PersonalizationStore.external_revision(prefs), prefs);
+  }
+
+  private SharedPreferences credential_personalization_preferences()
+  {
     if (VERSION.SDK_INT >= 24)
     {
       UserManager user = (UserManager)getSystemService(USER_SERVICE);
       if (user != null && !user.isUserUnlocked())
-        return SharedDecoder.PersonalizationSpec.empty("locked");
+        return null;
     }
-    return new SharedDecoder.PersonalizationSpec("credential",
-        PreferenceManager.getDefaultSharedPreferences(this));
+    if (_personalization_prefs != null)
+      return _personalization_prefs;
+    try
+    {
+      _personalization_prefs =
+        PreferenceManager.getDefaultSharedPreferences(this);
+      if (_personalization_prefs != _prefs)
+        _personalization_prefs.registerOnSharedPreferenceChangeListener(
+            _personalization_listener);
+      return _personalization_prefs;
+    }
+    catch (RuntimeException _error)
+    {
+      return null;
+    }
   }
 
   private boolean refresh_current_dictionary(boolean force)
@@ -793,6 +825,13 @@ public class Keyboard2 extends InputMethodService
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
   }
 
+  static void wire_reader_settings_shortcut(Context context, View root)
+  {
+    root.findViewById(R.id.reader_transport_settings).setOnClickListener(
+        _view -> context.startActivity(new Intent(context, SettingsActivity.class)
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+  }
+
   private void read_reader_clipboard()
   {
     _reader_controls_expanded = true;
@@ -820,6 +859,7 @@ public class Keyboard2 extends InputMethodService
         _view -> send_reader_action(ReaderPlaybackService.ACTION_STOP));
     root.findViewById(R.id.reader_transport_library).setOnClickListener(
         _view -> open_reader_library());
+    wire_reader_settings_shortcut(this, root);
     root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
         _view -> read_reader_clipboard());
     SeekBar speed = (SeekBar)root.findViewById(

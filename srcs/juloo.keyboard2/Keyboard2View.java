@@ -56,6 +56,7 @@ public class Keyboard2View extends View
   private Theme.Computed _tc;
 
   private static RectF _tmpRect = new RectF();
+  private final Paint _navigationStartPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
   enum Vertical
   {
@@ -70,6 +71,9 @@ public class Keyboard2View extends View
     _theme = new Theme(getContext(), attrs);
     _config = Config.globalConfig();
     _pointers = new Pointers(this, _config);
+    _navigationStartPaint.setStyle(Paint.Style.STROKE);
+    _navigationStartPaint.setStrokeWidth(
+        getResources().getDisplayMetrics().density);
     refresh_navigation_bar(context);
     setOnTouchListener(this);
     int layout_id = (attrs == null) ? 0 :
@@ -441,6 +445,7 @@ public class Keyboard2View extends View
             case Normal: tc_key = alternateRow ? _tc.key_alternate : _tc.key; break;
           }
         drawKeyFrame(canvas, x, y, keyW, keyH, tc_key);
+        drawNavigationStartBorder(canvas, k, x, y, keyW, keyH, tc_key);
         if (k.keys[0] != null)
           drawLabel(canvas, k.keys[0], keyW / 2f + x, y, keyH, isKeyDown, tc_key);
         for (int i = 1; i < 9; i++)
@@ -479,6 +484,35 @@ public class Keyboard2View extends View
       drawBorder(canvas, x, y, x + keyW, y + overlap, tc.border_top_paint, tc);
       drawBorder(canvas, x, y + keyH - overlap, x + keyW, y + keyH, tc.border_bottom_paint, tc);
     }
+  }
+
+  /** Subtly identifies the only key that starts four-direction navigation. */
+  private void drawNavigationStartBorder(Canvas canvas, KeyboardData.Key key,
+      float x, float y, float keyW, float keyH, Theme.Computed.Key tc)
+  {
+    if (!isNavigationStartKey(key))
+      return;
+    float inset = _navigationStartPaint.getStrokeWidth();
+    _tmpRect.set(x + inset, y + inset,
+        x + keyW - inset, y + keyH - inset);
+    _navigationStartPaint.setColor(
+        (tc.labelColor & 0x00FFFFFF) | 0x18000000);
+    float radius = Math.max(0.f, tc.border_radius - inset);
+    canvas.drawRoundRect(_tmpRect, radius, radius, _navigationStartPaint);
+  }
+
+  static boolean isNavigationStartKey(KeyboardData.Key key)
+  {
+    return isSlider(key.keys[5], KeyValue.Slider.Cursor_left)
+      && isSlider(key.keys[6], KeyValue.Slider.Cursor_right)
+      && isSlider(key.keys[7], KeyValue.Slider.Cursor_up)
+      && isSlider(key.keys[8], KeyValue.Slider.Cursor_down);
+  }
+
+  private static boolean isSlider(KeyValue value, KeyValue.Slider slider)
+  {
+    return value != null && value.getKind() == KeyValue.Kind.Slider
+      && value.getSlider() == slider;
   }
 
   /** Clip to draw a border at a time. This allows to call [drawRoundRect]

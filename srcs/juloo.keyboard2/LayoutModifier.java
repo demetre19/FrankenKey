@@ -2,6 +2,8 @@ package juloo.keyboard2;
 
 import android.content.res.Resources;
 import android.view.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,6 +29,8 @@ public final class LayoutModifier
    */
   public static KeyboardData modify_layout(KeyboardData kw)
   {
+    if (!globalConfig.show_period_key)
+      kw = without_clean_period_key(kw);
     // Extra keys are removed from the set as they are encountered during the
     // first iteration then automatically added.
     final TreeMap<KeyValue, KeyboardData.PreferredPos> extra_keys = new TreeMap<KeyValue, KeyboardData.PreferredPos>();
@@ -90,6 +94,34 @@ public final class LayoutModifier
     if (added_number_row != null)
       kw = kw.insert_row(added_number_row, 0);
     return kw;
+  }
+
+  static KeyboardData without_clean_period_key(KeyboardData kw)
+  {
+    if (kw == null || !"Fleksy".equals(kw.name) || kw.rows.isEmpty())
+      return kw;
+    int lastIndex = kw.rows.size() - 1;
+    KeyboardData.Row row = kw.rows.get(lastIndex);
+    KeyValue period = KeyValue.getKeyByName(".");
+    float recoveredWidth = 0f;
+    for (KeyboardData.Key key : row.keys)
+      if (period.equals(key.getKeyValue(0)))
+        recoveredWidth += key.width + key.shift;
+    if (recoveredWidth == 0f)
+      return kw;
+    List<KeyboardData.Key> keys =
+      new ArrayList<KeyboardData.Key>(row.keys.size() - 1);
+    for (KeyboardData.Key key : row.keys)
+    {
+      if (period.equals(key.getKeyValue(0)))
+        continue;
+      keys.add(key.role == KeyboardData.Key.Role.Space_bar
+          ? key.withWidth(key.width + recoveredWidth) : key);
+    }
+    List<KeyboardData.Row> rows =
+      new ArrayList<KeyboardData.Row>(kw.rows);
+    rows.set(lastIndex, row.with_keys(keys));
+    return kw.with_rows(rows);
   }
 
   /** Handle the numpad layout. The [main_kw] is used to adapt the numpad to

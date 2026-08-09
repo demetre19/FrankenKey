@@ -2,28 +2,26 @@
 
 ## Purpose
 
-- Own helper scripts used to generate or transform FrankenKey source/resource data.
+- Own source/resource generation and transformation scripts.
 
 ## Ownership
 
-- This folder owns script implementation.
-- Generated outputs are owned by their destination subtree.
+- `scripts/` owns implementations; destination subtrees own generated outputs.
 
 ## Local Contracts
 
-- Scripts must be deterministic for the same inputs.
-- Prefer Python standard library and existing project patterns.
-- Do not add dependencies without reviewing supply-chain impact.
+- Same inputs must produce deterministic outputs.
+- Prefer Python stdlib/project patterns; review supply-chain impact before adding dependencies.
+- Behavior changes must update consumer contracts/docs.
 
 ## Work Guidance
 
-- Keep scripts simple and runnable from the project root unless documented otherwise.
-- Update consuming docs/contracts when script behavior changes generated artifacts.
+- Keep scripts simple and root-runnable unless documented otherwise.
 
 ## Verification
 
-- Run the script on a minimal/current input when changed, or explain why no safe invocation exists.
+- Run the changed script on minimal/current input, or state why no safe invocation exists.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Scripts are owned here.
+- None.

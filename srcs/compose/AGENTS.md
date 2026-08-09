@@ -2,28 +2,24 @@
 
 ## Purpose
 
-- Own compose/dead-key, shift, fn, and numpad JSON source data.
+- Own compose/dead-key, shift, fn, and numpad JSON inputs.
 
 ## Ownership
 
-- This folder owns JSON input data consumed by compose/key generation.
-- Generated Java/resource artifacts are owned by their output subtree.
+- `compose/` owns inputs; output subtrees own generated artifacts.
 
 ## Local Contracts
 
-- Preserve valid JSON and existing key naming conventions.
-- Keep compose behavior deterministic and locale-aware.
+- Keep JSON valid, deterministic, locale-aware, and consistent with existing key names.
 
 ## Work Guidance
 
-- Use generator scripts rather than hand-editing generated outputs.
-- Keep additions minimal and sorted/grouped with nearby existing data where applicable.
+- Run generators; never hand-edit generated output. Keep additions minimal and locally sorted/grouped.
 
 ## Verification
 
-- Run the relevant compose generation/check path when data changes.
-- Run focused compose/key tests if behavior is covered.
+- Run the relevant generation/check path and focused compose/key tests when covered.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Compose data is owned here.
+- None.

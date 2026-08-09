@@ -1,4 +1,5 @@
 package juloo.keyboard2;
+import android.content.Context;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -61,7 +63,7 @@ public class CleanModeFleksyLayoutTest
     assertEquals("Clean text bottom row must keep Fleksy's shift/letters/backspace shape.",
         Arrays.asList("shift", "z", "x", "c", "v", "b", "n", "m", "backspace"),
         primaryNames(directKeys(rows.get(2))));
-    assertCenterRowTrackpad(rows.get(1));
+    assertOnlyGStartsTrackpad(rows.get(1));
 
     assertEquals("Clean text bottom row must keep its compact actions while exposing the explicit Extra Keys trigger.",
         Arrays.asList("switch_numeric", "fn", "extra_keys", "space", ".", "enter"),
@@ -196,9 +198,37 @@ public class CleanModeFleksyLayoutTest
     Element behavior = preferenceCategory(settings, "@string/pref_category_behavior");
 
     assertEquals("number_entry_layout",
-        directElementChildren(layout).get(2).getAttributeNS(ANDROID_NS, "key"));
+        directElementChildren(layout).get(3).getAttributeNS(ANDROID_NS, "key"));
     assertEquals("The numeric-only field layout setting must not stay buried under Behavior.",
         -1, indexOfDirectPreference(behavior, "number_entry_layout"));
+  }
+
+  @Test
+  public void dedicated_full_stop_key_is_optional_and_spacebar_recovers_its_width()
+      throws Exception
+  {
+    Document settings = parseLayout("res/xml/settings.xml");
+    Element layout = preferenceCategory(settings, "@string/pref_category_layout");
+    Element periodPreference = directElementChildren(layout).get(2);
+    assertEquals("show_period_key",
+        periodPreference.getAttributeNS(ANDROID_NS, "key"));
+    assertEquals("The existing keyboard shape must remain the default.",
+        "true", periodPreference.getAttributeNS(ANDROID_NS, "defaultValue"));
+
+    Context context = RuntimeEnvironment.getApplication();
+    KeyboardData shown = KeyboardData.load(
+        context.getResources(), R.xml.clean_text);
+    KeyboardData hidden = LayoutModifier.without_clean_period_key(shown);
+    KeyValue period = KeyValue.getKeyByName(".");
+    KeyValue space = KeyValue.getKeyByName("space");
+    KeyboardData.Key shownPeriod = primaryKey(shown, period);
+    assertNotNull("The default Fleksy layout must retain its dedicated full-stop key.",
+        shownPeriod);
+    assertNull("Turning the option off must remove only the dedicated full-stop key while preserving punctuation swipes.",
+        primaryKey(hidden, period));
+    assertEquals("The spacebar must recover the removed key width rather than leaving a dead gap.",
+        shown.findKeyWithValue(space).width + shownPeriod.width,
+        hidden.findKeyWithValue(space).width, 0.001f);
   }
 
 
@@ -347,19 +377,20 @@ public class CleanModeFleksyLayoutTest
     }
   }
 
-  private static void assertCenterRowTrackpad(Element row)
+  private static void assertOnlyGStartsTrackpad(Element row)
   {
     for (Element key : directKeys(row))
     {
       String name = key.getAttribute("key0");
-      assertEquals(name + " left drag must start the horizontal cursor slider.",
-          "hide cursor_left", key.getAttribute("key5"));
-      assertEquals(name + " right drag must start the horizontal cursor slider.",
-          "hide cursor_right", key.getAttribute("key6"));
-      assertEquals(name + " upward drag must start the vertical cursor slider.",
-          "hide cursor_up", key.getAttribute("key7"));
-      assertEquals(name + " downward drag must start the vertical cursor slider.",
-          "hide cursor_down", key.getAttribute("key8"));
+      boolean isG = "g".equals(name);
+      assertEquals(name + " left drag availability must match the G navigation contract.",
+          isG ? "hide cursor_left" : "", key.getAttribute("key5"));
+      assertEquals(name + " right drag availability must match the G navigation contract.",
+          isG ? "hide cursor_right" : "", key.getAttribute("key6"));
+      assertEquals(name + " upward drag availability must match the G navigation contract.",
+          isG ? "hide cursor_up" : "", key.getAttribute("key7"));
+      assertEquals(name + " downward drag availability must match the G navigation contract.",
+          isG ? "hide cursor_down" : "", key.getAttribute("key8"));
     }
   }
 
@@ -511,6 +542,16 @@ public class CleanModeFleksyLayoutTest
         return string;
     }
     fail("Missing string resource name=\"" + name + "\"");
+    return null;
+  }
+
+  private static KeyboardData.Key primaryKey(KeyboardData keyboard,
+      KeyValue value)
+  {
+    for (KeyboardData.Row row : keyboard.rows)
+      for (KeyboardData.Key key : row.keys)
+        if (value.equals(key.getKeyValue(0)))
+          return key;
     return null;
   }
 

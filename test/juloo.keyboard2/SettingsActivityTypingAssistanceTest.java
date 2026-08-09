@@ -10,6 +10,7 @@ import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.util.TypedValue;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import java.util.HashMap;
@@ -137,6 +138,44 @@ public class SettingsActivityTypingAssistanceTest
     assertEquals("SettingsActivity must remain dark even when the system configuration is daytime.",
         0, isLightTheme.data);
   }
+  @Test
+  public void settings_search_filters_titles_and_summaries_without_leaving_the_page()
+  {
+    SettingsActivity activity = launchActivity();
+    EditText search = (EditText)activity.findViewById(R.id.settings_search);
+    assertNotNull("A global Settings search field must stay at the top of the page.",
+        search);
+
+    search.setText("multimodal");
+    shadowOf(Looper.getMainLooper()).idle();
+
+    ListAdapter adapter = activity.getListView().getAdapter();
+    assertTrue("Matching settings must remain visible.",
+        containsPreference(adapter, "multimodal_voice_typing"));
+    assertFalse("Unrelated settings must be removed from the filtered list.",
+        containsPreference(adapter, "autocorrect"));
+
+    search.setText("");
+    shadowOf(Looper.getMainLooper()).idle();
+    assertTrue("Clearing search must restore the complete settings list.",
+        containsPreference(activity.getListView().getAdapter(), "autocorrect"));
+  }
+
+  @Test
+  public void learned_words_preference_opens_the_private_management_page()
+  {
+    SettingsActivity activity = launchActivity();
+    Preference manage = activity.findPreference("manage_learned_words");
+
+    assertNotNull("Typing assistance must expose learned-word management.",
+        manage);
+    assertNotNull("Learned-word management must use an explicit local intent.",
+        manage.getIntent());
+    assertEquals("The settings row must open the dedicated private learned-word page.",
+        LearnedWordsActivity.class.getName(),
+        manage.getIntent().getComponent().getClassName());
+  }
+
 
   private SettingsActivity launchSeededActivity()
   {
@@ -159,21 +198,20 @@ public class SettingsActivityTypingAssistanceTest
   private static void seedAdaptiveData(SharedPreferences prefs)
   {
     PersonalizationStore store = new PersonalizationStore(prefs);
-    store.record_commit("hello", null);
-    store.record_commit("world", "wprld");
+    store.record_selected_correction("wprld", "world");
   }
 
   private static void assertSeededAdaptiveData(SharedPreferences prefs)
   {
     Map<String, Set<String>> rows = adaptiveSnapshot(prefs);
-    assertEquals("The fixture must contain separate learned-word, bigram, and typo-correction rows.",
-        3, rows.size());
-    assertFalse("Learned-word rows must be populated.",
+    assertEquals("The fixture must contain only deliberate word and typo-correction rows.",
+        2, rows.size());
+    assertFalse("Deliberate correction targets must populate learned-word rows.",
         rows.get(PersonalizationStore.PREF_WORDS).isEmpty());
-    assertFalse("Bigram rows must be populated.",
-        rows.get(PersonalizationStore.PREF_BIGRAMS).isEmpty());
-    assertFalse("Typo-correction rows must be populated.",
+    assertFalse("Deliberate correction evidence must populate typo-correction rows.",
         rows.get(PersonalizationStore.PREF_CORRECTIONS).isEmpty());
+    assertFalse("Consecutive ordinary commits must never create bigram rows.",
+        rows.containsKey(PersonalizationStore.PREF_BIGRAMS));
     PersonalizationStore reloaded = new PersonalizationStore(prefs);
     assertTrue("The seeded target word must be learned so its correction row is valid.",
         reloaded.is_learned("world"));
@@ -224,6 +262,18 @@ public class SettingsActivityTypingAssistanceTest
     fail("Missing visible preference row: " + key);
   }
 
+  private static boolean containsPreference(ListAdapter adapter, String key)
+  {
+    for (int position = 0; position < adapter.getCount(); position++)
+    {
+      Object item = adapter.getItem(position);
+      if (item instanceof Preference
+          && key.equals(((Preference)item).getKey()))
+        return true;
+    }
+    return false;
+  }
+
   private static void assertStatus(SettingsActivity activity, int expected)
   {
     Preference status = activity.findPreference("typing_assistance_status");
@@ -235,8 +285,7 @@ public class SettingsActivityTypingAssistanceTest
           android.preference.PreferenceManager
             .getDefaultSharedPreferences(activity));
       expectedSummary = activity.getString(expected, stats.learnedWords,
-          stats.nextWordPairs, stats.correctionPatterns,
-          stats.calibratedTouches);
+          stats.correctionPatterns, stats.calibratedTouches);
     }
     else
       expectedSummary = activity.getString(expected);

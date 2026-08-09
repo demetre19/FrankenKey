@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.util.TypedValue;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.Build.VERSION;
@@ -16,8 +18,10 @@ import android.preference.TwoStatePreference;
 import android.preference.PreferenceActivity;
 import android.content.SharedPreferences;
 import android.preference.PreferenceCategory;
+import android.view.LayoutInflater;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -25,6 +29,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.prefs.ExtraKeysBarPreference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 public class SettingsActivity extends PreferenceActivity
 {
@@ -41,6 +48,8 @@ public class SettingsActivity extends PreferenceActivity
   public static final String EXTRA_OPEN_EXTRA_KEYS_BAR =
     "juloo.keyboard2.OPEN_EXTRA_KEYS_BAR";
   private ReleaseUpdater _releaseUpdater;
+  private EditText _settingsSearch;
+  private SettingsListAdapter _settingsAdapter;
   @Override
   public void onCreate(Bundle savedInstanceState)
   {
@@ -75,6 +84,7 @@ public class SettingsActivity extends PreferenceActivity
     findPreference("horizontal_margin_landscape_unfolded").setEnabled(foldableDevice);
     findPreference("keyboard_height_unfolded").setEnabled(foldableDevice);
     findPreference("keyboard_height_landscape_unfolded").setEnabled(foldableDevice);
+    setupSettingsSearch();
     styleSettingsList();
   }
 
@@ -95,6 +105,7 @@ public class SettingsActivity extends PreferenceActivity
     if (_releaseUpdater != null)
       _releaseUpdater.onResume();
     refreshUpdateStatus();
+    refreshTypingAssistanceStatus();
     getListView().post(() -> styleSettingsList());
   }
 
@@ -111,6 +122,11 @@ public class SettingsActivity extends PreferenceActivity
   {
     if (_releaseUpdater != null)
       _releaseUpdater.destroy();
+    if (_settingsAdapter != null)
+    {
+      _settingsAdapter.dispose();
+      _settingsAdapter = null;
+    }
     super.onDestroy();
   }
 
@@ -273,6 +289,9 @@ public class SettingsActivity extends PreferenceActivity
   private void setupTypingAssistancePreferences()
   {
     refreshTypingAssistanceStatus();
+    Preference learnedWords = findPreference("manage_learned_words");
+    if (learnedWords != null)
+      learnedWords.setIntent(new Intent(this, LearnedWordsActivity.class));
     Preference clear = findPreference("clear_typing_assistance_data");
     if (clear != null)
       clear.setOnPreferenceClickListener(preference -> {
@@ -405,8 +424,8 @@ public class SettingsActivity extends PreferenceActivity
     boolean has_data = PersonalizationStore.has_data(prefs);
     status.setSummary(has_data
         ? getString(R.string.pref_typing_assistance_status_with_learning,
-            stats.learnedWords, stats.nextWordPairs,
-            stats.correctionPatterns, stats.calibratedTouches)
+            stats.learnedWords, stats.correctionPatterns,
+            stats.calibratedTouches)
         : getString(R.string.pref_typing_assistance_status_empty));
   }
 
@@ -425,6 +444,7 @@ public class SettingsActivity extends PreferenceActivity
   {
     SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
     PersonalizationStore.clear(prefs);
+    PersonalizationStore.notify_external_change(prefs);
     try
     {
       SharedPreferences protected_prefs =
@@ -444,6 +464,28 @@ public class SettingsActivity extends PreferenceActivity
         Toast.LENGTH_SHORT).show();
   }
 
+  private void setupSettingsSearch()
+  {
+    ListView list = getListView();
+    View header = LayoutInflater.from(this).inflate(
+        R.layout.settings_search_header, list, false);
+    _settingsSearch = (EditText)header.findViewById(R.id.settings_search);
+    list.addHeaderView(header, null, false);
+    _settingsSearch.addTextChangedListener(new TextWatcher()
+    {
+      @Override public void beforeTextChanged(CharSequence value, int start,
+          int count, int after) {}
+      @Override public void onTextChanged(CharSequence value, int start,
+          int before, int count)
+      {
+        if (_settingsAdapter != null)
+          _settingsAdapter.setQuery(value == null ? "" : value.toString());
+      }
+      @Override public void afterTextChanged(Editable value) {}
+    });
+
+  }
+
   private void styleSettingsList()
   {
     ListView list = getListView();
@@ -457,8 +499,23 @@ public class SettingsActivity extends PreferenceActivity
     list.setBackgroundColor(lightTheme ? 0xfff4f5f7 : 0xff0b0d10);
 
     ListAdapter adapter = getPreferenceScreen().getRootAdapter();
-    list.setAdapter(new SettingsListAdapter(adapter, lightTheme, horizontal,
-          getResources().getDisplayMetrics().density));
+    if (_settingsAdapter != null)
+      _settingsAdapter.dispose();
+    _settingsAdapter = new SettingsListAdapter(adapter, lightTheme, horizontal,
+        getResources().getDisplayMetrics().density);
+    if (_settingsSearch != null)
+      _settingsAdapter.setQuery(_settingsSearch.getText().toString());
+    list.setOnItemClickListener((parent, view, position, id) ->
+    {
+      int visiblePosition = position - list.getHeaderViewsCount();
+      if (_settingsAdapter == null || visiblePosition < 0
+          || visiblePosition >= _settingsAdapter.getCount())
+        return;
+      getPreferenceScreen().onItemClick(parent, view,
+          _settingsAdapter.innerPosition(visiblePosition)
+            + list.getHeaderViewsCount(), id);
+    });
+    list.setAdapter(_settingsAdapter);
   }
 
   private boolean isLightTheme()
@@ -491,6 +548,10 @@ public class SettingsActivity extends PreferenceActivity
     private final boolean _lightTheme;
     private final int _sidePadding;
     private final float _density;
+    private final List<Integer> _visiblePositions =
+      new ArrayList<Integer>();
+    private final DataSetObserver _innerObserver;
+    private String _query = "";
 
     SettingsListAdapter(ListAdapter inner, boolean lightTheme, int sidePadding,
         float density)
@@ -499,29 +560,63 @@ public class SettingsActivity extends PreferenceActivity
       _lightTheme = lightTheme;
       _sidePadding = sidePadding;
       _density = density;
+      rebuildVisiblePositions();
+      _innerObserver = new DataSetObserver()
+      {
+        @Override public void onChanged()
+        {
+          rebuildVisiblePositions();
+          notifyDataSetChanged();
+        }
+
+        @Override public void onInvalidated()
+        {
+          rebuildVisiblePositions();
+          notifyDataSetInvalidated();
+        }
+      };
+      _inner.registerDataSetObserver(_innerObserver);
+    }
+    void dispose()
+    {
+      _inner.unregisterDataSetObserver(_innerObserver);
+    }
+
+
+    void setQuery(String query)
+    {
+      String normalized = query == null ? ""
+        : query.trim().toLowerCase(Locale.getDefault());
+      if (_query.equals(normalized))
+        return;
+      _query = normalized;
+      rebuildVisiblePositions();
+      notifyDataSetChanged();
     }
 
     @Override
     public int getCount()
     {
-      return _inner.getCount();
+      return _visiblePositions.size();
     }
 
     @Override
     public Object getItem(int position)
     {
-      return _inner.getItem(position);
+      return _inner.getItem(innerPosition(position));
     }
 
     @Override
     public long getItemId(int position)
     {
-      return _inner.getItemId(position);
+      return _inner.getItemId(innerPosition(position));
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent)
     {
+      int visiblePosition = position;
+      position = innerPosition(position);
       FrameLayout wrapper = rowWrapper(convertView, parent);
       View innerConvert = wrapper == convertView ? (View)wrapper.getTag() : null;
       FrameLayout card = ((SettingsRowWrapper)wrapper).card();
@@ -536,6 +631,7 @@ public class SettingsActivity extends PreferenceActivity
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT));
 
+      position = visiblePosition;
       wrapper.setBackgroundColor(pageColor());
       wrapper.setPadding(0, topPaddingFor(position), 0,
           bottomPaddingFor(position));
@@ -555,13 +651,13 @@ public class SettingsActivity extends PreferenceActivity
     @Override
     public boolean isEnabled(int position)
     {
-      return _inner.isEnabled(position);
+      return _inner.isEnabled(innerPosition(position));
     }
 
     @Override
     public int getItemViewType(int position)
     {
-      return _inner.getItemViewType(position);
+      return _inner.getItemViewType(innerPosition(position));
     }
 
     @Override
@@ -579,19 +675,67 @@ public class SettingsActivity extends PreferenceActivity
     @Override
     public boolean isEmpty()
     {
-      return _inner.isEmpty();
+      return _visiblePositions.isEmpty();
     }
 
-    @Override
-    public void registerDataSetObserver(DataSetObserver observer)
+
+    private int innerPosition(int position)
     {
-      _inner.registerDataSetObserver(observer);
+      return _visiblePositions.get(position).intValue();
     }
 
-    @Override
-    public void unregisterDataSetObserver(DataSetObserver observer)
+    private void rebuildVisiblePositions()
     {
-      _inner.unregisterDataSetObserver(observer);
+      _visiblePositions.clear();
+      if (_query.isEmpty())
+      {
+        for (int position = 0; position < _inner.getCount(); position++)
+          _visiblePositions.add(Integer.valueOf(position));
+        return;
+      }
+      int position = 0;
+      while (position < _inner.getCount())
+      {
+        Object item = _inner.getItem(position);
+        if (!(item instanceof PreferenceCategory))
+        {
+          if (matches(item))
+            _visiblePositions.add(Integer.valueOf(position));
+          position++;
+          continue;
+        }
+        int categoryPosition = position++;
+        int firstChild = position;
+        while (position < _inner.getCount()
+            && !(_inner.getItem(position) instanceof PreferenceCategory))
+          position++;
+        boolean categoryMatches = matches(item);
+        List<Integer> matchingChildren = new ArrayList<Integer>();
+        for (int child = firstChild; child < position; child++)
+          if (categoryMatches || matches(_inner.getItem(child)))
+            matchingChildren.add(Integer.valueOf(child));
+        if (categoryMatches || !matchingChildren.isEmpty())
+        {
+          _visiblePositions.add(Integer.valueOf(categoryPosition));
+          _visiblePositions.addAll(matchingChildren);
+        }
+      }
+    }
+
+    private boolean matches(Object item)
+    {
+      if (!(item instanceof Preference))
+        return false;
+      Preference preference = (Preference)item;
+      CharSequence title = preference.getTitle();
+      CharSequence summary = preference.getSummary();
+      return contains(title) || contains(summary);
+    }
+
+    private boolean contains(CharSequence value)
+    {
+      return value != null
+        && value.toString().toLowerCase(Locale.getDefault()).contains(_query);
     }
 
     private FrameLayout rowWrapper(View convertView, ViewGroup parent)

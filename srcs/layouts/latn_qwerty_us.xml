@@ -51,15 +51,15 @@ Useful links.
     <key c="p" ne="0"/>
   </row>
   <row>
-    <key shift="0.5" c="a" nw="loc tab" ne="`" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="s" ne="loc §" sw="loc ß" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="d" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="f" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
+    <key shift="0.5" c="a" nw="loc tab" ne="`"/>
+    <key c="s" ne="loc §" sw="loc ß"/>
+    <key c="d"/>
+    <key c="f"/>
     <key c="g" ne="-" sw="_" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="h" ne="=" sw="+" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="j" se="}" sw="{" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="k" sw="[" se="]" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
-    <key c="l" ne="|" sw="\\" w="loc cursor_left" e="loc cursor_right" n="loc cursor_up" s="loc cursor_down"/>
+    <key c="h" ne="=" sw="+"/>
+    <key c="j" se="}" sw="{"/>
+    <key c="k" sw="[" se="]"/>
+    <key c="l" ne="|" sw="\\"/>
   </row>
   <row>
     <key width="1.5" role="action" c="shift" ne="loc capslock"/>

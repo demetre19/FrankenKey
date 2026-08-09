@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:paddingStart="20dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="8dp">
+  <EditText
+      android:id="@+id/settings_search"
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:background="@drawable/launcher_input"
+      android:hint="@string/settings_search_hint"
+      android:imeOptions="actionDone|flagNoPersonalizedLearning"
+      android:importantForAutofill="no"
+      android:inputType="text|textNoSuggestions"
+      android:maxLines="1"
+      android:paddingStart="12dp"
+      android:paddingEnd="12dp"
+      android:singleLine="true"
+      android:textColor="?android:attr/textColorPrimary"
+      android:textColorHint="?android:attr/textColorSecondary"/>
+</FrameLayout>

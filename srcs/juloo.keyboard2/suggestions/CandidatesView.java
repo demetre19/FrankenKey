@@ -21,8 +21,11 @@ import juloo.keyboard2.R;
 public class CandidatesView extends LinearLayout
 {
   static final int NUM_CANDIDATES = 4;
+  static final int WORDS_PER_PAGE = 3;
+  static final int WORD_PAGES = 2;
   static final int LONG_CANDIDATE_LENGTH = 10;
   static final float LONG_CANDIDATE_TEXT_SCALE = 0.78f;
+  static final long PAGE_ANIMATION_MS = 180L;
   float _candidate_text_size_px = 0f;
 
 
@@ -32,6 +35,9 @@ public class CandidatesView extends LinearLayout
       - Entry at index [3] is the emoji suggestion. */
   String[] _items = new String[NUM_CANDIDATES];
   DisplayRole[] _roles = new DisplayRole[NUM_CANDIDATES];
+  String[][] _page_items = new String[WORD_PAGES][WORDS_PER_PAGE];
+  DisplayRole[][] _page_roles = new DisplayRole[WORD_PAGES][WORDS_PER_PAGE];
+  int _page = 0;
   Decoder.RequestKey _request_key = null;
 
 
@@ -79,31 +85,25 @@ public class CandidatesView extends LinearLayout
         || state.result == null || state.key == null)
       return;
     Decoder.Candidate[] words = state.result.words();
-    int count = Math.min(words.length, 3);
+    int count = Math.min(words.length, WORDS_PER_PAGE * WORD_PAGES);
     for (int i = 0; i < count; i++)
     {
-      _items[i] = words[i].surface;
-      _roles[i] = words[i].role == Decoder.Role.ENTERED_LITERAL
+      int page = i / WORDS_PER_PAGE;
+      int slot = i % WORDS_PER_PAGE;
+      _page_items[page][slot] = words[i].surface;
+      _page_roles[page][slot] =
+        words[i].role == Decoder.Role.ENTERED_LITERAL
         ? DisplayRole.ENTERED_TEXT : DisplayRole.WORD;
     }
-    _items[3] = state.result.emoji;
-    _roles[3] = state.result.emoji == null ? DisplayRole.NONE : DisplayRole.EMOJI;
-    _request_key = state.key;
     expose_learn_action(words);
     expose_learn_feedback(state);
+    _items[3] = state.result.emoji;
+    _roles[3] = state.result.emoji == null
+      ? DisplayRole.NONE : DisplayRole.EMOJI;
+    _request_key = state.key;
+    render_page(0, false);
     if (count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
-    update_separators();
-    for (int i = 0; i < _item_views.length; i++)
-    {
-      TextView v = _item_views[i];
-      if (_items[i] != null)
-      {
-        set_candidate_text(v, _items[i], _roles[i]);
-        v.setContentDescription(description_for(_items[i], _roles[i]));
-        v.setVisibility(View.VISIBLE);
-      }
-    }
   }
   void update_separators()
   {
@@ -122,16 +122,78 @@ public class CandidatesView extends LinearLayout
   void clear_candidates()
   {
     _request_key = null;
+    _page = 0;
+    for (int page = 0; page < WORD_PAGES; page++)
+      for (int slot = 0; slot < WORDS_PER_PAGE; slot++)
+      {
+        _page_items[page][slot] = null;
+        _page_roles[page][slot] = DisplayRole.NONE;
+      }
     for (int i = 0; i < _item_views.length; i++)
     {
       _items[i] = null;
       _roles[i] = DisplayRole.NONE;
+      _item_views[i].animate().cancel();
+      _item_views[i].setTranslationX(0f);
       _item_views[i].setText("");
       _item_views[i].setContentDescription(null);
       _item_views[i].setVisibility(View.GONE);
     }
     for (int i = 0; i < _separators.length; i++)
       update_separator(i, false);
+  }
+  void render_page(int page, boolean animate)
+  {
+    int previous = _page;
+    _page = page;
+    for (int i = 0; i < WORDS_PER_PAGE; i++)
+    {
+      _items[i] = _page_items[page][i];
+      _roles[i] = _page_roles[page][i];
+    }
+    update_separators();
+    for (int i = 0; i < _item_views.length; i++)
+    {
+      TextView v = _item_views[i];
+      v.animate().cancel();
+      v.setTranslationX(0f);
+      if (_items[i] == null)
+      {
+        v.setText("");
+        v.setContentDescription(null);
+        v.setVisibility(View.GONE);
+        continue;
+      }
+      set_candidate_text(v, _items[i], _roles[i]);
+      v.setContentDescription(description_for(_items[i], _roles[i]));
+      v.setVisibility(View.VISIBLE);
+    }
+    if (animate && animations_enabled())
+    {
+      float offset = Math.max(1, getWidth());
+      if (page < previous)
+        offset = -offset;
+      for (int i = 0; i < WORDS_PER_PAGE; i++)
+        if (_item_views[i].getVisibility() == View.VISIBLE)
+        {
+          _item_views[i].setTranslationX(offset);
+          _item_views[i].animate().translationX(0f)
+            .setDuration(PAGE_ANIMATION_MS).start();
+        }
+    }
+  }
+  boolean show_page_for_swipe(float dx)
+  {
+    int target = _page + (dx < 0f ? 1 : -1);
+    if (target >= 0 && target < WORD_PAGES
+        && _page_items[target][0] != null)
+      render_page(target, true);
+    return true;
+  }
+  boolean animations_enabled()
+  {
+    return VERSION.SDK_INT < 26
+      || android.animation.ValueAnimator.areAnimatorsEnabled();
   }
 
   public void refresh_config(Config config, boolean dictionary_available)
@@ -241,8 +303,8 @@ public class CandidatesView extends LinearLayout
       }
     if (entered == null)
       return;
-    _items[2] = entered.surface;
-    _roles[2] = entered.learned
+    _page_items[0][2] = entered.surface;
+    _page_roles[0][2] = entered.learned
       ? DisplayRole.UNLEARN_ACTION : DisplayRole.LEARN_ACTION;
   }
 
@@ -251,8 +313,9 @@ public class CandidatesView extends LinearLayout
     if (state.feedback == SharedDecoder.Presentation.Feedback.NONE
         || state.feedbackWord == null)
       return;
-    _items[2] = state.feedbackWord;
-    _roles[2] = state.feedback == SharedDecoder.Presentation.Feedback.LEARNED
+    _page_items[0][2] = state.feedbackWord;
+    _page_roles[0][2] =
+      state.feedback == SharedDecoder.Presentation.Feedback.LEARNED
       ? DisplayRole.LEARNED_FEEDBACK : DisplayRole.UNLEARNED_FEEDBACK;
   }
 
@@ -313,23 +376,29 @@ public class CandidatesView extends LinearLayout
         });
     v.setOnTouchListener(new View.OnTouchListener()
         {
+          float _down_x;
           float _down_y;
 
           @Override
           public boolean onTouch(View _v, MotionEvent event)
           {
-            String it = _items[item_index];
             Decoder.RequestKey key = _request_key;
-            if (it == null || key == null)
+            if (key == null)
               return false;
             switch (event.getActionMasked())
             {
               case MotionEvent.ACTION_DOWN:
+                _down_x = event.getX();
                 _down_y = event.getY();
                 return false;
               case MotionEvent.ACTION_UP:
+                float dx = event.getX() - _down_x;
                 float dy = event.getY() - _down_y;
-                if (Math.abs(dy) < swipe_threshold_px())
+                if (Math.abs(dx) >= swipe_threshold_px()
+                    && Math.abs(dx) > Math.abs(dy))
+                  return show_page_for_swipe(dx);
+                String it = _items[item_index];
+                if (it == null || Math.abs(dy) < swipe_threshold_px())
                   return false;
                 if (_roles[item_index] == DisplayRole.LEARNED_FEEDBACK
                     || _roles[item_index] == DisplayRole.UNLEARNED_FEEDBACK)

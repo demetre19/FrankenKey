@@ -74,7 +74,7 @@ public class FleksyLearningGestureTest
   }
 
   @Test
-  public void center_row_swipes_behave_as_four_direction_trackpad()
+  public void g_swipes_behave_as_four_direction_trackpad()
       throws Exception
   {
     Config config = testConfig("", true, true);
@@ -84,19 +84,23 @@ public class FleksyLearningGestureTest
     RecordingPointerHandler pointerHandler = new RecordingPointerHandler();
     Pointers pointers = new Pointers(pointerHandler, config);
     KeyboardData.Key key = centerTrackpadKey();
+    assertTrue("A key with all four cursor sliders must receive the faint navigation-start border.",
+        Keyboard2View.isNavigationStartKey(key));
+    assertFalse("Ordinary keys must remain available for global learn and forget swipes.",
+        Keyboard2View.isNavigationStartKey(verticalSideLabelKey()));
 
     swipe(pointers, key, 1, -30f, 0f);
     swipe(pointers, key, 2, 30f, 0f);
     swipe(pointers, key, 3, 0f, -30f);
     swipe(pointers, key, 4, 0f, 30f);
 
-    assertEquals("Center-row trackpad gestures must dispatch all four cursor sliders.",
+    assertEquals("G trackpad gestures must dispatch all four cursor sliders.",
         java.util.Arrays.asList(KeyValue.Slider.Cursor_left,
           KeyValue.Slider.Cursor_right, KeyValue.Slider.Cursor_up,
           KeyValue.Slider.Cursor_down), pointerHandler.pressedSliders);
-    assertEquals("Center-row vertical trackpad gestures must not trigger the global learn gesture.",
+    assertEquals("G vertical trackpad gestures must not trigger the global learn gesture.",
         0, pointerHandler.keyboardSwipeUpCount);
-    assertEquals("Center-row vertical trackpad gestures must not trigger the global unlearn gesture.",
+    assertEquals("G vertical trackpad gestures must not trigger the global unlearn gesture.",
         0, pointerHandler.keyboardSwipeDownCount);
     assertTrue("Fine movement near center must have lower gain than a farther drag.",
         Pointers.trackpadDistanceGain(12f, 8f)

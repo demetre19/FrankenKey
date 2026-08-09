@@ -393,6 +393,7 @@ public class ReaderActivityTest
         Keyboard2.candidate_strip_visible(false, false));
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
+    View settings = transport.findViewById(R.id.reader_transport_settings);
     int compactHeight = Math.round(36f *
         context.getResources().getDisplayMetrics().density);
     int verticalPadding = Math.round(4f *
@@ -405,6 +406,8 @@ public class ReaderActivityTest
         compactHeight, clipboard.getLayoutParams().height);
     assertEquals("Library uses the requested compact 36dp height.",
         compactHeight, library.getLayoutParams().height);
+    assertEquals("The Settings shortcut uses the same compact 36dp height.",
+        compactHeight, settings.getLayoutParams().height);
     assertEquals("The Reader strip keeps an 8dp breathing space above its controls.",
         actionGap, transport.getPaddingTop());
     assertEquals("The Reader strip keeps an 8dp breathing space below its controls.",
@@ -417,6 +420,10 @@ public class ReaderActivityTest
         R.drawable.reader_keyboard_action_button,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_library, "background"));
+    assertEquals("Settings uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_settings, "background"));
     android.util.TypedValue labelColor = new android.util.TypedValue();
     assertTrue(context.getTheme().resolveAttribute(
         R.attr.colorLabel, labelColor, true));
@@ -438,6 +445,23 @@ public class ReaderActivityTest
         actionGap,
         ((ViewGroup.MarginLayoutParams)library.getLayoutParams())
           .getMarginStart());
+    assertEquals("Settings keeps the same visible 8dp gap.",
+        actionGap,
+        ((ViewGroup.MarginLayoutParams)settings.getLayoutParams())
+          .getMarginStart());
+    assertFalse("The Settings shortcut announces its destination.",
+        settings.getContentDescription().toString().isEmpty());
+    Application application = RuntimeEnvironment.getApplication();
+    Keyboard2.wire_reader_settings_shortcut(application, transport);
+    assertTrue("The Settings shortcut must handle a tap.", settings.performClick());
+    Intent settingsIntent = shadowOf(application).getNextStartedActivity();
+    assertNotNull("The Settings shortcut must launch a destination.",
+        settingsIntent);
+    assertEquals("The keyboard shortcut must open FrankenKey Settings directly.",
+        SettingsActivity.class.getName(),
+        settingsIntent.getComponent().getClassName());
+    assertTrue("Launching Settings from the IME service requires a new task.",
+        (settingsIntent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     View speedRow = transport.findViewById(

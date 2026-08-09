@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import juloo.keyboard2.TouchTrace;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -245,6 +246,8 @@ public final class PersonalizationStore
       : load_counts(PREF_WORDS);
     _word_surfaces = prefs == null ? new HashMap<String, String>()
       : load_word_surfaces();
+    _taught_words = prefs == null ? new HashSet<String>()
+      : load_taught_words();
     _bigram_counts = prefs == null ? new HashMap<String, Integer>()
       : load_counts(PREF_BIGRAMS);
     _correction_counts = prefs == null
@@ -261,6 +264,31 @@ public final class PersonalizationStore
       _touch_offset_y = clamp_touch_offset(
           prefs.getFloat(PREF_TOUCH_OFFSET_Y, 0f));
     }
+    migrate_vocabulary_policy();
+  }
+
+  /**
+   * Remove passive accepted-word history once, retaining only explicit
+   * teaching and targets backed by deliberate correction evidence.
+   */
+  private void migrate_vocabulary_policy()
+  {
+    if (_prefs == null || _prefs.getInt(PREF_VOCABULARY_POLICY_VERSION, 0)
+        >= VOCABULARY_POLICY_VERSION)
+      return;
+    Set<String> approved = new HashSet<String>(_taught_words);
+    for (CorrectionPair correction : _correction_counts.keySet())
+      approved.add(correction.target);
+    for (ContextualCorrection correction
+        : _contextual_correction_counts.keySet())
+      approved.add(correction.target);
+    _word_counts.keySet().retainAll(approved);
+    for (String word : approved)
+      if (!_word_counts.containsKey(word))
+        _word_counts.put(word, Integer.valueOf(1));
+    _word_surfaces.keySet().retainAll(_taught_words);
+    _bigram_counts.clear();
+    save();
   }
 
   public static PersonalizationStore empty()
@@ -270,65 +298,114 @@ public final class PersonalizationStore
 
   public void record_word(String word)
   {
-    record_commit(word, null, null, null, word);
+    record_commit(word, null);
   }
-
   /**
-   * Record one accepted word and its optional typo source in one preference
-   * transaction. Invalid correction pairs never prevent normal word/context
-   * learning.
+   * Add a word without creating typed-context or correction evidence.
+   * Returns whether the learned-word model changed.
    */
-  public void record_commit(String word, String correctedFrom)
-  {
-    record_commit(word, correctedFrom, null, null, null);
-  }
-
-  void record_commit(String word, String correctedFrom, String typedWord,
-      TouchTrace.Snapshot touches)
-  {
-    record_commit(word, correctedFrom, typedWord, touches, null);
-  }
-
-  private void record_commit(String word, String correctedFrom,
-      String typedWord, TouchTrace.Snapshot touches,
-      String explicitlyLearnedSurface)
+  public boolean learn_word(String word)
   {
     String normalizedWord = normalize(word);
     if (!is_learnable(normalizedWord))
-      return;
-    String normalizedCorrection = normalize(correctedFrom);
-    String previousWord = _last_word;
-    boolean changed = increment(_word_counts, normalizedWord);
-    String preferredSurface = explicit_short_surface(
-        explicitlyLearnedSurface, normalizedWord);
+      return false;
+    boolean changed = _taught_words.add(normalizedWord);
+    if (!_word_counts.containsKey(normalizedWord))
+    {
+      _word_counts.put(normalizedWord, Integer.valueOf(1));
+      changed = true;
+    }
+    String preferredSurface = explicit_short_surface(word, normalizedWord);
     if (preferredSurface != null
         && !preferredSurface.equals(_word_surfaces.get(normalizedWord)))
     {
       _word_surfaces.put(normalizedWord, preferredSurface);
       changed = true;
     }
-    if (previousWord != null)
-      changed |= increment(_bigram_counts, previousWord + " " + normalizedWord);
-    if (!normalizedWord.equals(previousWord))
-      changed = true;
-    _last_word = normalizedWord;
+    if (!changed)
+      return false;
+    _generation++;
+    save();
+    return true;
+  }
 
-    if (is_plausible_correction(normalizedCorrection, normalizedWord))
-      changed |= increment_correction(new CorrectionPair(
-            normalizedCorrection, normalizedWord));
-    if (previousWord != null
-        && is_plausible_contextual_correction(normalizedCorrection,
-          normalizedWord))
-      changed |= increment_contextual_correction(new ContextualCorrection(
-            previousWord, normalizedCorrection, normalizedWord));
-    changed |= record_touch_calibration(typedWord, normalizedWord,
-        normalizedCorrection, touches);
-
-    if (changed)
+  /** Return deliberate correction targets in deterministic alphabetical order. */
+  public List<String> learned_words()
+  {
+    Set<String> adaptive = new HashSet<String>(_word_counts.keySet());
+    adaptive.removeAll(_taught_words);
+    return display_words(adaptive);
+  }
+  /** Return only words explicitly taught by the user. */
+  public List<String> taught_words()
+  {
+    return display_words(_taught_words);
+  }
+  public boolean is_taught(String word)
+  {
+    return _taught_words.contains(normalize(word));
+  }
+  private List<String> display_words(Set<String> source)
+  {
+    List<String> words = new ArrayList<String>(source.size());
+    for (String word : source)
     {
-      _generation++;
-      save();
+      String surface = _word_surfaces.get(word);
+      words.add(surface == null ? word : surface);
     }
+    Collections.sort(words, String.CASE_INSENSITIVE_ORDER);
+    return words;
+  }
+
+
+  /**
+   * Record transient context and eligible touch calibration for an ordinary
+   * accepted word. Ordinary commits never create vocabulary or correction
+   * evidence.
+   */
+  public void record_commit(String word, String correctedFrom)
+  {
+    record_commit(word, correctedFrom, null, null);
+  }
+
+  void record_commit(String word, String correctedFrom, String typedWord,
+      TouchTrace.Snapshot touches)
+  {
+    String normalizedWord = normalize(word);
+    if (!is_learnable(normalizedWord))
+      return;
+    String previousWord = _last_word;
+    _prior_word = previousWord;
+    _last_word = normalizedWord;
+    boolean persisted = record_touch_calibration(typedWord, normalizedWord,
+        normalize(correctedFrom), touches);
+    _generation++;
+    if (persisted)
+      save();
+  }
+
+  /**
+   * Record vocabulary and typo evidence only for an editor-verified
+   * backspace-then-suggestion correction.
+   */
+  public void record_selected_correction(String source, String target)
+  {
+    source = normalize(source);
+    target = normalize(target);
+    if (!is_plausible_correction(source, target))
+      return;
+    String previousWord = _last_word;
+    boolean changed = increment(_word_counts, target);
+    changed |= increment_correction(new CorrectionPair(source, target));
+    if (previousWord != null
+        && is_plausible_contextual_correction(source, target))
+      changed |= increment_contextual_correction(new ContextualCorrection(
+            previousWord, source, target));
+    _prior_word = previousWord;
+    _last_word = target;
+    _generation++;
+    if (changed)
+      save();
   }
 
   /**
@@ -369,11 +446,13 @@ public final class PersonalizationStore
     word = normalize(word);
     boolean changed = _word_counts.remove(word) != null;
     changed |= _word_surfaces.remove(word) != null;
+    changed |= _taught_words.remove(word);
     changed |= remove_bigrams_containing(word);
     changed |= remove_corrections_involving(word);
     changed |= remove_contextual_corrections_involving(word);
-    if (word.equals(_last_word))
+    if (word.equals(_last_word) || word.equals(_prior_word))
     {
+      _prior_word = null;
       _last_word = null;
       changed = true;
     }
@@ -529,10 +608,16 @@ public final class PersonalizationStore
     return _last_word;
   }
 
+  String previous_previous_word()
+  {
+    return _prior_word;
+  }
+
   public void reset_context()
   {
-    if (_last_word == null)
+    if (_last_word == null && _prior_word == null)
       return;
+    _prior_word = null;
     _last_word = null;
     _generation++;
   }
@@ -555,6 +640,24 @@ public final class PersonalizationStore
           + store._contextual_correction_counts.size(),
         store._touch_samples);
   }
+  public static long external_revision(SharedPreferences prefs)
+  {
+    return prefs == null ? 0L : prefs.getLong(PREF_EXTERNAL_REVISION, 0L);
+  }
+
+  /**
+   * Signal that a settings surface changed personalization outside the
+   * decoder worker so an active IME can reload the credential-protected model.
+   */
+  public static void notify_external_change(SharedPreferences prefs)
+  {
+    if (prefs == null)
+      return;
+    long current = external_revision(prefs);
+    prefs.edit().putLong(PREF_EXTERNAL_REVISION,
+        current == Long.MAX_VALUE ? 0L : current + 1L).apply();
+  }
+
 
   private boolean record_touch_calibration(String typedWord,
       String normalizedWord, String normalizedCorrection,
@@ -603,14 +706,17 @@ public final class PersonalizationStore
   public void clear()
   {
     boolean changed = !_word_counts.isEmpty() || !_word_surfaces.isEmpty()
-      || !_bigram_counts.isEmpty() || !_correction_counts.isEmpty()
+      || !_taught_words.isEmpty() || !_bigram_counts.isEmpty()
+      || !_correction_counts.isEmpty()
       || !_contextual_correction_counts.isEmpty() || _last_word != null
       || _touch_samples != 0 || has_data(_prefs);
     _word_counts.clear();
     _word_surfaces.clear();
+    _taught_words.clear();
     _bigram_counts.clear();
     _correction_counts.clear();
     _contextual_correction_counts.clear();
+    _prior_word = null;
     _last_word = null;
     _touch_samples = 0;
     _touch_offset_x = 0f;
@@ -627,6 +733,7 @@ public final class PersonalizationStore
     prefs.edit()
       .remove(PREF_WORDS)
       .remove(PREF_WORD_SURFACES)
+      .remove(PREF_TAUGHT_WORDS)
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
       .remove(PREF_CONTEXTUAL_CORRECTIONS)
@@ -805,6 +912,23 @@ public final class PersonalizationStore
     return out;
   }
 
+  private Set<String> load_taught_words()
+  {
+    Set<String> out = new HashSet<String>();
+    Set<String> entries = _prefs.getStringSet(PREF_TAUGHT_WORDS, null);
+    if (entries != null)
+      for (String entry : entries)
+      {
+        String word = normalize(entry);
+        if (is_learnable(word) && _word_counts.containsKey(word))
+          out.add(word);
+      }
+    // Exact short-word surfaces were only stored for explicit teaching before
+    // the dedicated taught-word set existed, so preserve that known history.
+    out.addAll(_word_surfaces.keySet());
+    return out;
+  }
+
   private Map<CorrectionPair, Integer> load_corrections()
   {
     Map<CorrectionPair, Integer> out =
@@ -917,12 +1041,19 @@ public final class PersonalizationStore
     if (_prefs == null)
       return;
     SharedPreferences.Editor editor = _prefs.edit();
+    editor.putInt(PREF_VOCABULARY_POLICY_VERSION,
+        VOCABULARY_POLICY_VERSION);
     save_counts(editor, PREF_WORDS, _word_counts);
     if (_word_surfaces.isEmpty())
       editor.remove(PREF_WORD_SURFACES);
     else
       editor.putStringSet(PREF_WORD_SURFACES,
           encode_word_surfaces(_word_surfaces));
+    if (_taught_words.isEmpty())
+      editor.remove(PREF_TAUGHT_WORDS);
+    else
+      editor.putStringSet(PREF_TAUGHT_WORDS,
+          new HashSet<String>(_taught_words));
     save_counts(editor, PREF_BIGRAMS, _bigram_counts);
     if (_correction_counts.isEmpty())
       editor.remove(PREF_CORRECTIONS);
@@ -1262,10 +1393,12 @@ public final class PersonalizationStore
   private final SharedPreferences _prefs;
   private final Map<String, Integer> _word_counts;
   private final Map<String, String> _word_surfaces;
+  private final Set<String> _taught_words;
   private final Map<String, Integer> _bigram_counts;
   private final Map<CorrectionPair, Integer> _correction_counts;
   private final Map<ContextualCorrection, Integer>
     _contextual_correction_counts;
+  private String _prior_word = null;
   private String _last_word = null;
   private int _touch_samples = 0;
   private float _touch_offset_x = 0f;
@@ -1283,9 +1416,12 @@ public final class PersonalizationStore
   private static final int MIN_TOUCH_SAMPLES = 20;
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;
+  private static final int VOCABULARY_POLICY_VERSION = 1;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_WORD_SURFACES =
     "typing_model_word_surfaces_v1";
+  public static final String PREF_TAUGHT_WORDS =
+    "typing_model_taught_words_v1";
   public static final String PREF_BIGRAMS = "typing_model_bigrams";
   public static final String PREF_CORRECTIONS =
     "typing_model_corrections_v1";
@@ -1297,4 +1433,8 @@ public final class PersonalizationStore
     "typing_model_touch_offset_x_v1";
   public static final String PREF_TOUCH_OFFSET_Y =
     "typing_model_touch_offset_y_v1";
+  public static final String PREF_VOCABULARY_POLICY_VERSION =
+    "typing_model_vocabulary_policy_version";
+  public static final String PREF_EXTERNAL_REVISION =
+    "typing_model_external_revision_v1";
 }

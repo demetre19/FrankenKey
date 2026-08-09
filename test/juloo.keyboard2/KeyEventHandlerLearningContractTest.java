@@ -60,6 +60,7 @@ public class KeyEventHandlerLearningContractTest
     assertEquals(1, harness.receiver.input.commitTextCalls);
     assertFalse("Committing a candidate must revoke the key so a repeated click cannot commit twice.",
         harness.decoder.is_current(current));
+    awaitCounts(harness.prefs, "cazoo", "cazo", 0, 0);
   }
 
   @Test
@@ -134,7 +135,7 @@ public class KeyEventHandlerLearningContractTest
   }
 
   @Test
-  public void manual_same_word_backspace_edit_boundary_records_one_pair()
+  public void backspace_then_selected_suggestion_records_adaptive_pair()
       throws Exception
   {
     Harness harness = harness("thus", true, true);
@@ -144,17 +145,18 @@ public class KeyEventHandlerLearningContractTest
     harness.handler.send_text("is");
     assertEquals("The manual edit fixture must visibly change thus to this within the same editor word.",
         "this", harness.receiver.input.text.toString());
+    Decoder.RequestKey key = installCurrentLiteral(harness, "this");
 
-    harness.handler.handle_space_bar();
+    harness.handler.suggestion_entered(key, "this");
 
-    assertEquals("The edited word and its accepted boundary must remain visible.",
+    assertEquals("Selecting the edited word from suggestions must commit it and its boundary.",
         "this ", harness.receiver.input.text.toString());
-    awaitCounts(harness.prefs, "this", "thus", 0, 1);
-    assertCountsRemain(harness.prefs, "this", "thus", 0, 1);
+    awaitCounts(harness.prefs, "this", "thus", 1, 1);
+    assertCountsRemain(harness.prefs, "this", "thus", 1, 1);
   }
 
   @Test
-  public void repeated_manual_correction_replays_after_decoder_reload()
+  public void repeated_selected_correction_replays_without_auto_relearning()
       throws Exception
   {
     Harness training = harness("thus", true, true);
@@ -165,10 +167,10 @@ public class KeyEventHandlerLearningContractTest
       backspace(training);
       backspace(training);
       training.handler.send_text("is");
-      training.handler.handle_space_bar();
-      awaitCounts(training.prefs, "this", "thus", 0, count);
+      Decoder.RequestKey selected = installCurrentLiteral(training, "this");
+      training.handler.suggestion_entered(selected, "this");
+      awaitCounts(training.prefs, "this", "thus", count, count);
     }
-    new PersonalizationStore(training.prefs).record_word("thus");
 
     Harness replay = harness("thus", true, true, true, training.prefs);
     Decoder.RequestKey key = replay.handler._current_request_key;
@@ -177,8 +179,9 @@ public class KeyEventHandlerLearningContractTest
     awaitResult(replay.decoder, key);
     replay.handler.handle_space_bar();
 
-    assertEquals("Four manual thus-to-this edits must survive reload and autocorrect the next thus at its Space boundary.",
+    assertEquals("Four selected thus-to-this corrections must survive reload and autocorrect the next thus at its Space boundary.",
         "this ", replay.receiver.input.text.toString());
+    assertCountsRemain(replay.prefs, "this", "thus", 4, 4);
   }
 
   @Test
@@ -194,8 +197,8 @@ public class KeyEventHandlerLearningContractTest
 
     broad.handler.handle_space_bar();
 
-    awaitCounts(broad.prefs, "brxyz", "bread", 1, 0);
-    assertEquals("A three-substitution edit may learn its accepted target but must not invent a typo pair.",
+    awaitCounts(broad.prefs, "brxyz", "bread", 0, 0);
+    assertEquals("A manual edit followed only by Space must not teach its target or invent a typo pair.",
         0, correctionCount(broad.prefs, "bread", "brxyz"));
 
     Harness crossed = harness("thus", true, true);
@@ -209,8 +212,8 @@ public class KeyEventHandlerLearningContractTest
 
     assertEquals("The cross-boundary fixture must preserve both distinct editor tokens.",
         "th this ", crossed.receiver.input.text.toString());
-    awaitCounts(crossed.prefs, "this", "thus", 1, 0);
-    assertCountsRemain(crossed.prefs, "this", "thus", 1, 0);
+    awaitCounts(crossed.prefs, "this", "thus", 0, 0);
+    assertCountsRemain(crossed.prefs, "this", "thus", 0, 0);
   }
 
   private static void backspace(Harness harness)
@@ -234,8 +237,8 @@ public class KeyEventHandlerLearningContractTest
         "key_event_learning_" + _decoders.size(), Context.MODE_PRIVATE);
     prefs.edit().clear().commit();
     if (seededCorrectionSource != null)
-      new PersonalizationStore(prefs).record_commit(text,
-          seededCorrectionSource);
+      new PersonalizationStore(prefs).record_selected_correction(
+          seededCorrectionSource, text);
     return harness(text, suggestions, false, safeEditor, prefs);
   }
 

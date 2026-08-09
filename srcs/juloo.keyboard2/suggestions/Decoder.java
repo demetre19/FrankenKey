@@ -25,7 +25,7 @@ public final class Decoder
   public static final int MAX_WORD_CODEPOINTS = 48;
   public static final int MAX_NATIVE_RESULTS = 16;
   public static final int MAX_MERGED_CANDIDATES = 80;
-  public static final int MAX_VISIBLE_WORDS = 3;
+  public static final int MAX_VISIBLE_WORDS = 6;
 
   public static final int SOURCE_LITERAL = 1;
   public static final int SOURCE_CDICT_EXACT = 1 << 1;

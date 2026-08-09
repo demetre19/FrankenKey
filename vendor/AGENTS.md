@@ -2,28 +2,26 @@
 
 ## Purpose
 
-- Own vendored third-party code and data such as Hunspell and cdict.
+- Own vendored third-party code/data, including Hunspell and Cdict.
 
 ## Ownership
 
-- This folder owns third-party source snapshots and local integration notes.
-- App wrappers/integration code live in main source packages.
+- `vendor/` owns snapshots/integration notes; app wrappers belong to source packages.
 
 ## Local Contracts
 
-- Preserve upstream license files and attribution.
-- Avoid modifying vendored code unless necessary for build or integration; prefer wrapper fixes outside vendor when possible.
-- Local Cdict patch: format version 1 is preserved while construction/traversal bounds, Unicode word materialization, result-owner validation, fixed-workspace spatial search, Java/JNI DTOs, and deterministic status/results are maintained locally; the obsolete byte-distance API is intentionally removed.
+- Preserve upstream licenses and attribution.
+- Prefer wrapper fixes; change vendor code only when build/integration requires it.
+- Preserve Cdict format v1 plus local bounds, Unicode materialization, owner validation, fixed-workspace spatial search, Java/JNI DTOs, deterministic results/status, and removal of the obsolete byte-distance API.
 
 ## Work Guidance
 
-- Keep vendor changes surgical and isolated.
-- Do not run broad dependency upgrades or replace vendor snapshots casually.
+- Keep changes isolated; no casual snapshot replacement or broad upgrades.
 
 ## Verification
 
-- For Cdict changes, build Android native libraries for all release ABIs and run the focused Java query/decoder tests; run the vendored Dune/Cram harness when `dune`/OCaml tooling is available.
+- For Cdict: build all release ABIs, run focused Java query/decoder tests, and run Dune/Cram when OCaml tooling exists.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Vendored subtrees are owned here unless they grow local workflows.
+- None.

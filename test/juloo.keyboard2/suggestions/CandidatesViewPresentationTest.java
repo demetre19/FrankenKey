@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.view.MotionEvent;
 import android.widget.TextView;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -177,6 +178,50 @@ public class CandidatesViewPresentationTest
   }
 
   @Test
+  public void swipe_left_pages_to_next_three_words_entering_from_right()
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    CandidatesView view = candidatesView(context);
+    Decoder.Result result = sixWordResult("ca", 40);
+    assertEquals("The decoder must retain two ranked pages for the suggestion strip.",
+        6, result.words().length);
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
+          SharedDecoder.Presentation.Feedback.NONE, null));
+    TextView middle = view.findViewById(R.id.candidates_middle);
+
+    long now = android.os.SystemClock.uptimeMillis();
+    middle.dispatchTouchEvent(MotionEvent.obtain(
+          now, now, MotionEvent.ACTION_DOWN, 120f, 20f, 0));
+    middle.dispatchTouchEvent(MotionEvent.obtain(
+          now, now + 16, MotionEvent.ACTION_UP, 20f, 20f, 0));
+
+    assertEquals("A left swipe must reveal the next suggestion page.",
+        1, view._page);
+    assertEquals(result.words()[3].surface,
+        ((TextView)view.findViewById(R.id.candidates_middle))
+          .getText().toString());
+    assertEquals(result.words()[4].surface,
+        ((TextView)view.findViewById(R.id.candidates_right))
+          .getText().toString());
+    assertEquals(result.words()[5].surface,
+        ((TextView)view.findViewById(R.id.candidates_left))
+          .getText().toString());
+    middle.performClick();
+    assertEquals("Second-page taps must retain the exact decoder request.",
+        result.key, _handler.enteredKey);
+    assertEquals(result.words()[3].surface, _handler.enteredText);
+
+    now += 32;
+    middle.dispatchTouchEvent(MotionEvent.obtain(
+          now, now, MotionEvent.ACTION_DOWN, 20f, 20f, 0));
+    middle.dispatchTouchEvent(MotionEvent.obtain(
+          now, now + 16, MotionEvent.ACTION_UP, 120f, 20f, 0));
+    assertEquals("A right swipe must return to the first suggestion page.",
+        0, view._page);
+    assertEquals(result.words()[0].surface, middle.getText().toString());
+  }
+
+  @Test
   public void separators_follow_only_visible_word_boundaries()
   {
     Context context = RuntimeEnvironment.getApplication();
@@ -209,11 +254,22 @@ public class CandidatesViewPresentationTest
   {
     PersonalizationStore store = PersonalizationStore.empty();
     for (String word : new String[] { "cabin", "cazoo", "camel", "candle" })
-      for (int i = 0; i < 4; i++)
-      {
-        store.reset_context();
-        store.record_word(word);
-      }
+      store.learn_word(word);
+    Decoder.RequestKey key = new Decoder.RequestKey(
+        1, generation, generation, 1, 1, 1, 1);
+    Decoder.Request request = new Decoder.Request(key, typed,
+        (TouchTrace.Snapshot)null, Decoder.Geometry.from(null),
+        new Decoder.DecoderConfig(true, false, true, true));
+    return new Decoder().decode(request, null, null, null, store, false);
+  }
+
+  private static Decoder.Result sixWordResult(String typed, long generation)
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    for (String word : new String[] {
+          "cabin", "cacao", "cactus", "cadet", "cage", "cake", "camel"
+        })
+      store.learn_word(word);
     Decoder.RequestKey key = new Decoder.RequestKey(
         1, generation, generation, 1, 1, 1, 1);
     Decoder.Request request = new Decoder.Request(key, typed,

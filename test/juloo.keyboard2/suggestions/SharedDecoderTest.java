@@ -350,7 +350,7 @@ public class SharedDecoderTest
     SharedPreferences preferences = preferences(
         "shared_decoder_commit_rollover_test");
     PersonalizationStore seeded = new PersonalizationStore(preferences);
-    seeded.record_word("hello");
+    seeded.record_selected_correction("hallo", "hello");
     SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
     long session = start(decoder, enabledConfig(), preferences,
         "profile-rollover");
@@ -358,8 +358,8 @@ public class SharedDecoderTest
     Decoder.RequestKey wordKey = decoder.request(session,
         snapshot(1, "hello", false));
     awaitReady(decoder, wordKey);
-    SharedDecoder.CommitToken token = decoder.prepare_commit(session, wordKey,
-        "hello", null);
+    SharedDecoder.CommitToken token =
+      decoder.prepare_selected_correction(session, wordKey, "hello", "hallo");
     assertNotNull(token);
 
     Decoder.RequestKey boundaryKey = decoder.request(session,
@@ -386,10 +386,10 @@ public class SharedDecoderTest
   {
     SharedPreferences firstPreferences = preferences(
         "shared_decoder_commit_domain_first_test");
-    new PersonalizationStore(firstPreferences).record_word("alpha");
+    new PersonalizationStore(firstPreferences).learn_word("alpha");
     SharedPreferences secondPreferences = preferences(
         "shared_decoder_commit_domain_second_test");
-    new PersonalizationStore(secondPreferences).record_word("alpha");
+    new PersonalizationStore(secondPreferences).learn_word("alpha");
     SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
     long firstSession = start(decoder, enabledConfig(), firstPreferences,
         "profile-first");
@@ -427,6 +427,35 @@ public class SharedDecoderTest
     assertEquals("Changing domains must also prevent the old token from leaking into the replacement profile.",
         1, new PersonalizationStore(secondPreferences).word_count("alpha"));
   }
+  @Test
+  public void settings_revision_reloads_the_active_personalization_store()
+      throws Exception
+  {
+    SharedPreferences preferences = preferences(
+        "shared_decoder_settings_revision_test");
+    SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
+    long session = start(decoder, enabledConfig(), preferences,
+        "credential:" + PersonalizationStore.external_revision(preferences));
+    Decoder.RequestKey beforeKey = decoder.request(session,
+        snapshot(1, "cazoo", false));
+    Decoder.Result before = awaitReady(decoder, beforeKey).result;
+    assertFalse("The fixture word must begin unlearned.",
+        before.literal.learned);
+
+    assertTrue(new PersonalizationStore(preferences).learn_word("cazoo"));
+    PersonalizationStore.notify_external_change(preferences);
+    decoder.update_personalization(session,
+        new SharedDecoder.PersonalizationSpec("credential:"
+          + PersonalizationStore.external_revision(preferences), preferences));
+
+    Decoder.RequestKey refreshedKey = decoder.current_key();
+    assertNotNull("Replacing the externally changed personalization domain must resubmit the current word.",
+        refreshedKey);
+    Decoder.Result refreshed = awaitReady(decoder, refreshedKey).result;
+    assertTrue("The active decoder must observe a word taught from Settings without restarting the IME.",
+        refreshed.literal.learned);
+  }
+
 
   @Test
   public void candidate_evidence_requires_the_exact_result_and_record_precedes_rerank()
@@ -435,8 +464,8 @@ public class SharedDecoderTest
     SharedPreferences preferences = preferences(
         "shared_decoder_candidate_provenance_test");
     PersonalizationStore seeded = new PersonalizationStore(preferences);
-    seeded.record_commit("the", "teh");
-    seeded.record_word("ten");
+    seeded.record_selected_correction("teh", "the");
+    seeded.learn_word("ten");
     SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
     long session = start(decoder, enabledConfig(), preferences,
         "profile-candidate");
@@ -451,11 +480,15 @@ public class SharedDecoderTest
         candidate(initial, "ten"));
     assertEquals(1, accepted.exactCorrectionCount);
 
-    SharedDecoder.CommitToken forgedTarget = decoder.prepare_commit(session,
-        initialKey, "ten", "teh");
-    assertNotNull("Invalid correction provenance must suppress only the pair evidence, not the otherwise valid word token.",
+    SharedDecoder.CommitToken forgedTarget =
+      decoder.prepare_selected_correction(session, initialKey, "ten", "teh");
+    assertNull("A correction target absent from the exact accepted result must not receive a deliberate-correction token.",
         forgedTarget);
-    decoder.commit_prepared(forgedTarget);
+    SharedDecoder.CommitToken ordinaryTarget = decoder.prepare_commit(session,
+        initialKey, "ten", "teh");
+    assertNotNull("An ordinary commit remains valid editor context without becoming correction evidence.",
+        ordinaryTarget);
+    decoder.commit_prepared(ordinaryTarget);
     Decoder.RequestKey afterForgedKey = decoder.current_key();
     assertFalse(initialKey.equals(afterForgedKey));
     Decoder.Result afterForged = awaitReady(decoder, afterForgedKey).result;
@@ -465,8 +498,9 @@ public class SharedDecoderTest
     assertEquals("Rejected provenance must leave the real correction evidence unchanged.",
         1, candidate(afterForged, "the").exactCorrectionCount);
 
-    SharedDecoder.CommitToken provenTarget = decoder.prepare_commit(session,
-        afterForgedKey, "the", "teh");
+    SharedDecoder.CommitToken provenTarget =
+      decoder.prepare_selected_correction(session, afterForgedKey, "the",
+          "teh");
     assertNotNull(provenTarget);
     decoder.commit_prepared(provenTarget);
     Decoder.RequestKey personalizedKey = decoder.current_key();
@@ -484,7 +518,7 @@ public class SharedDecoderTest
   }
 
   @Test
-  public void correction_only_candidate_acceptance_strengthens_pair_without_teaching_word()
+  public void only_selected_manual_correction_strengthens_pair_and_adaptive_word()
       throws Exception
   {
     SharedPreferences preferences = preferences(
@@ -500,22 +534,34 @@ public class SharedDecoderTest
         snapshot(1, "thus", false));
     Decoder.Candidate accepted =
       candidate(awaitReady(decoder, key).result, "this");
-    assertNotNull("Four editor-verified corrections must recall the target without dictionary or unigram evidence.",
+    assertNotNull("Four historical corrections must recall the target without unigram evidence.",
         accepted);
     assertFalse(accepted.recognized);
     assertEquals(0, accepted.unigramCount);
 
-    SharedDecoder.CommitToken token = decoder.prepare_commit(session, key,
+    SharedDecoder.CommitToken ordinary = decoder.prepare_commit(session, key,
         "this", "thus");
-    assertNotNull(token);
-    decoder.commit_prepared(token);
+    assertNotNull(ordinary);
+    decoder.commit_prepared(ordinary);
+    key = decoder.current_key();
+    awaitReady(decoder, key);
+    PersonalizationStore stored = new PersonalizationStore(preferences);
+    assertEquals("Automatic or ordinary acceptance must not strengthen correction evidence.",
+        4, stored.correction_count("thus", "this"));
+    assertEquals("Automatic or ordinary acceptance must not add Adaptive vocabulary.",
+        0, stored.word_count("this"));
+
+    SharedDecoder.CommitToken selected =
+      decoder.prepare_selected_correction(session, key, "this", "thus");
+    assertNotNull(selected);
+    decoder.commit_prepared(selected);
     awaitReady(decoder, decoder.current_key());
 
-    PersonalizationStore stored = new PersonalizationStore(preferences);
-    assertEquals("Accepting a correction-only candidate must strengthen that exact pair.",
+    stored = new PersonalizationStore(preferences);
+    assertEquals("A decoder-validated manual selection must strengthen its exact pair.",
         5, stored.correction_count("thus", "this"));
-    assertEquals("Correction-only candidate presentation must not promote an unknown target into ordinary word history.",
-        0, stored.word_count("this"));
+    assertEquals("A decoder-validated manual selection must add its target to Adaptive.",
+        1, stored.word_count("this"));
   }
 
   @Test
@@ -539,8 +585,8 @@ public class SharedDecoderTest
     assertTrue("Exact candidate provenance must use the bounded textual pair rather than geometry-priced decoder edit count.",
         PersonalizationStore.is_plausible_correction("thxz", "this"));
 
-    SharedDecoder.CommitToken token = decoder.prepare_commit(session, key,
-        "this", "thxz");
+    SharedDecoder.CommitToken token =
+      decoder.prepare_selected_correction(session, key, "this", "thxz");
     assertNotNull(token);
     decoder.commit_prepared(token);
     awaitReady(decoder, decoder.current_key());
@@ -548,7 +594,7 @@ public class SharedDecoderTest
     PersonalizationStore stored = new PersonalizationStore(preferences);
     assertEquals("Accepting the exact two-edit candidate must strengthen its pair after provenance validation.",
         5, stored.correction_count("thxz", "this"));
-    assertEquals(0, stored.word_count("this"));
+    assertEquals(1, stored.word_count("this"));
   }
 
   @Test
@@ -572,10 +618,10 @@ public class SharedDecoderTest
     assertEquals("résumé", result.autocorrection.surface);
     assertEquals("resume", result.autocorrection.canonical);
 
-    SharedDecoder.CommitToken forged = decoder.prepare_commit(session, key,
-        "resumé", "resume");
-    assertNotNull(forged);
-    decoder.commit_prepared(forged);
+    SharedDecoder.CommitToken forged =
+      decoder.prepare_selected_correction(session, key, "resumé", "resume");
+    assertNull("A surface not emitted by the accepted result must not receive a deliberate-correction token.",
+        forged);
     key = decoder.current_key();
     awaitReady(decoder, key);
     PersonalizationStore stored = new PersonalizationStore(preferences);
@@ -583,9 +629,9 @@ public class SharedDecoderTest
         0, stored.correction_count("resume", "resumé"));
     assertEquals(4, stored.correction_count("resume", "résumé"));
 
-    SharedDecoder.CommitToken token = decoder.prepare_commit(session, key,
-        "résumé", "resume");
-    assertNotNull("Fold-equivalent correction output must retain accepted-result provenance through prepare_commit.",
+    SharedDecoder.CommitToken token =
+      decoder.prepare_selected_correction(session, key, "résumé", "resume");
+    assertNotNull("Fold-equivalent correction output must retain accepted-result provenance through deliberate selection.",
         token);
     decoder.commit_prepared(token);
     awaitReady(decoder, decoder.current_key());
@@ -620,8 +666,8 @@ public class SharedDecoderTest
     Decoder.RequestKey unknownKey = decoder.request(session,
         snapshot(2, "this", false));
     awaitReady(decoder, unknownKey);
-    decoder.commit_prepared(decoder.prepare_commit(session, unknownKey,
-          "this", "thus"));
+    decoder.commit_prepared(decoder.prepare_selected_correction(
+          session, unknownKey, "this", "thus"));
     awaitReady(decoder, decoder.current_key());
 
     Decoder.RequestKey betaKey = decoder.request(session,
@@ -633,7 +679,7 @@ public class SharedDecoderTest
 
     PersonalizationStore stored = new PersonalizationStore(preferences);
     assertEquals(1, stored.correction_count("thus", "this"));
-    assertEquals(0, stored.word_count("this"));
+    assertEquals(1, stored.word_count("this"));
     assertEquals("An unknown corrected token must break phrase context rather than creating a false alpha-to-beta next-word association.",
         0, stored.bigram_count("alpha", "beta"));
     assertEquals(0, stored.bigram_count("alpha", "this"));
@@ -654,10 +700,11 @@ public class SharedDecoderTest
         snapshot(1, "the", true));
     assertNull("A selected word intentionally has no accepted decoder result.",
         decoder.current_result(suppressedKey));
-    SharedDecoder.CommitToken unproven = decoder.prepare_commit(session,
-        suppressedKey, "the", "tge");
-    assertNotNull(unproven);
-    decoder.commit_prepared(unproven);
+    SharedDecoder.CommitToken unproven =
+      decoder.prepare_selected_correction(session, suppressedKey, "the",
+          "tge");
+    assertNull("A selected editor range with no decodable request must not authorize correction learning.",
+        unproven);
 
     Decoder.RequestKey provenKey = decoder.request(session,
         snapshot(2, "the", false));
@@ -669,8 +716,8 @@ public class SharedDecoderTest
         0, new PersonalizationStore(preferences)
           .correction_count("tge", "the"));
 
-    SharedDecoder.CommitToken proven = decoder.prepare_commit(session,
-        provenKey, "the", "tge");
+    SharedDecoder.CommitToken proven =
+      decoder.prepare_selected_correction(session, provenKey, "the", "tge");
     assertNotNull(proven);
     decoder.commit_prepared(proven);
     awaitReady(decoder, decoder.current_key());
@@ -678,8 +725,8 @@ public class SharedDecoderTest
     PersonalizationStore stored = new PersonalizationStore(preferences);
     assertEquals("The decodable editor-verified manual correction must persist without dictionary recognition.",
         1, stored.correction_count("tge", "the"));
-    assertEquals("Correction-only evidence must not turn arbitrary unrecognized commits into ordinary learned words.",
-        0, stored.word_count("the"));
+    assertEquals("A deliberate selected correction must add its target to Adaptive.",
+        1, stored.word_count("the"));
   }
 
   @Test
@@ -702,8 +749,8 @@ public class SharedDecoderTest
       field.set(decoder, null);
     }
 
-    SharedDecoder.CommitToken token = decoder.prepare_commit(session, key,
-        "this", "thus");
+    SharedDecoder.CommitToken token =
+      decoder.prepare_selected_correction(session, key, "this", "thus");
     assertNotNull("An exact current decodable request must prepare before its result is available.",
         token);
     decoder.commit_prepared(token);
@@ -712,11 +759,11 @@ public class SharedDecoderTest
     PersonalizationStore stored = new PersonalizationStore(preferences);
     assertEquals("Immediate Space after the final corrected letter must not lose the typo pair.",
         1, stored.correction_count("thus", "this"));
-    assertEquals(0, stored.word_count("this"));
+    assertEquals(1, stored.word_count("this"));
   }
 
   @Test
-  public void hidden_suggestions_do_not_disable_autocorrect_learning()
+  public void hidden_suggestions_do_not_turn_autocorrect_into_learning()
       throws Exception
   {
     SharedPreferences preferences = preferences(
@@ -737,8 +784,10 @@ public class SharedDecoderTest
     decoder.commit_prepared(token);
     awaitResult(decoder, decoder.current_key());
 
-    assertEquals(1, new PersonalizationStore(preferences)
-        .correction_count("thus", "this"));
+    PersonalizationStore stored = new PersonalizationStore(preferences);
+    assertEquals("Automatic correction must not create correction evidence when candidate display is hidden.",
+        0, stored.correction_count("thus", "this"));
+    assertEquals(0, stored.word_count("this"));
   }
 
   @Test
@@ -748,8 +797,8 @@ public class SharedDecoderTest
     SharedPreferences preferences = preferences(
         "shared_decoder_inactive_clear_test");
     PersonalizationStore seeded = new PersonalizationStore(preferences);
-    seeded.record_commit("alpha", "alpga");
-    seeded.record_commit("beta", null);
+    seeded.record_selected_correction("alpga", "alpha");
+    seeded.learn_word("beta");
     SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
     SharedDecoder.ResourceSpec warmedResources = resources("en:clear");
     SharedDecoder.PersonalizationSpec warmedPersonalization =
@@ -774,7 +823,7 @@ public class SharedDecoderTest
       new PersonalizationStore(preferences);
     assertEquals(1, afterRejectedClear.word_count("alpha"));
     assertEquals(1, afterRejectedClear.word_count("beta"));
-    assertEquals(1, afterRejectedClear.bigram_count("alpha", "beta"));
+    assertEquals(0, afterRejectedClear.bigram_count("alpha", "beta"));
     assertEquals(1, afterRejectedClear.correction_count("alpga", "alpha"));
     decoder.finish_session(staleProofSession);
 
