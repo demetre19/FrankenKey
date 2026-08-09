@@ -418,8 +418,8 @@ public final class SwiftKeyParityInstrumentedTest
         String previous = normalized(token.getString("previous"));
         assertEquals("The profile must expose the completed previous word.",
             previous, previousWord(profile));
-        assertEquals("The packaged model must expose this observed prior.",
-            15, languageModelWeight(previous, expected));
+        assertTrue("The packaged model must expose this observed prior.",
+            languageModelWeight(previous, expected) >= 8);
         Decoder.Result result = decodeFixed(generation++, typed, profile);
         String actual = decodedSurface(result, typed);
         scored++;
@@ -442,6 +442,7 @@ public final class SwiftKeyParityInstrumentedTest
 
   @Test
   public void packagedContextRepairsReportedShortWordTypos()
+      throws Exception
   {
     PersonalizationStore going = PersonalizationStore.empty();
     going.record_word("going");
@@ -452,6 +453,15 @@ public final class SwiftKeyParityInstrumentedTest
     how.record_word("how");
     Decoder.Result ut = decodeFixed(3051, "ut", how);
     assertEquals(candidateSummary(ut), "it", decodedSurface(ut, "ut"));
+
+    PersonalizationStore comparison = PersonalizationStore.empty();
+    comparison.record_word("as");
+    comparison.record_word("bad");
+    assertEquals("as", previousPreviousWord(comparison));
+    assertEquals(13, languageModelWeight("as", "bad", "as"));
+    Decoder.Result ad = decodeFixed(3052, "ad", comparison);
+    assertEquals("A corpus trigram must supply context absent from the compact bigram set. "
+        + candidateSummary(ad), "as", decodedSurface(ad, "ad"));
   }
 
 
@@ -1103,6 +1113,15 @@ public final class SwiftKeyParityInstrumentedTest
     return (String)method.invoke(profile);
   }
 
+  private String previousPreviousWord(PersonalizationStore profile)
+      throws Exception
+  {
+    Method method = PersonalizationStore.class.getDeclaredMethod(
+        "previous_previous_word");
+    method.setAccessible(true);
+    return (String)method.invoke(profile);
+  }
+
   private int languageModelWeight(String previous, String next)
       throws Exception
   {
@@ -1110,6 +1129,15 @@ public final class SwiftKeyParityInstrumentedTest
         "weight", String.class, String.class);
     method.setAccessible(true);
     return (Integer)method.invoke(_languageModel, previous, next);
+  }
+
+  private int languageModelWeight(String prior, String previous, String next)
+      throws Exception
+  {
+    Method method = LanguageModel.class.getDeclaredMethod(
+        "weight", String.class, String.class, String.class);
+    method.setAccessible(true);
+    return (Integer)method.invoke(_languageModel, prior, previous, next);
   }
 
   private static String decodedSurface(Decoder.Result result, String typed)

@@ -137,15 +137,38 @@ public final class SystemGrammarChecker
 
   static String relevant_text(String beforeCursor)
   {
-    int start = Math.max(beforeCursor.lastIndexOf('\n'),
-        Math.max(beforeCursor.lastIndexOf('.'),
-          Math.max(beforeCursor.lastIndexOf('!'),
-            beforeCursor.lastIndexOf('?'))));
-    String text = beforeCursor.substring(Math.min(beforeCursor.length(), start + 1));
-    int leading = 0;
-    while (leading < text.length() && Character.isWhitespace(text.charAt(leading)))
-      leading++;
-    return text.substring(leading);
+    int terminator = beforeCursor.length() - 1;
+    while (terminator >= 0 && (Character.isWhitespace(
+            beforeCursor.charAt(terminator))
+          || is_sentence_tail(beforeCursor.charAt(terminator))))
+      terminator--;
+    if (terminator < 0 || !is_sentence_terminator(
+          beforeCursor.charAt(terminator)))
+      return "";
+
+    int start = 0;
+    for (int i = terminator - 1; i >= 0; i--)
+    {
+      if (!is_sentence_terminator(beforeCursor.charAt(i)))
+        continue;
+      start = i + 1;
+      break;
+    }
+    while (start < terminator
+        && Character.isWhitespace(beforeCursor.charAt(start)))
+      start++;
+    return beforeCursor.substring(start);
+  }
+
+  private static boolean is_sentence_terminator(char c)
+  {
+    return c == '.' || c == '!' || c == '?';
+  }
+
+  private static boolean is_sentence_tail(char c)
+  {
+    return c == '\'' || c == '"' || c == '\u2019' || c == '\u201d'
+      || c == ')' || c == ']' || c == '}';
   }
 
   private void submit(Request request)

@@ -322,11 +322,13 @@ public final class Decoder
 
 
     String previousWord = null;
+    String priorWord = null;
     if (personalization != null)
     {
       try
       {
         previousWord = personalization.previous_word();
+        priorWord = personalization.previous_previous_word();
       }
       catch (RuntimeException e)
       {
@@ -339,7 +341,7 @@ public final class Decoder
       try
       {
         collect_language_model_candidates(dictionary, hunspell, languageModel,
-            previousWord, merged);
+            priorWord, previousWord, merged);
       }
       catch (IllegalStateException e)
       {
@@ -357,7 +359,7 @@ public final class Decoder
           personalization == null ? 0f : personalization.touch_offset_y());
 
     List<Candidate> ranked = rank_candidates(request, merged, costs,
-        personalization, languageModel, previousWord, failure);
+        personalization, languageModel, priorWord, previousWord, failure);
     Candidate literalCandidate = candidate_for_canonical(ranked,
         request.normalized);
     Candidate autocorrection = choose_autocorrection(request, ranked,
@@ -382,7 +384,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, previousWord, failure);
+          languageModel, priorWord, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure);
@@ -405,7 +407,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, previousWord, failure);
+          languageModel, priorWord, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure);
@@ -437,14 +439,14 @@ public final class Decoder
   private static List<Candidate> rank_candidates(Request request,
       Map<String, Accumulator> merged, CostTable costs,
       PersonalizationStore personalization, LanguageModel languageModel,
-      String previousWord, FailureState failure)
+      String priorWord, String previousWord, FailureState failure)
   {
     Scorer scorer = costs == null ? null : new Scorer(costs);
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
     for (Accumulator accumulator : merged.values())
     {
       add_personalization_metadata(accumulator, personalization, languageModel,
-          previousWord, failure);
+          priorWord, previousWord, failure);
       Score score;
       if (accumulator.literal)
         score = Score.EXACT;
@@ -501,6 +503,8 @@ public final class Decoder
       LanguageModel languageModel, FailureState failure)
   {
     add_personalization_metadata(literal, personalization, languageModel,
+        personalization == null ? null : safe_previous_previous_word(
+          personalization, failure),
         personalization == null ? null : safe_previous_word(personalization,
           failure), failure);
     return present_candidate(literal.to_candidate(Score.EXACT), request, false);
@@ -512,6 +516,20 @@ public final class Decoder
     try
     {
       return personalization.previous_word();
+    }
+    catch (RuntimeException e)
+    {
+      failure.resource();
+      return null;
+    }
+  }
+
+  private static String safe_previous_previous_word(
+      PersonalizationStore personalization, FailureState failure)
+  {
+    try
+    {
+      return personalization.previous_previous_word();
     }
     catch (RuntimeException e)
     {
@@ -740,10 +758,20 @@ public final class Decoder
   }
 
   private static void collect_language_model_candidates(Cdict dictionary,
-      Hunspell hunspell, LanguageModel languageModel, String previousWord,
+      Hunspell hunspell, LanguageModel languageModel, String priorWord,
+      String previousWord, Map<String, Accumulator> merged)
+  {
+    collect_language_model_candidates(dictionary, hunspell,
+        languageModel.following(priorWord, previousWord), merged);
+    collect_language_model_candidates(dictionary, hunspell,
+        languageModel.following(previousWord), merged);
+  }
+
+  private static void collect_language_model_candidates(Cdict dictionary,
+      Hunspell hunspell, Map<String, Integer> following,
       Map<String, Accumulator> merged)
   {
-    for (String target : languageModel.following(previousWord).keySet())
+    for (String target : following.keySet())
     {
       String surface = target;
       Cdict.Result exact = null;
@@ -796,7 +824,7 @@ public final class Decoder
 
   private static void add_personalization_metadata(Accumulator candidate,
       PersonalizationStore personalization, LanguageModel languageModel,
-      String previousWord, FailureState failure)
+      String priorWord, String previousWord, FailureState failure)
   {
     try
     {
@@ -816,7 +844,8 @@ public final class Decoder
       }
       if (languageModel != null && previousWord != null)
         candidate.bigramCount = Math.max(candidate.bigramCount,
-            languageModel.weight(previousWord, candidate.canonical));
+            languageModel.weight(priorWord, previousWord,
+              candidate.canonical));
       if (candidate.bigramCount > 0)
         candidate.sourceMask |= SOURCE_CONTEXT;
     }

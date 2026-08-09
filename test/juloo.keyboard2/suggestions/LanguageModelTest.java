@@ -18,24 +18,33 @@ public class LanguageModelTest
   public void loadsNormalizedBoundedPreviousWordPriors() throws Exception
   {
     LanguageModel model = load("# previous\\tnext\\tweight\n"
-        + "examples\tof\t15\n"
-        + "kind\tof\t12\n");
+        + "examples\tof\t11\n"
+        + "kind\tof\t12\n"
+        + "me\tthe\t9\n"
+        + "show\tme\tthe\t14\n");
 
-    assertEquals(15, model.weight("examples", "of"));
+    assertEquals(11, model.weight("examples", "of"));
     assertEquals(12, model.weight("kind", "of"));
+    assertEquals("A matching trigram must outrank its weaker bigram.",
+        14, model.weight("show", "me", "the"));
+    assertEquals("A missing trigram must fall back to the bigram.",
+        9, model.weight("please", "me", "the"));
     assertEquals("Unlisted contexts must not influence ordinary English text.",
         0, model.weight("either", "or"));
     assertEquals(0, model.weight(null, "of"));
+    assertEquals(0, model.weight("please", "show", "the"));
   }
 
   @Test
   public void rejectsMalformedDuplicateAndOutOfRangeRows() throws Exception
   {
-    assertMalformed("examples of 15\n", "three tab-separated fields");
+    assertMalformed("examples of 15\n", "three or four tab-separated fields");
     assertMalformed("Examples\tof\t15\n", "normalized and non-empty");
     assertMalformed("examples\tof\t16\n", "between 1 and 15");
     assertMalformed("examples\tof\t15\nexamples\tof\t14\n",
         "duplicate bigram");
+    assertMalformed("show\tme\tthe\t14\nshow\tme\tthe\t13\n",
+        "duplicate trigram");
   }
 
   @Test
@@ -45,7 +54,7 @@ public class LanguageModelTest
     for (int i = 0; i <= 4096; i++)
       rows.append("word").append(i).append("\tnext\t1\n");
 
-    assertMalformed(rows.toString(), "exceeds 4096 bigrams");
+    assertMalformed(rows.toString(), "exceeds 4096 ngrams");
   }
 
   private LanguageModel load(String content) throws Exception

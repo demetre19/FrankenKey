@@ -67,12 +67,17 @@ public class SystemGrammarCheckerTest
   }
 
   @Test
-  public void grammar_requests_are_bounded_to_the_current_sentence()
+  public void grammar_requests_are_bounded_to_the_latest_completed_sentence()
   {
-    assertEquals("I has apples",
-        SystemGrammarChecker.relevant_text("Earlier text.  I has apples"));
-    assertEquals("unfinished thought",
-        SystemGrammarChecker.relevant_text("First line\n unfinished thought"));
+    assertEquals("I has apples.",
+        SystemGrammarChecker.relevant_text("Earlier text.  I has apples."));
+    assertEquals("\"I has apples?\" ",
+        SystemGrammarChecker.relevant_text(
+          "Earlier text. \"I has apples?\" "));
+    assertEquals("An unfinished sentence must not leave the keyboard.",
+        "", SystemGrammarChecker.relevant_text("unfinished thought"));
+    assertEquals("A newline alone does not complete a sentence.",
+        "", SystemGrammarChecker.relevant_text("First line\nunfinished thought"));
   }
 
   private static BaseInputConnection connection(String text)

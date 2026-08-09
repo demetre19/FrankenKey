@@ -20,10 +20,10 @@
 - Only exact current `RequestKey` may publish, commit, learn/forget, or accept actions; PENDING/EMPTY are inert. Prepared tokens require valid captured session/domain.
 - Prewarm exact resource descriptors; same-key worker resources survive sessions and changes advance by epochs.
 - Treat matching Cdict or bundled Hunspell as installed; never show a false install banner.
-- Ranking deterministically combines dictionary, geometry, frequency, unigram/bigram, and bounded typo evidence; no debug labels. Candidate UI stays ≤3 single-line words plus emoji slot.
+- Ranking deterministically combines dictionary, geometry, frequency, unigram, bounded bigram/trigram, and typo evidence; no debug labels. Candidate UI stays ≤3 single-line words plus emoji slot.
 - Credential-protected learning stays reversible. Explicit learning persists exact casing only for 2–3-letter tokens; automatic accepted-word learning remains case-normalized. Correction-only targets are not unigrams/next-word anchors; learning runs when Suggestions or Autocorrect is enabled.
 - Touch calibration is worker-confined, bounded, complete-evidence-only, active after minimum samples, subtracted from coordinates, and cleared with personalization; corrected-source touches never train.
-- Correction IDs use NFC lowercase exact editor text, not accent-folded keys. Context evidence is an exact previous/source/target triple; packaged locale priors may cover high-confidence common sequences, but code must not hardcode phrases or synthesize cross-products.
+- Correction IDs use NFC lowercase exact editor text, not accent-folded keys. Learned correction evidence is an exact previous/source/target triple; packaged locale priors may use one or two preceding words from corpus-derived high-confidence sequences, but code must not hardcode phrases or synthesize cross-products.
 - Exact evidence outranks related evidence from first acceptance; four accepted exact corrections may override protected literals. Related adjacent-key evidence never unlocks override.
 - Protect cold short all-caps tokens, valid/learned/technical/proper-name literals, ambiguous short repairs, and lowercase requests from improper casing.
 - Narrow exceptions remain explicit: lowercase `j`→`I`; a unique nearby frequent Cdict substitution for unlearned lowercase 2–3-letter tokens absent from Cdict; decisive context repair; supported 3-letter adjacent transposition; validated contraction/apostrophe repairs; exact learned policy for `im`→`I'm`; validated deterministic English inflections.

@@ -1,0 +1,16 @@
+FrankenKey English short-word n-gram model
+
+Generated from the Tatoeba English sentence export:
+https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2
+
+Pinned source SHA-256:
+34fc76cc177ca65b56cb3b966a2b8f33efd8a1b0551eb855f31b5ab940d05e60
+
+Tatoeba states that its downloadable sentence files are released under
+Creative Commons Attribution 2.0 France (CC BY 2.0 FR), with part of the
+collection also available under CC0 1.0:
+https://tatoeba.org/en/downloads
+https://creativecommons.org/licenses/by/2.0/fr/
+
+The generated model contains aggregate bigram/trigram weights only; it does
+not redistribute sentence text or contributor identifiers.
