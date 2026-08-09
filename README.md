@@ -22,7 +22,7 @@
 
 ## Private by design
 
-FrankenKey keeps its adaptive typing data on your device. Remembered words, word pairs, typo corrections, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
+FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
 Optional online GIF search is the one network-backed feature. If you add your own free GIPHY API key, GIF searches and the key are sent to GIPHY's API.
 
@@ -30,21 +30,19 @@ Optional online GIF search is the one network-backed feature. If you add your ow
 
 FrankenKey learns how you type without uploading your typing history.
 
-It can remember:
+Vocabulary enters FrankenKey only when:
 
-- Words you accept and use.
-- Word pairs that help predict what comes next.
-- Your repeated typo corrections.
-- Corrections you explicitly teach.
+- You explicitly teach a word with **Teach**, the keyboard teach gesture, or the suggestion teach affordance.
+- You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-Learning starts helping from the first accepted evidence. Four repeated corrections of the same typo can make FrankenKey strongly prefer your correction, even when the original text looks like a valid word.
+Ordinary typing, repeated commits, consecutive words, and automatic autocorrection do not teach vocabulary. On first launch after this policy update, FrankenKey removes passive-only Adaptive words and old consecutive-word memory while preserving explicitly taught words, historical correction-backed targets, and touch calibration.
 
 You stay in control:
 
 - Press Backspace immediately after a fresh autocorrection to restore the exact original text.
 - Swipe up on the keyboard to teach the current word when Suggestions are enabled.
 - Swipe down to forget the current word, then confirm the removal.
-- Use **Clear adaptive learning** in Settings to remove remembered words, word-pair memory, and typo-correction weights.
+- Use **Clear adaptive learning** in Settings to remove taught and correction-backed words, typo-correction patterns, and touch calibration.
 
 Passwords and unsupported or no-suggestions fields are excluded from adaptive learning.
 
@@ -53,8 +51,9 @@ Passwords and unsupported or no-suggestions fields are excluded from adaptive le
 Suggestions and autocorrect are separate controls, and both are enabled by default.
 
 - **Suggestions** help complete the word you are typing and surface likely next words.
+- Swipe left across the suggestion row to bring the next three ranked words in from the right; swipe right to return to the first three.
 - **Autocorrect** fixes high-confidence mistakes when you finish a word with Space, Enter, or supported punctuation.
-- Local word, word-pair, and correction memory improves ranking around your own typing habits.
+- Explicit teaching and deliberate correction choices improve local ranking without turning ordinary typing into vocabulary.
 - Immediate Backspace safely undoes a new autocorrection.
 - Automatic capitalisation handles sentence starts and standalone lowercase `i` where the text field allows it.
 - Short two- and three-letter corrections combine touch-aware evidence with compact conversational context.
@@ -80,6 +79,7 @@ Everyday mode is the default. It includes:
 - Fast edit gestures on `z`, `x`, `c`, and `v` for Select all, Cut, Copy, and Paste.
 - Clean numeric and symbol pages.
 - Voice typing on the bottom-right action key without crowding the Spacebar.
+- A Keyboard setting can hide the dedicated full-stop key beside the Spacebar and expand the Spacebar into the freed width.
 - Hidden power gestures that remain available without filling every key with labels.
 
 ### Coding mode
@@ -127,10 +127,10 @@ Clipboard data remains local to FrankenKey.
 
 ## Cursor navigation, selection and deletion
 
-The **G** key is a convenient four-direction cursor touchpad. The same gesture works from any middle-row letter in Everyday and Coding text layouts:
+The **G** key is a convenient four-direction cursor touchpad, marked by a very faint border when navigation is available:
 
-- Swipe left or right from G or another middle-row letter to move through text.
-- Swipe up or down to move between lines.
+- Swipe left or right from G to move through text.
+- Swipe up or down from G to move between lines.
 - Continue farther from the starting key to move faster.
 - Reverse direction to move back precisely.
 - Tap without swiping to type the letter normally.
@@ -138,7 +138,7 @@ The **G** key is a convenient four-direction cursor touchpad. The same gesture w
 To delete a selection:
 
 1. Tap **Shift**.
-2. Swipe from **G** or any middle-row letter to select text in any direction.
+2. Swipe from **G** to select text in any direction.
 3. Reverse the swipe to shrink the selection when needed.
 4. Tap **Delete**.
 
@@ -194,9 +194,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.93
-Version code: 144
-SHA-256: 108937473e85d80b462a1b6a560aeba061737500543a95336a0cb9f0f4949b45
+Version: 2.0.97
+Version code: 148
+SHA-256: e7a67874e1f0eb2df22b31dd868861c30654f33d8521004fe7a3e0a646e2a834
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

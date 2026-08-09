@@ -2,6 +2,14 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.97 — version code 148
+
+- Limited Adaptive vocabulary to explicit teaching and deliberate correction choices made after editing a word.
+- Added a one-time cleanup that removes passive-only words and old word-pair memory while preserving Taught words, correction-backed targets, and touch calibration.
+- Added a second three-word Suggestions page: swipe left to bring ranks 4–6 in from the right, then swipe right to return.
+- Added a Keyboard setting that hides the dedicated full-stop key and gives its width back to the spacebar.
+- Kept Settings search, Learned Words fields, and learned-word rows visibly inset from bordered edges.
+
 ## 2.0.93 — version code 144
 
 - Combined touch-aware decoding with compact conversational bigram and trigram evidence for short-word corrections.
@@ -53,8 +61,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Snippet pages now loop continuously in both directions.
 - Shorter horizontal swipes change snippet pages sooner while preserving normal taps and vertical gestures.
-
-## 2.0.59 — version code 110
-
-- Expanded English autocorrect accuracy and safety across everyday writing.
-- Added bounded previous-word context, broader contraction and typo handling, and stronger protection for names, slang, and technical terms.

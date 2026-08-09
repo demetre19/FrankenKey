@@ -1,33 +1,28 @@
-# apk-backups DOX
+# APK Archive DOX
 
 ## Purpose
 
-- Preserve installable FrankenKey APK backups across release iterations.
-- Keep enough metadata to identify package, version, hash, signer, source, and release purpose.
+- Preserve identifiable FrankenKey APK releases.
 
 ## Ownership
 
-- This folder owns archived APK files and `manifest.json`.
-- The project root owns the current `FrankenKey-installable-release.apk`; this folder owns historical copies.
+- `apk-backups/` owns archived APKs and `manifest.json`; root owns current canonical APK.
 
 ## Local Contracts
 
-- Every APK added here must have a corresponding `manifest.json` entry.
-- Backup filenames must include version name, version code, signer hint, and a short APK SHA/hash suffix when available.
-- Manifest entries must record package, versionCode, versionName, size, sha256, signerSha256, source, label, and a concise note.
-- Do not overwrite or delete old signer/debug-key backups unless the user explicitly asks.
+- Every added APK requires a same-change manifest entry.
+- Filenames include version name/code, signer hint, and short APK hash when available.
+- Entries record label, file, source, package, versionCode/versionName, size, SHA-256, signer SHA-256, and concise note.
+- Never overwrite/delete old signer or debug-key backups without explicit approval.
 
 ## Work Guidance
 
-- Treat release-signing and signer compatibility as durable metadata, not incidental notes.
-- Keep backup notes factual and short; describe what makes the release worth preserving.
-- Prefer adding a new backup over mutating old APK artifacts.
+- Prefer adding immutable backups; keep signing compatibility metadata factual and notes short.
 
 ## Verification
 
-- For new backups, verify the copied APK hash against the manifest `sha256`.
-- When possible, verify package/version/signature with Android build tools before recording metadata.
+- Compare archive hash to manifest; verify package/version/signature when tools are available.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. This folder is a single release-backup boundary.
+- None.

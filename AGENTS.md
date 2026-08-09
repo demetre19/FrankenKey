@@ -1,106 +1,41 @@
-# DOX framework
+# FrankenKey Delivery DOX
 
-- DOX is highly performant AGENTS.md hierarchy installed here
-- Agent must follow DOX instructions across any edits
+## Purpose
 
-## Core Contract
+- Own public release artifacts, documentation, product contracts, and APK archives.
 
-- AGENTS.md files are binding work contracts for their subtrees
-- Work products, source materials, instructions, records, assets, and durable docs must stay understandable from the nearest applicable AGENTS.md plus every parent AGENTS.md above it
+## Ownership
 
-## Read Before Editing
+- Root owns `README.md`, `CHANGELOG.md`, canonical APK, product/Reader plans, and release workflow.
+- `../FrankenKey-autobuild-autocorrect/` owns Android source; `apk-backups/` owns archives/manifest.
 
-1. Read the root AGENTS.md
-2. Identify every file or folder you expect to touch
-3. Walk from the repository root to each target path
-4. Read every AGENTS.md found along each route
-5. If a parent AGENTS.md lists a child AGENTS.md whose scope contains the path, read that child and continue from there
-6. Use the nearest AGENTS.md as the local contract and parent docs for repo-wide rules
-7. If docs conflict, the closer doc controls local work details, but no child doc may weaken DOX
+## Local Contracts
 
-Do not rely on memory. Re-read the applicable DOX chain in the current session before editing.
+- Keep artifacts understandable from the nearest DOX plus parents; closer docs specialize but never weaken this contract.
+- Before edits, follow the indexed DOX chain. After meaningful changes, update affected purpose/ownership/contracts/workflow/indexes; omit updates only when behavior/contracts are unchanged.
+- DOX sections: Purpose, Ownership, Local Contracts, Work Guidance, Verification, Child DOX Index. Keep them concise/current; document stable contracts, not history.
 
-## Update After Editing
+## Work Guidance
 
-Every meaningful change requires a DOX pass before the task is done.
+- `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
+- Inspect/execute supplied reference artifacts before parity work.
+- Prefer programmatic paths; use UI only for UI behavior or unavailable programmatic surfaces.
+- Re-check changed paths, DOX chains/indexes, stale text, and relevant verification at closeout.
 
-Update the closest owning AGENTS.md when a change affects:
+## Release Contracts
 
-- purpose, scope, ownership, or responsibilities
-- durable structure, contracts, workflows, or operating rules
-- required inputs, outputs, permissions, constraints, side effects, or artifacts
-- user preferences about behavior, communication, process, organization, or quality
-- AGENTS.md creation, deletion, move, rename, or index contents
-
-Update parent docs when parent-level structure, ownership, workflow, or child index changes. Update child docs when parent changes alter local rules. Remove stale or contradictory text immediately. Small edits that do not change behavior or contracts may leave docs unchanged, but the DOX pass still must happen.
-
-## Hierarchy
-
-- Root AGENTS.md is the DOX rail: project-wide instructions, global preferences, durable workflow rules, and the top-level Child DOX Index
-- Child AGENTS.md files own domain-specific instructions and their own Child DOX Index
-- Each parent explains what its direct children cover and what stays owned by the parent
-- The closer a doc is to the work, the more specific and practical it must be
-
-## Child Doc Shape
-
-- Create a child AGENTS.md when a folder becomes a durable boundary with its own purpose, rules, responsibilities, workflow, materials, or quality standards
-- Work Guidance must reflect the current standards of the project or user instructions; if there are no specific standards or instructions yet, leave it empty
-- Verification must reflect an existing check; if no verification framework exists yet, leave it empty and update it when one exists
-
-Default section order:
-
-- Purpose
-- Ownership
-- Local Contracts
-- Work Guidance
-- Verification
-- Child DOX Index
-
-## Style
-
-- Keep docs concise, current, and operational
-- Document stable contracts, not diary entries
-- Put broad rules in parent docs and concrete details in child docs
-- Prefer direct bullets with explicit names
-- Do not duplicate rules across many files unless each scope needs a local version
-- Delete stale notes instead of explaining history
-- Trim obvious statements, repeated rules, misplaced detail, and warnings for risks that no longer exist
-
-## Closeout
-
-1. Re-check changed paths against the DOX chain
-2. Update nearest owning docs and any affected parents or children
-3. Refresh every affected Child DOX Index
-4. Remove stale or contradictory text
-5. Run existing verification when relevant
-6. Report any docs intentionally left unchanged and why
-
-## User Preferences
-
-When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md.
-- Every FrankenKey build intended for user testing must replace `/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/FrankenKey-installable-release.apk` with the verified final APK; proving a separate build output without updating that exact path is incomplete delivery.
-- FrankenKey updates are published as GitHub Releases tagged `v<versionName>-vc<versionCode>` with `FrankenKey-installable-release.apk` attached and the user-visible changelog in the release body. Keep download, package/version, hash, and signer metadata consistent with the exact delivery APK.
-- Keep test candidates local until the user explicitly confirms full testing is complete and approves publication; before that approval, do not push release commits, create a GitHub Release, or upload the APK.
-- Each Android release must also carry `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` in the source branch with user-facing content consistent with the GitHub Release body.
-- Never put a debug/dev APK in the live repository or updater path. The internal Android package ID `dev.frankenkey.keyboard` is retained only for update compatibility; every delivered APK must be the signed release variant, display `FrankenKey`, use the production launcher logo, and pass the source checkout's `verifyReleaseIdentity` gate before publication.
-- Keep `README.md` current-release metadata synchronized with the exact published APK, link it to a public `CHANGELOG.md`, and maintain that changelog as a rolling summary of roughly the 10 latest major user-visible releases whenever publishing a version.
-- Release descriptions, GitHub Release bodies, Fastlane changelogs, README summaries, and `CHANGELOG.md` must describe FrankenKey behavior and outcomes without naming competing keyboard brands, device manufacturers, or other branded products as comparison points.
-- When a supplied reference APK, package, binary, or artifact defines parity, inspect and execute that artifact before editing the port; derive the observable behavior and package/runtime architecture first.
-- Follow the global programmatic-first rule: use APIs, commands, direct service/data operations, and automated harnesses instead of UI whenever they can achieve the same result. Use UI only for UI-specific verification or when no programmatic surface exists. `AUTOBUILD-AGENT-PROGRAMMATIC-FIRST.md` is the standalone AutoBuild skill-agent handoff copy of this rule.
-- Finishing any FrankenKey build intended for user testing is incomplete until the verified signed APK has been pushed directly through Termux SSH port `8022` to `/storage/emulated/0/Download/FrankenKey-installable-release.apk` and the remote size and SHA-256 have been verified against the local canonical APK. Prefer `deme-s23-ultra.modem`; if that shorthand does not resolve, obtain the online `Deme S23 Ultra` Tailscale IP from `tailscale status --json` and connect to that IP directly. Do not require RustDesk or a localhost tunnel, and never use the Termux home directory or another phone path. Uploading is mandatory; installing remains prohibited without explicit user approval.
-
-## Project Context
-
-- This folder is the FrankenKey release/delivery root: public README, installable release APK, logo, license, and archived APK backups.
-- Android source work currently lives in the sibling checkout `../FrankenKey-autobuild-autocorrect`; this root owns delivered artifacts and release-facing documentation.
-- `../FrankenKey-autobuild-autocorrect/AGENTS.md` owns the Android source checkout DOX tree; read it before touching source, resources, tests, build files, or store metadata there.
-- Keep `FrankenKey-installable-release.apk` as the current installable build path used for testing and delivery.
-- When adding a new release APK backup, update `apk-backups/manifest.json` in the same change.
+- Canonical test/delivery path: `FrankenKey-installable-release.apk`; signed release variant only, package `dev.frankenkey.keyboard`, label `FrankenKey`, production logo, `verifyReleaseIdentity` pass. Never place debug/dev APKs in repository/updater paths.
+- Test candidates stay local until explicit testing completion/publication approval. Push/tag/release only with separate approval.
+- User-test builds must replace the canonical APK, then upload the exact bytes via direct Termux SSH port 8022 to `/storage/emulated/0/Download/FrankenKey-installable-release.apk`; verify remote size/SHA-256. Prefer `deme-s23-ultra.modem`, else online `Deme S23 Ultra` Tailscale IP. Never use localhost tunnels/Termux home; never install without approval.
+- Releases use tag `v<versionName>-vc<versionCode>`, attach canonical APK, and publish behavior/outcome changelog text without comparison-brand names.
+- Each release includes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` consistent with its GitHub body.
+- Published `README.md` version/hash/download metadata must match the exact APK and link `CHANGELOG.md`; keep about 10 major releases.
+- New backup APKs require same-change `apk-backups/manifest.json` updates.
 
 ## Verification
 
-- Live updater baseline: installed `2.0.26`/code `77` detected `2.0.27`/code `78`, displayed `Test update`, authenticated the public APK, and completed an in-place Android update. Repeat this device path when updater or release-delivery contracts change.
+- Updater baseline: installed 2.0.26/code 77 detected 2.0.27/code 78, showed changelog, authenticated APK, and updated in place; repeat when updater/delivery contracts change.
 
 ## Child DOX Index
 
-- `apk-backups/AGENTS.md` — archived FrankenKey APK releases and `manifest.json`; owns backup naming, signer/version/hash records, and backup-manifest update rules.
+- `apk-backups/AGENTS.md` — archive naming, identity metadata, and manifest rules.
