@@ -2,6 +2,13 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.93 — version code 144
+
+- Combined touch-aware decoding with compact conversational bigram and trigram evidence for short-word corrections.
+- Preserved explicitly taught casing and deliberate lowercase sentence starts when Shift is manually turned off.
+- Extended safe delayed correction across recent text, including accidental unspaced periods, while protecting URLs and real sentence endings.
+- Limited optional system grammar checks to completed sentence punctuation and excluded private, structured, and terminal fields.
+
 ## 2.0.88 — version code 139
 
 - Added a full-width reading-speed slider directly below the keyboard and clipboard Reader playback controls.
@@ -51,9 +58,3 @@ This file summarizes the 10 most recent major user-visible changes. For download
 
 - Expanded English autocorrect accuracy and safety across everyday writing.
 - Added bounded previous-word context, broader contraction and typo handling, and stronger protection for names, slang, and technical terms.
-
-## 2.0.58 — version code 109
-
-- Improved responsiveness and accuracy for decisive three-letter corrections.
-- Prevented short prefix completions from outranking stronger same-length corrections and bounded late replacements to unchanged recent text.
-

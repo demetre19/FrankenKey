@@ -659,6 +659,18 @@
       "sha256": "9be865b79e18f349e56bb7f09e78a83f15aae9164f900035a87a5cdc79bd6aed",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release adding immediate thumb-friendly reading-speed adjustment beneath the keyboard and clipboard Reader playback controls."
+    },
+    {
+      "label": "contextual-short-word-correction-release",
+      "file": "FrankenKey-2.0.93-vc144-new-release-key-9fdb3633-10893747.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "144",
+      "versionName": "2.0.93",
+      "size": 14159028,
+      "sha256": "108937473e85d80b462a1b6a560aeba061737500543a95336a0cb9f0f4949b45",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release combining touch-aware short-word correction with compact conversational context and punctuation-bounded private grammar checks."
     }
   ]
 }

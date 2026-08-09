@@ -57,6 +57,8 @@ Suggestions and autocorrect are separate controls, and both are enabled by defau
 - Local word, word-pair, and correction memory improves ranking around your own typing habits.
 - Immediate Backspace safely undoes a new autocorrection.
 - Automatic capitalisation handles sentence starts and standalone lowercase `i` where the text field allows it.
+- Short two- and three-letter corrections combine touch-aware evidence with compact conversational context.
+- Explicitly taught short commands keep their casing, and manually turning Shift off preserves lowercase at sentence starts.
 
 You can turn Suggestions or Autocorrect off independently in Settings.
 
@@ -192,9 +194,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.88
-Version code: 139
-SHA-256: 9be865b79e18f349e56bb7f09e78a83f15aae9164f900035a87a5cdc79bd6aed
+Version: 2.0.93
+Version code: 144
+SHA-256: 108937473e85d80b462a1b6a560aeba061737500543a95336a0cb9f0f4949b45
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
