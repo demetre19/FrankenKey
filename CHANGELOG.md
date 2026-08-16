@@ -2,6 +2,38 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.101 — version code 152
+
+- Replaced the keyboard Gallery launcher with Attach Image, which opens Android's image picker and sends the selected image to compatible rich-content editors.
+- Centered the keyboard Reader action group with equal spacing and horizontal scrolling so Settings, Reader, Library, Attach Image, and Voice remain reachable on narrow screens and with larger text.
+- Added a default-on Typing assistance option that turns two consecutive spaces in prose into a full stop followed by one space; structured fields and terminals keep literal spacing.
+- Fixed the candidate-strip Teach action so deliberate teaching reaches Learned Words in safe prose editors even when the host disables passive personalization; structured fields, terminals, and unsafe editors remain excluded.
+- Matched the 3D Reader to Private Drive mobile with one compact toolbar, no duplicate title or Brainwave control, full-edge solid system-bar coverage, top progress above Reader chrome, playback edge shading that preserves the selected background and vignette, a 50px Samsung-safe gutter, a wide thumb-friendly word-distance gesture zone, correctly stacked settings/modals, and a 1%-visible live background preview.
+- Added a configurable 2D/3D RSVP Reader with stereo word spacing, adaptive word grouping, focus-letter guides, crosshairs, chapter cues, bookmarks, typography and colour controls, reading-rhythm pauses, backgrounds, vignette depth, and touch gestures for speed, spacing, font size, navigation, and plain-text view.
+- Added opt-in Reader AI for safe public articles and explicitly loaded clipboard text, with two configurable summaries, chat, quizzes, OpenRouter model and prompt controls, encrypted local key storage, and explicit disclosure before text is sent.
+- Added a searchable, sortable, favourite-aware, date-grouped saved Reader AI library with copy, share, delete, and read-aloud actions.
+- Reorganized 3D Reader settings into accessible semantic groups with working colour pickers and responsive columns that keep labels, sliders, selectors, and values inside narrow-phone cards.
+- Documented the G key's mouse-like four-direction cursor control, distance-based acceleration, reversible movement, and Shift-selection gestures.
+- Added official-source test-install guidance for Android and Samsung, including scoped unknown-source permission, temporary Auto Blocker handling, Play Protect safeguards, test-build update prompts, checksum verification, and immediate security-setting restoration.
+
+
+## 2.0.100 — version code 151
+
+- Fixed the keyboard Gallery shortcut so it opens the Gallery app's Albums screen instead of an empty or single-image view.
+
+
+## 2.0.99 — version code 150
+
+- Added compact Gallery and Voice shortcuts to the keyboard Reader controls, with Settings at the far left and Voice at the far right.
+- Preserved the existing Read Clipboard, Library, and Done-key voice gesture controls.
+
+
+## 2.0.98 — version code 149
+
+- Kept Learned Words teaching, search, and vocabulary-row text visibly inset on first load and when rows are recycled.
+- Rebuilt the portrait PIN and numeric keyboards as cleaner five-unit grids with larger number keys and only essential visible controls.
+
+
 ## 2.0.97 — version code 148
 
 - Limited Adaptive vocabulary to explicit teaching and deliberate correction choices made after editing a word.
@@ -41,23 +73,6 @@ This file summarizes the 10 most recent major user-visible changes. For download
 - Improved article extraction so reading starts with the article, lazy-loaded images are retained in order, and large images fill the reading column.
 - Added a full-screen article image viewer with pinch zoom, panning, and double-tap reset.
 
-## 2.0.65 — version code 116
 
-- Fixed the incorrect dictionary-install message and made English (Australia), English (United Kingdom), and English (United States) consistently available from local bundled data.
-- Updated the launcher guide for four-direction cursor movement from G or any middle-row letter and Shift-swipe selection followed by Delete.
 
-## 2.0.63 — version code 114
 
-- Restored the held-Delete drag so it deletes the highlighted range instead of leaving the selection active.
-- Hold Delete to remove letters, continue left to highlight words and complete sentences, reverse to shrink the range, and lift to delete it.
-
-## 2.0.61 — version code 112
-
-- Added accelerated four-direction cursor movement from `G` and every middle-row letter.
-- Hold Shift while dragging a middle-row letter to extend or contract text selection horizontally or vertically.
-- Added private adaptive touch calibration and expanded explicit voice-editing commands.
-
-## 2.0.60 — version code 111
-
-- Snippet pages now loop continuously in both directions.
-- Shorter horizontal swipes change snippet pages sooner while preserving normal taps and vertical gestures.

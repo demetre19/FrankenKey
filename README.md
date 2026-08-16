@@ -5,7 +5,7 @@
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  Fast everyday typing and a full coding keyboard in one Android app.
+  Fast everyday typing, customizable coding keys, and private Reader/TTS tools in one Android app.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
-Optional online GIF search is the one network-backed feature. If you add your own free GIPHY API key, GIF searches and the key are sent to GIPHY's API.
+Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe article or clipboard text you explicitly loaded into Reader, and only after you request an AI action, to the OpenRouter model you choose.
 
 ## Adaptive learning
 
@@ -58,6 +58,7 @@ Suggestions and autocorrect are separate controls, and both are enabled by defau
 - Automatic capitalisation handles sentence starts and standalone lowercase `i` where the text field allows it.
 - Short two- and three-letter corrections combine touch-aware evidence with compact conversational context.
 - Explicitly taught short commands keep their casing, and manually turning Shift off preserves lowercase at sentence starts.
+- Default-on Typing assistance turns two consecutive spaces in prose into a full stop and one space; structured fields and terminals keep literal spaces.
 
 You can turn Suggestions or Autocorrect off independently in Settings.
 
@@ -95,6 +96,7 @@ Coding mode adds compact access to:
 ### Extra Keys
 
 Tap `…` on the keyboard to open the Extra Keys strip. Tap it again to expand up to three horizontally scrollable rows.
+Build the strip like a compact desktop terminal command bar rather than accepting a fixed layout:
 
 - Use `+` to open **Extra Keys Bar** settings.
 - Show or hide every shortcut.
@@ -125,9 +127,17 @@ FrankenKey includes a keyboard-native clipboard panel for text and images.
 
 Clipboard data remains local to FrankenKey.
 
-## Cursor navigation, selection and deletion
+## Images and voice
 
-The **G** key is a convenient four-direction cursor touchpad, marked by a very faint border when navigation is available:
+When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, Attach Image, and Voice reachable even on narrow screens or with larger text.
+
+- **Attach Image** opens Android's image picker and inserts the selected image into compatible rich-content editors.
+- Unsupported editors get an honest handoff to the app's own attachment control instead of a false success.
+- **Voice** starts Android voice input, while Reader provides separate spoken playback with selectable installed voices.
+
+## G-key mouse-like cursor control, selection and deletion
+
+The **G** key works like a miniature mouse/trackpad for the text cursor, marked by a very faint border when navigation is available:
 
 - Swipe left or right from G to move through text.
 - Swipe up or down from G to move between lines.
@@ -144,9 +154,11 @@ To delete a selection:
 
 For progressive deletion, you can still hold Delete to repeat letters, continue left to highlight words and sentences, reverse to shrink the highlight, and lift to delete it.
 
-## Reader
+## Reader and text-to-speech
 
-Reader is an optional, private text-to-speech experience that is disabled by default. Enable **Reader and text-to-speech controls** in Settings when you want it.
+Reader is an optional, private reading and text-to-speech workspace that is disabled by default. Enable **Reader and text-to-speech controls** in Settings when you want it.
+
+### Text-to-speech Reader
 
 - Read ordinary clipboard text or prose from the current field without leaving the keyboard.
 - Import text, PDF, and EPUB documents, or save supported public articles to the searchable Library.
@@ -154,7 +166,29 @@ Reader is an optional, private text-to-speech experience that is disabled by def
 - Keep playback progress and Reader preferences across sessions.
 - View retained article images in reading order. Large images fill the reading column and open in a full-screen viewer with pinch zoom, panning, and double-tap reset.
 
-Reader content, progress, and retained files stay in FrankenKey's private app storage. Sensitive fields and unavailable content fail closed.
+### 3D Reader
+
+Open **3D Reader** for a focused RSVP speed-reading view:
+
+- Switch between a single 2D word and paired 3D stereo words while preserving the same document position.
+- Control WPM, words per group, adaptive short-word grouping, font, spacing, word and focus colours, focus position, pinned focus letters, guide lines, and crosshairs.
+- Tune punctuation, sentence-end, and long-word pauses.
+- Show customizable chapter cues and progress, save Reader bookmarks, and search saved places.
+- Choose dark or light themes, decorative backgrounds, background depth, a text vignette, and stereo spacing.
+- Use touch gestures for play/pause, font size, speed, word distance, sentence navigation, start/end jumps, and plain-text view.
+- Settings stay grouped and responsive so labels, sliders, colour values, and selectors remain usable on narrow phones.
+
+### Reader AI
+
+For a safe public article or text explicitly loaded with **Read Clipboard**, optional Reader AI can:
+
+- Generate either of two configurable summaries, answer questions, and create quizzes.
+- Use your own OpenRouter API key, chosen model, and editable prompts.
+- Save outputs to a searchable, sortable, date-grouped library with favourites, copy, share, delete, and read-aloud actions.
+
+Reader AI runs only after an explicit request. The selected Reader text is then sent to OpenRouter; passively observed clipboard and editor text are never sent, and PDF and EPUB content is not eligible for Reader AI. The API key is encrypted in Android's secure local storage.
+
+Reader content, progress, bookmarks, retained files, and saved AI outputs stay in FrankenKey's private app storage. Sensitive fields and unavailable content fail closed.
 
 ## Snippets
 
@@ -194,13 +228,59 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.97
-Version code: 148
-SHA-256: e7a67874e1f0eb2df22b31dd868861c30654f33d8521004fe7a3e0a646e2a834
+Version: 2.0.101
+Version code: 152
+SHA-256: 8d88f09136f8bdde05bfea192a970d5b34680bcc6776730ab56488babb8b59e7
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
 Android may require one uninstall before installation if an older FrankenKey APK was signed with a different key. Builds signed with the current FrankenKey release key update normally after that.
+
+## Installing a test APK safely
+
+Android may block an APK that was downloaded outside Google Play. Do **not** permanently disable Android security or global app updates. Use only the official FrankenKey repository or release page, confirm the package and SHA-256 above, grant the smallest temporary permission needed, and restore it after installation.
+
+### Standard Android
+
+1. Download `FrankenKey-installable-release.apk` from this repository or the official GitHub Release.
+2. Open **Settings > Apps > Special app access > Install unknown apps**.
+3. Select the app that will open the APK, such as **Chrome**, **Files**, or **My Files**.
+4. Turn on **Allow from this source**.
+5. Open the APK and choose **Install** or **Update**.
+6. Return to **Install unknown apps** and turn **Allow from this source** off again.
+
+Android menu names vary slightly by manufacturer and version. See [Google's official unknown-app installation guidance](https://support.google.com/android/answer/9457058).
+
+### Samsung Galaxy and Auto Blocker
+
+On Galaxy phones running One UI 6 or newer, **Auto Blocker** can disable APK installation:
+
+1. Open **Settings > Security and privacy > Auto Blocker**.
+2. Turn **Auto Blocker** off temporarily.
+3. Grant **Allow from this source** only to the browser or file manager opening the APK.
+4. Install or update FrankenKey.
+5. Immediately turn **Auto Blocker** back on and remove the source permission.
+
+See [Samsung's official Auto Blocker guide](https://www.samsung.com/us/support/answer/ANS10003636/) and [Samsung's unknown-source troubleshooting](https://www.samsung.com/us/support/troubleshoot/TSG10001913/).
+
+### Google Play Protect
+
+Keep Play Protect enabled whenever possible. If it warns about a test APK, stop and confirm that the APK came from `demetre19/FrankenKey`, its package is `dev.frankenkey.keyboard`, and its SHA-256 matches the value published here. Never bypass a harmful-app warning for different or unverified bytes.
+
+If Play Protect still blocks the exact verified APK and you deliberately choose to proceed:
+
+1. Open **Google Play Store > profile picture > Play Protect > Settings**.
+2. Temporarily turn off **Scan apps with Play Protect**.
+3. Install the verified APK.
+4. Immediately return to the same screen and turn scanning back on.
+
+Google documents Play Protect and its controls in [Android Help](https://support.google.com/android/answer/2812853).
+
+### Keep a test build from being replaced
+
+FrankenKey never silently downloads or installs an update. It checks GitHub at most once daily and requires confirmation. To stop even those prompts while testing, open **FrankenKey Settings > Updates** and turn off **Automatically check for updates**. Do not disable Play Store auto-updates for every app; FrankenKey is not Play Store-managed, and unrelated security updates should continue normally. Google's [per-app auto-update instructions](https://support.google.com/googleplay/answer/113412/update-your-android-apps) are available if another test app specifically requires them.
+
+Updating a FrankenKey APK with the same package and release signer preserves app data. Uninstalling because of a signature mismatch removes Android app data, so back up anything important before uninstalling an older, differently signed build.
 
 ## Updates
 

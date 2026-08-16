@@ -683,6 +683,18 @@
       "sha256": "e7a67874e1f0eb2df22b31dd868861c30654f33d8521004fe7a3e0a646e2a834",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release limiting adaptive vocabulary to explicit teaching and deliberate corrections, with six ranked suggestions and optional full-stop key."
+    },
+    {
+      "label": "reader-ai-3d-reader-release",
+      "file": "FrankenKey-2.0.101-vc152-new-release-key-9fdb3633-8d88f091.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "152",
+      "versionName": "2.0.101",
+      "size": 14231471,
+      "sha256": "8d88f09136f8bdde05bfea192a970d5b34680bcc6776730ab56488babb8b59e7",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release adding the configurable 3D Reader, opt-in Reader AI, responsive Reader settings, Attach Image, explicit teaching fixes, and safe test-install guidance."
     }
   ]
 }
