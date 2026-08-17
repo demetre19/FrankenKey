@@ -2,28 +2,25 @@
 
 ## Purpose
 
-- Own language-pack model and loading/manager logic.
+- Own language-pack models, parsing, loading, and management.
 
 ## Ownership
 
-- This folder owns language-pack Java classes.
-- Pack files live under `assets/language_packs`.
+- This folder owns Java logic; `assets/language_packs/` owns pack files.
 
 ## Local Contracts
 
-- Language-pack loading must stay deterministic and local.
-- Missing or malformed packs should fail loud enough for tests/users, not silently corrupt suggestions.
-- The advertised `en_AU`, `en_GB`, and `en_US` subtypes must each resolve to their matching bundled Hunspell pack; do not substitute another region's spelling data.
+- Loading stays deterministic/local; malformed, oversized, or missing packs fail visibly, never corrupt suggestions.
+- `en_AU`, `en_GB`, and `en_US` subtypes resolve only to matching bundled Hunspell data and the bounded corpus-derived English bigram/trigram model.
 
 ## Work Guidance
 
-- Keep parsing/loading code small and explicit.
-- Coordinate asset changes with tests.
+- Keep parsing explicit; coordinate asset and test changes.
 
 ## Verification
 
-- Run focused language-pack/dictionary tests when changed.
+- Run focused language-pack/dictionary tests.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Language-pack classes are owned here.
+- None.

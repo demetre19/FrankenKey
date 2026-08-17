@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 public final class ReaderShareActivity extends Activity
 {
   private static final int MAX_TEXT_BYTES = 2 * 1024 * 1024;
-
+  private static final int REQUEST_BOOKS_TREE = 27;
   @Override
   protected void onCreate(Bundle savedInstanceState)
   {
@@ -42,6 +42,11 @@ public final class ReaderShareActivity extends Activity
     if (Intent.ACTION_SEND.equals(action))
     {
       acceptShare(intent);
+      return;
+    }
+    if (Intent.ACTION_VIEW.equals(action))
+    {
+      acceptView(intent);
       return;
     }
     if (Intent.ACTION_OPEN_DOCUMENT.equals(action))
@@ -78,7 +83,19 @@ public final class ReaderShareActivity extends Activity
 
   private void acceptShare(Intent intent)
   {
-    if (!"text/plain".equals(intent.getType()))
+    String mimeType = intent.getType();
+    if (ReaderBooksFolder.EPUB_MIME.equals(mimeType))
+    {
+      Uri stream = streamUri(intent);
+      if (stream == null)
+      {
+        reject(getString(R.string.reader_import_unsupported));
+        return;
+      }
+      acceptGrantedDocument(intent, stream, mimeType);
+      return;
+    }
+    if (!"text/plain".equals(mimeType))
     {
       reject(getString(R.string.reader_import_unsupported));
       return;
@@ -111,6 +128,16 @@ public final class ReaderShareActivity extends Activity
       reject(ReaderImportPipeline.safeMessage(error));
     }
   }
+  private void acceptView(Intent intent)
+  {
+    Uri uri = intent.getData();
+    if (!ReaderBooksFolder.EPUB_MIME.equals(intent.getType()) || uri == null)
+    {
+      reject(getString(R.string.reader_import_unsupported));
+      return;
+    }
+    acceptGrantedDocument(intent, uri, ReaderBooksFolder.EPUB_MIME);
+  }
 
   private void acceptDocument(Intent intent)
   {
@@ -133,12 +160,115 @@ public final class ReaderShareActivity extends Activity
     }
     if (!"text/plain".equals(mimeType) &&
         !"application/pdf".equals(mimeType) &&
-        !"application/epub+zip".equals(mimeType))
+        !ReaderBooksFolder.EPUB_MIME.equals(mimeType))
     {
       reject(getString(R.string.reader_import_unsupported));
       return;
     }
+    if (ReaderBooksFolder.EPUB_MIME.equals(mimeType))
+    {
+      acceptEpub(uri);
+      return;
+    }
     runAsync(() -> importDocument(uri, mimeType));
+  }
+
+  private void acceptEpub(Uri source)
+  {
+    if (ReaderBooksFolder.availableTree(this) == null)
+    {
+      startActivityForResult(ReaderBooksFolder.pickerIntent(),
+          REQUEST_BOOKS_TREE);
+      return;
+    }
+    importEpubDirect(source);
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent data)
+  {
+    super.onActivityResult(requestCode, resultCode, data);
+    if (requestCode != REQUEST_BOOKS_TREE)
+      return;
+    if (resultCode != RESULT_OK)
+    {
+      reject("Choose a Books folder to add EPUBs.");
+      return;
+    }
+    try
+    {
+      ReaderBooksFolder.retain(this, data);
+      Intent original = getIntent();
+      Uri source = original == null ? null :
+        (Intent.ACTION_SEND.equals(original.getAction())
+          ? streamUri(original) : original.getData());
+      if (source == null)
+      {
+        reject(getString(R.string.reader_import_unsupported));
+        return;
+      }
+      importEpubDirect(source);
+    }
+    catch (ReaderImportPipeline.ImportException error)
+    {
+      reject(ReaderImportPipeline.safeMessage(error));
+    }
+  }
+
+  private void importEpubDirect(Uri source)
+  {
+    new Thread(() ->
+    {
+      ReaderBooksFolder.Prepared prepared = null;
+      try
+      {
+        ReaderImportPipeline.Candidate parsed =
+          importDocument(source, ReaderBooksFolder.EPUB_MIME);
+        String hash = ReaderLibrary.contentHash(parsed.units);
+        ReaderLibrary.Item duplicate;
+        try (ReaderLibrary library = new ReaderLibrary(this))
+        {
+          duplicate = library.getByContentHash(hash);
+          if (duplicate != null &&
+              ReaderBooksFolder.isReadable(this, duplicate.sourceUri))
+          {
+            ReaderLibrary.Item ready = duplicate;
+            runOnUiThread(() -> openImported(ready));
+            return;
+          }
+          if (duplicate != null)
+            library.markSourceState(duplicate.id,
+                ReaderLibrary.SourceState.MISSING);
+        }
+
+        prepared = ReaderBooksFolder.prepare(this, source, displayName(source));
+        ReaderImportPipeline.Candidate canonical = parsed.withBookSource(
+            prepared.documentUri.toString(), prepared.treeUri.toString(),
+            prepared.size, prepared.lastModified);
+        ReaderLibrary.Item stored =
+          ReaderImportPipeline.importNow(this, canonical);
+        runOnUiThread(() -> openImported(stored));
+      }
+      catch (ReaderLibrary.LibraryException |
+          ReaderImportPipeline.ImportException error)
+      {
+        ReaderBooksFolder.deleteCreatedQuietly(this, prepared);
+        runOnUiThread(() -> reject(ReaderImportPipeline.safeMessage(error)));
+      }
+      catch (RuntimeException error)
+      {
+        ReaderBooksFolder.deleteCreatedQuietly(this, prepared);
+        runOnUiThread(() -> reject(getString(R.string.reader_import_failed)));
+      }
+    }, "ReaderEpubIntake").start();
+  }
+
+  private void openImported(ReaderLibrary.Item item)
+  {
+    if (isFinishing())
+      return;
+    ReaderActivity.startLibraryItem(this, item.id);
+    finish();
   }
 
   private ReaderImportPipeline.Candidate importDocument(Uri uri,

@@ -66,6 +66,18 @@ public class ReaderAiContractsTest
   }
 
   @Test
+  public void defaultPromptsDescribeArticlesAndBooksAsSourceMaterial()
+  {
+    assertFalse(ReaderAiRequest.SUMMARY_ONE_PROMPT.contains("article"));
+    assertFalse(ReaderAiRequest.SUMMARY_TWO_PROMPT.contains("article"));
+    assertFalse(ReaderAiRequest.QUIZ_PROMPT.contains("article"));
+    assertFalse(ReaderAiRequest.DIRECT_CHAT_PROMPT.contains("article"));
+    assertTrue(ReaderAiRequest.SUMMARY_ONE_PROMPT.contains("supplied material"));
+    assertTrue(ReaderAiRequest.DIRECT_CHAT_PROMPT.contains(
+          "supplied source material"));
+  }
+
+  @Test
   public void mixedMarkdownRendersFormattingAndLeavesPlainTextReadable()
   {
     String source = "Plain opening.\n\n# Actions\n- **Call** the client\n"
@@ -143,14 +155,20 @@ public class ReaderAiContractsTest
           ReaderAiStore.Type.SUMMARY_ONE, "## Actions\n- Call the client",
           "**You:** What next?\n\n**AI:** Send the brief.",
           "https://example.com/useful", "example.com", "Author",
-          ReaderAiOpenRouter.PREFERRED_MODEL_ID, "prompt-hash", false);
+          ReaderAiOpenRouter.PREFERRED_MODEL_ID, "prompt-hash",
+          ReaderAiStore.SourceType.ARTICLE, "", "https://example.com/useful",
+          false);
       ReaderAiStore.Entry saved = store.load(id);
       assertNotNull(saved);
       assertTrue(saved.includesChat());
       assertEquals("## Actions\n- Call the client", saved.contentMarkdown);
-      assertEquals(1, store.search("client", false, false).size());
+      assertEquals(1, store.search("client", false, false,
+            ReaderAiStore.SourceFilter.ALL,
+            ReaderAiStore.OutputFilter.ALL).size());
       assertTrue(store.setFavorite(id, true));
-      assertEquals(1, store.search("", true, false).size());
+      assertEquals(1, store.search("", true, false,
+            ReaderAiStore.SourceFilter.ARTICLES,
+            ReaderAiStore.OutputFilter.SUMMARY).size());
 
       String key = "a".repeat(64);
       cache.put(key, "## Cached\nResult");
@@ -169,16 +187,34 @@ public class ReaderAiContractsTest
       long clipboardId = store.save(null, "Clipboard",
           ReaderAiStore.Type.SUMMARY_TWO, "## Clipboard summary", "",
           "", "", "", ReaderAiOpenRouter.PREFERRED_MODEL_ID,
-          "clipboard-prompt", false);
+          "clipboard-prompt", ReaderAiStore.SourceType.CLIPBOARD, "", "",
+          false);
       ReaderAiStore.Entry clipboard = store.load(clipboardId);
       assertNotNull(clipboard);
       assertNull(clipboard.readerItemId);
       assertEquals("", clipboard.sourceUrl);
-      assertEquals(1, store.search("Clipboard", false, false).size());
+      assertEquals(1, store.search("Clipboard", false, false,
+            ReaderAiStore.SourceFilter.ARTICLES,
+            ReaderAiStore.OutputFilter.SUMMARY).size());
       String clipboardShare = ReaderAiTextShare.format(clipboard.articleTitle,
           clipboard.type.label, clipboard.contentMarkdown,
           clipboard.chatMarkdown, clipboard.sourceUrl);
       assertFalse(clipboardShare.contains("Original URL:"));
+
+      long bookId = store.save("book-1", "The Test Book",
+          ReaderAiStore.Type.ARTICLE_QUIZ, "1. What happened?", "",
+          "", "", "Book Author", ReaderAiOpenRouter.PREFERRED_MODEL_ID,
+          "book-prompt", ReaderAiStore.SourceType.BOOK, "book-hash",
+          "Book: The Test Book — Book Author", false);
+      ReaderAiStore.Entry book = store.load(bookId);
+      assertEquals(ReaderAiStore.SourceType.BOOK, book.sourceType);
+      assertEquals("book-hash", book.bookFingerprint);
+      assertEquals(1, store.search("Book Author", false, false,
+            ReaderAiStore.SourceFilter.BOOKS,
+            ReaderAiStore.OutputFilter.QUIZ).size());
+      assertEquals(0, store.search("", false, false,
+            ReaderAiStore.SourceFilter.ARTICLES,
+            ReaderAiStore.OutputFilter.QUIZ).size());
 
       TimeZone utc = TimeZone.getTimeZone("UTC");
       Calendar date = Calendar.getInstance(utc, Locale.US);
@@ -200,6 +236,69 @@ public class ReaderAiContractsTest
     {
       context.deleteDatabase(ReaderAiStore.DATABASE_NAME);
       context.deleteDatabase(ReaderAiCache.DATABASE_NAME);
+      context.deleteDatabase(ReaderBookAiWorkStore.DATABASE_NAME);
+    }
+  }
+
+  @Test
+  public void savedBookOutputSurvivesMissingSourceAndHashReattachment()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    context.deleteDatabase("reader_library.db");
+    context.deleteDatabase(ReaderAiStore.DATABASE_NAME);
+    context.deleteDatabase(ReaderBookAiWorkStore.DATABASE_NAME);
+    ReaderLibrary.ContentUnit chapter = new ReaderLibrary.ContentUnit(
+        0, "chapter", "Durable source words", "en", "chapter.xhtml");
+    List<ReaderLibrary.ContentUnit> chapters = Arrays.asList(chapter);
+    String fingerprint = ReaderLibrary.contentHash(chapters);
+    ReaderLibrary.Item incoming = new ReaderLibrary.Item("book-original",
+        "Durable Book", ReaderLibrary.SourceType.EPUB,
+        "content://books/document/original.epub", ReaderBooksFolder.EPUB_MIME,
+        "Book Author", "en", 1L, 1L, 0L, null, 0f, false, fingerprint,
+        ReaderLibrary.ImportState.READY, null, chapters, null,
+        "content://books/tree/Books", ReaderLibrary.SourceState.AVAILABLE,
+        false, ReaderLibrary.ReaderMode.CLASSIC, 0L, 0, 0, "chapter.xhtml",
+        10L, 20L, "Publisher", "identifier");
+    try (ReaderLibrary library = new ReaderLibrary(context);
+        ReaderAiStore saved = new ReaderAiStore(context))
+    {
+      ReaderLibrary.Item stored = library.importItem(incoming);
+      long outputId = saved.save(stored.id, stored.title,
+          ReaderAiStore.Type.SUMMARY_ONE, "A durable saved summary", "", "",
+          "", stored.author, ReaderAiOpenRouter.PREFERRED_MODEL_ID, "prompt",
+          ReaderAiStore.SourceType.BOOK, fingerprint,
+          "Book: Durable Book — Book Author", true);
+
+      library.markSourceState(stored.id, ReaderLibrary.SourceState.MISSING);
+      assertEquals("A durable saved summary",
+          saved.load(outputId).contentMarkdown);
+      ReaderLibrary.Item rebound = library.rebindBookSource(stored.id,
+          "content://books/document/located.epub",
+          "content://books/tree/Located", fingerprint, 11L, 21L);
+      assertEquals(stored.id, rebound.id);
+      assertEquals(ReaderLibrary.SourceState.AVAILABLE, rebound.sourceState);
+
+      assertTrue(library.delete(stored.id));
+      ReaderLibrary.Item replacement = new ReaderLibrary.Item("book-new",
+          incoming.title, incoming.sourceType,
+          "content://books/document/reimported.epub", incoming.mimeType,
+          incoming.author, incoming.languageTag, 2L, 2L, 0L, null, 0f, false,
+          fingerprint, incoming.importState, null, chapters, null,
+          "content://books/tree/Reimported", ReaderLibrary.SourceState.AVAILABLE,
+          false, ReaderLibrary.ReaderMode.CLASSIC, 0L, 0, 0, "chapter.xhtml",
+          12L, 22L, incoming.publisher, incoming.bookIdentifier);
+      library.importItem(replacement);
+      assertEquals("book-new", library.getByContentHash(
+            saved.load(outputId).bookFingerprint).id);
+      assertEquals("A durable saved summary",
+          saved.load(outputId).contentMarkdown);
+    }
+    finally
+    {
+      context.deleteDatabase("reader_library.db");
+      context.deleteDatabase(ReaderAiStore.DATABASE_NAME);
+      context.deleteDatabase(ReaderBookAiWorkStore.DATABASE_NAME);
     }
   }
 

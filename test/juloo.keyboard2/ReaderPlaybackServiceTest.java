@@ -130,8 +130,8 @@ public class ReaderPlaybackServiceTest
     first.onTtsInitialized(TextToSpeech.SUCCESS);
     first.setSpeechRate(8f);
     first.setPitch(0.1f);
-    assertEquals("Speech speed must stay inside the TTS-safe range.",
-        3f, first.snapshot().speechRate, 0.001f);
+    assertEquals("Speech speed must stay inside the configured 800 WPM range.",
+        800f / 180f, first.snapshot().speechRate, 0.001f);
     assertEquals("Voice pitch must stay inside the TTS-safe range.",
         0.5f, first.snapshot().pitch, 0.001f);
     first.setSpeechRate(1.35f);

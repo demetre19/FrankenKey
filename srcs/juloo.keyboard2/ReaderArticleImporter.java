@@ -238,7 +238,7 @@ final class ReaderArticleImporter
   static void deleteCachedPreview(Context context, String imageUri)
   {
     if (context == null || imageUri == null ||
-        !imageUri.matches("private:previews/[0-9a-fA-F-]{36}\\.img"))
+        !imageUri.matches("private:previews/[0-9a-fA-F-]{36}\\.(?:img|jpg)"))
       return;
     File file = new File(context.getFilesDir(),
         "reader_library/" + imageUri.substring("private:".length()));

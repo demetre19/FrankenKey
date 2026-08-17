@@ -37,11 +37,18 @@ public final class ReaderAiLibraryActivity extends Activity
 {
   private ReaderAiUi ui;
   private ReaderAiStore store;
+  private ReaderLibrary library;
   private ExecutorService executor;
   private LinearLayout rows;
   private EditText search;
   private CheckBox favorites;
   private Button sort;
+  private Button sourceFilterButton;
+  private Button outputFilterButton;
+  private ReaderAiStore.SourceFilter sourceFilter =
+    ReaderAiStore.SourceFilter.ALL;
+  private ReaderAiStore.OutputFilter outputFilter =
+    ReaderAiStore.OutputFilter.ALL;
   private boolean oldestFirst;
   private long loadGeneration;
 
@@ -51,6 +58,7 @@ public final class ReaderAiLibraryActivity extends Activity
     super.onCreate(state);
     ui = new ReaderAiUi(this);
     store = new ReaderAiStore(this);
+    library = new ReaderLibrary(this);
     executor = Executors.newSingleThreadExecutor();
 
     LinearLayout root = new LinearLayout(this);
@@ -99,6 +107,21 @@ public final class ReaderAiLibraryActivity extends Activity
     controls.addView(sort);
     root.addView(controls);
 
+    LinearLayout filters = ui.row();
+    sourceFilterButton = ui.button("Source: All");
+    sourceFilterButton.setContentDescription("Filter saved results by source");
+    sourceFilterButton.setOnClickListener(ignored -> cycleSourceFilter());
+    outputFilterButton = ui.button("Type: All");
+    outputFilterButton.setContentDescription("Filter saved results by output type");
+    outputFilterButton.setOnClickListener(ignored -> cycleOutputFilter());
+    filters.addView(sourceFilterButton, new LinearLayout.LayoutParams(0,
+          ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+    LinearLayout.LayoutParams outputFilterParams = new LinearLayout.LayoutParams(
+        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+    outputFilterParams.setMarginStart(ui.dp(8));
+    filters.addView(outputFilterButton, outputFilterParams);
+    root.addView(filters);
+
     rows = new LinearLayout(this);
     rows.setOrientation(LinearLayout.VERTICAL);
     ScrollView scroll = new ScrollView(this);
@@ -125,6 +148,8 @@ public final class ReaderAiLibraryActivity extends Activity
       executor.shutdownNow();
     if (store != null)
       store.close();
+    if (library != null)
+      library.close();
     super.onDestroy();
   }
 
@@ -136,7 +161,7 @@ public final class ReaderAiLibraryActivity extends Activity
     final boolean oldest = oldestFirst;
     executor.execute(() -> {
       List<ReaderAiStore.Entry> loaded = store.search(query, favoritesOnly,
-          oldest);
+          oldest, sourceFilter, outputFilter);
       runOnUiThread(() -> {
         if (generation != loadGeneration || isFinishing())
           return;
@@ -220,11 +245,13 @@ public final class ReaderAiLibraryActivity extends Activity
     title.setMaxLines(2);
     row.addView(title);
     String meta = entry.type.label + " • "
-      + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-        .format(new Date(entry.createdAt));
-    if (!entry.sourceHost.isEmpty())
+      + (entry.sourceType == ReaderAiStore.SourceType.BOOK ? "Book" : "Article")
+      + " • " + DateFormat.getDateTimeInstance(DateFormat.MEDIUM,
+          DateFormat.SHORT).format(new Date(entry.createdAt));
+    if (!entry.author.isEmpty())
+      meta += " • " + entry.author;
+    else if (!entry.sourceHost.isEmpty())
       meta += " • " + entry.sourceHost;
-    row.addView(ui.text(meta, 12, ui.muted));
     String preview = entry.contentMarkdown.replace('\n', ' ').trim();
     if (preview.length() > 180)
       preview = preview.substring(0, 180) + "…";
@@ -242,14 +269,15 @@ public final class ReaderAiLibraryActivity extends Activity
   {
     executor.execute(() -> {
       ReaderAiStore.Entry entry = store.load(id);
+      ReaderLibrary.Item source = entry == null ? null : resolveSource(entry);
       runOnUiThread(() -> {
         if (entry != null && !isFinishing())
-          showDetail(entry);
+          showDetail(entry, source);
       });
     });
   }
 
-  private void showDetail(ReaderAiStore.Entry entry)
+  private void showDetail(ReaderAiStore.Entry entry, ReaderLibrary.Item source)
   {
     LinearLayout content = new LinearLayout(this);
     content.setOrientation(LinearLayout.VERTICAL);
@@ -257,6 +285,13 @@ public final class ReaderAiLibraryActivity extends Activity
     TextView meta = ui.text(entry.type.label + " • " + entry.modelId, 12,
         ui.muted);
     content.addView(meta);
+    if (!entry.author.isEmpty())
+      content.addView(ui.text(entry.author, 13, ui.muted));
+    if (!entry.provenance.isEmpty() && entry.sourceUrl.isEmpty())
+      content.addView(ui.text(entry.provenance, 13, ui.muted));
+    if (entry.sourceType == ReaderAiStore.SourceType.BOOK && source == null)
+      content.addView(ui.text("Source unavailable. The saved AI output remains usable.",
+            13, ui.muted));
     TextView rendered = ui.text("", 15, ui.text);
     rendered.setTextIsSelectable(true);
     rendered.setMovementMethod(LinkMovementMethod.getInstance());
@@ -268,12 +303,12 @@ public final class ReaderAiLibraryActivity extends Activity
     content.addView(rendered, matchWrap());
     if (!entry.sourceUrl.isEmpty())
     {
-      TextView source = ui.text("Original URL\n" + entry.sourceUrl, 13,
+      TextView sourceLink = ui.text("Original URL\n" + entry.sourceUrl, 13,
           ui.accent);
-      source.setPadding(0, ui.dp(14), 0, ui.dp(8));
-      source.setOnClickListener(ignored -> startActivity(new Intent(
+      sourceLink.setPadding(0, ui.dp(14), 0, ui.dp(8));
+      sourceLink.setOnClickListener(ignored -> startActivity(new Intent(
               Intent.ACTION_VIEW, Uri.parse(entry.sourceUrl))));
-      content.addView(source);
+      content.addView(sourceLink);
     }
     ScrollView scroll = new ScrollView(this);
     scroll.addView(content);
@@ -286,18 +321,22 @@ public final class ReaderAiLibraryActivity extends Activity
       .create();
     detail.setOnShowListener(ignored -> detail.getButton(
           AlertDialog.BUTTON_POSITIVE).setOnClickListener(view ->
-            showActions(detail, entry)));
+            showActions(detail, entry, source)));
     detail.show();
   }
 
-  private void showActions(AlertDialog detail, ReaderAiStore.Entry entry)
+  private void showActions(AlertDialog detail, ReaderAiStore.Entry entry,
+      ReaderLibrary.Item source)
   {
     List<String> labels = new java.util.ArrayList<>();
     labels.add("Copy");
     labels.add("Share");
+    if (entry.type != ReaderAiStore.Type.ARTICLE_QUIZ)
+      labels.add("Speed Read");
     labels.add(entry.favorite ? "Remove favorite" : "Add favorite");
-    if (entry.readerItemId != null)
-      labels.add("Open Reader item");
+    if (source != null)
+      labels.add(entry.sourceType == ReaderAiStore.SourceType.BOOK
+          ? "Open Book" : "Open Article");
     labels.add("Delete");
     new AlertDialog.Builder(this).setTitle("Saved result actions")
       .setItems(labels.toArray(new String[0]), (dialog, which) -> {
@@ -313,6 +352,8 @@ public final class ReaderAiLibraryActivity extends Activity
         else if ("Share".equals(action))
           ReaderAiTextShare.share(this, entry.articleTitle, entry.type.label,
               entry.contentMarkdown, entry.chatMarkdown, entry.sourceUrl);
+        else if ("Speed Read".equals(action))
+          speedRead(detail, entry);
         else if (action.contains("favorite"))
         {
           executor.execute(() -> {
@@ -320,17 +361,78 @@ public final class ReaderAiLibraryActivity extends Activity
             runOnUiThread(() -> { detail.dismiss(); reload(); });
           });
         }
-        else if ("Open Reader item".equals(action))
-          ReaderActivity.startLibraryItem(this, entry.readerItemId);
+        else if ("Open Book".equals(action) || "Open Article".equals(action))
+          ReaderActivity.startLibraryItem(this, source.id);
         else if ("Delete".equals(action))
           confirmDelete(detail, entry);
       }).show();
   }
 
+  private ReaderLibrary.Item resolveSource(ReaderAiStore.Entry entry)
+  {
+    try
+    {
+      ReaderLibrary.Item source = entry.readerItemId == null ? null
+        : library.get(entry.readerItemId);
+      if (source == null && entry.sourceType == ReaderAiStore.SourceType.BOOK
+          && entry.bookFingerprint != null)
+        source = library.getByContentHash(entry.bookFingerprint);
+      return source != null &&
+        source.sourceState == ReaderLibrary.SourceState.AVAILABLE ? source : null;
+    }
+    catch (ReaderLibrary.LibraryException error)
+    {
+      return null;
+    }
+  }
+
+  private void speedRead(AlertDialog detail, ReaderAiStore.Entry entry)
+  {
+    String plainText = ReaderAiMarkdown.plainText(entry.contentMarkdown
+        + (entry.chatMarkdown.isEmpty() ? "" : "\n\n" + entry.chatMarkdown))
+      .trim();
+    if (plainText.isEmpty())
+      return;
+    ReaderActivity.startQuickRead(this, "saved-reader-ai:" + entry.id,
+        entry.articleTitle + " — " + entry.type.label, plainText);
+    detail.dismiss();
+  }
+
+  private void cycleSourceFilter()
+  {
+    if (sourceFilter == ReaderAiStore.SourceFilter.ALL)
+      sourceFilter = ReaderAiStore.SourceFilter.ARTICLES;
+    else if (sourceFilter == ReaderAiStore.SourceFilter.ARTICLES)
+      sourceFilter = ReaderAiStore.SourceFilter.BOOKS;
+    else
+      sourceFilter = ReaderAiStore.SourceFilter.ALL;
+    sourceFilterButton.setText(sourceFilter == ReaderAiStore.SourceFilter.ALL
+        ? "Source: All" : sourceFilter == ReaderAiStore.SourceFilter.ARTICLES
+        ? "Source: Articles" : "Source: Books");
+    reload();
+  }
+
+  private void cycleOutputFilter()
+  {
+    if (outputFilter == ReaderAiStore.OutputFilter.ALL)
+      outputFilter = ReaderAiStore.OutputFilter.SUMMARY;
+    else if (outputFilter == ReaderAiStore.OutputFilter.SUMMARY)
+      outputFilter = ReaderAiStore.OutputFilter.QUIZ;
+    else if (outputFilter == ReaderAiStore.OutputFilter.QUIZ)
+      outputFilter = ReaderAiStore.OutputFilter.CHAT;
+    else
+      outputFilter = ReaderAiStore.OutputFilter.ALL;
+    outputFilterButton.setText(outputFilter == ReaderAiStore.OutputFilter.ALL
+        ? "Type: All" : outputFilter == ReaderAiStore.OutputFilter.SUMMARY
+        ? "Type: Summary" : outputFilter == ReaderAiStore.OutputFilter.QUIZ
+        ? "Type: Quiz" : "Type: Chat");
+    reload();
+  }
+
   private void confirmDelete(AlertDialog detail, ReaderAiStore.Entry entry)
   {
     new AlertDialog.Builder(this).setTitle("Delete saved result?")
-      .setMessage("This removes the saved AI output. The Reader article is not deleted.")
+      .setMessage("This removes only the saved AI output. The source is not deleted.")
       .setNegativeButton("Cancel", null)
       .setPositiveButton("Delete", (dialog, which) -> executor.execute(() -> {
         store.delete(entry.id);

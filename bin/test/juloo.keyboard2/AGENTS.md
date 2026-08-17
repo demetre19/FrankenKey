@@ -2,29 +2,28 @@
 
 ## Purpose
 
-- Own package-level focused tests for FrankenKey keyboard behavior.
+- Own package-level behavior/regression tests.
 
 ## Ownership
 
-- This folder owns tests for app package behavior and regression contracts.
-- Subfolders mirror source subdomains when present.
+- This folder owns tests mirroring app package domains.
 
 ## Local Contracts
 
-- Tests must explain user-visible or architectural intent in assertion messages.
-- Prefer adding coverage to an existing focused test class over creating broad catch-all tests.
-- Keep live device/RustDesk verification separate from unit tests.
+- Explain user-visible/architectural intent in assertions.
+- Prefer focused existing classes and Robolectric-friendly fakes.
+- Cover boundaries: user data, permissions, visibility, gestures, ranking, and state transitions.
+- Resource Robolectric tests use `@Config(sdk = 35)` and must appear in generated result XML; target API 36 exceeds the pinned runner's API 35 ceiling.
+- Keep live-device verification separate.
 
 ## Work Guidance
 
-- Use Robolectric-friendly fakes and existing helper patterns.
-- Cover edge cases for user data, permission state, layout visibility, and gesture/ranking branches.
-- Resource-backed Robolectric tests depend on Gradle unit-test Android resources; confirm their class appears in generated test-result XML rather than trusting only the aggregate task status. While the app targets API 36 and the pinned Robolectric runner supports at most API 35, these suites must declare `@Config(sdk = 35)`.
+- Run only affected classes unless failure requires expansion; adaptive-learning changes cover personalization, scoring, decoder, key events, candidates, Settings confirmation/theme, and Direct Boot privacy.
 
 ## Verification
 
-- Run only the touched/focused test classes with Gradle unless a broader failure demands more. Adaptive-learning changes require the focused personalization, scoring, shared-decoder, key-event, candidate, Settings dialog/theme, and Direct Boot privacy contracts.
+- Use the parent focused Gradle command and confirm generated test-result XML.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Test subfolders are owned here.
+- None.

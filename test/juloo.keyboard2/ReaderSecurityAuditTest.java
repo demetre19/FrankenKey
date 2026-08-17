@@ -18,6 +18,8 @@ import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -150,6 +152,23 @@ public class ReaderSecurityAuditTest
         "data-extraction-rules", rootName(resources.getXml(modern)));
     assertEquals(1, countReaderExclusions(resources.getXml(legacy)));
     assertEquals(2, countReaderExclusions(resources.getXml(modern)));
+    Set<String> legacyExclusions = exclusions(resources.getXml(legacy));
+    Set<String> modernExclusions = exclusions(resources.getXml(modern));
+    for (Set<String> exclusions : new Set[]{legacyExclusions, modernExclusions})
+    {
+      assertTrue(exclusions.contains("sharedpref:reader_ai_secret.xml"));
+      assertTrue(exclusions.contains("database:reader_ai_cache.db"));
+      assertTrue(exclusions.contains("database:reader_ai_book_work.db"));
+      assertTrue(exclusions.contains("file:reader_library/"));
+      assertFalse("Saved AI outputs must remain backup eligible.",
+          exclusions.contains("database:" + ReaderAiStore.DATABASE_NAME));
+      assertFalse("Library metadata, collections, progress, and EPUB settings "
+          + "must remain backup eligible.",
+          exclusions.contains("database:reader_library.db"));
+      assertFalse("Non-secret Reader AI prompts and settings must remain "
+          + "backup eligible.",
+          exclusions.contains("sharedpref:reader_ai_settings.xml"));
+    }
 
     ApplicationInfo application = _context.getApplicationInfo();
     Field fullBackup = ApplicationInfo.class.getField("fullBackupContent");
@@ -275,6 +294,27 @@ public class ReaderSecurityAuditTest
       parser.close();
     }
     return count;
+  }
+
+  private static Set<String> exclusions(XmlResourceParser parser)
+      throws Exception
+  {
+    Set<String> result = new HashSet<>();
+    try
+    {
+      for (int event = parser.getEventType(); event != XmlPullParser.END_DOCUMENT;
+          event = parser.next())
+      {
+        if (event == XmlPullParser.START_TAG && "exclude".equals(parser.getName()))
+          result.add(parser.getAttributeValue(null, "domain") + ":"
+              + parser.getAttributeValue(null, "path"));
+      }
+    }
+    finally
+    {
+      parser.close();
+    }
+    return result;
   }
 
   private static String repeat(char value, int count)

@@ -2,28 +2,28 @@
 
 ## Purpose
 
-- Own custom preference widgets and settings UI helpers.
+- Own reusable preference widgets/settings helpers.
 
 ## Ownership
 
-- This folder owns reusable preference classes.
-- `SettingsActivity` and `res/xml/settings.xml` own screen wiring.
+- This folder owns widgets; `SettingsActivity` and `res/xml/settings.xml` own screen wiring.
 
 ## Local Contracts
 
-- Preference widgets must reflect persisted config accurately and avoid surprising side effects.
-- Color selector UI should use compact square chips beside labels per user preference.
-- Dynamic extra-key checkboxes must use the shared concise summary explaining that the selected key is added only where absent.
+- Reflect persisted config exactly; avoid hidden side effects.
+- Use compact square color chips beside labels.
+- Dynamic extra-key checkboxes use the shared concise “added only where absent” summary.
+- Extra Keys manager persists visibility/order, shows row drag handles, and accepts bounded supported Ctrl/Alt/Shift/Cmd key/command combinations.
+- Learned Words remains a separate searchable list; direct teaching validates one word and per-row forgetting requires confirmation.
 
 ## Work Guidance
 
-- Keep preference behavior boring and Android-compatible.
-- Update settings contract tests when keys, summaries, or placement change.
+- Stay conventional and update settings-contract tests with keys, summaries, or placement.
 
 ## Verification
 
-- Run `SettingsUiContractsTest` or feature-specific settings tests for settings changes.
+- Run `SettingsUiContractsTest` and relevant feature settings tests.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Preference widgets are owned here.
+- None.

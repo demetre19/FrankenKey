@@ -4,4 +4,11 @@
   <exclude domain="sharedpref" path="reader_ai_secret.xml"/>
   <exclude domain="database" path="reader_ai_cache.db"/>
   <exclude domain="database" path="reader_ai_cache.db-journal"/>
+  <exclude domain="database" path="reader_ai_cache.db-wal"/>
+  <exclude domain="database" path="reader_ai_cache.db-shm"/>
+  <exclude domain="database" path="reader_ai_book_work.db"/>
+  <exclude domain="database" path="reader_ai_book_work.db-journal"/>
+  <exclude domain="database" path="reader_ai_book_work.db-wal"/>
+  <exclude domain="database" path="reader_ai_book_work.db-shm"/>
+  <exclude domain="file" path="reader_library/"/>
 </full-backup-content>

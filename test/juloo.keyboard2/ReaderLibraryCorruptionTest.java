@@ -99,6 +99,8 @@ public class ReaderLibraryCorruptionTest
         ReaderLibrary.SourceType.EPUB, null, "text/plain", null, "en",
         100L, 200L, 0L, null, 0f, false,
         ReaderLibrary.contentHash(Arrays.asList(unit)),
-        ReaderLibrary.ImportState.READY, null, Arrays.asList(unit));
+        ReaderLibrary.ImportState.READY, null, Arrays.asList(unit), null,
+        null, ReaderLibrary.SourceState.AVAILABLE, false,
+        ReaderLibrary.ReaderMode.CLASSIC, 0L, 0, 0, null, 0L, 0L, null, null);
   }
 }

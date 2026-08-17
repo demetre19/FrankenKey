@@ -71,7 +71,9 @@ public class Reader3dActivityTest
         "unit:1:0", 0.4f, false, "hash",
         ReaderLibrary.ImportState.READY, null, Arrays.asList(
           new ReaderLibrary.ContentUnit(0, "chapter", "one two", "en", "c1"),
-          new ReaderLibrary.ContentUnit(1, "chapter", "three four five", "en", "c2")));
+          new ReaderLibrary.ContentUnit(1, "chapter", "three four five", "en", "c2")),
+        null, null, ReaderLibrary.SourceState.AVAILABLE, false,
+        ReaderLibrary.ReaderMode.CLASSIC, 2L, 1, 0, null, 0L, 0L, null, null);
 
     Reader3dActivity.ReaderDocument document =
       Reader3dActivity.ReaderDocument.fromItem(item);
@@ -88,6 +90,82 @@ public class Reader3dActivityTest
   }
 
   @Test
+  public void transient_epub_handoff_reopens_at_exact_book_coordinate()
+  {
+    ReaderLibrary.Item item = new ReaderLibrary.Item(
+        "book", "Book", ReaderLibrary.SourceType.EPUB,
+        "content://books/document/book.epub", ReaderBooksFolder.EPUB_MIME,
+        "Author", "en", 1L, 1L, 1L, "book:1:6", 4f / 7f, false, "hash",
+        ReaderLibrary.ImportState.READY, null,
+        java.util.Collections.emptyList(), null,
+        "content://books/tree/Books", ReaderLibrary.SourceState.AVAILABLE,
+        false, ReaderLibrary.ReaderMode.THREE_D, 4L, 1, 6, "four five",
+        0L, 0L, null, null);
+    String text = "zero one two\n\nthree four five six";
+    String ranges = "[{\"start\":0,\"end\":3},{\"start\":3,\"end\":7}]";
+
+    for (int reopen = 0; reopen < 20; reopen++)
+    {
+      Reader3dActivity.ReaderDocument document =
+        Reader3dActivity.ReaderDocument.fromEpub(item, text, ranges, 4);
+      assertEquals(4, document.progressRawWordIndex);
+      Reader3dActivity.BookPosition position = document.bookPosition(4);
+      assertEquals(1, position.chapter);
+      assertEquals(6, position.charOffset);
+      assertTrue(position.anchor.contains("four"));
+    }
+  }
+
+  @Test
+  public void raw_word_coordinate_round_trips_without_cumulative_drift()
+  {
+    ReaderLibrary.Item item = new ReaderLibrary.Item(
+        "book", "Book", ReaderLibrary.SourceType.EPUB, null,
+        "application/epub+zip", "Author", "en", 1L, 1L, 1L,
+        "unit:0:0", 0f, false, "hash",
+        ReaderLibrary.ImportState.READY, null, Arrays.asList(
+          new ReaderLibrary.ContentUnit(0, "chapter",
+            "one two three", "en", "c1"),
+          new ReaderLibrary.ContentUnit(1, "chapter",
+            "four five six seven", "en", "c2"),
+          new ReaderLibrary.ContentUnit(2, "chapter",
+            "eight nine", "en", "c3")),
+        null, null, ReaderLibrary.SourceState.AVAILABLE, false,
+        ReaderLibrary.ReaderMode.CLASSIC, 0L, 0, 0, null, 0L, 0L, null, null);
+    Reader3dActivity.ReaderDocument document =
+      Reader3dActivity.ReaderDocument.fromItem(item);
+
+    for (int wordsAtTime = 1; wordsAtTime <= 5; wordsAtTime++)
+      for (int rawStart = 0; rawStart < document.rawWordStarts.length;
+          rawStart += wordsAtTime)
+        for (int roundTrip = 0; roundTrip < 20; roundTrip++)
+        {
+          int documentOffset =
+            document.characterOffsetForRawWord(rawStart);
+          Reader3dActivity.UnitRange unit =
+            document.unitForDocumentOffset(documentOffset);
+          int localOffset = Math.max(0, Math.min(unit.sourceLength,
+                documentOffset - unit.documentStart));
+          ReaderLibrary.Item reopenedItem = new ReaderLibrary.Item(
+              item.id, item.title, item.sourceType, item.sourceUri,
+              item.mimeType, item.author, item.languageTag,
+              item.createdAt, item.updatedAt, item.lastOpenedAt,
+              "unit:" + unit.index + ":" + localOffset,
+              item.progressFraction, item.finished, item.contentHash,
+              item.importState, item.errorMessage, item.units, item.imageUri,
+              item.treeUri, item.sourceState, item.favorite,
+              item.lastReaderMode, rawStart, unit.index, localOffset,
+              item.progressAnchor, item.fileSize, item.fileLastModified,
+              item.publisher, item.bookIdentifier);
+          document = Reader3dActivity.ReaderDocument.fromItem(reopenedItem);
+
+          assertEquals("Classic/3D reopening must preserve the exact visible " +
+              "raw-word boundary for every supported words-at-a-time value.",
+              rawStart, document.progressRawWordIndex);
+        }
+  }
+
+  @Test
   public void packaged_surface_keeps_private_drive_mobile_settings_exact()
       throws Exception
   {
@@ -98,11 +176,19 @@ public class Reader3dActivityTest
     assertTrue(html.contains("id=\"dm-reader-settings\""));
     assertTrue(html.contains("function bindButton(button,action)"));
     assertTrue(html.contains("bindButton(root.querySelector('#dm-reader-close'),closeReader)"));
-    assertTrue(html.contains("bindButton(root.querySelector('#dm-reader-settings'),showSettings)"));
+    assertTrue(html.contains("bindImmediateButton(root.querySelector('#dm-reader-settings'),showSettings)"));
+    assertTrue(html.contains("function bindImmediateButton(button,action)"));
     assertTrue(html.contains("bindButton(root.querySelector('#dm-reader-bookmarks'),showBookmarks)"));
     assertTrue(html.contains("id=\"dm-reader-ai\" aria-label=\"Article AI\""));
     assertTrue(html.contains("ai.hidden=!Native.canOpenReaderAi()"));
     assertTrue(html.contains("if(!ai.hidden)bindButton(ai,function(){Native.openReaderAi()})"));
+    assertTrue(html.contains("function configureBookAction()"));
+    assertTrue(html.contains("Native.canOpenClassicReader()"));
+    assertTrue(html.contains("Native.openClassicReader()"));
+    assertTrue(html.contains("aria-label','Open Classic book reader'"));
+    assertFalse(html.contains(".dm-reader__btn--book::after{content:\"Book\""));
+    assertTrue(html.contains("button.innerHTML='<svg"));
+    assertTrue(html.contains("M3 5.5A2.5 2.5 0 0 1 5.5 3H11v16"));
     assertTrue(html.contains("dm-reader-settings--previewing .dm-confirm__box{opacity:.01}"));
     assertTrue(html.contains(".dm-confirm{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500"));
     assertTrue(html.contains(".dm-reader-settings{z-index:400}"));

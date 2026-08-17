@@ -86,7 +86,8 @@ final class ReaderAiDialog
     settings = new ReaderAiSettings(activity);
     cache = new ReaderAiCache(activity);
     store = new ReaderAiStore(activity);
-    service = new ReaderAiService(client, cache);
+    service = new ReaderAiService(client, cache, store);
+    service.setProgressListener(this::showProgress);
   }
 
   private void show()
@@ -139,7 +140,7 @@ final class ReaderAiDialog
     header.addView(settingsButton, settingsParams);
     ImageButton close = new ImageButton(activity);
     close.setImageResource(R.drawable.ic_reader_ai_close);
-    close.setContentDescription("Close Reader AI");
+    close.setContentDescription("Close Reader AI and cancel active work");
     close.setPadding(ui.dp(9), ui.dp(9), ui.dp(9), ui.dp(9));
     close.setBackground(ui.panel(ui.surface, ui.border, 8));
     close.setOnClickListener(ignored -> dialog.dismiss());
@@ -154,7 +155,7 @@ final class ReaderAiDialog
     summaryTwo = modeButton("Summary Two", () -> summary(false));
     directChat = modeButton("Chat", this::startDirectChat);
     quiz = modeButton("Quiz", this::chooseQuiz);
-    quiz.setContentDescription("Article Quiz");
+    quiz.setContentDescription(sourceTitle() + " Quiz");
     ui.addWeighted(modes, summaryOne, 1f, 0);
     ui.addWeighted(modes, summaryTwo, 1f, ui.dp(8));
     ui.addWeighted(modes, directChat, 1f, ui.dp(8));
@@ -194,7 +195,7 @@ final class ReaderAiDialog
 
     chatRow = ui.row();
     chatInput = new EditText(activity);
-    chatInput.setHint("Ask about this article…");
+    chatInput.setHint("Ask about this " + sourceLower() + "…");
     chatInput.setTextColor(ui.text);
     chatInput.setHintTextColor(ui.muted);
     chatInput.setTextSize(14);
@@ -220,8 +221,8 @@ final class ReaderAiDialog
     LinearLayout actions = ui.row();
     copy = actionButton("Copy", this::copyCurrent);
     save = actionButton("Save", this::chooseSave);
-    read = actionButton("Read", this::readCurrent);
-    read.setContentDescription("Speed-read summary in the plain-text Reader");
+    read = actionButton("Speed Read", this::readCurrent);
+    read.setContentDescription("Speed-read summary or chat in the plain-text Reader");
     share = actionButton("Share", this::chooseShare);
     ui.addWeighted(actions, copy, 1f, 0);
     ui.addWeighted(actions, save, 1f, ui.dp(8));
@@ -258,8 +259,9 @@ final class ReaderAiDialog
       if (service.needsMultipleCalls(article, prompt, model))
       {
         new AlertDialog.Builder(activity)
-          .setTitle("Long article")
-          .setMessage("This article needs multiple billable OpenRouter calls to summarize and combine. Continue?")
+          .setTitle("Long " + sourceLower())
+          .setMessage("This " + sourceLower()
+              + " needs multiple billable OpenRouter calls. Continue?")
           .setNegativeButton("Cancel", null)
           .setPositiveButton("Continue", (dialog, which) ->
               executeSummary(model, label, prompt, first))
@@ -313,10 +315,11 @@ final class ReaderAiDialog
       turns.clear();
       selectedModel = model;
       renderConversation();
-      output.setText("Ask a question to start a grounded article chat.");
+      output.setText("Ask a question to start a grounded "
+          + sourceLower() + " chat.");
       chatRow.setVisibility(View.VISIBLE);
       setActionsVisible(false);
-      status.setText("Article Chat | " + model.id);
+      status.setText(sourceTitle() + " Chat | " + model.id);
       selectMode(directChat);
       chatInput.requestFocus();
     }));
@@ -325,22 +328,40 @@ final class ReaderAiDialog
   private void chooseQuiz()
   {
     runAfterDisclosure(() -> withModel(model -> {
-      String[] choices = {"6 questions", "10 questions", "12 questions",
-          "20 questions"};
+      String suffix = article.isBook() ? " per chapter" : " questions";
+      String[] choices = {"6" + suffix, "10" + suffix, "12" + suffix,
+          "20" + suffix};
       int[] counts = {6, 10, 12, 20};
-      new AlertDialog.Builder(activity).setTitle("Article Quiz")
-        .setItems(choices, (dialog, which) -> executeQuiz(model, counts[which]))
-        .show();
+      new AlertDialog.Builder(activity).setTitle(sourceTitle() + " Quiz")
+        .setItems(choices, (dialog, which) -> {
+          if (!article.isBook())
+          {
+            executeQuiz(model, counts[which]);
+            return;
+          }
+          int chapters =
+            ReaderBookAiPlanner.readableChapters(article.bookChapters).size();
+          new AlertDialog.Builder(activity)
+            .setTitle("Generate Book Quiz?")
+            .setMessage(counts[which] + " questions will be generated for "
+                + "each of " + chapters + " chapters. This can require "
+                + "multiple billable OpenRouter calls. Completed evidence is "
+                + "kept for safe resume and reuse.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Generate", (notice, ignored) ->
+                executeQuiz(model, counts[which]))
+            .show();
+        }).show();
     }));
   }
 
   private void executeQuiz(ReaderAiOpenRouter.Model model, int count)
   {
-    begin("Article Quiz | " + model.id);
+    begin(sourceTitle() + " Quiz | " + model.id);
     executor.execute(() -> {
       try
       {
-        String result = service.quiz(settings.getApiKey(), model.id, article,
+        String result = service.quiz(settings.getApiKey(), model, article,
             settings.getQuizPrompt(), count);
         post(() -> {
           currentType = ReaderAiStore.Type.ARTICLE_QUIZ;
@@ -352,7 +373,9 @@ final class ReaderAiDialog
           chatRow.setVisibility(View.GONE);
           setActionsVisible(true);
           selectMode(quiz);
-          finish("Article Quiz | " + count + " questions | " + model.id);
+          finish(sourceTitle() + " Quiz | " + count
+              + (article.isBook() ? " per chapter" : " questions")
+              + " | " + model.id);
         });
       }
       catch (Exception error)
@@ -369,15 +392,16 @@ final class ReaderAiDialog
     String question = chatInput.getText().toString().trim();
     if (question.isEmpty())
       return;
-    begin((currentType == ReaderAiStore.Type.ARTICLE_CHAT ? "Article Chat"
-          : currentType.label + " chat") + " | " + modelId());
+    begin((currentType == ReaderAiStore.Type.ARTICLE_CHAT
+          ? sourceTitle() + " Chat" : currentType.label + " chat")
+        + " | " + modelId());
     executor.execute(() -> {
       try
       {
         String answer = currentType == ReaderAiStore.Type.ARTICLE_CHAT
-          ? service.directChat(settings.getApiKey(), modelId(), article, turns,
-              question)
-          : service.followUp(settings.getApiKey(), modelId(), article,
+          ? service.directChat(settings.getApiKey(), selectedModel, article,
+              turns, question)
+          : service.followUp(settings.getApiKey(), selectedModel, article,
               currentPrompt, currentMarkdown, turns, question);
         post(() -> {
           turns.add(new ReaderAiService.ChatTurn(question, answer));
@@ -454,17 +478,24 @@ final class ReaderAiDialog
       return;
     String chat = includeChat && currentType != ReaderAiStore.Type.ARTICLE_CHAT
       ? ReaderAiService.chatMarkdown(turns) : "";
+    ReaderAiStore.SourceType sourceType = ReaderAiStore.SourceType.valueOf(
+        article.sourceType.name());
+    String provenance = article.isBook()
+      ? "Book: " + article.title
+        + (article.author.isEmpty() ? "" : " — " + article.author)
+      : article.sourceUrl;
     store.save(article.readerItemId, article.title, currentType, content, chat,
         article.sourceUrl, article.sourceHost, article.author, modelId(),
-        promptIdentity(), false);
+        promptIdentity(), sourceType, article.isBook() ? article.contentHash : "",
+        provenance, false);
     Toast.makeText(activity, "Reader AI result saved", Toast.LENGTH_SHORT).show();
   }
 
   private void readCurrent()
   {
-    if (!isSummary())
+    if (!isReadableResult())
       return;
-    String plainText = ReaderAiMarkdown.plainText(currentMarkdown).trim();
+    String plainText = ReaderAiMarkdown.plainText(effectiveContent(true)).trim();
     if (plainText.isEmpty())
       return;
     String identity = currentCacheKey.isEmpty()
@@ -512,9 +543,13 @@ final class ReaderAiDialog
       action.run();
       return;
     }
-    String sourceDescription = article.sourceUrl.isEmpty()
-      ? "this clipboard text"
-      : "this saved article text";
+    String sourceDescription;
+    if (article.sourceType == ReaderAiService.Article.SourceType.BOOK)
+      sourceDescription = "selected excerpts from this book";
+    else if (article.sourceType == ReaderAiService.Article.SourceType.CLIPBOARD)
+      sourceDescription = "this clipboard text";
+    else
+      sourceDescription = "this saved article text";
     new AlertDialog.Builder(activity).setTitle("Reader AI privacy")
       .setMessage("When you request AI, FrankenKey sends "
           + sourceDescription
@@ -576,11 +611,33 @@ final class ReaderAiDialog
     });
   }
 
+  private void showProgress(String message)
+  {
+    post(() -> {
+      status.setText(message);
+      output.setText("Book AI is working\n\n" + message);
+      output.setVisibility(View.VISIBLE);
+      while (conversation.getChildCount() > 1)
+        conversation.removeViewAt(1);
+      chatRow.setVisibility(View.GONE);
+      setActionsVisible(false);
+    });
+  }
+
   private void begin(String message)
   {
     busy = true;
     status.setText(message);
     setEnabled(false);
+    if (article.isBook())
+    {
+      output.setText("Book AI is working…");
+      output.setVisibility(View.VISIBLE);
+      while (conversation.getChildCount() > 1)
+        conversation.removeViewAt(1);
+      chatRow.setVisibility(View.GONE);
+      setActionsVisible(false);
+    }
   }
 
   private void finish(String message)
@@ -594,8 +651,14 @@ final class ReaderAiDialog
   {
     post(() -> {
       busy = false;
-      status.setText(error.getMessage() == null ? "Reader AI request failed"
-          : error.getMessage());
+      String message = error.getMessage() == null
+        ? "Reader AI request failed" : error.getMessage();
+      status.setText(message);
+      if (article.isBook())
+      {
+        output.setText("Book AI stopped\n\n" + message);
+        output.setVisibility(View.VISIBLE);
+      }
       setEnabled(true);
     });
   }
@@ -614,13 +677,18 @@ final class ReaderAiDialog
     int value = visible ? View.VISIBLE : View.GONE;
     copy.setVisibility(value);
     save.setVisibility(value);
-    read.setVisibility(visible && isSummary() ? View.VISIBLE : View.GONE);
+    read.setVisibility(visible && isReadableResult() ? View.VISIBLE : View.GONE);
     share.setVisibility(value);
   }
-  private boolean isSummary()
+
+  private boolean isReadableResult()
   {
-    return currentType == ReaderAiStore.Type.SUMMARY_ONE
-      || currentType == ReaderAiStore.Type.SUMMARY_TWO;
+    return isSpeedReadEligible(currentType);
+  }
+
+  static boolean isSpeedReadEligible(ReaderAiStore.Type type)
+  {
+    return type != null && type != ReaderAiStore.Type.ARTICLE_QUIZ;
   }
 
   private void selectMode(Button selected)
@@ -675,6 +743,16 @@ final class ReaderAiDialog
   {
     selectedModel = null;
     status.setText("Reader AI settings updated");
+  }
+
+  private String sourceTitle()
+  {
+    return article.isBook() ? "Book" : "Article";
+  }
+
+  private String sourceLower()
+  {
+    return article.isBook() ? "book" : "article";
   }
 
   private String modelId()

@@ -36,14 +36,42 @@
         android:textStyle="bold"/>
   </LinearLayout>
 
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:orientation="horizontal">
+    <Button
+        android:id="@+id/reader_library_books_tab"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
+        android:backgroundTint="#8CE9D7"
+        android:text="@string/reader_library_books_tab"
+        android:textAllCaps="false"
+        android:textColor="#0B0D10"
+        android:textSize="14sp"/>
+    <Button
+        android:id="@+id/reader_library_items_tab"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:backgroundTint="#20252B"
+        android:text="@string/reader_library_items_tab"
+        android:textAllCaps="false"
+        android:textColor="#C4CDD6"
+        android:textSize="14sp"/>
+  </LinearLayout>
+
   <EditText
       android:id="@+id/reader_library_search"
       android:layout_width="match_parent"
       android:layout_height="48dp"
       android:layout_marginTop="8dp"
-      android:layout_marginBottom="8dp"
       android:background="@drawable/launcher_input"
-      android:hint="@string/reader_library_search_hint"
+      android:hint="@string/reader_library_search_books_hint"
       android:importantForAutofill="no"
       android:inputType="text"
       android:maxLines="1"
@@ -53,6 +81,50 @@
       android:textColor="#F4F7FA"
       android:textColorHint="#A8B2BE"/>
 
+  <LinearLayout
+      android:id="@+id/reader_library_book_controls"
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:orientation="horizontal">
+    <Button
+        android:id="@+id/reader_library_sort"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
+        android:backgroundTint="#20252B"
+        android:textAllCaps="false"
+        android:textColor="#F4F7FA"
+        android:textSize="13sp"/>
+    <Button
+        android:id="@+id/reader_library_manage_collections"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:backgroundTint="#20252B"
+        android:text="@string/reader_library_manage_collections"
+        android:textAllCaps="false"
+        android:textColor="#F4F7FA"
+        android:textSize="13sp"/>
+  </LinearLayout>
+
+  <HorizontalScrollView
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:fillViewport="false"
+      android:id="@+id/reader_library_collection_scroller"
+      android:scrollbars="none">
+    <LinearLayout
+        android:id="@+id/reader_library_collection_chips"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"/>
+  </HorizontalScrollView>
+
   <TextView
       android:id="@+id/reader_library_message"
       android:layout_width="match_parent"
@@ -61,9 +133,23 @@
       android:gravity="center"
       android:minHeight="96dp"
       android:padding="16dp"
-      android:text="@string/reader_library_empty"
+      android:text="@string/reader_library_books_empty"
       android:textColor="#A8B2BE"
       android:textSize="16sp"/>
+
+  <GridView
+      android:id="@+id/reader_library_books_grid"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:clipToPadding="false"
+      android:columnWidth="144dp"
+      android:horizontalSpacing="8dp"
+      android:numColumns="2"
+      android:paddingTop="4dp"
+      android:stretchMode="columnWidth"
+      android:verticalSpacing="8dp"
+      android:visibility="gone"/>
 
   <ListView
       android:id="@+id/reader_library_list"

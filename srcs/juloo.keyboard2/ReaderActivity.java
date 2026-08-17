@@ -191,8 +191,18 @@ public final class ReaderActivity extends Activity
 
   static void startLibraryItem(Context context, String itemId)
   {
-    context.startActivity(new Intent(context, ReaderActivity.class)
-        .putExtra(EXTRA_LIBRARY_ITEM_ID, itemId));
+    Intent intent = new Intent(context, ReaderActivity.class)
+      .putExtra(EXTRA_LIBRARY_ITEM_ID, itemId);
+    try (ReaderLibrary library = new ReaderLibrary(context))
+    {
+      ReaderLibrary.Item item = library.get(itemId);
+      if (item != null && item.sourceType == ReaderLibrary.SourceType.EPUB)
+        intent = ReaderEpubActivity.intent(context, itemId);
+    }
+    catch (ReaderLibrary.LibraryException ignored) {}
+    if (!(context instanceof Activity))
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    context.startActivity(intent);
   }
 
   private static PendingQuickRead pendingQuickRead(String token)

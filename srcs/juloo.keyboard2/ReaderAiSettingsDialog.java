@@ -27,7 +27,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** OpenRouter key, live model catalog, and editable article prompts. */
+/** OpenRouter key, live model catalog, and editable Reader AI prompts. */
 final class ReaderAiSettingsDialog
 {
   private final Activity activity;
@@ -127,11 +127,11 @@ final class ReaderAiSettingsDialog
     content.addView(label("Summary Two prompt"));
     summaryTwo = promptInput(settings.getSummaryTwoPrompt());
     content.addView(summaryTwo, promptParams());
-    content.addView(label("Article Quiz prompt"));
+    content.addView(label("Quiz prompt"));
     quiz = promptInput(settings.getQuizPrompt());
     content.addView(quiz, promptParams());
 
-    Button restore = ui.button("Restore default article prompts");
+    Button restore = ui.button("Restore default Reader AI prompts");
     restore.setOnClickListener(ignored -> {
       summaryOne.setText(ReaderAiRequest.SUMMARY_ONE_PROMPT);
       summaryTwo.setText(ReaderAiRequest.SUMMARY_TWO_PROMPT);
@@ -223,7 +223,7 @@ final class ReaderAiSettingsDialog
     content.addView(search, matchWrap());
     LinearLayout filters = ui.row();
     CheckBox free = check("Free only");
-    CheckBox longContext = check("Long context");
+    CheckBox longContext = check("100k+ context");
     ui.addWeighted(filters, free, 1f, 0);
     ui.addWeighted(filters, longContext, 1f, ui.dp(8));
     content.addView(filters);

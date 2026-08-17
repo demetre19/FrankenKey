@@ -2,27 +2,26 @@
 
 ## Purpose
 
-- Own the Hunspell JNI bridge used by the shared decoder worker.
+- Own the shared decoder worker's Hunspell JNI bridge.
 
 ## Ownership
 
-- This folder owns Hunspell construction, spelling, suggestion, and explicit-close Java/JNI code.
-- Autocorrect scoring/policy lives in `../suggestions/Decoder.java`; separator commit behavior lives in the parent package.
+- This folder owns Hunspell load/spell/suggest/close; `../suggestions/Decoder.java` owns scoring and the parent owns separator commits.
 
 ## Local Contracts
 
-- Hunspell load/use/close must remain serialized on `SharedDecoder`'s worker; never expose or call it from UI/main-thread code.
-- `close()` is the sole native lifetime boundary; do not restore finalizer-based cleanup or a second autocorrect scorer.
+- Serialize all load/use/close work on `SharedDecoder`; never call from UI/main thread.
+- `close()` is the sole native lifetime boundary: no finalizers or second scorer.
+- Fail conservatively when packs cannot load.
 
 ## Work Guidance
 
-- Keep the bridge narrow and fail conservatively when a language pack cannot load.
-- Autocorrect confidence, case preservation, and short/known-word protection belong to the shared decoder policy.
+- Keep confidence, case, and word-protection policy in the shared decoder.
 
 ## Verification
 
-- Run `AutocorrectScoringTest`, `SharedDecoderTest`, and focused key-event autocorrect/undo tests for changes here.
+- Run `AutocorrectScoringTest`, `SharedDecoderTest`, and focused key-event autocorrect/undo tests.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Autocorrect classes are owned here.
+- None.

@@ -2,32 +2,28 @@
 
 ## Purpose
 
-- Own snippet storage, snippet settings UI, row rendering, page model, and insertion helpers.
+- Own snippet storage/settings, row/page UI, and insertion helpers.
 
 ## Ownership
 
-- This folder owns snippet-domain Java classes.
-- Keyboard key routing and settings activity integration live in the parent package.
+- This folder owns snippet classes; parent owns key routing and Settings integration.
 
 ## Local Contracts
 
-- Snippets are user-authored data; preserve them across relevant storage contexts.
-- Direct-boot behavior must not leak raw snippet phrases into inappropriate protected preferences.
-- Everyday and FrankenKey modes share snippet capability.
-- Snippet buttons may store a stable Lucide icon ID or use their text-label/phrase fallback. Keep the curated picker at 56 unique, locally packaged icons in eight seven-icon groups; never serialize build-specific drawable IDs.
-- Icon-backed snippet buttons use the keyboard theme's label tint and center 20dp artwork on both axes within each slot.
-- Legacy serialized `iconLabel` fields remain readable but ignored. Icon accessibility labels must describe the icon without speaking the saved phrase, which may contain passwords or other secrets.
-- Snippet pages activate after a short bounded horizontal swipe and wrap circularly: finger-right moves forward and finger-left moves backward, including last-to-first and first-to-last edges. Sub-threshold movement remains available to snippet taps, and vertical movement must not change pages.
+- Preserve user snippets across applicable storage contexts; never leak phrases into inappropriate protected preferences.
+- Both keyboard modes support snippets.
+- Persist stable Lucide IDs (not drawable IDs); picker stays 56 unique packaged icons in eight groups of seven.
+- Icon buttons use theme label tint with centered 20dp art. Read-but-ignore legacy `iconLabel`; accessibility labels name icons, never potentially secret phrases.
+- Short bounded horizontal swipes change pages circularly (right=forward, left=back); sub-threshold taps and vertical gestures remain unaffected.
 
 ## Work Guidance
 
-- Keep storage migrations explicit and tested.
-- Use existing row/page patterns for UI changes.
+- Keep migrations explicit/tested and reuse row/page patterns.
 
 ## Verification
 
-- Run focused snippet tests such as `SnippetStoreTest` or seam/layout tests when changed.
+- Run focused snippet storage, seam, and layout tests.
 
 ## Child DOX Index
 
-- No child AGENTS.md files currently. Snippet classes are owned here.
+- None.

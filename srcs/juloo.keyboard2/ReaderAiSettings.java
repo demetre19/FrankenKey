@@ -28,7 +28,7 @@ final class ReaderAiSettings
   private static final String SUMMARY_ONE = "summary_one_prompt";
   private static final String SUMMARY_TWO = "summary_two_prompt";
   private static final String QUIZ = "quiz_prompt";
-  private static final String DISCLOSURE_ACCEPTED = "disclosure_accepted_v2";
+  private static final String DISCLOSURE_ACCEPTED = "disclosure_accepted_v3";
   private static final int MAX_PROMPT_LENGTH = 20_000;
 
   private final SharedPreferences preferences;

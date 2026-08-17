@@ -25,9 +25,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,11 +48,15 @@ public final class Reader3dActivity extends Activity
   private static final Pattern WORD_PATTERN = Pattern.compile("\\S+");
   private static final byte[] BLOCKED_RESPONSE = new byte[0];
 
+  private final ExecutorService _bookAiLoader =
+    Executors.newSingleThreadExecutor();
   private WebView _webView;
   private ReaderDocument _document;
   private File _handoffFile;
   private int _latestRawWordIndex;
   private boolean _latestFinished;
+  private boolean _openingClassic;
+  private boolean _destroyed;
 
   static boolean start(Activity host, String itemId, String title, String text)
   {
@@ -63,6 +70,22 @@ public final class Reader3dActivity extends Activity
         return false;
       intent.putExtra(EXTRA_HANDOFF_TOKEN, handoff.getName());
     }
+    host.startActivity(intent);
+    return true;
+  }
+
+  static boolean startEpub(Activity host, ReaderLibrary.Item item, String title,
+      String text, String chapterRangesJson, int rawWordIndex)
+  {
+    if (item == null || item.sourceType != ReaderLibrary.SourceType.EPUB)
+      return false;
+    File handoff = createHandoff(host, title, text, item.id,
+        chapterRangesJson, rawWordIndex);
+    if (handoff == null)
+      return false;
+    Intent intent = new Intent(host, Reader3dActivity.class)
+      .putExtra(EXTRA_ITEM_ID, item.id)
+      .putExtra(EXTRA_HANDOFF_TOKEN, handoff.getName());
     host.startActivity(intent);
     return true;
   }
@@ -165,23 +188,33 @@ public final class Reader3dActivity extends Activity
   private ReaderDocument loadDocument()
   {
     String itemId = getIntent().getStringExtra(EXTRA_ITEM_ID);
+    String token = getIntent().getStringExtra(EXTRA_HANDOFF_TOKEN);
+    JSONObject payload = null;
+    if (safeToken(token))
+    {
+      _handoffFile = new File(handoffDirectory(this), token);
+      payload = readJson(_handoffFile);
+      if (payload == null)
+        return null;
+    }
     if (itemId != null && !itemId.isEmpty())
     {
       try (ReaderLibrary library = new ReaderLibrary(this))
       {
         ReaderLibrary.Item item = library.get(itemId);
-        return item == null ? null : ReaderDocument.fromItem(item);
+        if (item == null)
+          return null;
+        if (payload != null && item.sourceType == ReaderLibrary.SourceType.EPUB)
+          return ReaderDocument.fromEpub(item, payload.optString("text"),
+              payload.optString("chapterRanges"),
+              payload.optInt("rawWordIndex", (int)item.rawWordIndex));
+        return ReaderDocument.fromItem(item);
       }
       catch (ReaderLibrary.LibraryException error)
       {
         return null;
       }
     }
-    String token = getIntent().getStringExtra(EXTRA_HANDOFF_TOKEN);
-    if (!safeToken(token))
-      return null;
-    _handoffFile = new File(handoffDirectory(this), token);
-    JSONObject payload = readJson(_handoffFile);
     if (payload == null)
       return null;
     return ReaderDocument.fromText(payload.optString("id"),
@@ -232,6 +265,17 @@ public final class Reader3dActivity extends Activity
       runOnUiThread(() -> Reader3dActivity.this.openReaderAi());
     }
 
+    @JavascriptInterface public boolean canOpenClassicReader()
+    {
+      return _document.item != null &&
+        _document.item.sourceType == ReaderLibrary.SourceType.EPUB;
+    }
+
+    @JavascriptInterface public void openClassicReader()
+    {
+      runOnUiThread(() -> Reader3dActivity.this.openClassicReader());
+    }
+
     @JavascriptInterface public String documentId()
     {
       return _document.id;
@@ -276,36 +320,74 @@ public final class Reader3dActivity extends Activity
     int rawIndex = _latestFinished ? _document.rawWordStarts.length :
       Math.max(0, Math.min(_latestRawWordIndex,
             _document.rawWordStarts.length));
-    int documentOffset = _document.characterOffsetForRawWord(rawIndex);
-    String locator;
-    float fraction;
-    if (_document.item.sourceType == ReaderLibrary.SourceType.URL)
-    {
-      locator = "article:" + documentOffset;
-      fraction = _document.text.isEmpty() ? 0f :
-        documentOffset / (float)_document.text.length();
-    }
-    else
-    {
-      UnitRange unit = _document.unitForDocumentOffset(documentOffset);
-      int localOffset = Math.max(0, Math.min(unit.sourceLength,
-            documentOffset - unit.documentStart));
-      locator = "unit:" + unit.index + ":" + localOffset;
-      fraction = _document.sourceLength == 0 ? 0f :
-        (unit.completedSourceLength + localOffset) /
-        (float)_document.sourceLength;
-    }
     boolean finished = _latestFinished ||
       rawIndex >= _document.rawWordStarts.length;
     try (ReaderLibrary library = new ReaderLibrary(this))
     {
-      library.updateProgress(_document.item.id, locator,
-          Math.max(0f, Math.min(1f, fraction)), finished,
-          System.currentTimeMillis());
+      if (_document.item.sourceType == ReaderLibrary.SourceType.EPUB)
+      {
+        BookPosition position = _document.bookPosition(rawIndex);
+        float fraction = _document.rawWordStarts.length == 0 ? 0f :
+          rawIndex / (float)_document.rawWordStarts.length;
+        library.updateBookProgress(_document.item.id, rawIndex,
+            position.chapter, position.charOffset, position.anchor,
+            Math.max(0f, Math.min(1f, fraction)), finished,
+            ReaderLibrary.ReaderMode.THREE_D, System.currentTimeMillis());
+      }
+      else
+      {
+        int documentOffset = _document.characterOffsetForRawWord(rawIndex);
+        String locator;
+        float fraction;
+        if (_document.item.sourceType == ReaderLibrary.SourceType.URL)
+        {
+          locator = "article:" + documentOffset;
+          fraction = _document.text.isEmpty() ? 0f :
+            documentOffset / (float)_document.text.length();
+        }
+        else
+        {
+          UnitRange unit = _document.unitForDocumentOffset(documentOffset);
+          int localOffset = Math.max(0, Math.min(unit.sourceLength,
+                documentOffset - unit.documentStart));
+          locator = "unit:" + unit.index + ":" + localOffset;
+          fraction = _document.sourceLength == 0 ? 0f :
+            (unit.completedSourceLength + localOffset) /
+            (float)_document.sourceLength;
+        }
+        library.updateProgress(_document.item.id, locator,
+            Math.max(0f, Math.min(1f, fraction)), finished,
+            System.currentTimeMillis());
+      }
     }
     catch (ReaderLibrary.LibraryException ignored) {}
   }
 
+  private void openClassicReader()
+  {
+    if (_document == null || _document.item == null ||
+        _document.item.sourceType != ReaderLibrary.SourceType.EPUB)
+      return;
+    persistProgress();
+    try (ReaderLibrary library = new ReaderLibrary(this))
+    {
+      BookPosition position = _document.bookPosition(_latestRawWordIndex);
+      float fraction = _document.rawWordStarts.length == 0 ? 0f :
+        _latestRawWordIndex / (float)_document.rawWordStarts.length;
+      library.updateBookProgress(_document.item.id, _latestRawWordIndex,
+          position.chapter, position.charOffset, position.anchor,
+          Math.max(0f, Math.min(1f, fraction)), false,
+          ReaderLibrary.ReaderMode.CLASSIC, System.currentTimeMillis());
+      library.updateGlobalLastReaderMode(ReaderLibrary.ReaderMode.CLASSIC);
+    }
+    catch (ReaderLibrary.LibraryException error)
+    {
+      return;
+    }
+    _openingClassic = true;
+    startActivity(ReaderEpubActivity.intent(this, _document.item.id, true));
+    finish();
+  }
   private void finishWithProgress()
   {
     persistProgress();
@@ -319,7 +401,7 @@ public final class Reader3dActivity extends Activity
 
   @Override protected void onPause()
   {
-    if (_webView != null)
+    if (!_openingClassic && _webView != null)
       _webView.evaluateJavascript(
           "window.reader3dPause&&window.reader3dPause()", null);
     super.onPause();
@@ -327,7 +409,10 @@ public final class Reader3dActivity extends Activity
 
   @Override protected void onDestroy()
   {
-    persistProgress();
+    _destroyed = true;
+    _bookAiLoader.shutdownNow();
+    if (!_openingClassic)
+      persistProgress();
     if (_webView != null)
     {
       _webView.removeJavascriptInterface("Native");
@@ -342,6 +427,12 @@ public final class Reader3dActivity extends Activity
 
   private static File createHandoff(Context context, String title, String text)
   {
+    return createHandoff(context, title, text, null, null, 0);
+  }
+
+  private static File createHandoff(Context context, String title, String text,
+      String itemId, String chapterRangesJson, int rawWordIndex)
+  {
     if (text == null || text.trim().isEmpty())
       return null;
     File directory = handoffDirectory(context);
@@ -351,10 +442,13 @@ public final class Reader3dActivity extends Activity
     JSONObject payload = new JSONObject();
     try
     {
-      payload.put("id", "reader-3d:" + token);
+      payload.put("id", itemId == null ? "reader-3d:" + token : itemId);
       payload.put("title", title == null || title.trim().isEmpty()
           ? context.getString(R.string.reader_default_title) : title);
       payload.put("text", text);
+      if (chapterRangesJson != null)
+        payload.put("chapterRanges", chapterRangesJson);
+      payload.put("rawWordIndex", Math.max(0, rawWordIndex));
       try (FileOutputStream output = new FileOutputStream(target))
       {
         output.write(payload.toString().getBytes(StandardCharsets.UTF_8));
@@ -413,6 +507,20 @@ public final class Reader3dActivity extends Activity
     }
   }
 
+  static final class BookPosition
+  {
+    final int chapter;
+    final int charOffset;
+    final String anchor;
+
+    BookPosition(int chapter, int charOffset, String anchor)
+    {
+      this.chapter = chapter;
+      this.charOffset = charOffset;
+      this.anchor = anchor;
+    }
+  }
+
   static final class UnitRange
   {
     final int index;
@@ -433,10 +541,18 @@ public final class Reader3dActivity extends Activity
   private boolean canOpenReaderAi()
   {
     ReaderLibrary.Item item = _document == null ? null : _document.item;
-    return item != null &&
-      item.sourceType == ReaderLibrary.SourceType.URL &&
-      ReaderActivity.isSafeOriginalUri(item.sourceUri) &&
-      !_document.text.trim().isEmpty();
+    return item != null && !_document.text.trim().isEmpty() &&
+      isReaderAiItem(item);
+  }
+
+  static boolean isReaderAiItem(ReaderLibrary.Item item)
+  {
+    if (item == null)
+      return false;
+    if (item.sourceType == ReaderLibrary.SourceType.EPUB)
+      return ReaderEpubActivity.isReadableItem(item);
+    return item.sourceType == ReaderLibrary.SourceType.URL &&
+      ReaderActivity.isSafeOriginalUri(item.sourceUri);
   }
 
   private void openReaderAi()
@@ -444,11 +560,38 @@ public final class Reader3dActivity extends Activity
     if (!canOpenReaderAi())
       return;
     ReaderLibrary.Item item = _document.item;
+    if (item.sourceType == ReaderLibrary.SourceType.URL)
+    {
+      Uri source = Uri.parse(item.sourceUri);
+      ReaderAiDialog.show(this, new ReaderAiService.Article(
+            item.id, item.title, item.sourceUri,
+            source.getHost() == null ? "" : source.getHost(),
+            item.author, item.contentHash, _document.text));
+      return;
+    }
     Uri source = Uri.parse(item.sourceUri);
-    ReaderAiDialog.show(this, new ReaderAiService.Article(
-          item.id, item.title, item.sourceUri,
-          source.getHost() == null ? "" : source.getHost(),
-          item.author, item.contentHash, _document.text));
+    _bookAiLoader.execute(() ->
+    {
+      ReaderEpubImporter.Book book = null;
+      try
+      {
+        book = ReaderEpubImporter.readUri(this, source);
+      }
+      catch (ReaderImportPipeline.ImportException ignored) {}
+      ReaderEpubImporter.Book result = book;
+      runOnUiThread(() ->
+      {
+        if (_destroyed)
+          return;
+        if (result == null || result.chapters.isEmpty())
+        {
+          Toast.makeText(this, R.string.reader_epub_open_error,
+              Toast.LENGTH_SHORT).show();
+          return;
+        }
+        ReaderAiDialog.show(this, ReaderAiService.Article.book(item, result));
+      });
+    });
   }
 
   static final class ReaderDocument
@@ -465,7 +608,8 @@ public final class Reader3dActivity extends Activity
 
     private ReaderDocument(String id, String title, String text,
         ReaderLibrary.Item item, List<UnitRange> units, int sourceLength,
-        int progressDocumentOffset, JSONArray chapterRanges)
+        int progressDocumentOffset, JSONArray chapterRanges,
+        int explicitRawWordIndex)
     {
       this.id = id == null || id.isEmpty() ? "reader-3d" : id;
       this.title = title == null || title.trim().isEmpty() ? "Reader" : title;
@@ -475,7 +619,9 @@ public final class Reader3dActivity extends Activity
       this.sourceLength = sourceLength;
       this.rawWordStarts = wordStarts(this.text);
       this.chapterRangesJson = chapterRanges.toString();
-      this.progressRawWordIndex = rawWordIndexAt(progressDocumentOffset);
+      this.progressRawWordIndex = explicitRawWordIndex >= 0
+        ? Math.max(0, Math.min(explicitRawWordIndex, rawWordStarts.length))
+        : rawWordIndexAt(progressDocumentOffset);
     }
 
     static ReaderDocument fromText(String id, String title, String text)
@@ -493,7 +639,40 @@ public final class Reader3dActivity extends Activity
       }
       catch (JSONException impossible) {}
       return new ReaderDocument(id, title, safeText, null, units,
-          safeText.length(), 0, ranges);
+          safeText.length(), 0, ranges, -1);
+    }
+
+    static ReaderDocument fromEpub(ReaderLibrary.Item item, String text,
+        String chapterRangesJson, int rawWordIndex)
+    {
+      if (item == null || item.sourceType != ReaderLibrary.SourceType.EPUB)
+        return null;
+      String safeText = text == null ? "" : text;
+      JSONArray ranges;
+      try
+      {
+        ranges = new JSONArray(chapterRangesJson == null
+            ? "[]" : chapterRangesJson);
+      }
+      catch (JSONException error)
+      {
+        ranges = new JSONArray();
+      }
+      if (ranges.length() == 0)
+      {
+        JSONObject range = new JSONObject();
+        try
+        {
+          range.put("start", 0);
+          range.put("end", wordStarts(safeText).length);
+          ranges.put(range);
+        }
+        catch (JSONException impossible) {}
+      }
+      ArrayList<UnitRange> units = new ArrayList<>();
+      units.add(new UnitRange(0, 0, safeText.length(), 0));
+      return new ReaderDocument(item.id, item.title, safeText, item, units,
+          safeText.length(), 0, ranges, rawWordIndex);
     }
 
     static ReaderDocument fromItem(ReaderLibrary.Item item)
@@ -538,7 +717,9 @@ public final class Reader3dActivity extends Activity
         catch (JSONException impossible) {}
       }
       return new ReaderDocument(item.id, item.title, text.toString(), item,
-          units, completedSourceLength, progressOffset, chapters);
+          units, completedSourceLength, progressOffset, chapters,
+          item.sourceType == ReaderLibrary.SourceType.EPUB
+            ? (int)Math.min(Integer.MAX_VALUE, item.rawWordIndex) : -1);
     }
 
     private static int progressDocumentOffset(ReaderLibrary.Item item,
@@ -614,6 +795,42 @@ public final class Reader3dActivity extends Activity
         selected = unit;
       }
       return selected;
+    }
+
+    BookPosition bookPosition(int rawWordIndex)
+    {
+      int boundedRaw = Math.max(0,
+          Math.min(rawWordIndex, rawWordStarts.length));
+      int chapter = 0;
+      int chapterStartRaw = 0;
+      try
+      {
+        JSONArray ranges = new JSONArray(chapterRangesJson);
+        for (int i = 0; i < ranges.length(); i++)
+        {
+          JSONObject range = ranges.optJSONObject(i);
+          if (range == null)
+            continue;
+          int start = Math.max(0, range.optInt("start", 0));
+          int end = Math.max(start, range.optInt("end", rawWordStarts.length));
+          if (boundedRaw < end || i == ranges.length() - 1)
+          {
+            chapter = i;
+            chapterStartRaw = start;
+            break;
+          }
+        }
+      }
+      catch (JSONException ignored) {}
+      int documentOffset = characterOffsetForRawWord(boundedRaw);
+      int chapterOffset = characterOffsetForRawWord(chapterStartRaw);
+      int charOffset = Math.max(0, documentOffset - chapterOffset);
+      int anchorStart = Math.max(0, documentOffset - 40);
+      int anchorEnd = Math.min(text.length(), documentOffset + 80);
+      String anchor = text.substring(anchorStart, anchorEnd)
+        .replaceAll("\\s+", " ").trim();
+      return new BookPosition(chapter, charOffset,
+          anchor.isEmpty() ? null : anchor);
     }
 
     private static int[] wordStarts(String text)

@@ -11,9 +11,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Bounded OpenRouter text-model client shared by Reader AI surfaces. */
 final class ReaderAiOpenRouter
@@ -104,13 +107,14 @@ final class ReaderAiOpenRouter
     }
   }
 
-  private volatile HttpURLConnection activeConnection;
+  private final Set<HttpURLConnection> activeConnections =
+    Collections.synchronizedSet(new HashSet<>());
 
   List<Model> fetchModels(String apiKey) throws IOException, JSONException
   {
     HttpURLConnection connection = openConnection(MODELS_URL, "GET", apiKey,
         30_000);
-    activeConnection = connection;
+    activeConnections.add(connection);
     try
     {
       return parseModels(readJsonResponse(connection).toString());
@@ -118,8 +122,7 @@ final class ReaderAiOpenRouter
     finally
     {
       connection.disconnect();
-      if (activeConnection == connection)
-        activeConnection = null;
+      activeConnections.remove(connection);
     }
   }
 
@@ -136,7 +139,7 @@ final class ReaderAiOpenRouter
     JSONObject body = buildRequest(modelId, messages);
     HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
         120_000);
-    activeConnection = connection;
+    activeConnections.add(connection);
     try
     {
       byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
@@ -147,15 +150,18 @@ final class ReaderAiOpenRouter
     finally
     {
       connection.disconnect();
-      if (activeConnection == connection)
-        activeConnection = null;
+      activeConnections.remove(connection);
     }
   }
 
   void cancel()
   {
-    HttpURLConnection connection = activeConnection;
-    if (connection != null)
+    List<HttpURLConnection> connections;
+    synchronized (activeConnections)
+    {
+      connections = new ArrayList<>(activeConnections);
+    }
+    for (HttpURLConnection connection : connections)
       connection.disconnect();
   }
 

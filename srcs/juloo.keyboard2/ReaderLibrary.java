@@ -12,14 +12,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /** App-private persistence for normalized Reader documents and progress. */
 public final class ReaderLibrary extends SQLiteOpenHelper
 {
   private static final String DATABASE_NAME = "reader_library.db";
-  private static final int DATABASE_VERSION = 4;
+  private static final int DATABASE_VERSION = 5;
   private static final String CORRUPT_MESSAGE =
     "Reader Library record is corrupt.";
   private static final String UNSUPPORTED_MESSAGE =
@@ -31,6 +34,33 @@ public final class ReaderLibrary extends SQLiteOpenHelper
   }
 
   public enum ImportState { IMPORTING, READY, FAILED, OCR_REQUIRED }
+  public enum SourceState { AVAILABLE, MISSING, INVALID, CHANGED }
+  public enum ReaderMode { CLASSIC, THREE_D }
+  public enum BookSort { RECENT, TITLE, AUTHOR, PROGRESS }
+  public enum ClassicTheme { DARK, SEPIA, LIGHT }
+  public enum ClassicFontFamily { SERIF, SYSTEM }
+
+  public static final class EpubSettings
+  {
+    public final String booksTreeUri;
+    public final ReaderMode globalLastReaderMode;
+    public final ClassicTheme classicTheme;
+    public final float classicTextSize;
+    public final ClassicFontFamily classicFontFamily;
+    public final boolean classicImagesEnabled;
+
+    public EpubSettings(String booksTreeUri, ReaderMode globalLastReaderMode,
+        ClassicTheme classicTheme, float classicTextSize,
+        ClassicFontFamily classicFontFamily, boolean classicImagesEnabled)
+    {
+      this.booksTreeUri = booksTreeUri;
+      this.globalLastReaderMode = globalLastReaderMode;
+      this.classicTheme = classicTheme;
+      this.classicTextSize = classicTextSize;
+      this.classicFontFamily = classicFontFamily;
+      this.classicImagesEnabled = classicImagesEnabled;
+    }
+  }
 
   public static final class ContentUnit
   {
@@ -79,25 +109,29 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     public final String errorMessage;
     public final List<ContentUnit> units;
     public final String imageUri;
-
-    public Item(String id, String title, SourceType sourceType, String sourceUri,
-        String mimeType, String author, String languageTag, long createdAt,
-        long updatedAt, long lastOpenedAt, String progressLocator,
-        float progressFraction, boolean finished, String contentHash,
-        ImportState importState, String errorMessage, List<ContentUnit> units)
-    {
-      this(id, title, sourceType, sourceUri, mimeType, author, languageTag,
-          createdAt, updatedAt, lastOpenedAt, progressLocator,
-          progressFraction, finished, contentHash, importState, errorMessage,
-          units, null);
-    }
+    public final String treeUri;
+    public final SourceState sourceState;
+    public final boolean favorite;
+    public final ReaderMode lastReaderMode;
+    public final long rawWordIndex;
+    public final int progressChapter;
+    public final int progressCharOffset;
+    public final String progressAnchor;
+    public final long fileSize;
+    public final long fileLastModified;
+    public final String publisher;
+    public final String bookIdentifier;
 
     public Item(String id, String title, SourceType sourceType, String sourceUri,
         String mimeType, String author, String languageTag, long createdAt,
         long updatedAt, long lastOpenedAt, String progressLocator,
         float progressFraction, boolean finished, String contentHash,
         ImportState importState, String errorMessage, List<ContentUnit> units,
-        String imageUri)
+        String imageUri, String treeUri, SourceState sourceState,
+        boolean favorite, ReaderMode lastReaderMode, long rawWordIndex,
+        int progressChapter, int progressCharOffset, String progressAnchor,
+        long fileSize, long fileLastModified, String publisher,
+        String bookIdentifier)
     {
       this.id = id;
       this.title = title;
@@ -117,6 +151,32 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       this.errorMessage = errorMessage;
       this.units = Collections.unmodifiableList(new ArrayList<>(units));
       this.imageUri = imageUri;
+      this.treeUri = treeUri;
+      this.sourceState = sourceState;
+      this.favorite = favorite;
+      this.lastReaderMode = lastReaderMode;
+      this.rawWordIndex = rawWordIndex;
+      this.progressChapter = progressChapter;
+      this.progressCharOffset = progressCharOffset;
+      this.progressAnchor = progressAnchor;
+      this.fileSize = fileSize;
+      this.fileLastModified = fileLastModified;
+      this.publisher = publisher;
+      this.bookIdentifier = bookIdentifier;
+    }
+  }
+
+  public static final class BookCollection
+  {
+    public final String id;
+    public final String name;
+    public final int sortOrder;
+
+    BookCollection(String id, String name, int sortOrder)
+    {
+      this.id = id;
+      this.name = name;
+      this.sortOrder = sortOrder;
     }
   }
 
@@ -145,6 +205,7 @@ public final class ReaderLibrary extends SQLiteOpenHelper
   {
     createItems(db);
     createUnits(db);
+    createBookTables(db);
   }
 
   @Override public void onUpgrade(SQLiteDatabase db, int oldVersion,
@@ -167,6 +228,31 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       db.execSQL(
           "ALTER TABLE reader_content_units ADD COLUMN asset_uri TEXT");
       oldVersion = 4;
+    }
+    if (oldVersion == 4)
+    {
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN tree_uri TEXT");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN source_state TEXT "
+          + "NOT NULL DEFAULT 'AVAILABLE'");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN favorite INTEGER "
+          + "NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN last_reader_mode TEXT "
+          + "NOT NULL DEFAULT 'CLASSIC'");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN raw_word_index INTEGER "
+          + "NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN progress_chapter INTEGER "
+          + "NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN progress_char_offset "
+          + "INTEGER NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN progress_anchor TEXT");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN file_size INTEGER "
+          + "NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN file_last_modified "
+          + "INTEGER NOT NULL DEFAULT 0");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN publisher TEXT");
+      db.execSQL("ALTER TABLE reader_items ADD COLUMN book_identifier TEXT");
+      createBookTables(db);
+      oldVersion = 5;
     }
     if (oldVersion != newVersion)
       throw new SQLiteException(UNSUPPORTED_MESSAGE);
@@ -202,7 +288,12 @@ public final class ReaderLibrary extends SQLiteOpenHelper
             duplicate.lastOpenedAt, duplicate.progressLocator,
             duplicate.progressFraction, duplicate.finished,
             incoming.contentHash, incoming.importState, incoming.errorMessage,
-            incoming.units, imageUri);
+            incoming.units, imageUri, incoming.treeUri, incoming.sourceState,
+            duplicate.favorite, duplicate.lastReaderMode,
+            duplicate.rawWordIndex, duplicate.progressChapter,
+            duplicate.progressCharOffset, duplicate.progressAnchor,
+            incoming.fileSize, incoming.fileLastModified, incoming.publisher,
+            incoming.bookIdentifier);
       if (duplicate != null)
       {
         if (duplicate.imageUri != null && !duplicate.imageUri.equals(imageUri))
@@ -247,6 +338,20 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     }
   }
 
+  public Item getByContentHash(String contentHash) throws LibraryException
+  {
+    if (empty(contentHash))
+      return null;
+    try
+    {
+      return findByHash(getReadableDatabase(), contentHash);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
   public List<Item> list() throws LibraryException
   {
     ArrayList<Item> result = new ArrayList<>();
@@ -263,6 +368,368 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       throw new LibraryException(CORRUPT_MESSAGE, error);
     }
   }
+  public List<Item> listNonBooks() throws LibraryException
+  {
+    ArrayList<Item> result = new ArrayList<>();
+    SQLiteDatabase db = getReadableDatabase();
+    try (Cursor cursor = db.query("reader_items", null, "source_type != ?",
+          new String[] { SourceType.EPUB.name() }, null, null,
+          "last_opened_at DESC, created_at DESC, id ASC"))
+    {
+      while (cursor.moveToNext())
+        result.add(readItem(db, cursor));
+      return result;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+
+  public List<Item> listBooks(String query, BookSort sort,
+      boolean favoritesOnly, String collectionId) throws LibraryException
+  {
+    StringBuilder selection = new StringBuilder("source_type = ?");
+    ArrayList<String> args = new ArrayList<>();
+    args.add(SourceType.EPUB.name());
+    String search = query == null ? "" : query.trim();
+    if (!search.isEmpty())
+    {
+      selection.append(" AND (title LIKE ? ESCAPE '\\' COLLATE NOCASE OR ")
+        .append("author LIKE ? ESCAPE '\\' COLLATE NOCASE)");
+      String pattern = likePattern(search);
+      args.add(pattern);
+      args.add(pattern);
+    }
+    if (favoritesOnly)
+      selection.append(" AND favorite = 1");
+    if (!empty(collectionId))
+    {
+      selection.append(" AND EXISTS (SELECT 1 FROM reader_item_collections ")
+        .append("WHERE item_id = reader_items.id AND collection_id = ?)");
+      args.add(collectionId);
+    }
+    String order;
+    switch (sort == null ? BookSort.RECENT : sort)
+    {
+      case TITLE:
+        order = "title COLLATE NOCASE ASC, author COLLATE NOCASE ASC, id ASC";
+        break;
+      case AUTHOR:
+        order = "CASE WHEN author IS NULL OR TRIM(author) = '' THEN 1 ELSE 0 " +
+          "END, author COLLATE NOCASE ASC, title COLLATE NOCASE ASC, id ASC";
+        break;
+      case PROGRESS:
+        order = "progress_fraction DESC, last_opened_at DESC, id ASC";
+        break;
+      case RECENT:
+      default:
+        order = "last_opened_at DESC, created_at DESC, id ASC";
+        break;
+    }
+    ArrayList<Item> result = new ArrayList<>();
+    SQLiteDatabase db = getReadableDatabase();
+    try (Cursor cursor = db.query("reader_items", null,
+          selection.toString(), args.toArray(new String[0]), null, null, order))
+    {
+      while (cursor.moveToNext())
+        result.add(readItem(db, cursor, false));
+      return result;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void setFavorite(String itemId, boolean favorite)
+      throws LibraryException
+  {
+    ContentValues values = new ContentValues();
+    values.put("favorite", favorite ? 1 : 0);
+    try
+    {
+      if (getWritableDatabase().update("reader_items", values,
+            "id = ? AND source_type = ?",
+            new String[] { itemId, SourceType.EPUB.name() }) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public List<BookCollection> listCollections() throws LibraryException
+  {
+    ArrayList<BookCollection> result = new ArrayList<>();
+    try (Cursor cursor = getReadableDatabase().query("reader_collections",
+          new String[] { "id", "name", "sort_order" }, null, null, null, null,
+          "sort_order ASC, normalized_name ASC"))
+    {
+      while (cursor.moveToNext())
+        result.add(new BookCollection(cursor.getString(0), cursor.getString(1),
+              cursor.getInt(2)));
+      return result;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public BookCollection createCollection(String name) throws LibraryException
+  {
+    String displayName = collectionName(name);
+    long now = System.currentTimeMillis();
+    String id = UUID.randomUUID().toString();
+    ContentValues values = new ContentValues();
+    values.put("id", id);
+    values.put("name", displayName);
+    values.put("normalized_name", displayName.toLowerCase(Locale.ROOT));
+    values.put("sort_order", nextCollectionSortOrder());
+    values.put("created_at", now);
+    values.put("updated_at", now);
+    try
+    {
+      getWritableDatabase().insertOrThrow("reader_collections", null, values);
+      return new BookCollection(id, displayName,
+          values.getAsInteger("sort_order"));
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException("A collection with this name already exists.",
+          error);
+    }
+  }
+
+  public void renameCollection(String id, String name) throws LibraryException
+  {
+    String displayName = collectionName(name);
+    ContentValues values = new ContentValues();
+    values.put("name", displayName);
+    values.put("normalized_name", displayName.toLowerCase(Locale.ROOT));
+    values.put("updated_at", System.currentTimeMillis());
+    try
+    {
+      if (getWritableDatabase().update("reader_collections", values, "id = ?",
+            new String[] { id }) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException("A collection with this name already exists.",
+          error);
+    }
+  }
+
+  public boolean deleteCollection(String id) throws LibraryException
+  {
+    try
+    {
+      return getWritableDatabase().delete("reader_collections", "id = ?",
+          new String[] { id }) == 1;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public Set<String> collectionIdsForItem(String itemId)
+      throws LibraryException
+  {
+    LinkedHashSet<String> result = new LinkedHashSet<>();
+    try (Cursor cursor = getReadableDatabase().query(
+          "reader_item_collections", new String[] { "collection_id" },
+          "item_id = ?", new String[] { itemId }, null, null,
+          "collection_id ASC"))
+    {
+      while (cursor.moveToNext())
+        result.add(cursor.getString(0));
+      return result;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void setItemCollections(String itemId, Set<String> collectionIds)
+      throws LibraryException
+  {
+    Item item = get(itemId);
+    if (item == null || item.sourceType != SourceType.EPUB)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    LinkedHashSet<String> unique = collectionIds == null
+      ? new LinkedHashSet<>() : new LinkedHashSet<>(collectionIds);
+    SQLiteDatabase db = getWritableDatabase();
+    db.beginTransaction();
+    try
+    {
+      db.delete("reader_item_collections", "item_id = ?",
+          new String[] { itemId });
+      for (String collectionId : unique)
+      {
+        ContentValues values = new ContentValues();
+        values.put("item_id", itemId);
+        values.put("collection_id", collectionId);
+        db.insertOrThrow("reader_item_collections", null, values);
+      }
+      db.setTransactionSuccessful();
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+    finally
+    {
+      db.endTransaction();
+    }
+  }
+  public String getBooksTreeUri() throws LibraryException
+  {
+    try (Cursor cursor = getReadableDatabase().query("reader_epub_settings",
+          new String[] { "books_tree_uri" }, "id = 1", null, null, null, null))
+    {
+      return cursor.moveToFirst() && !cursor.isNull(0)
+        ? cursor.getString(0) : null;
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void setBooksTreeUri(String treeUri) throws LibraryException
+  {
+    ContentValues values = new ContentValues();
+    values.put("books_tree_uri", treeUri);
+    try
+    {
+      if (getWritableDatabase().update("reader_epub_settings", values,
+            "id = 1", null) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public EpubSettings getEpubSettings() throws LibraryException
+  {
+    String[] columns = {
+      "books_tree_uri", "global_last_reader_mode", "classic_theme",
+      "classic_text_size", "classic_font_family", "classic_images_enabled"
+    };
+    try (Cursor cursor = getReadableDatabase().query("reader_epub_settings",
+          columns, "id = 1", null, null, null, null))
+    {
+      if (!cursor.moveToFirst())
+        throw new LibraryException(CORRUPT_MESSAGE);
+      float textSize = cursor.getFloat(3);
+      if (!Float.isFinite(textSize) || textSize < 14f || textSize > 32f)
+        throw new LibraryException(CORRUPT_MESSAGE);
+      return new EpubSettings(cursor.isNull(0) ? null : cursor.getString(0),
+          ReaderMode.valueOf(cursor.getString(1)),
+          ClassicTheme.valueOf(cursor.getString(2)), textSize,
+          ClassicFontFamily.valueOf(cursor.getString(4)),
+          cursor.getInt(5) != 0);
+    }
+    catch (IllegalArgumentException | SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void updateEpubSettings(EpubSettings settings)
+      throws LibraryException
+  {
+    if (settings == null || settings.globalLastReaderMode == null ||
+        settings.classicTheme == null ||
+        !Float.isFinite(settings.classicTextSize) ||
+        settings.classicTextSize < 14f || settings.classicTextSize > 32f ||
+        settings.classicFontFamily == null)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    ContentValues values = new ContentValues();
+    if (settings.booksTreeUri == null)
+      values.putNull("books_tree_uri");
+    else
+      values.put("books_tree_uri", settings.booksTreeUri);
+    values.put("global_last_reader_mode",
+        settings.globalLastReaderMode.name());
+    values.put("classic_theme", settings.classicTheme.name());
+    values.put("classic_text_size", settings.classicTextSize);
+    values.put("classic_font_family", settings.classicFontFamily.name());
+    values.put("classic_images_enabled",
+        settings.classicImagesEnabled ? 1 : 0);
+    try
+    {
+      if (getWritableDatabase().update("reader_epub_settings", values,
+            "id = 1", null) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void updateGlobalLastReaderMode(ReaderMode mode)
+      throws LibraryException
+  {
+    if (mode == null)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    ContentValues values = new ContentValues();
+    values.put("global_last_reader_mode", mode.name());
+    try
+    {
+      if (getWritableDatabase().update("reader_epub_settings", values,
+            "id = 1", null) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  public void markSourceState(String id, SourceState sourceState)
+      throws LibraryException
+  {
+    if (empty(id) || sourceState == null)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    ContentValues values = new ContentValues();
+    values.put("source_state", sourceState.name());
+    if (getWritableDatabase().update("reader_items", values, "id = ?",
+          new String[] { id }) != 1)
+      throw new LibraryException(CORRUPT_MESSAGE);
+  }
+
+  public Item rebindBookSource(String id, String sourceUri, String treeUri,
+      String contentHash, long fileSize, long fileLastModified)
+      throws LibraryException
+  {
+    Item item = get(id);
+    if (item == null || item.sourceType != SourceType.EPUB ||
+        empty(sourceUri) || empty(treeUri) ||
+        !item.contentHash.equals(contentHash) ||
+        fileSize < 0L || fileLastModified < 0L)
+      throw new LibraryException("The selected EPUB does not match this book.");
+    ContentValues values = new ContentValues();
+    values.put("source_uri", sourceUri);
+    values.put("tree_uri", treeUri);
+    values.put("source_state", SourceState.AVAILABLE.name());
+    values.put("file_size", fileSize);
+    values.put("file_last_modified", fileLastModified);
+    values.put("updated_at", System.currentTimeMillis());
+    if (getWritableDatabase().update("reader_items", values, "id = ?",
+          new String[] { id }) != 1)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    return get(id);
+  }
 
   public void updateProgress(String id, String locator, float fraction,
       boolean finished, long lastOpenedAt) throws LibraryException
@@ -277,6 +744,40 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     if (getWritableDatabase().update("reader_items", values, "id = ?",
           new String[] { id }) != 1)
       throw new LibraryException(CORRUPT_MESSAGE);
+  }
+
+  public void updateBookProgress(String id, long rawWordIndex, int chapter,
+      int charOffset, String anchor, float fraction, boolean finished,
+      ReaderMode mode, long lastOpenedAt) throws LibraryException
+  {
+    if (empty(id) || rawWordIndex < 0L || chapter < 0 || charOffset < 0 ||
+        !Float.isFinite(fraction) || fraction < 0f || fraction > 1f ||
+        mode == null)
+      throw new LibraryException(CORRUPT_MESSAGE);
+    ContentValues values = new ContentValues();
+    values.put("progress_locator", "book:" + chapter + ":" + charOffset);
+    values.put("progress_fraction", fraction);
+    values.put("finished", finished ? 1 : 0);
+    values.put("last_opened_at", lastOpenedAt);
+    values.put("raw_word_index", rawWordIndex);
+    values.put("progress_chapter", chapter);
+    values.put("progress_char_offset", charOffset);
+    if (empty(anchor))
+      values.putNull("progress_anchor");
+    else
+      values.put("progress_anchor", anchor);
+    values.put("last_reader_mode", mode.name());
+    try
+    {
+      if (getWritableDatabase().update("reader_items", values,
+            "id = ? AND source_type = ?",
+            new String[] { id, SourceType.EPUB.name() }) != 1)
+        throw new LibraryException(CORRUPT_MESSAGE);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
   }
 
   public boolean delete(String id) throws LibraryException
@@ -371,7 +872,16 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       "updated_at INTEGER NOT NULL, last_opened_at INTEGER NOT NULL, " +
       "progress_locator TEXT, progress_fraction REAL NOT NULL DEFAULT 0, " +
       "finished INTEGER NOT NULL DEFAULT 0, content_hash TEXT NOT NULL UNIQUE, " +
-      "import_state TEXT NOT NULL, error_message TEXT, image_uri TEXT)");
+      "import_state TEXT NOT NULL, error_message TEXT, image_uri TEXT, " +
+      "tree_uri TEXT, source_state TEXT NOT NULL DEFAULT 'AVAILABLE', " +
+      "favorite INTEGER NOT NULL DEFAULT 0, " +
+      "last_reader_mode TEXT NOT NULL DEFAULT 'CLASSIC', " +
+      "raw_word_index INTEGER NOT NULL DEFAULT 0, " +
+      "progress_chapter INTEGER NOT NULL DEFAULT 0, " +
+      "progress_char_offset INTEGER NOT NULL DEFAULT 0, progress_anchor TEXT, " +
+      "file_size INTEGER NOT NULL DEFAULT 0, " +
+      "file_last_modified INTEGER NOT NULL DEFAULT 0, " +
+      "publisher TEXT, book_identifier TEXT)");
   }
 
   private static void createUnits(SQLiteDatabase db)
@@ -383,13 +893,45 @@ public final class ReaderLibrary extends SQLiteOpenHelper
       "PRIMARY KEY(item_id, ordinal))");
   }
 
+  private static void createBookTables(SQLiteDatabase db)
+  {
+    db.execSQL("CREATE TABLE reader_collections (" +
+      "id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, " +
+      "normalized_name TEXT NOT NULL UNIQUE, sort_order INTEGER NOT NULL " +
+      "DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
+    db.execSQL("CREATE TABLE reader_item_collections (" +
+      "item_id TEXT NOT NULL REFERENCES reader_items(id) ON DELETE CASCADE, " +
+      "collection_id TEXT NOT NULL REFERENCES reader_collections(id) " +
+      "ON DELETE CASCADE, PRIMARY KEY(item_id, collection_id))");
+    db.execSQL("CREATE TABLE reader_epub_settings (" +
+      "id INTEGER PRIMARY KEY CHECK(id = 1), books_tree_uri TEXT, " +
+      "global_last_reader_mode TEXT NOT NULL DEFAULT 'CLASSIC', " +
+      "classic_theme TEXT NOT NULL DEFAULT 'DARK', " +
+      "classic_text_size REAL NOT NULL DEFAULT 18, " +
+      "classic_font_family TEXT NOT NULL DEFAULT 'SERIF', " +
+      "classic_images_enabled INTEGER NOT NULL DEFAULT 1)");
+    db.execSQL("INSERT INTO reader_epub_settings (id) VALUES (1)");
+    db.execSQL("CREATE INDEX reader_items_source_type ON reader_items " +
+      "(source_type)");
+    db.execSQL("CREATE INDEX reader_items_last_opened ON reader_items " +
+      "(last_opened_at DESC)");
+    db.execSQL("CREATE INDEX reader_collections_sort ON reader_collections " +
+      "(sort_order, normalized_name)");
+    db.execSQL("CREATE INDEX reader_item_collections_collection ON " +
+      "reader_item_collections (collection_id, item_id)");
+  }
+
   private static void validateIncoming(Item item) throws LibraryException
   {
     if (item == null || empty(item.id) || empty(item.title) ||
         item.sourceType == null || item.importState == null ||
+        item.sourceState == null || item.lastReaderMode == null ||
         empty(item.contentHash) || item.contentHash.length() != 64 ||
         !Float.isFinite(item.progressFraction) || item.progressFraction < 0f ||
-        item.progressFraction > 1f || item.units == null)
+        item.progressFraction > 1f || item.rawWordIndex < 0L ||
+        item.progressChapter < 0 || item.progressCharOffset < 0 ||
+        item.fileSize < 0L || item.fileLastModified < 0L ||
+        item.units == null)
       throw new LibraryException(CORRUPT_MESSAGE);
     int expected = 0;
     for (ContentUnit unit : item.units)
@@ -399,6 +941,56 @@ public final class ReaderLibrary extends SQLiteOpenHelper
           (unit.assetUri != null && !unit.assetUri.startsWith("private:")))
         throw new LibraryException(CORRUPT_MESSAGE);
     }
+  }
+
+  private int nextCollectionSortOrder() throws LibraryException
+  {
+    try (Cursor cursor = getReadableDatabase().rawQuery(
+          "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM reader_collections",
+          null))
+    {
+      if (!cursor.moveToFirst())
+        throw new LibraryException(CORRUPT_MESSAGE);
+      return cursor.getInt(0);
+    }
+    catch (SQLiteException error)
+    {
+      throw new LibraryException(CORRUPT_MESSAGE, error);
+    }
+  }
+
+  private static String collectionName(String value) throws LibraryException
+  {
+    if (value == null)
+      throw new LibraryException("Collection name is required.");
+    StringBuilder out = new StringBuilder();
+    boolean pendingSpace = false;
+    for (int i = 0; i < value.length(); i++)
+    {
+      char character = value.charAt(i);
+      if (Character.isISOControl(character))
+        throw new LibraryException("Collection name contains unsupported text.");
+      if (Character.isWhitespace(character))
+      {
+        pendingSpace = out.length() > 0;
+        continue;
+      }
+      if (pendingSpace)
+        out.append(' ');
+      out.append(character);
+      pendingSpace = false;
+      if (out.length() > 64)
+        throw new LibraryException("Collection name is too long.");
+    }
+    if (out.length() == 0)
+      throw new LibraryException("Collection name is required.");
+    return out.toString();
+  }
+
+  private static String likePattern(String value)
+  {
+    return "%" + value.replace("\\", "\\\\")
+      .replace("%", "\\%").replace("_", "\\_") + "%";
   }
 
   private static boolean empty(String value)
@@ -422,8 +1014,21 @@ public final class ReaderLibrary extends SQLiteOpenHelper
     v.put("import_state", item.importState.name());
     v.put("error_message", item.errorMessage);
     v.put("image_uri", item.imageUri);
-    db.insertWithOnConflict("reader_items", null, v,
-        SQLiteDatabase.CONFLICT_REPLACE);
+    v.put("tree_uri", item.treeUri);
+    v.put("source_state", item.sourceState.name());
+    v.put("favorite", item.favorite ? 1 : 0);
+    v.put("last_reader_mode", item.lastReaderMode.name());
+    v.put("raw_word_index", item.rawWordIndex);
+    v.put("progress_chapter", item.progressChapter);
+    v.put("progress_char_offset", item.progressCharOffset);
+    v.put("progress_anchor", item.progressAnchor);
+    v.put("file_size", item.fileSize);
+    v.put("file_last_modified", item.fileLastModified);
+    v.put("publisher", item.publisher);
+    v.put("book_identifier", item.bookIdentifier);
+    if (db.update("reader_items", v, "id = ?",
+          new String[] { item.id }) == 0)
+      db.insertOrThrow("reader_items", null, v);
   }
 
   private static void replaceUnits(SQLiteDatabase db, String id,
@@ -461,23 +1066,32 @@ public final class ReaderLibrary extends SQLiteOpenHelper
   private static Item readItem(SQLiteDatabase db, Cursor c)
       throws LibraryException
   {
+    return readItem(db, c, true);
+  }
+
+  private static Item readItem(SQLiteDatabase db, Cursor c, boolean loadUnits)
+      throws LibraryException
+  {
     try
     {
       String id = string(c, "id");
       ArrayList<ContentUnit> units = new ArrayList<>();
-      try (Cursor uc = db.query("reader_content_units", null, "item_id = ?",
-          new String[] { id }, null, null, "ordinal ASC"))
+      if (loadUnits)
       {
-        int expected = 0;
-        while (uc.moveToNext())
+        try (Cursor uc = db.query("reader_content_units", null, "item_id = ?",
+            new String[] { id }, null, null, "ordinal ASC"))
         {
-          int ordinal = uc.getInt(uc.getColumnIndexOrThrow("ordinal"));
-          if (ordinal != expected++)
-            throw new LibraryException(CORRUPT_MESSAGE);
-          units.add(new ContentUnit(ordinal, string(uc, "kind"),
-                string(uc, "text"), nullable(uc, "language_tag"),
-                nullable(uc, "source_locator"),
-                nullable(uc, "asset_uri")));
+          int expected = 0;
+          while (uc.moveToNext())
+          {
+            int ordinal = uc.getInt(uc.getColumnIndexOrThrow("ordinal"));
+            if (ordinal != expected++)
+              throw new LibraryException(CORRUPT_MESSAGE);
+            units.add(new ContentUnit(ordinal, string(uc, "kind"),
+                  string(uc, "text"), nullable(uc, "language_tag"),
+                  nullable(uc, "source_locator"),
+                  nullable(uc, "asset_uri")));
+          }
         }
       }
       Item item = new Item(id, string(c, "title"),
@@ -492,7 +1106,18 @@ public final class ReaderLibrary extends SQLiteOpenHelper
           c.getInt(c.getColumnIndexOrThrow("finished")) != 0,
           string(c, "content_hash"),
           ImportState.valueOf(string(c, "import_state")),
-          nullable(c, "error_message"), units, nullable(c, "image_uri"));
+          nullable(c, "error_message"), units, nullable(c, "image_uri"),
+          nullable(c, "tree_uri"),
+          SourceState.valueOf(string(c, "source_state")),
+          c.getInt(c.getColumnIndexOrThrow("favorite")) != 0,
+          ReaderMode.valueOf(string(c, "last_reader_mode")),
+          c.getLong(c.getColumnIndexOrThrow("raw_word_index")),
+          c.getInt(c.getColumnIndexOrThrow("progress_chapter")),
+          c.getInt(c.getColumnIndexOrThrow("progress_char_offset")),
+          nullable(c, "progress_anchor"),
+          c.getLong(c.getColumnIndexOrThrow("file_size")),
+          c.getLong(c.getColumnIndexOrThrow("file_last_modified")),
+          nullable(c, "publisher"), nullable(c, "book_identifier"));
       validateIncoming(item);
       return item;
     }

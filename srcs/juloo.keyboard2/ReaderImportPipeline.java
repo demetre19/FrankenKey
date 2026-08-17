@@ -27,6 +27,13 @@ final class ReaderImportPipeline
     final String languageTag;
     final List<ReaderLibrary.ContentUnit> units;
     final String imageUrl;
+    final String treeUri;
+    final long fileSize;
+    final long fileLastModified;
+    final String publisher;
+    final String bookIdentifier;
+    final byte[] coverImageBytes;
+    final String coverMimeType;
 
     Candidate(String title, ReaderLibrary.SourceType sourceType,
         String sourceUri, String mimeType, String author, String languageTag,
@@ -41,6 +48,17 @@ final class ReaderImportPipeline
         List<ReaderLibrary.ContentUnit> units, String imageUrl)
         throws ImportException
     {
+      this(title, sourceType, sourceUri, mimeType, author, languageTag, units,
+          imageUrl, null, 0L, 0L, null, null, null, null);
+    }
+
+    private Candidate(String title, ReaderLibrary.SourceType sourceType,
+        String sourceUri, String mimeType, String author, String languageTag,
+        List<ReaderLibrary.ContentUnit> units, String imageUrl, String treeUri,
+        long fileSize, long fileLastModified, String publisher,
+        String bookIdentifier, byte[] coverImageBytes, String coverMimeType)
+        throws ImportException
+    {
       this.title = cleanTitle(title);
       this.sourceType = sourceType;
       this.sourceUri = emptyToNull(sourceUri);
@@ -50,7 +68,36 @@ final class ReaderImportPipeline
       this.units = Collections.unmodifiableList(
           new ArrayList<ReaderLibrary.ContentUnit>(units));
       this.imageUrl = emptyToNull(imageUrl);
+      this.treeUri = emptyToNull(treeUri);
+      this.fileSize = fileSize;
+      this.fileLastModified = fileLastModified;
+      this.publisher = emptyToNull(publisher);
+      this.bookIdentifier = emptyToNull(bookIdentifier);
+      this.coverImageBytes = coverImageBytes == null ? null :
+        coverImageBytes.clone();
+      this.coverMimeType = emptyToNull(coverMimeType);
       validate();
+    }
+
+    Candidate withBookSource(String sourceUri, String treeUri, long fileSize,
+        long fileLastModified) throws ImportException
+    {
+      if (sourceType != ReaderLibrary.SourceType.EPUB || fileSize < 0L ||
+          fileLastModified < 0L)
+        throw new ImportException("The imported book source is malformed.");
+      return new Candidate(title, sourceType, sourceUri, mimeType, author,
+          languageTag, units, imageUrl, treeUri, fileSize, fileLastModified,
+          publisher, bookIdentifier, coverImageBytes, coverMimeType);
+    }
+
+    static Candidate epub(String title, String sourceUri, String author,
+        String languageTag, String publisher, String bookIdentifier,
+        List<ReaderLibrary.ContentUnit> units, byte[] coverImageBytes,
+        String coverMimeType) throws ImportException
+    {
+      return new Candidate(title, ReaderLibrary.SourceType.EPUB, sourceUri,
+          ReaderBooksFolder.EPUB_MIME, author, languageTag, units, null, null,
+          0L, 0L, publisher, bookIdentifier, coverImageBytes, coverMimeType);
     }
 
     static Candidate text(String title, ReaderLibrary.SourceType sourceType,
@@ -63,6 +110,7 @@ final class ReaderImportPipeline
       return new Candidate(title, sourceType, sourceUri, "text/plain", null,
           null, units);
     }
+
     static Candidate article(String title, String sourceUri, String text,
         String imageUrl) throws ImportException
     {
@@ -99,6 +147,9 @@ final class ReaderImportPipeline
     {
       if (sourceType == null || units.isEmpty())
         throw new ImportException("The imported item has no readable text.");
+      if ((coverImageBytes == null) != (coverMimeType == null) ||
+          (coverImageBytes != null && coverImageBytes.length > 4 * 1024 * 1024))
+        throw new ImportException("The imported book cover is malformed.");
       int ordinal = 0;
       int total = 0;
       for (ReaderLibrary.ContentUnit unit : units)
@@ -142,13 +193,16 @@ final class ReaderImportPipeline
   {
     long now = System.currentTimeMillis();
     String id = UUID.randomUUID().toString();
-    List<ReaderLibrary.ContentUnit> units =
-      ReaderArticleImporter.cacheInlineImages(context, candidate.units, id);
-    if (units.isEmpty())
+    boolean epub = candidate.sourceType == ReaderLibrary.SourceType.EPUB;
+    List<ReaderLibrary.ContentUnit> units = epub
+      ? Collections.emptyList()
+      : ReaderArticleImporter.cacheInlineImages(context, candidate.units, id);
+    if (!epub && units.isEmpty())
       units = candidate.units;
-    String imageUri = ReaderArticleImporter.cachePreviewImage(
-        context, candidate.imageUrl, id);
-    if (imageUri == null)
+    String imageUri = epub
+      ? ReaderEpubImporter.cacheCover(context, candidate.coverImageBytes, id)
+      : ReaderArticleImporter.cachePreviewImage(context, candidate.imageUrl, id);
+    if (!epub && imageUri == null)
       for (ReaderLibrary.ContentUnit unit : units)
         if (unit.assetUri != null)
         {
@@ -158,11 +212,18 @@ final class ReaderImportPipeline
     try (ReaderLibrary library = new ReaderLibrary(context))
     {
       String hash = ReaderLibrary.contentHash(candidate.units);
+      ReaderLibrary.ReaderMode initialMode = epub
+        ? library.getEpubSettings().globalLastReaderMode
+        : ReaderLibrary.ReaderMode.CLASSIC;
       ReaderLibrary.Item incoming = new ReaderLibrary.Item(
           id, candidate.title, candidate.sourceType,
           candidate.sourceUri, candidate.mimeType, candidate.author,
           candidate.languageTag, now, now, 0L, null, 0f, false, hash,
-          ReaderLibrary.ImportState.READY, null, units, imageUri);
+          ReaderLibrary.ImportState.READY, null, units, imageUri,
+          candidate.treeUri, ReaderLibrary.SourceState.AVAILABLE, false,
+          initialMode, 0L, 0, 0, null,
+          candidate.fileSize, candidate.fileLastModified,
+          candidate.publisher, candidate.bookIdentifier);
       return library.importItem(incoming);
     }
     catch (ReaderLibrary.LibraryException error)
