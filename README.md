@@ -5,7 +5,7 @@
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  Fast everyday typing, customizable coding keys, and private Reader/TTS tools in one Android app.
+  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, and private TTS tools in one Android app.
 </p>
 
 <p align="center">
@@ -187,9 +187,12 @@ Reader is an optional, private reading and text-to-speech workspace that is disa
 - Keep playback progress and Reader preferences across sessions.
 - View retained article images in reading order. Large images fill the reading column and open in a full-screen viewer with pinch zoom, panning, and double-tap reset.
 
-### 3D Reader
+### 2D and 3D RSVP speed reader
 
-Open **3D Reader** for a focused RSVP speed-reading view. RSVP keeps each word or short word group in one fixed focus area, reducing the need to scan back and forth across lines. FrankenKey can show either one centred 2D word or a paired stereo view inspired by the [SEO Time Machines 3D Speed Reader](https://seotimemachines.com/productivity-tools/speed-reader/).
+Open the **RSVP speed reader** for rapid serial visual presentation, which displays one word or word group at a time at your chosen pace:
+
+- **2D mode** is a focused RSVP speed reader that shows one word or word group at a time.
+- **3D mode** pairs the same RSVP text in adjustable stereo positions while preserving the same document position. The paired view is inspired by the [SEO Time Machines 3D Speed Reader](https://seotimemachines.com/productivity-tools/speed-reader/).
 
 To find a comfortable 3D view:
 

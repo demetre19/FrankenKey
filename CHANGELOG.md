@@ -10,7 +10,6 @@ This file summarizes the 10 most recent major user-visible changes. For download
 - Made book quizzes resilient: an incomplete chapter is displayed and cached, later chapters continue, and running Quiz again reuses completed chapters while requesting only missing questions.
 - Expanded the README with step-by-step Reader AI setup, two-summary, per-chapter quiz, grounded chat, saved-results, privacy, and Speed Read guidance.
 
-
 ## 2.0.101 — version code 152
 
 - Replaced the keyboard Gallery launcher with Attach Image, which opens Android's image picker and sends the selected image to compatible rich-content editors.
