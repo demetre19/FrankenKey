@@ -17,10 +17,12 @@
 
 ## Work Guidance
 
-- `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
+- `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `PRD-FrankenKey-Reader-URL-AI-2026-08-16.md` owns the approved Reader AI plan; `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
 - Inspect/execute supplied reference artifacts before parity work.
 - Prefer programmatic paths; use UI only for UI behavior or unavailable programmatic surfaces.
 - Re-check changed paths, DOX chains/indexes, stale text, and relevant verification at closeout.
+- Signed APK builds require the existing environment at `~/.android/frankenkey-release-signing/frankenkey-release.env`; export it before running `./gradlew --no-daemon --no-configuration-cache assembleRelease` in `../FrankenKey-autobuild-autocorrect/`. A missing `RELEASE_KEYSTORE` surfaces late as `:packageRelease` missing `storeFile`.
+- Reader AI release artifacts preserve the source contract: OpenRouter use is limited to safe URL articles or text explicitly loaded with Read Clipboard, with first-use disclosure, a user-owned encrypted key excluded from backups, private/local saved outputs until explicit sharing, a searchable date-grouped saved-items library, navigation-inset-safe compact controls, and plain-text speed-reading for generated summaries.
 
 ## Release Contracts
 
@@ -30,6 +32,7 @@
 - Releases use tag `v<versionName>-vc<versionCode>`, attach canonical APK, and publish behavior/outcome changelog text without comparison-brand names.
 - Each release includes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` consistent with its GitHub body.
 - Published `README.md` version/hash/download metadata must match the exact APK and link `CHANGELOG.md`; keep about 10 major releases.
+- A GitHub APK update that introduces user-visible features must update the public README and include a deliberate pass over setup/help/settings surfaces; clarify in-app usage in the same release whenever discoverability materially improves.
 - New backup APKs require same-change `apk-backups/manifest.json` updates.
 
 ## Verification
