@@ -17,18 +17,20 @@
 
 ## Work Guidance
 
-- `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `PRD-FrankenKey-Reader-URL-AI-2026-08-16.md` owns the approved Reader AI plan; `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
+- `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `PRD-FrankenKey-Reader-URL-AI-2026-08-16.md` owns the approved Reader AI plan; `PRD-FrankenKey-Reader-EPUB-2026-08-17.md` owns the implemented EPUB library, Classic/3D resume, and Book AI contract. The implemented EPUB experience uses compact Classic controls with Reader mint, reliable 3D settings-gear activation without redesigning the modal, complete every-readable-chapter summaries that reject stale partial outputs, and quizzes that cache/display incomplete chapters, continue later chapters, and resume only missing questions. `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
 - Inspect/execute supplied reference artifacts before parity work.
 - Prefer programmatic paths; use UI only for UI behavior or unavailable programmatic surfaces.
 - Re-check changed paths, DOX chains/indexes, stale text, and relevant verification at closeout.
 - Signed APK builds require the existing environment at `~/.android/frankenkey-release-signing/frankenkey-release.env`; export it before running `./gradlew --no-daemon --no-configuration-cache assembleRelease` in `../FrankenKey-autobuild-autocorrect/`. A missing `RELEASE_KEYSTORE` surfaces late as `:packageRelease` missing `storeFile`.
-- Reader AI release artifacts preserve the source contract: OpenRouter use is limited to safe URL articles or text explicitly loaded with Read Clipboard, with first-use disclosure, a user-owned encrypted key excluded from backups, private/local saved outputs until explicit sharing, a searchable date-grouped saved-items library, navigation-inset-safe compact controls, and plain-text speed-reading for generated summaries.
+- Reader AI release artifacts preserve the source contract: OpenRouter use is limited to safe URL articles, text explicitly loaded with Read Clipboard, or selected excerpts from a user-opened EPUB after first-use disclosure; requests require deliberate user actions, use a user-owned encrypted key excluded from backups, keep saved outputs private/local until explicit sharing, expose searchable/filterable saved items, keep controls navigation-inset-safe, and support plain-text speed-reading for eligible generated outputs.
 
 ## Release Contracts
 
 - Canonical test/delivery path: `FrankenKey-installable-release.apk`; signed release variant only, package `dev.frankenkey.keyboard`, label `FrankenKey`, production logo, `verifyReleaseIdentity` pass. Never place debug/dev APKs in repository/updater paths.
 - Test candidates stay local until explicit testing completion/publication approval. Push/tag/release only with separate approval.
 - User-test builds must replace the canonical APK, then upload the exact bytes via direct Termux SSH port 8022 to `/storage/emulated/0/Download/FrankenKey-installable-release.apk`; verify remote size/SHA-256. Prefer `deme-s23-ultra.modem`, else online `Deme S23 Ultra` Tailscale IP. Never use localhost tunnels/Termux home; never install without approval.
+- Unless the user explicitly opts out for a specific build, every completed and verified FrankenKey test build must produce a signed release-identity canonical APK and upload those exact bytes to the Samsung Download path for live testing. Upload authorization does not authorize installation, commit, push, tag, archive, or publication.
+- Android emulators are verification surfaces only. After emulator proof, shut the emulator down; the deliverable for live testing is the newly signed canonical APK uploaded and byte-verified on the Samsung phone, not a running emulator or debug-only artifact.
 - Releases use tag `v<versionName>-vc<versionCode>`, attach canonical APK, and publish behavior/outcome changelog text without comparison-brand names.
 - Each release includes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` consistent with its GitHub body.
 - Published `README.md` version/hash/download metadata must match the exact APK and link `CHANGELOG.md`; keep about 10 major releases.

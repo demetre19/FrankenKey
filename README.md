@@ -24,7 +24,7 @@
 
 FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
-Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe article or clipboard text you explicitly loaded into Reader, and only after you request an AI action, to the OpenRouter model you choose.
+Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe public article, text you explicitly loaded with **Read Clipboard**, or selected excerpts from a safely parsed EPUB, and only after you request an AI action, to the OpenRouter model you choose. PDF content and passively observed clipboard or editor text are never eligible.
 
 ## Adaptive learning
 
@@ -215,15 +215,53 @@ Reader controls also let you:
 
 ### Reader AI
 
-For a safe public article or text explicitly loaded with **Read Clipboard**, optional Reader AI can:
+Reader AI is optional and available for:
 
-- Generate either of two configurable summaries, answer questions, and create quizzes.
-- Use your own OpenRouter API key, chosen model, and editable prompts.
-- Save outputs to a searchable, sortable, date-grouped library with favourites, copy, share, delete, and read-aloud actions.
+- Safe public articles saved or opened in Reader.
+- Non-empty text you explicitly load with **Read Clipboard**.
+- Safely parsed EPUB books opened from the Books Library in Classic or 3D Reader.
 
-Reader AI runs only after an explicit request. The selected Reader text is then sent to OpenRouter; passively observed clipboard and editor text are never sent, and PDF and EPUB content is not eligible for Reader AI. The API key is encrypted in Android's secure local storage.
+Nothing is sent when you open Reader or a book. Reader AI runs only after you deliberately request a Summary, Quiz, or Chat response.
 
-Reader content, progress, bookmarks, retained files, and saved AI outputs stay in FrankenKey's private app storage. Sensitive fields and unavailable content fail closed.
+#### Set up Reader AI
+
+1. Open an eligible article, clipboard text, or EPUB book.
+2. Tap **AI** in Classic Reader or **Book AI** in 3D Reader.
+3. Open AI Settings and enter your own OpenRouter API key.
+4. Keep the default Mercury model or choose another available model. Model search includes Free and 100k+ context filters.
+5. Review the first-use disclosure, then confirm before sending any source text.
+
+The OpenRouter key is encrypted in Android's secure local storage and excluded from backups.
+
+#### Create summaries
+
+Reader AI provides exactly two summary choices. Each has its own editable prompt, so you can keep different formats—for example, a short practical brief and a detailed chapter-by-chapter explanation.
+
+1. Open the AI workspace and select **Summary 1** or **Summary 2**.
+2. Tap the selected summary action.
+3. Leave the workspace open to watch chapter and evidence progress.
+4. Copy, Save, Share, or **Read** the finished result. **Read** strips safe Markdown and opens the generated summary in the speed reader.
+
+For EPUB books, summaries cover every readable spine chapter in source order. FrankenKey reuses safe cached evidence but rejects obsolete partial whole-book outputs, so an older result that stopped early does not hide later chapters.
+
+#### Create a quiz
+
+1. Open the AI workspace and choose **Quiz**.
+2. Select 6, 10, 12, or 20 questions per readable book chapter. Articles use the selected whole-article question count.
+3. Run the quiz and follow chapter/question progress in the output area.
+4. Save, copy, or share the result when it is ready.
+
+Book quizzes continue to later chapters if one chapter returns an incomplete response. The partial chapter is shown and cached instead of discarding the whole run. Run **Quiz** again to reuse completed chapters and resume only the missing questions.
+
+#### Ask grounded questions
+
+Choose **Chat**, enter a question, and send it. Book answers are grounded in selected source passages plus reusable book evidence. If the source does not contain the answer, Reader AI is required to say so rather than inventing one.
+
+#### Find saved results
+
+Open AI Settings and choose the saved-results library. You can search, sort newest or oldest, group by date, mark favourites, and filter by Articles or Books and Summary, Quiz, or Chat. Saved entries retain source provenance and can reopen an available original book. Copy, Share, Favorite, and Delete remain local actions until you explicitly share something; eligible non-Quiz outputs can also open in Speed Read.
+
+Reader content, progress, bookmarks, retained files, and saved AI outputs stay private to FrankenKey. Selected eligible text is sent only for the explicit OpenRouter request you approve. Sensitive fields, unavailable sources, PDF content, and passive clipboard/editor text fail closed.
 
 ## Snippets
 
@@ -263,9 +301,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.101
-Version code: 152
-SHA-256: 27422f265490677378dc33237640d0366bbe6103ccbd3ca61faa836e8cdb5a37
+Version: 2.0.102
+Version code: 153
+SHA-256: 8665a8a053a229f188b1f005969752d569df3d492079bb37a7beae75de0db308
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
