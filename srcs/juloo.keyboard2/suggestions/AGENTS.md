@@ -21,7 +21,7 @@
 - Prewarm exact resource descriptors; same-key worker resources survive sessions and changes advance by epochs.
 - Treat matching Cdict or bundled Hunspell as installed; never show a false install banner.
 - Ranking deterministically combines dictionary, geometry, frequency, unigram, bounded bigram/trigram, and typo evidence; no debug labels. Retain up to six ranked single-line words: show ranks 1–3 first, let a left swipe bring ranks 4–6 in from the right, and let a right swipe return; keep the emoji slot separate.
-- Credential-protected vocabulary stays reversible. Explicit Teach persists exact casing only for 2–3-letter tokens; correction-backed Adaptive targets require decoder-validated backspace/edit plus suggestion selection. Ordinary commits and automatic autocorrection may update runtime context/safe touch calibration only; they never persist unigram, bigram, or correction evidence. A one-time policy migration preserves Taught words and historical correction targets, removes passive-only words/bigrams, and preserves touch calibration.
+- Credential-protected vocabulary stays reversible. Explicit Teach persists exact casing only for 2–3-letter tokens and may use the credential store from a safe prose session whose host disabled passive personalization, without enabling passive reads or writes for that session. Correction-backed Adaptive targets require decoder-validated backspace/edit plus suggestion selection. Ordinary commits and automatic autocorrection may update runtime context/safe touch calibration only; they never persist unigram, bigram, or correction evidence. A one-time policy migration preserves Taught words and historical correction targets, removes passive-only words/bigrams, and preserves touch calibration.
 - Touch calibration is worker-confined, bounded, complete-evidence-only, active after minimum samples, subtracted from coordinates, and cleared with personalization; corrected-source touches never train.
 - Correction IDs use NFC lowercase exact editor text, not accent-folded keys. Learned correction evidence is an exact previous/source/target triple; packaged locale priors may use one or two preceding words from corpus-derived high-confidence sequences, but code must not hardcode phrases or synthesize cross-products.
 - Exact evidence outranks related evidence from first acceptance; four accepted exact corrections may override protected literals. Related adjacent-key evidence never unlocks override.
@@ -32,7 +32,7 @@
 
 ## Work Guidance
 
-- Keep bounds, constants, margins, merging, and ties explicit/deterministic; all Cdict/Hunspell/personalization access stays on `SharedDecoder` worker.
+- Keep bounds, constants, margins, merging, and ties explicit/deterministic; all Cdict/Hunspell/personalization access, including deliberate Teach writes from stateless sessions, stays on the `SharedDecoder` worker.
 
 ## Verification
 

@@ -5,7 +5,7 @@
     android:background="@drawable/launcher_input"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
+    android:paddingStart="0dp"
     android:paddingEnd="4dp">
 
   <TextView
@@ -15,6 +15,8 @@
       android:layout_weight="1"
       android:ellipsize="end"
       android:maxLines="1"
+      android:paddingStart="12dp"
+      android:paddingEnd="8dp"
       android:textColor="#F4F7FA"
       android:textSize="15sp"
       android:textStyle="bold"/>

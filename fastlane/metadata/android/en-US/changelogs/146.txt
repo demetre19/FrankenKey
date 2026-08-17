@@ -1,0 +1,5 @@
+Search all FrankenKey settings from one field at the top of Settings.
+
+Learned Words now opens on explicitly taught words, keeps the adaptive dictionary in a separate tab, and adds combined search and 1–9 or 10+ character-length filters.
+
+Four-direction cursor navigation now starts only from G, which has a faint availability border; swipe-up and swipe-down learning remains available from other letter keys.

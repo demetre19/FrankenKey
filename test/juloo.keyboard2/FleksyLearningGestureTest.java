@@ -155,7 +155,7 @@ public class FleksyLearningGestureTest
   public void delayed_keyboard_down_confirmation_for_stale_key_is_nondestructive()
       throws Exception
   {
-    new PersonalizationStore(_prefs).record_word("cazoo");
+    new PersonalizationStore(_prefs).learn_word("cazoo");
     Harness harness = harness("cazoo", true, true);
 
     harness.handler.keyboard_swiped_down();
@@ -233,6 +233,7 @@ public class FleksyLearningGestureTest
     config.autocorrect_enabled = false;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
+    config.editor_config.should_allow_explicit_teaching = safeEditor;
     config.editor_config.initial_text_before_cursor = word;
     config.editor_config.initial_text_after_cursor = "";
     config.editor_config.initial_sel_start = word.length();

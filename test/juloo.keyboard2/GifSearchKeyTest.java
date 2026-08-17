@@ -108,8 +108,13 @@ public class GifSearchKeyTest
     };
 
     for (String layout : layouts)
-      assertEquals(layout + " must expose GIF from its bottom-right key.",
-          "gif", bottomRightKey(layout).getAttribute("key4"));
+    {
+      boolean hidesSecondaryLegend = "res/xml/numeric.xml".equals(layout)
+        || "res/xml/pin.xml".equals(layout);
+      String expected = hidesSecondaryLegend ? "hide gif" : "gif";
+      assertEquals(layout + " must retain the GIF gesture; the compact portrait number pad hides its secondary legend.",
+          expected, bottomRightKey(layout).getAttribute("key4"));
+    }
   }
 
   @Test

@@ -2,6 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
   <PreferenceCategory android:title="@string/pref_category_typing_assistance">
     <SwitchPreference android:key="autocorrect" android:title="@string/pref_autocorrect_title" android:summary="@string/pref_autocorrect_summary" android:defaultValue="true"/>
+    <SwitchPreference android:key="double_space_period" android:title="@string/pref_double_space_period_title" android:summary="@string/pref_double_space_period_summary" android:defaultValue="true"/>
     <SwitchPreference android:key="suggestions" android:title="@string/pref_suggestions_title" android:summary="@string/pref_suggestions_summary" android:defaultValue="true"/>
     <SwitchPreference android:key="grammar_corrections" android:title="@string/pref_grammar_corrections_title" android:summary="@string/pref_grammar_corrections_summary" android:defaultValue="false"/>
     <SwitchPreference android:key="multimodal_voice_typing" android:title="@string/pref_multimodal_voice_title" android:summary="@string/pref_multimodal_voice_summary" android:defaultValue="false"/>

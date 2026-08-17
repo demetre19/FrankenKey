@@ -1,0 +1,3 @@
+Added compact Gallery and Voice shortcuts to the keyboard Reader controls. Settings remains at the far left, while Gallery and Voice are anchored at the right with Voice at the edge.
+
+Read Clipboard, Library, and the existing Done-key voice gesture remain available.

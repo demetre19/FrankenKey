@@ -1,7 +1,6 @@
 package juloo.keyboard2;
 
 import android.content.res.Resources;
-import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -206,15 +205,6 @@ public final class LayoutModifier
             return (globalConfig.layouts.size() > 2) ? orig : null;
           case SWITCH_VOICE_TYPING:
             return globalConfig.shouldOfferVoiceTyping ? orig : null;
-        }
-        break;
-      case Keyevent:
-        switch (orig.getKeyevent())
-        {
-          case KeyEvent.KEYCODE_ENTER:
-            if (ec.enter_key_replacement != null)
-              return ec.enter_key_replacement;
-            break;
         }
         break;
     }

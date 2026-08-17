@@ -251,9 +251,9 @@ public final class ReaderActivity extends Activity
   private EditText _text;
   private KeyListener _editableKeyListener;
   private TextView _status;
-  private TextView _documentTitle;
   private ScrollView _articleScroll;
   private View _jumpToBottom;
+  private View _readerAi;
   private TextView _itemMetadata;
   private TextView _unitLabel;
   private TextView _speedLabel;
@@ -273,7 +273,10 @@ public final class ReaderActivity extends Activity
       _service.addListener(ReaderActivity.this);
       showPendingQuickRead();
       if (_libraryItemId != null)
+      {
         loadLibraryItem();
+        updateReaderAiVisibility();
+      }
       if (_requestPlayOnConnect && _quickReadToken == null)
       {
         _requestPlayOnConnect = false;
@@ -320,10 +323,9 @@ public final class ReaderActivity extends Activity
     _editableKeyListener = _text.getKeyListener();
     _text.setSaveEnabled(false);
     _status = (TextView)findViewById(R.id.reader_status);
-    _documentTitle = (TextView)findViewById(R.id.reader_document_title);
-    updateTitleMarquee(_documentTitle);
     _articleScroll = (ScrollView)findViewById(R.id.reader_article_scroll);
     _jumpToBottom = findViewById(R.id.reader_jump_bottom);
+    _readerAi = findViewById(R.id.reader_ai);
     _itemMetadata = (TextView)findViewById(R.id.reader_item_metadata);
     _unitLabel = (TextView)findViewById(R.id.reader_unit_label);
     _speedLabel = (TextView)findViewById(R.id.reader_speed_label);
@@ -351,6 +353,9 @@ public final class ReaderActivity extends Activity
         .apply();
       recreate();
     });
+    findViewById(R.id.reader_open_3d).setOnClickListener(
+        _view -> open3dReader());
+    _readerAi.setOnClickListener(_view -> openReaderAi());
     findViewById(R.id.reader_library).setOnClickListener(_view ->
         startActivity(new Intent(this, ReaderLibraryActivity.class)));
     findViewById(R.id.reader_clipboard).setOnClickListener(
@@ -494,26 +499,6 @@ public final class ReaderActivity extends Activity
     });
   }
 
-  private void setDocumentTitle(CharSequence title)
-  {
-    _documentTitle.setSelected(false);
-    _documentTitle.setText(title);
-    updateTitleMarquee(_documentTitle);
-  }
-
-  private static void updateTitleMarquee(TextView title)
-  {
-    title.post(() ->
-    {
-      int available = title.getWidth() - title.getPaddingLeft() -
-        title.getPaddingRight();
-      boolean overflow = available > 0 &&
-        title.getPaint().measureText(title.getText().toString()) > available;
-      title.setGravity((overflow ? Gravity.START : Gravity.CENTER) |
-          Gravity.CENTER_VERTICAL);
-      title.setSelected(overflow);
-    });
-  }
 
   private void updateJumpToBottom()
   {
@@ -542,13 +527,13 @@ public final class ReaderActivity extends Activity
     _libraryItemId = null;
     _speechText = result.text;
     _tapOffset = -1;
-    setDocumentTitle(getString(R.string.reader_title_clipboard));
     _unsavedItemId = "clipboard:" + System.currentTimeMillis();
     _unsavedTitle = getString(R.string.reader_title_clipboard);
     _text.setKeyListener(_editableKeyListener);
     _text.setFocusableInTouchMode(true);
     _text.setFocusable(true);
     _text.setText(result.text);
+    updateReaderAiVisibility();
     findViewById(R.id.reader_source_metadata).setVisibility(View.GONE);
     findViewById(R.id.reader_unit_navigation).setVisibility(View.GONE);
     findViewById(R.id.reader_open_original).setVisibility(View.GONE);
@@ -624,7 +609,6 @@ public final class ReaderActivity extends Activity
         return;
       }
       _libraryItem = item;
-      setDocumentTitle(item.title);
       _text.setKeyListener(null);
       _text.setFocusable(false);
       findViewById(R.id.reader_source_metadata).setVisibility(View.VISIBLE);
@@ -705,6 +689,7 @@ public final class ReaderActivity extends Activity
       _service.seekToCharacter(seekOffset, play);
     _loadingLibraryItem = false;
     onReaderPlaybackChanged(_service.snapshot());
+    updateReaderAiVisibility();
   }
 
   private ArticleImageSpan articleImage(ReaderLibrary library, String assetUri)
@@ -842,6 +827,59 @@ public final class ReaderActivity extends Activity
     }
     _tapOffset = offset;
     _service.seekToCharacter(offset, resume);
+  }
+
+  private void open3dReader()
+  {
+    if (_speechText == null || _speechText.trim().isEmpty())
+      return;
+    String title = _libraryItem == null ? _unsavedTitle : _libraryItem.title;
+    String itemId = _libraryItem == null ? null : _libraryItem.id;
+    if (!Reader3dActivity.start(this, itemId, title, _speechText))
+      _status.setText(R.string.reader_open_3d_error);
+  }
+
+  private void updateReaderAiVisibility()
+  {
+    String text = readerAiText();
+    boolean urlArticle = _libraryItem != null &&
+      _libraryItem.sourceType == ReaderLibrary.SourceType.URL &&
+      isSafeOriginalUri(_libraryItem.sourceUri);
+    boolean clipboard = _libraryItem == null &&
+      isClipboardAiSource(_unsavedItemId, text);
+    _readerAi.setVisibility((urlArticle || clipboard) &&
+        text != null && !text.trim().isEmpty() ? View.VISIBLE : View.GONE);
+  }
+
+  static boolean isClipboardAiSource(String itemId, String text)
+  {
+    return itemId != null && itemId.startsWith("clipboard:") &&
+      text != null && !text.trim().isEmpty();
+  }
+
+  private String readerAiText()
+  {
+    return _libraryItem == null ? _text.getText().toString() : _speechText;
+  }
+
+  private void openReaderAi()
+  {
+    updateReaderAiVisibility();
+    if (_readerAi.getVisibility() != View.VISIBLE)
+      return;
+    String text = readerAiText();
+    if (_libraryItem == null)
+    {
+      ReaderAiDialog.show(this, new ReaderAiService.Article(
+            null, _unsavedTitle, "", "", "",
+            ReaderAiRequest.contentHash(text), text));
+      return;
+    }
+    Uri source = Uri.parse(_libraryItem.sourceUri);
+    ReaderAiDialog.show(this, new ReaderAiService.Article(
+          _libraryItem.id, _libraryItem.title, _libraryItem.sourceUri,
+          source.getHost() == null ? "" : source.getHost(),
+          _libraryItem.author, _libraryItem.contentHash, text));
   }
 
   private void openOriginal()
@@ -1242,6 +1280,7 @@ public final class ReaderActivity extends Activity
       refreshVoices(snapshot.voiceName);
     saveLibraryProgress(snapshot);
     applyFollowAlong(snapshot);
+    updateReaderAiVisibility();
   }
 
   private void applyFollowAlong(ReaderPlaybackService.Snapshot snapshot)
@@ -1561,6 +1600,7 @@ public final class ReaderActivity extends Activity
     findViewById(R.id.reader_next).setEnabled(enabled);
     findViewById(R.id.reader_stop).setEnabled(enabled);
     findViewById(R.id.reader_preview_voice).setEnabled(enabled);
+    findViewById(R.id.reader_open_3d).setEnabled(enabled);
     _speed.setEnabled(enabled);
     _pitch.setEnabled(enabled);
     _voice.setEnabled(enabled);

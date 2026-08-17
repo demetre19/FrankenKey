@@ -1,0 +1,1 @@
+Fixed the keyboard Gallery shortcut so it opens the Gallery app's Albums screen instead of an empty or single-image view.

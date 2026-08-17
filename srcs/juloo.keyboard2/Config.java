@@ -44,6 +44,7 @@ public final class Config
   public boolean number_row_symbols;
   public boolean clean_mode;
   public boolean show_period_key;
+  public boolean double_space_period;
   public float swipe_dist_px;
   public float slide_step_px;
   public boolean suggestions_enabled;
@@ -153,6 +154,7 @@ public final class Config
     number_row_symbols = number_row.equals("symbols");
     clean_mode = _prefs.getBoolean("clean_mode", true);
     show_period_key = _prefs.getBoolean("show_period_key", true);
+    double_space_period = _prefs.getBoolean("double_space_period", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
     grammar_corrections_enabled =
       _prefs.getBoolean("grammar_corrections", false);

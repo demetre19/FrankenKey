@@ -1,11 +1,14 @@
 package juloo.keyboard2;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import org.robolectric.Robolectric;
+import org.robolectric.shadows.ShadowAlertDialog;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -47,6 +50,34 @@ public class LauncherPrivacyCardTest
     assertEquals("Adjacent adaptive-learning cards must not visually merge.",
         expected, ((ViewGroup.MarginLayoutParams)
           teachForget.getLayoutParams()).topMargin);
+  }
+
+  @Test
+  public void shortcut_map_button_opens_the_complete_compact_guide()
+  {
+    LauncherActivity activity = Robolectric.buildActivity(
+        LauncherActivity.class).create().get();
+
+    assertTrue("The first-launch shortcut-map button must be reachable.",
+        activity.findViewById(R.id.launcher_shortcut_map).performClick());
+    AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+
+    assertNotNull("The shortcut map must open in a modal.", dialog);
+    assertTrue(dialog.isShowing());
+    assertTrue("The modal must document reversed Enter behavior.",
+        ((TextView)dialog.findViewById(R.id.launcher_shortcuts_typing))
+          .getText().toString().contains("Shift + Enter — New line"));
+    String editing = ((TextView)dialog.findViewById(
+        R.id.launcher_shortcuts_editing)).getText().toString();
+    assertTrue("The modal must document Shift+G selection.", editing.contains(
+          "Shift + G + swipe"));
+    assertTrue("The modal must document Z northwest Select all.", editing.contains(
+          "Z ↖ — Select all"));
+    assertTrue("The modal must document Backspace left-swipe deletion.",
+        editing.contains("Backspace ←"));
+    assertTrue("The modal must document four exact corrections.",
+        ((TextView)dialog.findViewById(R.id.launcher_shortcuts_learning))
+          .getText().toString().contains("four times"));
   }
 
   private static TextView findText(View view, String text)

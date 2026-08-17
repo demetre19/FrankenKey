@@ -1,6 +1,7 @@
 package juloo.keyboard2;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build.VERSION;
@@ -106,6 +107,16 @@ public class LauncherActivity extends Activity
   public void launch_reader_activity(View v)
   {
     startActivity(new Intent(this, ReaderActivity.class));
+  }
+
+  public void show_shortcut_map(View v)
+  {
+    new AlertDialog.Builder(this)
+      .setTitle(R.string.launcher_shortcut_map_title)
+      .setView(getLayoutInflater().inflate(
+            R.layout.launcher_shortcut_map_dialog, null))
+      .setPositiveButton(android.R.string.ok, null)
+      .show();
   }
 
   final class Tryhere_OnUnhandledKeyEventListener implements View.OnUnhandledKeyEventListener

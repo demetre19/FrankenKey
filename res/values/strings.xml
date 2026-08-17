@@ -77,6 +77,8 @@
     <string name="pref_category_typing_assistance">Typing assistance</string>
     <string name="pref_autocorrect_title">Autocorrect</string>
     <string name="pref_autocorrect_summary">Correct likely typos when you finish a word.</string>
+    <string name="pref_double_space_period_title">Double-space for full stop</string>
+    <string name="pref_double_space_period_summary">Press space twice to insert a full stop followed by a space.</string>
     <string name="pref_suggestions_title">Suggestions</string>
     <string name="pref_suggestions_summary">Show word suggestions while typing.</string>
     <string name="pref_grammar_corrections_title">System grammar corrections</string>
@@ -84,7 +86,7 @@
     <string name="pref_multimodal_voice_title">Multimodal voice typing</string>
     <string name="pref_multimodal_voice_summary">Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service.</string>
     <string name="pref_reader_keyboard_controls_title">Reader and text-to-speech</string>
-    <string name="pref_reader_keyboard_controls_summary">Show Read Clipboard, Library and playback controls above the keyboard. Turn off for a clean keyboard.</string>
+    <string name="pref_reader_keyboard_controls_summary">Show Settings, Read Clipboard, Library, image insertion for supported apps, voice and playback controls above the keyboard. Turn off for a clean keyboard.</string>
     <string name="assistant_dismiss">Dismiss</string>
     <string name="assistant_grammar_message">Grammar: %1$s</string>
     <string name="assistant_apply">Apply</string>
@@ -247,6 +249,17 @@
     <string name="launcher_spacebar_sw">↙  Emoji</string>
     <string name="launcher_spacebar_se">GIF  ↘</string>
     <string name="launcher_spacebar_accessibility">Spacebar shortcuts: swipe northwest for Clipboard, northeast for Coding mode, southwest for Emoji, or southeast for GIF</string>
+    <string name="launcher_shortcut_map_button">Keyboard shortcut map</string>
+    <string name="launcher_shortcut_map_title">Keyboard shortcut map</string>
+    <string name="launcher_shortcuts_typing_heading">Typing</string>
+    <string name="launcher_shortcuts_typing">Enter — Send or run the field action\nShift + Enter — New line\nEnter ↖ — Voice typing</string>
+    <string name="launcher_shortcuts_editing_heading">Editing</string>
+    <string name="launcher_shortcuts_editing">G + swipe — Move the cursor in any direction\nShift + G + swipe — Select text; reverse to shrink\nZ ↖ — Select all\nX ↖ / C ↖ / V ↖ — Cut / Copy / Paste\nBackspace ← — Delete the previous word\nHold Backspace, then drag ← — Preview a larger word or sentence deletion; reverse to shrink, release to delete</string>
+    <string name="launcher_shortcuts_space_heading">Spacebar</string>
+    <string name="launcher_shortcuts_space">Space ↖ — Clipboard\nSpace ↗ — Everyday / Coding mode\nSpace ↙ — Emoji\nSpace ↘ — GIF</string>
+    <string name="launcher_shortcuts_learning_heading">Adaptive learning</string>
+    <string name="launcher_shortcuts_learning">Letter ↑ — Teach the current word\nLetter ↓ — Forget the current word\nCorrect the same typo to the same word four times — Make that exact correction the strongest recall, including supported two-edit corrections</string>
+
     <string name="launcher_swipes_heading">How swipes work</string>
     <string name="launcher_corner_example">N  ↙  .</string>
     <string name="launcher_swipes_summary">Touch a key. Drag toward its corner symbol. Release.</string>
@@ -423,6 +436,13 @@
     <string name="reader_activity_title">FrankenKey Reader</string>
     <string name="reader_back">Back</string>
     <string name="reader_open_settings">Open FrankenKey settings</string>
+    <string name="reader_attach_image">Insert image</string>
+    <string name="reader_start_voice">Start voice typing</string>
+    <string name="reader_attach_image_unavailable">The image picker is unavailable on this device.</string>
+    <string name="reader_attach_image_unsupported">This app blocks image insertion from keyboards. Use the app’s attachment button instead.</string>
+    <string name="reader_attach_image_invalid">The selected item is not a supported image.</string>
+    <string name="reader_attach_image_failed">FrankenKey could not prepare this image. Try another image.</string>
+    <string name="reader_attach_image_commit_failed">This app could not insert the image. Use the app’s attachment button instead.</string>
     <string name="reader_use_light_mode">Use light mode</string>
     <string name="reader_use_dark_mode">Use dark mode</string>
     <string name="reader_light_mode">Light</string>
@@ -465,6 +485,12 @@
     <string name="reader_follow_sentence">Sentence</string>
     <string name="reader_follow_word">Word</string>
     <string name="reader_error_voice_preview">This installed voice could not be previewed.</string>
+    <string name="reader_3d_title">3D Reader</string>
+    <string name="reader_open_3d">3D</string>
+    <string name="reader_open_3d_accessibility">Open in 3D Reader</string>
+    <string name="reader_open_3d_error">3D Reader could not be opened. Your reading position was not changed.</string>
+    <string name="reader_open_ai">AI</string>
+    <string name="reader_open_ai_accessibility">Open Reader AI for this text</string>
     <string name="reader_open_original">Original</string>
     <string name="reader_open_original_accessibility">Open original article for %1$s</string>
     <string name="reader_open_original_error">The original article could not be opened.</string>

@@ -30,19 +30,38 @@
           android:scaleType="center"
           android:src="@drawable/ic_reader_back"
           android:tint="?attr/readerTextColor"/>
-      <TextView
-          android:id="@+id/reader_document_title"
+      <Space
           android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:gravity="center"
-          android:ellipsize="marquee"
-          android:marqueeRepeatLimit="marquee_forever"
-          android:scrollHorizontally="true"
-          android:singleLine="true"
-          android:text="@string/reader_activity_title"
+          android:layout_height="1dp"
+          android:layout_weight="1"/>
+      <Button
+          android:id="@+id/reader_ai"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:layout_marginStart="8dp"
+          android:background="@drawable/reader_themed_icon_button"
+          android:contentDescription="@string/reader_open_ai_accessibility"
+          android:includeFontPadding="false"
+          android:minHeight="0dp"
+          android:minWidth="0dp"
+          android:padding="0dp"
+          android:text="@string/reader_open_ai"
+          android:textColor="?android:attr/colorAccent"
+          android:textStyle="bold"
+          android:visibility="gone"/>
+      <Button
+          android:id="@+id/reader_open_3d"
+          android:layout_width="48dp"
+          android:layout_height="48dp"
+          android:layout_marginStart="8dp"
+          android:background="@drawable/reader_themed_icon_button"
+          android:contentDescription="@string/reader_open_3d_accessibility"
+          android:includeFontPadding="false"
+          android:minHeight="0dp"
+          android:minWidth="0dp"
+          android:padding="0dp"
+          android:text="@string/reader_open_3d"
           android:textColor="?attr/readerTextColor"
-          android:textSize="18sp"
           android:textStyle="bold"/>
       <ImageButton
           android:id="@+id/reader_theme"

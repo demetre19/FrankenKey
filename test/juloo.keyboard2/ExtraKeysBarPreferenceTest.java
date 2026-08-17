@@ -1,6 +1,7 @@
 package juloo.keyboard2;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Looper;
 import android.view.DragEvent;
@@ -17,6 +18,8 @@ import juloo.keyboard2.prefs.ExtraKeysBarPreference;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.android.controller.ActivityController;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.shadows.DragEventBuilder;
 import org.robolectric.shadows.ShadowAlertDialog;
@@ -27,6 +30,30 @@ import static org.junit.Assert.*;
 @org.robolectric.annotation.Config(sdk = 35)
 public class ExtraKeysBarPreferenceTest
 {
+  @Test
+  public void keyboard_launch_waits_until_settings_window_is_frontmost()
+  {
+    Intent intent = new Intent(RuntimeEnvironment.getApplication(),
+        SettingsActivity.class);
+    intent.putExtra(SettingsActivity.EXTRA_OPEN_EXTRA_KEYS_BAR, true);
+    ActivityController<SettingsActivity> controller =
+      Robolectric.buildActivity(SettingsActivity.class, intent)
+      .create().start().resume();
+    shadowOf(Looper.getMainLooper()).idle();
+
+    assertNull("The manager must not be inserted behind Settings before its window owns focus.",
+        ShadowAlertDialog.getLatestAlertDialog());
+
+    controller.get().onWindowFocusChanged(true);
+    shadowOf(Looper.getMainLooper()).idle();
+
+    AlertDialog manager = ShadowAlertDialog.getLatestAlertDialog();
+    assertNotNull("The keyboard + action must show the Extra Keys manager.",
+        manager);
+    assertTrue("The Extra Keys manager must be the visible foreground window.",
+        manager.isShowing());
+  }
+
   @Test
   public void manager_toggles_defaults_and_adds_custom_modifier_chords()
       throws Exception
@@ -72,6 +99,10 @@ public class ExtraKeysBarPreferenceTest
     add.performClick();
     shadowOf(Looper.getMainLooper()).idle();
     AlertDialog addDialog = ShadowAlertDialog.getLatestAlertDialog();
+    assertFalse("Opening the add flow must remove the manager from the window stack.",
+        manager.isShowing());
+    assertTrue("The add dialog must be the only visible foreground modal.",
+        addDialog.isShowing());
     CheckBox ctrl = (CheckBox)findText(addDialog.getWindow().getDecorView(),
         "Ctrl", CheckBox.class);
     assertNotNull("The chord flow must offer Ctrl.", ctrl);
@@ -84,6 +115,8 @@ public class ExtraKeysBarPreferenceTest
     customKey.setText("menu");
     addDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
     shadowOf(Looper.getMainLooper()).idle();
+    assertTrue("Completing the add flow must restore the shortcut manager.",
+        manager.isShowing());
 
     List<ExtraKeysShortcutStore.Shortcut> restored =
         ExtraKeysShortcutStore.load(preferences);

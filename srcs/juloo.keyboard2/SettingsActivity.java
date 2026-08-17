@@ -50,6 +50,7 @@ public class SettingsActivity extends PreferenceActivity
   private ReleaseUpdater _releaseUpdater;
   private EditText _settingsSearch;
   private SettingsListAdapter _settingsAdapter;
+  private boolean _openExtraKeysBarWhenFocused;
   @Override
   public void onCreate(Bundle savedInstanceState)
   {
@@ -73,7 +74,7 @@ public class SettingsActivity extends PreferenceActivity
     setupVoiceTypingPreference();
     setupClipboardPreferences();
     setupBackupPreferences();
-    setupExtraKeysBarPreference();
+    queueExtraKeysBarManager(getIntent());
     requestScreenshotPermissionFromIntent();
     requestVoicePermissionFromIntent();
 
@@ -88,14 +89,44 @@ public class SettingsActivity extends PreferenceActivity
     styleSettingsList();
   }
 
-  private void setupExtraKeysBarPreference()
+  private void queueExtraKeysBarManager(Intent intent)
   {
-    if (!getIntent().getBooleanExtra(EXTRA_OPEN_EXTRA_KEYS_BAR, false))
+    if (intent == null
+        || !intent.getBooleanExtra(EXTRA_OPEN_EXTRA_KEYS_BAR, false))
+      return;
+    _openExtraKeysBarWhenFocused = true;
+    intent.removeExtra(EXTRA_OPEN_EXTRA_KEYS_BAR);
+  }
+
+  private void showQueuedExtraKeysBarManager()
+  {
+    if (!_openExtraKeysBarWhenFocused)
       return;
     Preference preference = findPreference("extra_keys_bar");
-    if (preference instanceof ExtraKeysBarPreference)
-      getListView().post(() ->
-          ((ExtraKeysBarPreference)preference).showManager());
+    if (!(preference instanceof ExtraKeysBarPreference))
+      return;
+    _openExtraKeysBarWhenFocused = false;
+    ((ExtraKeysBarPreference)preference).showManager();
+  }
+
+  @Override
+  protected void onNewIntent(Intent intent)
+  {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    queueExtraKeysBarManager(intent);
+    getWindow().getDecorView().post(() -> {
+      if (hasWindowFocus())
+        showQueuedExtraKeysBarManager();
+    });
+  }
+
+  @Override
+  public void onWindowFocusChanged(boolean hasFocus)
+  {
+    super.onWindowFocusChanged(hasFocus);
+    if (hasFocus)
+      showQueuedExtraKeysBarManager();
   }
 
   @Override

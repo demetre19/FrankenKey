@@ -825,11 +825,59 @@ public class Keyboard2 extends InputMethodService
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
   }
 
+  private void attach_image()
+  {
+    if (!GifInserter.editorAcceptsAnyImage(getCurrentInputEditorInfo()))
+    {
+      Toast.makeText(this, R.string.reader_attach_image_unsupported,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    startActivity(new Intent(this, ImageAttachmentPickerActivity.class)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  }
+
+  private void commit_pending_image_attachment()
+  {
+    PendingImageAttachment.Item item = PendingImageAttachment.peek();
+    if (item == null)
+      return;
+    EditorInfo info = getCurrentInputEditorInfo();
+    InputConnection connection = getCurrentInputConnection();
+    if (info == null || connection == null)
+      return;
+    if (!GifInserter.editorAcceptsImage(info, item.mimeType))
+    {
+      PendingImageAttachment.clear(item);
+      ImageAttachmentPickerActivity.pruneCache(this);
+      Toast.makeText(this, R.string.reader_attach_image_commit_failed,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    PendingImageAttachment.clear(item);
+    boolean inserted = GifInserter.insertImage(this, connection, info, item.uri,
+        item.mimeType, item.description);
+    ImageAttachmentPickerActivity.pruneCache(this);
+    if (!inserted)
+      Toast.makeText(this, R.string.reader_attach_image_commit_failed,
+          Toast.LENGTH_SHORT).show();
+  }
+
   static void wire_reader_settings_shortcut(Context context, View root)
   {
     root.findViewById(R.id.reader_transport_settings).setOnClickListener(
         _view -> context.startActivity(new Intent(context, SettingsActivity.class)
           .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+  }
+
+  static void wire_reader_quick_shortcuts(Context context, View root,
+      Runnable attachmentAction, Runnable voiceAction)
+  {
+    wire_reader_settings_shortcut(context, root);
+    root.findViewById(R.id.reader_transport_attach_image).setOnClickListener(
+        _view -> attachmentAction.run());
+    root.findViewById(R.id.reader_transport_voice).setOnClickListener(
+        _view -> voiceAction.run());
   }
 
   private void read_reader_clipboard()
@@ -859,7 +907,8 @@ public class Keyboard2 extends InputMethodService
         _view -> send_reader_action(ReaderPlaybackService.ACTION_STOP));
     root.findViewById(R.id.reader_transport_library).setOnClickListener(
         _view -> open_reader_library());
-    wire_reader_settings_shortcut(this, root);
+    wire_reader_quick_shortcuts(this, root, this::attach_image,
+        this::start_voice_typing);
     root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
         _view -> read_reader_clipboard());
     SeekBar speed = (SeekBar)root.findViewById(
@@ -1178,6 +1227,14 @@ public class Keyboard2 extends InputMethodService
     setInputView(_keyboard_container_view);
     bind_reader_playback();
     Logs.debug_startup_input_view(info, _config);
+    commit_pending_image_attachment();
+  }
+
+  @Override
+  public void onWindowShown()
+  {
+    super.onWindowShown();
+    commit_pending_image_attachment();
   }
 
   @Override
@@ -1595,6 +1652,16 @@ public class Keyboard2 extends InputMethodService
     public void selection_state_changed(boolean selection_is_ongoing)
     {
       _keyboard_layout_view.set_selection_state(selection_is_ongoing);
+    }
+
+    public boolean explicitly_teach_word(Decoder.RequestKey key, String word)
+    {
+      if (_personalization_spec == null
+          || _personalization_spec.preferences == null)
+        return false;
+      _decoder.explicitly_teach_word(_decoder_session, key,
+          _personalization_spec, word);
+      return true;
     }
 
     public void confirm_unlearn_word(String word, final Runnable positive_action)

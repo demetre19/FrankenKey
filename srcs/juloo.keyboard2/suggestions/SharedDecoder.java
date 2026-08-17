@@ -631,6 +631,25 @@ public final class SharedDecoder implements AutoCloseable
       ensure_drain_locked();
     }
   }
+  public void explicitly_teach_word(long sessionEpoch,
+      Decoder.RequestKey source, PersonalizationSpec personalization,
+      String word)
+  {
+    if (personalization == null || personalization.preferences == null
+        || !PersonalizationStore.is_learnable(word))
+      return;
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch)
+          || !is_current_locked(source) || !_config.useTypingAssistance
+          || !_config.suggestionsEnabled)
+        return;
+      Decoder.RequestKey feedbackKey = resubmit_latest_locked();
+      enqueue_control_locked(Control.explicitLearn(sessionEpoch,
+            _resourceEpoch, _resources, personalization, word, feedbackKey));
+      ensure_drain_locked();
+    }
+  }
 
   public void unlearn_word(long sessionEpoch, Decoder.RequestKey source,
       String word)
@@ -1388,8 +1407,9 @@ public final class SharedDecoder implements AutoCloseable
 
   private void run_control(Control control)
   {
-    install_personalization(control.personalizationSpecEpoch,
-        control.personalization);
+    if (control.kind != ControlKind.EXPLICIT_LEARN)
+      install_personalization(control.personalizationSpecEpoch,
+          control.personalization);
     boolean feedback = false;
     try
     {
@@ -1421,6 +1441,10 @@ public final class SharedDecoder implements AutoCloseable
           feedback = _workerPersonalization.generation() != generation;
           break;
         }
+        case EXPLICIT_LEARN:
+          feedback = new PersonalizationStore(
+              control.personalization.preferences).learn_word(control.word);
+          break;
         case UNLEARN:
           feedback = _workerPersonalization.unlearn_word(control.word);
           break;
@@ -1437,11 +1461,15 @@ public final class SharedDecoder implements AutoCloseable
       _workerPersonalizationFailed = true;
       Logs.exn("Decoder control failed", e);
     }
-    _workerPersonalizationEpoch = control.personalizationEpoch;
+    if (control.kind != ControlKind.EXPLICIT_LEARN)
+      _workerPersonalizationEpoch = control.personalizationEpoch;
     synchronized (_lock)
     {
-      _workerPersonalizationSpecEpoch = control.personalizationSpecEpoch;
-      _workerPersonalizationEpoch = control.personalizationEpoch;
+      if (control.kind != ControlKind.EXPLICIT_LEARN)
+      {
+        _workerPersonalizationSpecEpoch = control.personalizationSpecEpoch;
+        _workerPersonalizationEpoch = control.personalizationEpoch;
+      }
       if (feedback && control.feedbackKey != null
           && is_current_locked(control.feedbackKey))
         _feedback = new FeedbackRecord(control.feedbackKey,
@@ -1697,6 +1725,7 @@ public final class SharedDecoder implements AutoCloseable
   {
     RECORD,
     LEARN,
+    EXPLICIT_LEARN,
     UNLEARN,
     CLEAR,
     RESET
@@ -1759,6 +1788,14 @@ public final class SharedDecoder implements AutoCloseable
     {
       return new Control(ControlKind.LEARN, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
+          personalization, null, word, null, false, null, feedbackKey);
+    }
+    static Control explicitLearn(long sessionEpoch, long resourceEpoch,
+        ResourceSpec resources, PersonalizationSpec personalization,
+        String word, Decoder.RequestKey feedbackKey)
+    {
+      return new Control(ControlKind.EXPLICIT_LEARN, sessionEpoch,
+          resourceEpoch, resources, Long.MIN_VALUE, Long.MIN_VALUE,
           personalization, null, word, null, false, null, feedbackKey);
     }
 

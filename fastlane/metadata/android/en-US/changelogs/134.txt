@@ -1,0 +1,1 @@
+Extra Keys modifiers can now be locked with a long press or double-tap, enabling combinations such as Cmd+Shift+Space. Tap a locked modifier again to release it.

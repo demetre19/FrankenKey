@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- Own packaged/source assets: language packs, icons, fonts, and licenses.
+- Own packaged/source assets: language packs, icons, fonts, licenses, and the local 3D Reader surface.
 
 ## Ownership
 
@@ -14,6 +14,9 @@
 - Keep third-party notices in `assets/licenses/`, including Lucide ISC/MIT notice.
 - Bundle matching `en_AU`, `en_GB`, and `en_US` Cdict (`dictionaries/`) and Hunspell plus generated 4,096-row short-word n-gram (`language_packs/`) assets with pinned sources, hashes, licenses, and notices.
 - English Hunspell additions `gboard`, `omp`, and `cmux` require synchronized hashes/disclosure in `licenses/english-hunspell-source.txt`.
+- `reader_3d.html` is the self-contained Private Drive mobile 3D Reader parity surface and owns its single inset-safe toolbar and settings sheet. Keep its controls/defaults exact, enforce at least 60px top clearance in portrait and 50px right clearance in landscape for edge-to-edge Samsung system bars, keep the top inset theme-solid with decoration beginning below it, offset the landscape right gesture rail by the same clearance, and keep its 120px inward hit target easy to reach by thumb. Top chapter progress stacks above all Reader chrome; settings stack above gesture rails and generic help/confirmation modals above settings. Only background sliders may fade settings during live adjustment, and the sheet must remain 1% visible. While playing, preserve the selected decorative background and vignette through the reading area, shade only the upper and lower 24% stage bands, and hide toolbar controls and WPM while preserving word count and progress indicators. Do not show a Brainwave control. Keep its CSP offline-only and transfer articles through the bounded native bridge.
+- Keep the Reader settings sheet in semantic, accessibly headed groups with alternating design-system graphite surfaces; every visible colour swatch must open its native colour picker and immediately reflect the selected value.
+- The 3D AI control may only call the bounded native Reader AI bridge for an eligible URL article; the WebView keeps its network-disabled CSP and never receives API keys or makes OpenRouter requests itself.
 
 ## Work Guidance
 
@@ -21,7 +24,7 @@
 
 ## Verification
 
-- Run focused dictionary/language-pack tests for typing data; verify image/font consumers after asset changes.
+- Run focused dictionary/language-pack tests for typing data; verify image/font consumers after asset changes. For `reader_3d.html`, run JavaScript syntax plus focused Reader parity/security tests and verify the rendered Android surface.
 
 ## Child DOX Index
 

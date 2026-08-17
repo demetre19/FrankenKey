@@ -26,6 +26,9 @@
     <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
       <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_file_paths"/>
     </provider>
+    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.attachments" android:exported="false" android:grantUriPermissions="true">
+      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/image_attachment_file_paths"/>
+    </provider>
 
 
     <activity android:name="juloo.keyboard2.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true">
@@ -43,7 +46,9 @@
       </intent-filter>
     </activity>
     <activity android:name="juloo.keyboard2.ReaderActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_activity_title" android:theme="@style/readerThemeDark" android:exported="false"/>
+    <activity android:name="juloo.keyboard2.Reader3dActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_3d_title" android:theme="@style/readerThemeDark" android:exported="false" android:hardwareAccelerated="true"/>
     <activity android:name="juloo.keyboard2.ReaderLibraryActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_library_title" android:theme="@style/readerThemeDark" android:exported="false"/>
+    <activity android:name="juloo.keyboard2.ReaderAiLibraryActivity" android:icon="@mipmap/ic_launcher" android:label="Saved Reader AI" android:theme="@style/readerThemeDark" android:exported="false"/>
     <activity android:name="juloo.keyboard2.ReaderShareActivity" android:label="@string/reader_activity_title" android:theme="@android:style/Theme.Material.Dialog.Alert" android:exported="true" android:excludeFromRecents="true" android:noHistory="true">
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
@@ -57,6 +62,7 @@
       </intent-filter>
       <meta-data android:name="android.intent.extra.PROCESS_TEXT_READONLY" android:value="true"/>
     </activity>
+    <activity android:name="juloo.keyboard2.ImageAttachmentPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" android:excludeFromRecents="true"/>
 
     <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>

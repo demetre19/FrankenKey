@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
   <exclude domain="sharedpref" path="reader_playback.xml"/>
+  <exclude domain="sharedpref" path="reader_ai_secret.xml"/>
+  <exclude domain="database" path="reader_ai_cache.db"/>
+  <exclude domain="database" path="reader_ai_cache.db-journal"/>
 </full-backup-content>

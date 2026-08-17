@@ -1,0 +1,3 @@
+Learned Words text now keeps a clear 12dp inset from the left edge, and the page explains how explicitly taught words differ from adaptive and older unmarked learning.
+
+The compact keyboard Reader strip now includes a direct Settings shortcut beside Read Clipboard and Library.

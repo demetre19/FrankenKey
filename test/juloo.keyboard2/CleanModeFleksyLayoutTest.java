@@ -271,9 +271,69 @@ public class CleanModeFleksyLayoutTest
     for (String path : BOTTOM_RIGHT_DICTATION_VARIATIONS)
     {
       Element bottomRight = bottomRightKey(path);
-      assertEquals(path + " bottom-right key must expose dictation in the top-left corner regardless of whether it renders as Return, Go, Done, symbols, PIN, emoji, clipboard, GIF, or numpad.",
-          "loc voice_typing", bottomRight.getAttribute("key1"));
+      boolean hidesSecondaryLegends = "res/xml/numeric.xml".equals(path)
+        || "res/xml/pin.xml".equals(path);
+      String expected = hidesSecondaryLegends
+        ? "hide loc voice_typing" : "loc voice_typing";
+      assertEquals(path + " bottom-right key must retain the dictation gesture; the compact portrait number pad hides its secondary legend.",
+          expected, bottomRight.getAttribute("key1"));
     }
+  }
+
+  @Test
+  public void portrait_numeric_layout_is_a_clean_five_column_pad()
+      throws Exception
+  {
+    List<Element> rows = directRows(
+        parseLayout("res/xml/numeric.xml").getDocumentElement());
+
+    assertEquals("Portrait numeric input must remain a compact four-row pad.",
+        4, rows.size());
+    assertEquals(Arrays.asList("7", "8", "9", "backspace"),
+        primaryNames(directKeys(rows.get(0))));
+    assertEquals(Arrays.asList("4", "5", "6", "+", "-"),
+        primaryNames(directKeys(rows.get(1))));
+    assertEquals(Arrays.asList("1", "2", "3", "#", ","),
+        primaryLabels(rows.get(2)));
+    assertEquals(Arrays.asList("switch_text", "0", ".", "enter"),
+        primaryNames(directKeys(rows.get(3))));
+    assertEquals("Backspace must receive the width of two utility cells.",
+        "2", key(rows.get(0), "backspace").getAttribute("width"));
+    assertEquals("Zero must receive the width of two utility cells.",
+        "2", key(rows.get(3), "0").getAttribute("width"));
+    assertEquals("Voice typing remains available without a distracting corner legend.",
+        "hide loc voice_typing",
+        key(rows.get(3), "enter").getAttribute("key1"));
+  }
+
+  @Test
+  public void portrait_pin_layout_is_a_clean_five_column_pad()
+      throws Exception
+  {
+    Document layout = parseLayout("res/xml/pin.xml");
+    List<Element> rows = directRows(layout.getDocumentElement());
+
+    assertEquals("Portrait PIN input must remain a compact four-row pad.",
+        4, rows.size());
+    assertEquals("The compact PIN grid must use five equal layout units.",
+        "5.0", layout.getDocumentElement().getAttribute("width"));
+    assertEquals(Arrays.asList("1", "2", "3", "backspace"),
+        primaryNames(directKeys(rows.get(0))));
+    assertEquals(Arrays.asList("4", "5", "6", "+", "-"),
+        primaryNames(directKeys(rows.get(1))));
+    assertEquals(Arrays.asList("7", "8", "9", "#", ","),
+        primaryLabels(rows.get(2)));
+    assertEquals(Arrays.asList("switch_text", "0", ".", "action"),
+        primaryNames(directKeys(rows.get(3))));
+    for (int row = 0; row < 3; row++)
+      for (Element key : directKeys(rows.get(row)))
+        assertEquals("PIN keys must not render phone-letter or corner legends.",
+            "", key.getAttribute("indication"));
+    assertEquals("PIN voice typing remains available without a corner legend.",
+        "hide loc voice_typing",
+        key(rows.get(3), "action").getAttribute("key1"));
+    assertEquals("PIN GIF remains available without a corner legend.",
+        "hide gif", key(rows.get(3), "action").getAttribute("key4"));
   }
 
   @Test

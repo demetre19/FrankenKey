@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#15191E"
+    android:fillViewport="true"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp">
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_typing_heading"/>
+    <TextView android:id="@+id/launcher_shortcuts_typing" style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_typing"/>
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_editing_heading"/>
+    <TextView android:id="@+id/launcher_shortcuts_editing" style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_editing"/>
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_space_heading"/>
+    <TextView style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_space"/>
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_learning_heading"/>
+    <TextView android:id="@+id/launcher_shortcuts_learning" style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_learning"/>
+  </LinearLayout>
+</ScrollView>

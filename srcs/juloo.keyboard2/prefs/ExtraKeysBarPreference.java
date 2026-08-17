@@ -38,6 +38,7 @@ public final class ExtraKeysBarPreference extends Preference
   private SharedPreferences _preferences;
   private LinearLayout _rows;
   private ScrollView _scroll;
+  private AlertDialog _managerDialog;
 
   public ExtraKeysBarPreference(Context context, AttributeSet attrs)
   {
@@ -53,6 +54,8 @@ public final class ExtraKeysBarPreference extends Preference
 
   public void showManager()
   {
+    if (_managerDialog != null && _managerDialog.isShowing())
+      return;
     _preferences = getSharedPreferences();
     if (_preferences == null)
       return;
@@ -91,15 +94,20 @@ public final class ExtraKeysBarPreference extends Preference
     content.addView(add, addParams);
     rebuildRows();
 
-    AlertDialog dialog = new AlertDialog.Builder(getContext())
+    final AlertDialog dialog = new AlertDialog.Builder(getContext())
       .setTitle(R.string.extra_keys_manage_title)
       .setView(content)
       .setPositiveButton(android.R.string.ok, null)
       .create();
+    _managerDialog = dialog;
     dialog.setOnShowListener(_dialog -> {
       int maxHeight = Math.round(getContext().getResources()
           .getDisplayMetrics().heightPixels * 0.76f);
       content.setMinimumHeight(Math.min(maxHeight, dp(620)));
+    });
+    dialog.setOnDismissListener(_dialog -> {
+      if (_managerDialog == dialog)
+        _managerDialog = null;
     });
     dialog.show();
   }
@@ -253,6 +261,9 @@ public final class ExtraKeysBarPreference extends Preference
 
   private void showAddDialog()
   {
+    final AlertDialog manager = _managerDialog;
+    if (manager != null && manager.isShowing())
+      manager.hide();
     LinearLayout content = new LinearLayout(getContext());
     content.setOrientation(LinearLayout.VERTICAL);
     int padding = dp(20);
@@ -348,6 +359,11 @@ public final class ExtraKeysBarPreference extends Preference
       _scroll.post(() -> _scroll.fullScroll(View.FOCUS_DOWN));
       dialog.dismiss();
     }));
+    dialog.setOnDismissListener(_dialog -> {
+      if (manager != null && _managerDialog == manager
+          && !manager.isShowing())
+        manager.show();
+    });
     dialog.show();
   }
 

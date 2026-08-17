@@ -95,6 +95,27 @@ public class KeyEventHandlerLearningContractTest
   }
 
   @Test
+  public void explicit_teach_persists_when_host_disables_passive_personalization()
+      throws Exception
+  {
+    Harness harness = harness("woohoo", true, true);
+    Decoder.RequestKey key = harness.decoder.current_key();
+    awaitResult(harness.decoder, key);
+    installLiteral(harness.decoder, key, "woohoo", true, false);
+    harness.config.editor_config.should_use_personalization = false;
+    harness.config.editor_config.should_allow_explicit_teaching = true;
+
+    harness.handler.suggestion_swiped_up(key, "woohoo");
+
+    assertEquals("A deliberate Teach tap must use the explicit worker path.",
+        1, harness.receiver.explicitTeachCalls);
+    awaitCounts(harness.prefs, "woohoo", "woohoo", 1, 0);
+    PersonalizationStore stored = new PersonalizationStore(harness.prefs);
+    assertTrue("The taught word must appear in Learned Words.",
+        stored.taught_words().contains("woohoo"));
+  }
+
+  @Test
   public void learned_candidate_toggle_requires_current_positive_confirmation()
       throws Exception
   {
@@ -257,12 +278,13 @@ public class KeyEventHandlerLearningContractTest
     config.autocorrect_enabled = autocorrect;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
+    config.editor_config.should_allow_explicit_teaching = safeEditor;
     config.editor_config.initial_text_before_cursor = text;
     config.editor_config.initial_text_after_cursor = "";
     config.editor_config.initial_sel_start = text.length();
     config.editor_config.initial_sel_end = text.length();
 
-    RecordingReceiver receiver = new RecordingReceiver(text);
+    RecordingReceiver receiver = new RecordingReceiver(text, prefs);
     SharedDecoder decoder = new SharedDecoder(receiver.handler,
         new SharedDecoder.Callback()
         {
@@ -275,6 +297,10 @@ public class KeyEventHandlerLearningContractTest
         SharedDecoder.ResourceSpec.empty("empty"), null,
         new SharedDecoder.PersonalizationSpec(
           "learning-" + _decoders.size(), prefs));
+    receiver.decoder = decoder;
+    receiver.session = session;
+    receiver.personalization = new SharedDecoder.PersonalizationSpec(
+        "explicit-learning-" + _decoders.size(), prefs);
     KeyEventHandler handler = new KeyEventHandler(receiver, decoder);
     config.handler = handler;
     handler.started(config, session);
@@ -445,13 +471,19 @@ public class KeyEventHandlerLearningContractTest
   {
     final Handler handler = new Handler(Looper.getMainLooper());
     final RecordingInputConnection input;
+    final SharedPreferences prefs;
     String confirmationWord;
     Runnable confirmationAction;
     int confirmationCalls;
+    int explicitTeachCalls;
+    SharedDecoder decoder;
+    long session;
+    SharedDecoder.PersonalizationSpec personalization;
 
-    RecordingReceiver(String text)
+    RecordingReceiver(String text, SharedPreferences prefs_)
     {
       input = new RecordingInputConnection(text);
+      prefs = prefs_;
     }
 
     void cancelConfirmation()
@@ -478,6 +510,13 @@ public class KeyEventHandlerLearningContractTest
       confirmationWord = word;
       confirmationAction = positiveAction;
       ++confirmationCalls;
+    }
+    @Override public boolean explicitly_teach_word(Decoder.RequestKey key,
+        String word)
+    {
+      ++explicitTeachCalls;
+      decoder.explicitly_teach_word(session, key, personalization, word);
+      return true;
     }
     @Override public RecordingInputConnection getCurrentInputConnection()
     {

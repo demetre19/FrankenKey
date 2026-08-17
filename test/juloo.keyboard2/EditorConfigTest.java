@@ -76,7 +76,7 @@ public class EditorConfigTest
   }
 
   @Test
-  public void no_personalized_learning_keeps_correction_but_disables_learning()
+  public void no_personalized_learning_keeps_correction_and_deliberate_teaching()
   {
     EditorInfo info = editor(InputType.TYPE_CLASS_TEXT
         | InputType.TYPE_TEXT_VARIATION_NORMAL
@@ -90,8 +90,10 @@ public class EditorConfigTest
         config.should_use_typing_assistance);
     assertTrue("Safe fields must show FrankenKey candidates consistently with the correction backend.",
         config.should_show_candidates_view);
-    assertFalse("Fields that prohibit personalized learning must never read or write learned text.",
+    assertFalse("The host flag must disable passive personalized reads and writes.",
         config.should_use_personalization);
+    assertTrue("A deliberate Teach tap remains a user-directed action in safe prose.",
+        config.should_allow_explicit_teaching);
   }
 
   @Test
@@ -113,6 +115,8 @@ public class EditorConfigTest
           config.should_use_typing_assistance);
       assertFalse("URLs and email addresses must not enter persistent adaptive learning.",
           config.should_use_personalization);
+      assertFalse("Structured address text must not be explicitly taught.",
+          config.should_allow_explicit_teaching);
       assertFalse("Structured fields must not run sentence grammar or multimodal dictation.",
           config.should_use_sentence_assistance);
     }

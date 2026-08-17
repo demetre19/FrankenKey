@@ -2,8 +2,14 @@
 <data-extraction-rules>
   <cloud-backup>
     <exclude domain="sharedpref" path="reader_playback.xml"/>
+    <exclude domain="sharedpref" path="reader_ai_secret.xml"/>
+    <exclude domain="database" path="reader_ai_cache.db"/>
+    <exclude domain="database" path="reader_ai_cache.db-journal"/>
   </cloud-backup>
   <device-transfer>
     <exclude domain="sharedpref" path="reader_playback.xml"/>
+    <exclude domain="sharedpref" path="reader_ai_secret.xml"/>
+    <exclude domain="database" path="reader_ai_cache.db"/>
+    <exclude domain="database" path="reader_ai_cache.db-journal"/>
   </device-transfer>
 </data-extraction-rules>

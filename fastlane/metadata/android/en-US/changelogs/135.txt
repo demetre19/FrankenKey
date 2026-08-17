@@ -1,0 +1,1 @@
+Extra Keys now opens as one compact, horizontally swipeable row. Every modifier, navigation key, command shortcut, and F1–F12 key is directly reachable without stacking extra rows.

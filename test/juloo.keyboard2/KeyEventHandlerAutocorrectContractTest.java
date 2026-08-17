@@ -43,13 +43,12 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
-  public void space_punctuation_and_enter_commit_the_decoder_correction_once()
+  public void space_and_punctuation_commit_the_decoder_correction_once()
       throws Exception
   {
     for (Boundary boundary : new Boundary[] {
         new Boundary("space", KeyValue.getSpecialKeyByName("space"), " "),
-        new Boundary("period", KeyValue.getKeyByName("."), "."),
-        new Boundary("enter", KeyValue.getSpecialKeyByName("enter"), "\n") })
+        new Boundary("period", KeyValue.getKeyByName("."), ".") })
     {
       Harness harness = harness("teh", true, true);
       installCorrection(harness.decoder, harness.key, "teh", "the");
@@ -69,6 +68,64 @@ public class KeyEventHandlerAutocorrectContractTest
           + " commit must invalidate its request key so a second tap cannot reuse stale correction data.",
           harness.decoder.is_current(harness.key));
     }
+  }
+
+  @Test
+  public void bare_enter_performs_the_editor_action_instead_of_inserting_a_newline()
+      throws Exception
+  {
+    Harness harness = harness("message", true, true);
+    harness.config.editor_config.has_editor_action = true;
+    harness.config.editor_config.actionId = EditorInfo.IME_ACTION_SEND;
+
+    harness.handler.key_up(KeyValue.getSpecialKeyByName("enter"),
+        Pointers.Modifiers.EMPTY, null);
+
+    assertEquals("Bare Enter must invoke the editor's advertised action.",
+        1, harness.receiver.input.editorActionCalls);
+    assertEquals(EditorInfo.IME_ACTION_SEND,
+        harness.receiver.input.lastEditorAction);
+    assertEquals("Bare Enter must not insert a line break when the action accepts it.",
+        "message", harness.receiver.input.text.toString());
+    assertEquals(0, harness.receiver.input.enterKeyEvents);
+  }
+
+  @Test
+  public void bare_enter_falls_back_to_raw_key_events_when_the_action_rejects_it()
+      throws Exception
+  {
+    Harness harness = harness("command", false, false);
+    harness.config.editor_config.has_editor_action = true;
+    harness.config.editor_config.actionId = EditorInfo.IME_ACTION_GO;
+    harness.receiver.input.acceptEditorAction = false;
+
+    harness.handler.key_up(KeyValue.getSpecialKeyByName("enter"),
+        Pointers.Modifiers.EMPTY, null);
+
+    assertEquals(1, harness.receiver.input.editorActionCalls);
+    assertEquals("Rejected editor actions must fall back to Enter down/up for terminal-style editors.",
+        2, harness.receiver.input.enterKeyEvents);
+    assertEquals("Raw Enter fallback must not synthesize committed text.",
+        "command", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void shift_enter_commits_a_literal_newline_without_sending()
+      throws Exception
+  {
+    Harness harness = harness("first", false, true);
+    harness.config.editor_config.has_editor_action = true;
+    harness.config.editor_config.actionId = EditorInfo.IME_ACTION_SEND;
+    Pointers.Modifiers shift = Pointers.Modifiers.EMPTY.with_extra_mod(
+        KeyValue.getSpecialKeyByName("shift"));
+
+    harness.handler.key_up(KeyValue.getSpecialKeyByName("enter"), shift, null);
+
+    assertEquals("Shift+Enter must insert a literal line break.",
+        "first\n", harness.receiver.input.text.toString());
+    assertEquals("Shift+Enter must not invoke the editor's Send action.",
+        0, harness.receiver.input.editorActionCalls);
+    assertEquals(0, harness.receiver.input.enterKeyEvents);
   }
 
   @Test
@@ -123,17 +180,30 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
-  public void prose_duplicate_plain_spaces_collapse_at_the_cursor()
+  public void prose_double_space_inserts_period_and_following_space()
       throws Exception
   {
     Harness harness = harness("word", false, true);
 
     harness.handler.handle_space_bar();
     harness.handler.handle_space_bar();
+
+    assertEquals("The enabled double-space setting must replace the first space with a full stop and one following space.",
+        "word. ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void disabled_double_space_period_preserves_the_second_space()
+      throws Exception
+  {
+    Harness harness = harness("word", false, true);
+    harness.config.double_space_period = false;
+
+    harness.handler.handle_space_bar();
     harness.handler.handle_space_bar();
 
-    assertEquals("Repeated user-entered plain spaces in prose must collapse to one.",
-        "word ", harness.receiver.input.text.toString());
+    assertEquals("Turning off double-space period must preserve both spaces.",
+        "word  ", harness.receiver.input.text.toString());
   }
 
   @Test
@@ -150,22 +220,18 @@ public class KeyEventHandlerAutocorrectContractTest
         android.text.InputType.TYPE_CLASS_TEXT | variation;
 
       harness.handler.handle_space_bar();
-      harness.handler.key_up(KeyValue.getKeyByName("."),
-          Pointers.Modifiers.EMPTY, null);
       harness.handler.handle_space_bar();
 
-      assertEquals("URI and email editors must preserve literal user spacing.",
-          "word . ", harness.receiver.input.text.toString());
+      assertEquals("URI and email editors must preserve literal double spaces.",
+          "word  ", harness.receiver.input.text.toString());
     }
 
     Harness termux = harness("word", false, true, 0, true);
     termux.handler.handle_space_bar();
-    termux.handler.key_up(KeyValue.getKeyByName("."),
-        Pointers.Modifiers.EMPTY, null);
     termux.handler.handle_space_bar();
 
-    assertEquals("Termux raw input must preserve literal user spacing.",
-        "word . ", termux.receiver.input.text.toString());
+    assertEquals("Termux raw input must preserve literal double spaces.",
+        "word  ", termux.receiver.input.text.toString());
   }
 
   @Test
@@ -1661,6 +1727,10 @@ public class KeyEventHandlerAutocorrectContractTest
     CorrectionInfo correctionInfo;
     boolean rejectSurroundingReplacement;
     int delKeyDowns;
+    int editorActionCalls;
+    int lastEditorAction = -1;
+    int enterKeyEvents;
+    boolean acceptEditorAction = true;
 
     RecordingInputConnection(String initial)
     {
@@ -1765,6 +1835,14 @@ public class KeyEventHandlerAutocorrectContractTest
       return true;
     }
 
+    @Override
+    public boolean performEditorAction(int actionCode)
+    {
+      editorActionCalls++;
+      lastEditorAction = actionCode;
+      return acceptEditorAction;
+    }
+
     @Override public boolean beginBatchEdit() { return true; }
     @Override public boolean endBatchEdit() { return true; }
     @Override public boolean finishComposingText() { return true; }
@@ -1780,6 +1858,8 @@ public class KeyEventHandlerAutocorrectContractTest
         selectionStart = cursor;
         selectionEnd = cursor;
       }
+      if (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)
+        enterKeyEvents++;
       return true;
     }
   }

@@ -97,6 +97,7 @@ public class LearnedWordsActivityTest
     assertEquals(View.GONE, list.getVisibility());
   }
 
+
   @Test
   public void top_field_teaches_one_valid_word_without_keyboard_learning()
   {
@@ -111,9 +112,9 @@ public class LearnedWordsActivityTest
       (ViewGroup.MarginLayoutParams)add.getLayoutParams();
     ViewGroup.MarginLayoutParams searchMargins =
       (ViewGroup.MarginLayoutParams)search.getLayoutParams();
-    assertTrue("The teaching field must keep text visibly inset from its left edge.",
+    assertTrue("The teaching field must keep text visibly inset after first attachment.",
         addMargins.getMarginStart() >= minimumPadding);
-    assertTrue("The search field must keep text visibly inset from its left edge.",
+    assertTrue("The search field must keep text visibly inset after first attachment.",
         searchMargins.getMarginStart() >= minimumPadding);
     long revision = PersonalizationStore.external_revision(_prefs);
 
@@ -150,6 +151,16 @@ public class LearnedWordsActivityTest
     LearnedWordsActivity activity = launchActivity();
     ListView list = (ListView)activity.findViewById(R.id.learned_words_list);
     View row = list.getAdapter().getView(0, null, list);
+    TextView wordView =
+      (TextView)row.findViewById(R.id.learned_words_row_word);
+    int minimumPadding = Math.round(12f *
+        activity.getResources().getDisplayMetrics().density);
+    assertTrue("Every learned-word label must keep a direct internal start inset.",
+        wordView.getPaddingStart() >= minimumPadding);
+    wordView.setScrollX(minimumPadding);
+    row = list.getAdapter().getView(0, row, list);
+    assertEquals("Recycled rows must reset stale horizontal text scrolling.",
+        0, row.findViewById(R.id.learned_words_row_word).getScrollX());
 
     assertTrue(row.findViewById(R.id.learned_words_row_forget).performClick());
     AlertDialog cancelled = ShadowAlertDialog.getLatestAlertDialog();

@@ -267,6 +267,7 @@ public final class LearnedWordsActivity extends Activity
       TextView wordView =
         (TextView)row.findViewById(R.id.learned_words_row_word);
       wordView.setText(word);
+      wordView.setScrollX(0);
       wordView.setTextColor(_taughtKeys.contains(
             word.toLowerCase(Locale.ROOT)) ? COLOR_ACCENT : COLOR_PRIMARY);
       Button forget =

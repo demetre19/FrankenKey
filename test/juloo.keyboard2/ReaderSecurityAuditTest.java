@@ -89,11 +89,17 @@ public class ReaderSecurityAuditTest
           ReaderPlaybackService.class), 0);
     ActivityInfo activity = manager.getActivityInfo(new ComponentName(_context,
           ReaderActivity.class), 0);
+    ActivityInfo reader3d = manager.getActivityInfo(new ComponentName(_context,
+          Reader3dActivity.class), 0);
 
     assertFalse(service.exported);
     assertFalse(service.directBootAware);
     assertFalse(activity.exported);
     assertFalse(activity.directBootAware);
+    assertFalse(reader3d.exported);
+    assertFalse(reader3d.directBootAware);
+    assertTrue("The local 3D WebView overrides the app-wide disabled renderer.",
+        (reader3d.flags & ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0);
   }
 
   @Test

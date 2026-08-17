@@ -1,0 +1,1 @@
+Extra Keys now keeps modifiers active until tapped off, puts terminal essentials first, and adds a five-row show-all view with every key visible without scrolling. Return inserts a newline, Shift+Tab works directly, and compact surfaces use clearer spacing with less-rounded corners.

@@ -20,7 +20,8 @@
 - Clipboard/snippets/personalization remain private/local.
 - Suggestions/autocorrect share one bounded async decoder; never decode/wait on IME main thread.
 - Reference evidence stays in `androidTest/assets/` with package/version/hash/input/outputs and separate full-reference vs physical spot-check scope.
-- `ReaderActivity` remains private; only `ReaderShareActivity` accepts read-only `text/plain` Share/Process Text through opaque handoff.
+- `ReaderActivity` and `Reader3dActivity` remain private; only `ReaderShareActivity` accepts read-only `text/plain` Share/Process Text through opaque handoff.
+- Reader AI is optional and limited to safe URL articles or text explicitly loaded with Read Clipboard: disclose OpenRouter transmission before use, require a user-owned key, keep the encrypted key out of backups, and keep saved outputs private/local unless the user explicitly shares them.
 
 ## Work Guidance
 
@@ -41,7 +42,7 @@
 - `srcs/AGENTS.md` — source inputs/app code.
 - `res/AGENTS.md` — packaged resources.
 - `test/AGENTS.md` — unit/Robolectric tests.
-- `assets/AGENTS.md` — language/image/font assets.
+- `assets/AGENTS.md` — language/image/font assets and local 3D Reader surface.
 - `fastlane/AGENTS.md` — store metadata/media.
 - `vendor/AGENTS.md` — vendored code/data.
 - `scripts/AGENTS.md` — generators/helpers.

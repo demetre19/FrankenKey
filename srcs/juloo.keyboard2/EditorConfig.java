@@ -10,10 +10,10 @@ public final class EditorConfig
 {
   /** Key that replaces the "ACTION" key. Might be [null] to remove that key. */
   public KeyValue action_key_replacement = null;
-  /** Key that replaces the "ENTER" key. Might be [null] to not replace the
-      enter key. */
-  public KeyValue enter_key_replacement = null;
   public int actionId;
+  /** Whether the editor advertises a Send, Go, Search, Next, Done, Previous,
+      or custom action. */
+  public boolean has_editor_action = false;
   /** Whether the corner GIF key should be shown on keyboard layouts. */
   public boolean gif_action_key = true;
   /** Whether selection mode turns on automatically when text is selected. */
@@ -49,6 +49,8 @@ public final class EditorConfig
   public boolean should_use_sentence_assistance;
   /** Whether suggestions may read or write persistent learned words. */
   public boolean should_use_personalization = true;
+  /** Whether a deliberate Teach action may write this plain-text word. */
+  public boolean should_allow_explicit_teaching;
 
   public EditorConfig() {}
 
@@ -59,7 +61,7 @@ public final class EditorConfig
     /* Selection mode.
        Editors with [TYPE_NULL] are for example Termux and Emacs. */
     selection_mode_enabled = inputType != InputType.TYPE_NULL;
-    enter_key_replacement = null;
+    has_editor_action = false;
     gif_action_key = true;
     /* Action key. Looks at [info.actionLabel] first. */
     if (info.actionLabel != null)
@@ -67,6 +69,7 @@ public final class EditorConfig
       actionId = info.actionId;
       action_key_replacement =
         KeyValue.makeActionKey(info.actionLabel.toString());
+      has_editor_action = true;
     }
     else
     {
@@ -76,12 +79,7 @@ public final class EditorConfig
       if (label != null)
       {
         action_key_replacement = KeyValue.makeActionKey(label);
-        // Swap the enter and action keys
-        if ((options & EditorInfo.IME_FLAG_NO_ENTER_ACTION) == 0)
-        {
-          enter_key_replacement = action_key_replacement;
-          action_key_replacement = KeyValue.ENTER;
-        }
+        has_editor_action = true;
       }
     }
     /* Numeric layout */
@@ -121,6 +119,8 @@ public final class EditorConfig
       && !terminal_editor && !is_structured_text_editor(info);
     should_show_candidates_view = should_use_typing_assistance;
     should_use_personalization = should_use_personalization(info)
+      && !terminal_editor && !is_structured_text_editor(info);
+    should_allow_explicit_teaching = should_use_typing_assistance
       && !terminal_editor && !is_structured_text_editor(info);
     should_show_snippet_row = should_show_snippet_row(info);
   }

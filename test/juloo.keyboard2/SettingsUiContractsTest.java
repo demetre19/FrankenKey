@@ -25,6 +25,8 @@ public class SettingsUiContractsTest
         "Check GitHub Releases at most once a day. Updates are never downloaded or installed without asking." },
       { "autocorrect", "pref_autocorrect_summary",
         "Correct likely typos when you finish a word." },
+      { "double_space_period", "pref_double_space_period_summary",
+        "Press space twice to insert a full stop followed by a space." },
       { "suggestions", "pref_suggestions_summary",
         "Show word suggestions while typing." },
       { "grammar_corrections", "pref_grammar_corrections_summary",
@@ -32,7 +34,7 @@ public class SettingsUiContractsTest
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",
-        "Show Read Clipboard, Library and playback controls above the keyboard. Turn off for a clean keyboard." },
+        "Show Settings, Read Clipboard, Library, Attach Image, voice and playback controls above the keyboard. Turn off for a clean keyboard." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "show_period_key", "pref_show_period_key_summary",
@@ -97,8 +99,12 @@ public class SettingsUiContractsTest
     }
 
     Element learnedRow = layoutRoot("res/layout/learned_words_row.xml");
+    Element learnedWord = (Element)learnedRow
+      .getElementsByTagName("TextView").item(0);
     assertEquals("Learned-word labels must stay 12dp inside the row border.",
-        "12dp", learnedRow.getAttribute("android:paddingStart"));
+        "12dp", learnedWord.getAttribute("android:paddingStart"));
+    assertEquals("Learned-word labels must keep a readable trailing inset.",
+        "8dp", learnedWord.getAttribute("android:paddingEnd"));
   }
 
   @Test

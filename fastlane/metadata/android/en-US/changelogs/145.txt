@@ -1,0 +1,1 @@
+Settings now includes a private learned-words manager with an alphabetical, scrollable list and instant search. Add a word directly at the top or remove any learned word with a confirmation step. Changes refresh the active keyboard immediately and remain protected in credential-encrypted device storage.

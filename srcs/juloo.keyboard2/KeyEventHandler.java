@@ -440,6 +440,15 @@ public final class KeyEventHandler
     if (!is_backspace_action(key))
       commit_pending_candidate_replacement();
     Pointers.Modifiers old_mods = _mods;
+    if (is_shift_enter(key, mods))
+    {
+      // Do not expose the held Shift state while committing the literal line
+      // break: some message editors interpret Shift+newline as Send.
+      update_meta_state(Pointers.Modifiers.EMPTY);
+      handle_word_separator("\n");
+      update_meta_state(old_mods);
+      return;
+    }
     update_meta_state(mods);
     switch (key.getKind())
     {
@@ -457,7 +466,7 @@ public final class KeyEventHandler
         break;
       case Keyevent:
         if (key.getKeyevent() == KeyEvent.KEYCODE_ENTER)
-          handle_word_separator("\n");
+          handle_enter(mods);
         else
         {
           clear_manual_correction();
@@ -478,6 +487,33 @@ public final class KeyEventHandler
       case Stateful: handle_stateful(key.getStateful()); break;
     }
     update_meta_state(old_mods);
+  }
+
+  private static boolean is_shift_enter(KeyValue key,
+      Pointers.Modifiers mods)
+  {
+    return key.getKind() == KeyValue.Kind.Keyevent
+      && key.getKeyevent() == KeyEvent.KEYCODE_ENTER
+      && mods.has(KeyValue.Modifier.SHIFT)
+      && !has_command_modifier(mods);
+  }
+
+  private static boolean has_command_modifier(Pointers.Modifiers mods)
+  {
+    return mods.has(KeyValue.Modifier.CTRL)
+      || mods.has(KeyValue.Modifier.ALT)
+      || mods.has(KeyValue.Modifier.META);
+  }
+
+  private void handle_enter(Pointers.Modifiers mods)
+  {
+    clear_manual_correction();
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (!has_command_modifier(mods) && _config != null
+        && _config.editor_config.has_editor_action && conn != null
+        && conn.performEditorAction(_config.editor_config.actionId))
+      return;
+    send_key_down_up(KeyEvent.KEYCODE_ENTER);
   }
 
   @Override
@@ -561,7 +597,7 @@ public final class KeyEventHandler
 
   void learn_current_word()
   {
-    learn_word(_typedword.get());
+    learn_word(_decoder.current_key(), _typedword.get());
   }
 
   void unlearn_current_word()
@@ -572,16 +608,28 @@ public final class KeyEventHandler
   boolean can_change_learning(String word)
   {
     return should_use_personalization()
+      && can_explicitly_teach(word);
+  }
+
+  boolean can_explicitly_teach(String word)
+  {
+    return _config != null
       && _decoder_session != 0
       && _config.suggestions_enabled
       && _config.editor_config.should_use_typing_assistance
+      && _config.editor_config.should_allow_explicit_teaching
       && PersonalizationStore.is_learnable(word);
   }
 
-  void learn_word(String word)
+  void learn_word(Decoder.RequestKey key, String word)
   {
-    if (can_change_learning(word))
+    if (key == null || !_decoder.is_current(key)
+        || !can_explicitly_teach(word))
+      return;
+    if (should_use_personalization())
       _decoder.learn_word(_decoder_session, word);
+    else
+      _recv.explicitly_teach_word(key, word);
   }
 
   void confirm_unlearn_word(final Decoder.RequestKey key, final String word)
@@ -603,7 +651,8 @@ public final class KeyEventHandler
 
   void toggle_learned_word(Decoder.RequestKey key, String word)
   {
-    if (!can_change_learning(word))
+    if (key == null || !_decoder.is_current(key)
+        || !can_explicitly_teach(word))
       return;
     Decoder.Result result = _decoder.current_result(key);
     boolean learned = false;
@@ -618,7 +667,7 @@ public final class KeyEventHandler
     if (learned)
       confirm_unlearn_word(key, word);
     else
-      _decoder.learn_word(_decoder_session, word);
+      learn_word(key, word);
   }
 
   private boolean should_use_personalization()
@@ -2195,6 +2244,31 @@ public final class KeyEventHandler
     return before != null && " ".contentEquals(before);
   }
 
+  private boolean is_double_space_period_candidate()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(3, 0);
+    if (before == null || before.length() < 2
+        || before.charAt(before.length() - 1) != ' ')
+      return false;
+    int previous = Character.codePointBefore(before, before.length() - 1);
+    return !Character.isWhitespace(previous)
+      && (previous > Character.MAX_VALUE
+        || !is_autocorrect_separator((char)previous));
+  }
+
+  private boolean replace_double_space_with_period()
+  {
+    if (!is_double_space_period_candidate()
+        || !replace_recent_text(" ", ". "))
+      return false;
+    _autocap.text_replaced(1, ". ");
+    _typedword.typed(". ");
+    return true;
+  }
+
   private void normalize_space_before_punctuation(String separator)
   {
     if (!should_normalize_prose_spacing() || separator.length() != 1
@@ -2343,14 +2417,19 @@ public final class KeyEventHandler
     clear_manual_correction();
   }
 
-  /** Implement autocorrect and duplicate-space normalization when enabled. */
+  /** Implement autocorrect and optional double-space period insertion. */
   void handle_space_bar()
   {
     if (should_normalize_prose_spacing())
     {
       commit_pending_replacement();
-      if (has_plain_space_before_cursor())
-        return;
+      if (has_plain_space_before_cursor()
+          && _config != null && _config.double_space_period)
+      {
+        if (!is_double_space_period_candidate()
+            || replace_double_space_with_period())
+          return;
+      }
     }
     handle_word_separator(" ");
   }
@@ -2520,6 +2599,8 @@ public final class KeyEventHandler
     public void selection_state_changed(boolean selection_is_ongoing);
     public default void confirm_unlearn_word(String word,
         Runnable positive_action) {}
+    public default boolean explicitly_teach_word(Decoder.RequestKey key,
+        String word) { return false; }
     public InputConnection getCurrentInputConnection();
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();

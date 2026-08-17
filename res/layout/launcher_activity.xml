@@ -61,6 +61,12 @@
         </LinearLayout>
       </LinearLayout>
     </LinearLayout>
+    <Button
+        android:id="@+id/launcher_shortcut_map"
+        style="@style/launcher_shortcut_button"
+        android:text="@string/launcher_shortcut_map_button"
+        android:onClick="show_shortcut_map"/>
+
 
     <TextView style="@style/launcher_heading" android:text="@string/launcher_swipes_heading"/>
     <LinearLayout style="@style/launcher_card" android:orientation="vertical">

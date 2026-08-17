@@ -1,0 +1,3 @@
+Learned Words teaching, search, and vocabulary rows now keep their text visibly inset from bordered edges on first load and when list rows are reused.
+
+Portrait PIN and numeric keyboards now use cleaner five-unit grids with larger number keys. The visible layout keeps digits, Backspace, plus, minus, hash, comma, period, ABC, and the contextual action key while removing distracting secondary legends and symbols.

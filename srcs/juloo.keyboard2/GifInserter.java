@@ -23,6 +23,17 @@ public final class GifInserter
     return editorAcceptsImage(info, GIF_MIME_TYPE);
   }
 
+  public static boolean editorAcceptsAnyImage(EditorInfo info)
+  {
+    if (info == null)
+      return false;
+    for (String mimeType : EditorInfoCompat.getContentMimeTypes(info))
+      if ("*/*".equals(mimeType) ||
+          (mimeType != null && mimeType.startsWith("image/")))
+        return true;
+    return false;
+  }
+
   static boolean acceptsGifMimeType(String mimeType)
   {
     return GIF_MIME_TYPE.equals(mimeType) || "image/*".equals(mimeType) ||
