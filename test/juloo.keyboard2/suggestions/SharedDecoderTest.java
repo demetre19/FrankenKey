@@ -456,6 +456,36 @@ public class SharedDecoderTest
         refreshed.literal.learned);
   }
 
+  @Test
+  public void unknown_review_counter_is_session_only_and_fires_on_third_commit()
+      throws Exception
+  {
+    QueuedHandler handler = new QueuedHandler();
+    RecordingCallback callback = new RecordingCallback();
+    SharedDecoder decoder = decoder(handler, callback);
+    long firstSession = start(decoder, enabledConfig());
+
+    commitUnknownLiteral(decoder, firstSession, 1, "agol");
+    commitUnknownLiteral(decoder, firstSession, 2, "agol");
+    handler.drain();
+    assertTrue("Two unknown literals must not interrupt typing.",
+        callback.reviewWords.isEmpty());
+
+    long secondSession = start(decoder, enabledConfig());
+    commitUnknownLiteral(decoder, secondSession, 3, "agol");
+    commitUnknownLiteral(decoder, secondSession, 4, "agol");
+    handler.drain();
+    assertTrue("Counts from the previous editor session must not contribute to a review.",
+        callback.reviewWords.isEmpty());
+
+    commitUnknownLiteral(decoder, secondSession, 5, "agol");
+    handler.drain();
+    assertEquals("The third exact unknown literal in one editor session must request one review.",
+        java.util.Arrays.asList("agol"), callback.reviewWords);
+    assertEquals(java.util.Arrays.asList(Long.valueOf(secondSession)),
+        callback.reviewSessions);
+  }
+
 
   @Test
   public void candidate_evidence_requires_the_exact_result_and_record_precedes_rerank()
@@ -899,6 +929,25 @@ public class SharedDecoderTest
         null, new SharedDecoder.PersonalizationSpec(profile, preferences));
   }
 
+  private static void commitUnknownLiteral(SharedDecoder decoder,
+      long session, long revision, String word)
+      throws Exception
+  {
+    Decoder.RequestKey key = decoder.request(session,
+        snapshot(revision, word, false));
+    Decoder.Result result = awaitReady(decoder, key).result;
+    assertNotNull(result.literal);
+    assertFalse("The three-strike fixture must use an unknown literal.",
+        result.literal.recognized || result.literal.learned);
+    SharedDecoder.CommitToken token =
+      decoder.prepare_commit(session, key, word, null);
+    assertNotNull(token);
+    decoder.commit_prepared(token);
+    Decoder.RequestKey refreshed = decoder.current_key();
+    if (refreshed != null)
+      awaitReady(decoder, refreshed);
+  }
+
   private static Decoder.Candidate candidate(Decoder.Result result,
       String canonical)
   {
@@ -1070,11 +1119,20 @@ public class SharedDecoderTest
   {
     final List<SharedDecoder.Presentation> states =
       new ArrayList<SharedDecoder.Presentation>();
+    final List<String> reviewWords = new ArrayList<String>();
+    final List<Long> reviewSessions = new ArrayList<Long>();
 
     @Override
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {
       states.add(state);
+    }
+
+    @Override
+    public void unknown_word_review_requested(long sessionEpoch, String word)
+    {
+      reviewSessions.add(Long.valueOf(sessionEpoch));
+      reviewWords.add(word);
     }
   }
 

@@ -32,6 +32,8 @@ public class DirectBootAwarePreferencesTest
       .put(PersonalizationStore.PREF_CORRECTIONS, setOf("cazoo\tcasino\t4"))
       .put(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS,
           setOf("good\tcazoo\tcasino\t2"))
+      .put(PersonalizationStore.PREF_REPLACEMENTS,
+          setOf("cazoo\tcasino"))
       .put(PersonalizationStore.PREF_TOUCH_SAMPLES, 32)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_X, 0.1f)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, -0.1f)
@@ -45,6 +47,8 @@ public class DirectBootAwarePreferencesTest
       .put(PersonalizationStore.PREF_CORRECTIONS, setOf("old\todd\t2"))
       .put(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS,
           setOf("before\told\todd\t2"))
+      .put(PersonalizationStore.PREF_REPLACEMENTS,
+          setOf("old\todd"))
       .put(PersonalizationStore.PREF_TOUCH_SAMPLES, 4)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_X, 0.2f)
       .put(PersonalizationStore.PREF_TOUCH_OFFSET_Y, 0.2f)
@@ -65,6 +69,8 @@ public class DirectBootAwarePreferencesTest
         copied.containsKey(PersonalizationStore.PREF_CORRECTIONS));
     assertFalse("Contextual corrections must never be present in direct-boot shared preferences.",
         copied.containsKey(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
+    assertFalse("Explicit replacement rules must remain credential-protected.",
+        copied.containsKey(PersonalizationStore.PREF_REPLACEMENTS));
     assertFalse("Touch sample counts must never be present in direct-boot shared preferences.",
         copied.containsKey(PersonalizationStore.PREF_TOUCH_SAMPLES));
     assertFalse("Horizontal touch calibration must never be present in direct-boot shared preferences.",

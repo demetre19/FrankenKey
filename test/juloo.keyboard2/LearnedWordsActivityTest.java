@@ -82,8 +82,8 @@ public class LearnedWordsActivityTest
 
     ((EditText)activity.findViewById(R.id.learned_words_search)).setText("");
     assertTrue(activity.findViewById(
-          R.id.learned_words_adaptive_tab).performClick());
-    assertWords(list, "ordinary");
+          R.id.learned_words_corrections_tab).performClick());
+    assertCorrection(list, 0, "ordimary", "→ ordinary");
 
     ((EditText)activity.findViewById(R.id.learned_words_search))
       .setText("missing");
@@ -122,7 +122,8 @@ public class LearnedWordsActivityTest
         (add.getImeOptions()
           & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0);
     add.setText("cazoo");
-    assertTrue(activity.findViewById(R.id.learned_words_learn).performClick());
+    assertTrue(activity.findViewById(
+          R.id.learned_words_primary_action).performClick());
     shadowOf(Looper.getMainLooper()).idle();
 
     assertTrue("The top field must directly teach the entered word.",
@@ -137,7 +138,8 @@ public class LearnedWordsActivityTest
         "cazoo");
 
     add.setText("a");
-    assertTrue(activity.findViewById(R.id.learned_words_learn).performClick());
+    assertTrue(activity.findViewById(
+          R.id.learned_words_primary_action).performClick());
     assertNotNull("Invalid tokens must produce an inline recovery message.",
         add.getError());
     assertFalse(new PersonalizationStore(_prefs).is_learned("a"));
@@ -155,8 +157,8 @@ public class LearnedWordsActivityTest
       (TextView)row.findViewById(R.id.learned_words_row_word);
     int minimumPadding = Math.round(12f *
         activity.getResources().getDisplayMetrics().density);
-    assertTrue("Every learned-word label must keep a direct internal start inset.",
-        wordView.getPaddingStart() >= minimumPadding);
+    assertTrue("Every learned-word label container must keep a direct internal start inset.",
+        ((View)wordView.getParent()).getPaddingStart() >= minimumPadding);
     wordView.setScrollX(minimumPadding);
     row = list.getAdapter().getView(0, row, list);
     assertEquals("Recycled rows must reset stale horizontal text scrolling.",
@@ -185,6 +187,65 @@ public class LearnedWordsActivityTest
     assertEquals(View.GONE, list.getVisibility());
   }
 
+  @Test
+  public void corrections_rows_show_source_target_and_expose_edit_delete_flows()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertTrue(store.set_replacement("agol", "goal"));
+    assertTrue(store.set_replacement("aiapr", null));
+    store.record_selected_correction("ordimary", "ordinary");
+    LearnedWordsActivity activity = launchActivity();
+    ListView list = (ListView)activity.findViewById(R.id.learned_words_list);
+
+    assertTrue(activity.findViewById(
+          R.id.learned_words_corrections_tab).performClick());
+    assertCorrection(list, 0, "agol", "→ goal");
+    assertCorrection(list, 1, "aiapr", "→ Best suggestion");
+    assertCorrection(list, 2, "ordimary", "→ ordinary");
+
+    ((EditText)activity.findViewById(R.id.learned_words_search))
+      .setText("goal");
+    shadowOf(Looper.getMainLooper()).idle();
+    assertEquals("Searching a target must find its source-to-target row.",
+        1, list.getAdapter().getCount());
+    assertCorrection(list, 0, "agol", "→ goal");
+
+    View row = list.getAdapter().getView(0, null, list);
+    assertTrue(row.findViewById(R.id.learned_words_row_edit).performClick());
+    AlertDialog editor = ShadowAlertDialog.getLatestAlertDialog();
+    assertNotNull("Edit must open the replacement editor.", editor);
+    assertTrue(editor.getButton(DialogInterface.BUTTON_NEGATIVE)
+        .performClick());
+
+    row = list.getAdapter().getView(0, null, list);
+    assertTrue(row.findViewById(
+          R.id.learned_words_row_forget).performClick());
+    AlertDialog deletion = ShadowAlertDialog.getLatestAlertDialog();
+    assertTrue(deletion.getButton(DialogInterface.BUTTON_POSITIVE)
+        .performClick());
+    shadowOf(Looper.getMainLooper()).idle();
+    assertNull("Confirmed correction deletion must remove the explicit override.",
+        new PersonalizationStore(_prefs).replacement_rule("agol"));
+  }
+
+  @Test
+  public void taught_row_can_open_replacement_conversion_editor()
+  {
+    assertTrue(new PersonalizationStore(_prefs).learn_word("archaxi"));
+    LearnedWordsActivity activity = launchActivity();
+    ListView list = (ListView)activity.findViewById(R.id.learned_words_list);
+    View row = list.getAdapter().getView(0, null, list);
+
+    assertTrue(row.findViewById(R.id.learned_words_row_edit).performClick());
+
+    AlertDialog editor = ShadowAlertDialog.getLatestAlertDialog();
+    assertNotNull(editor);
+    assertTrue("The conversion editor must remain visible for an explicit Save or Cancel.",
+        editor.isShowing());
+    assertTrue("Opening conversion must not delete the taught word before Save.",
+        new PersonalizationStore(_prefs).is_taught("archaxi"));
+  }
+
   private LearnedWordsActivity launchActivity()
   {
     _controller = Robolectric.buildActivity(LearnedWordsActivity.class).setup();
@@ -197,7 +258,21 @@ public class LearnedWordsActivityTest
     assertEquals("The visible learned-word count must match the filtered result.",
         expected.length, adapter.getCount());
     for (int i = 0; i < expected.length; ++i)
+    {
+      View row = adapter.getView(i, null, list);
       assertEquals("Learned words must remain in deterministic alphabetical order.",
-          expected[i], adapter.getItem(i));
+          expected[i], ((TextView)row.findViewById(
+            R.id.learned_words_row_word)).getText().toString());
+    }
+  }
+
+  private static void assertCorrection(ListView list, int position,
+      String source, String mapping)
+  {
+    View row = list.getAdapter().getView(position, null, list);
+    assertEquals(source, ((TextView)row.findViewById(
+          R.id.learned_words_row_word)).getText().toString());
+    assertEquals(mapping, ((TextView)row.findViewById(
+          R.id.learned_words_row_mapping)).getText().toString());
   }
 }

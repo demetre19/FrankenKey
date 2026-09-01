@@ -584,7 +584,7 @@ public final class KeyEventHandler
   {
     commit_pending_replacement();
     clear_manual_correction();
-    learn_current_word();
+    confirm_learn_current_word();
   }
 
   @Override
@@ -595,9 +595,9 @@ public final class KeyEventHandler
     unlearn_current_word();
   }
 
-  void learn_current_word()
+  void confirm_learn_current_word()
   {
-    learn_word(_decoder.current_key(), _typedword.get());
+    confirm_learn_word(_decoder.current_key(), _typedword.get());
   }
 
   void unlearn_current_word()
@@ -621,6 +621,53 @@ public final class KeyEventHandler
       && PersonalizationStore.is_learnable(word);
   }
 
+  void confirm_learn_word(final Decoder.RequestKey key, final String word)
+  {
+    if (key == null || !_decoder.is_current(key)
+        || !can_explicitly_teach(word))
+      return;
+    final long session = _decoder_session;
+    _recv.review_unknown_word(word, new Runnable()
+        {
+          @Override public void run()
+          {
+            if (_decoder_session == session && _decoder.is_current(key))
+              learn_word(key, word);
+          }
+        }, new Runnable()
+        {
+          @Override public void run()
+          {
+            if (_decoder_session == session && _decoder.is_current(key))
+              set_replacement(key, word, null);
+          }
+        });
+  }
+
+  void review_repeated_unknown_word(final long session, final String word)
+  {
+    if (_decoder_session != session || !should_use_personalization()
+        || !can_explicitly_teach(word))
+      return;
+    _recv.review_unknown_word(word, new Runnable()
+        {
+          @Override public void run()
+          {
+            if (_decoder_session == session && should_use_personalization()
+                && can_explicitly_teach(word))
+              _decoder.learn_word(session, word);
+          }
+        }, new Runnable()
+        {
+          @Override public void run()
+          {
+            if (_decoder_session == session && should_use_personalization()
+                && can_explicitly_teach(word))
+              _decoder.set_replacement(session, word, null);
+          }
+        });
+  }
+
   void learn_word(Decoder.RequestKey key, String word)
   {
     if (key == null || !_decoder.is_current(key)
@@ -630,6 +677,17 @@ public final class KeyEventHandler
       _decoder.learn_word(_decoder_session, word);
     else
       _recv.explicitly_teach_word(key, word);
+  }
+
+  void set_replacement(Decoder.RequestKey key, String source, String target)
+  {
+    if (key == null || !_decoder.is_current(key)
+        || !can_explicitly_teach(source))
+      return;
+    if (should_use_personalization())
+      _decoder.set_replacement(_decoder_session, source, target);
+    else
+      _recv.explicitly_set_replacement(source, target);
   }
 
   void confirm_unlearn_word(final Decoder.RequestKey key, final String word)
@@ -667,7 +725,7 @@ public final class KeyEventHandler
     if (learned)
       confirm_unlearn_word(key, word);
     else
-      learn_word(key, word);
+      confirm_learn_word(key, word);
   }
 
   private boolean should_use_personalization()
@@ -2601,6 +2659,10 @@ public final class KeyEventHandler
         Runnable positive_action) {}
     public default boolean explicitly_teach_word(Decoder.RequestKey key,
         String word) { return false; }
+    public default boolean explicitly_set_replacement(
+        String source, String target) { return false; }
+    public default void review_unknown_word(String word,
+        Runnable learn_action, Runnable best_match_action) {}
     public InputConnection getCurrentInputConnection();
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();

@@ -4,6 +4,8 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
@@ -27,6 +29,8 @@ public final class SharedDecoder implements AutoCloseable
   {
     public void decoder_state_changed(Presentation state);
     public default void decoder_result_completed(Decoder.Result result) {}
+    public default void unknown_word_review_requested(long sessionEpoch,
+        String word) {}
   }
 
   /** Immutable candidate-row state. Only READY contains clickable data. */
@@ -312,6 +316,7 @@ public final class SharedDecoder implements AutoCloseable
       _pending = null;
       _retained.clear();
       _completed.clear();
+      _unknownCommitCounts.clear();
       _presentation = Presentation.empty(_sessionEpoch, null);
       post_presentation_locked(_presentation);
       ensure_drain_locked();
@@ -604,6 +609,7 @@ public final class SharedDecoder implements AutoCloseable
             != _personalizationDomainEpoch)
         return;
       _personalizationEpoch++;
+      maybe_request_unknown_word_review_locked(token);
       enqueue_control_locked(Control.record(token._sessionEpoch,
             token._source, _personalizationSpecEpoch, _personalization,
             token._committedWord, token._correctedFrom,
@@ -649,6 +655,90 @@ public final class SharedDecoder implements AutoCloseable
             _resourceEpoch, _resources, personalization, word, feedbackKey));
       ensure_drain_locked();
     }
+  }
+
+  public void set_replacement(long sessionEpoch, String source, String target)
+  {
+    if (!valid_replacement(source, target))
+      return;
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch)
+          || !_config.useTypingAssistance || !_config.suggestionsEnabled)
+        return;
+      _personalizationEpoch++;
+      resubmit_latest_locked();
+      enqueue_control_locked(Control.replacement(sessionEpoch, _resourceEpoch,
+            _resources, _personalizationSpecEpoch, _personalizationEpoch,
+            _personalization, source, target));
+      ensure_drain_locked();
+    }
+  }
+
+  public void explicitly_set_replacement(long sessionEpoch,
+      PersonalizationSpec personalization, String source, String target)
+  {
+    if (personalization == null || personalization.preferences == null
+        || !valid_replacement(source, target))
+      return;
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch)
+          || !_config.useTypingAssistance || !_config.suggestionsEnabled)
+        return;
+      resubmit_latest_locked();
+      enqueue_control_locked(Control.explicitReplacement(sessionEpoch,
+            _resourceEpoch, _resources, personalization, source, target));
+      ensure_drain_locked();
+    }
+  }
+
+  private static boolean valid_replacement(String source, String target)
+  {
+    return PersonalizationStore.is_learnable(source)
+      && (target == null || target.trim().length() == 0
+        || (PersonalizationStore.is_learnable(target)
+          && !Decoder.normalize_correction_text(source).equals(
+            Decoder.normalize_correction_text(target))));
+  }
+
+  private void maybe_request_unknown_word_review_locked(CommitToken token)
+  {
+    if (token._selectedCorrection || token._correctedFrom != null
+        || !Boolean.FALSE.equals(token._recognized)
+        || !_config.showCandidates)
+      return;
+    String normalized = Decoder.normalize_correction_text(
+        token._committedWord);
+    if (!PersonalizationStore.is_learnable(normalized)
+        || !normalized.equals(token._source.request.correctionSource))
+      return;
+    Integer previous = _unknownCommitCounts.get(normalized);
+    int count = previous == null ? 1 : previous + 1;
+    if (count < UNKNOWN_REVIEW_THRESHOLD)
+    {
+      if (previous == null
+          && _unknownCommitCounts.size() >= MAX_UNKNOWN_REVIEW_WORDS)
+        _unknownCommitCounts.remove(
+            _unknownCommitCounts.keySet().iterator().next());
+      _unknownCommitCounts.put(normalized, Integer.valueOf(count));
+      return;
+    }
+    _unknownCommitCounts.remove(normalized);
+    final long sessionEpoch = token._sessionEpoch;
+    final String word = token._committedWord;
+    _mainHandler.post(new Runnable()
+        {
+          @Override public void run()
+          {
+            synchronized (_lock)
+            {
+              if (!is_active_session_locked(sessionEpoch))
+                return;
+            }
+            _callback.unknown_word_review_requested(sessionEpoch, word);
+          }
+        });
   }
 
   public void unlearn_word(long sessionEpoch, Decoder.RequestKey source,
@@ -725,6 +815,7 @@ public final class SharedDecoder implements AutoCloseable
       _acceptedResult = null;
       _acceptedEnvelope = null;
       _feedback = null;
+      _unknownCommitCounts.clear();
       _closeRequested = true;
       _presentation = Presentation.empty(_sessionEpoch, null);
       ensure_drain_locked();
@@ -746,6 +837,7 @@ public final class SharedDecoder implements AutoCloseable
     _acceptedResult = null;
     _acceptedEnvelope = null;
     _lastRequestEnvelope = null;
+    _unknownCommitCounts.clear();
     _feedback = null;
     _presentation = Presentation.empty(sessionEpoch, null);
   }
@@ -832,6 +924,7 @@ public final class SharedDecoder implements AutoCloseable
     _acceptedResult = null;
     _acceptedEnvelope = null;
     _feedback = null;
+    _unknownCommitCounts.clear();
     _presentation = Presentation.empty(_sessionEpoch, null);
     post_presentation_locked(_presentation);
   }
@@ -1407,7 +1500,9 @@ public final class SharedDecoder implements AutoCloseable
 
   private void run_control(Control control)
   {
-    if (control.kind != ControlKind.EXPLICIT_LEARN)
+    boolean externalControl = control.kind == ControlKind.EXPLICIT_LEARN
+      || control.kind == ControlKind.EXPLICIT_REPLACEMENT;
+    if (!externalControl)
       install_personalization(control.personalizationSpecEpoch,
           control.personalization);
     boolean feedback = false;
@@ -1445,6 +1540,14 @@ public final class SharedDecoder implements AutoCloseable
           feedback = new PersonalizationStore(
               control.personalization.preferences).learn_word(control.word);
           break;
+        case REPLACEMENT:
+          _workerPersonalization.set_replacement(
+              control.word, control.correctedFrom);
+          break;
+        case EXPLICIT_REPLACEMENT:
+          new PersonalizationStore(control.personalization.preferences)
+            .set_replacement(control.word, control.correctedFrom);
+          break;
         case UNLEARN:
           feedback = _workerPersonalization.unlearn_word(control.word);
           break;
@@ -1461,11 +1564,11 @@ public final class SharedDecoder implements AutoCloseable
       _workerPersonalizationFailed = true;
       Logs.exn("Decoder control failed", e);
     }
-    if (control.kind != ControlKind.EXPLICIT_LEARN)
+    if (!externalControl)
       _workerPersonalizationEpoch = control.personalizationEpoch;
     synchronized (_lock)
     {
-      if (control.kind != ControlKind.EXPLICIT_LEARN)
+      if (!externalControl)
       {
         _workerPersonalizationSpecEpoch = control.personalizationSpecEpoch;
         _workerPersonalizationEpoch = control.personalizationEpoch;
@@ -1609,6 +1712,8 @@ public final class SharedDecoder implements AutoCloseable
   private Decoder.Result _lastCompletedResult;
   private final ArrayDeque<CompletedDecode> _completed =
     new ArrayDeque<CompletedDecode>();
+  private final Map<String, Integer> _unknownCommitCounts =
+    new LinkedHashMap<String, Integer>();
   private FeedbackRecord _feedback;
   private Presentation _presentation = Presentation.empty(0, null);
   private Presentation _postedPresentation;
@@ -1628,6 +1733,8 @@ public final class SharedDecoder implements AutoCloseable
   private static final int MAX_CONTROLS = 64;
   private static final int MAX_RETAINED_BOUNDARIES = 48;
   private static final int MAX_COMPLETED_RESULTS = 64;
+  private static final int UNKNOWN_REVIEW_THRESHOLD = 3;
+  private static final int MAX_UNKNOWN_REVIEW_WORDS = 32;
 
   private static final class PendingDecode
   {
@@ -1726,6 +1833,8 @@ public final class SharedDecoder implements AutoCloseable
     RECORD,
     LEARN,
     EXPLICIT_LEARN,
+    REPLACEMENT,
+    EXPLICIT_REPLACEMENT,
     UNLEARN,
     CLEAR,
     RESET
@@ -1797,6 +1906,25 @@ public final class SharedDecoder implements AutoCloseable
       return new Control(ControlKind.EXPLICIT_LEARN, sessionEpoch,
           resourceEpoch, resources, Long.MIN_VALUE, Long.MIN_VALUE,
           personalization, null, word, null, false, null, feedbackKey);
+    }
+
+    static Control replacement(long sessionEpoch, long resourceEpoch,
+        ResourceSpec resources, long personalizationSpecEpoch,
+        long personalizationEpoch, PersonalizationSpec personalization,
+        String source, String target)
+    {
+      return new Control(ControlKind.REPLACEMENT, sessionEpoch, resourceEpoch,
+          resources, personalizationSpecEpoch, personalizationEpoch,
+          personalization, null, source, target, false, null, null);
+    }
+
+    static Control explicitReplacement(long sessionEpoch, long resourceEpoch,
+        ResourceSpec resources, PersonalizationSpec personalization,
+        String source, String target)
+    {
+      return new Control(ControlKind.EXPLICIT_REPLACEMENT, sessionEpoch,
+          resourceEpoch, resources, Long.MIN_VALUE, Long.MIN_VALUE,
+          personalization, null, source, target, false, null, null);
     }
 
     static Control unlearn(long sessionEpoch, long resourceEpoch,

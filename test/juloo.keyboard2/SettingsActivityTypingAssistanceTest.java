@@ -199,17 +199,20 @@ public class SettingsActivityTypingAssistanceTest
   {
     PersonalizationStore store = new PersonalizationStore(prefs);
     store.record_selected_correction("wprld", "world");
+    store.set_replacement("agol", "goal");
   }
 
   private static void assertSeededAdaptiveData(SharedPreferences prefs)
   {
     Map<String, Set<String>> rows = adaptiveSnapshot(prefs);
-    assertEquals("The fixture must contain only deliberate word and typo-correction rows.",
-        2, rows.size());
+    assertEquals("The fixture must contain deliberate words, typo evidence, and an explicit replacement rule.",
+        3, rows.size());
     assertFalse("Deliberate correction targets must populate learned-word rows.",
         rows.get(PersonalizationStore.PREF_WORDS).isEmpty());
     assertFalse("Deliberate correction evidence must populate typo-correction rows.",
         rows.get(PersonalizationStore.PREF_CORRECTIONS).isEmpty());
+    assertFalse("Explicit replacement decisions must populate their private rule rows.",
+        rows.get(PersonalizationStore.PREF_REPLACEMENTS).isEmpty());
     assertFalse("Consecutive ordinary commits must never create bigram rows.",
         rows.containsKey(PersonalizationStore.PREF_BIGRAMS));
     PersonalizationStore reloaded = new PersonalizationStore(prefs);
@@ -225,7 +228,8 @@ public class SettingsActivityTypingAssistanceTest
     for (String key : new String[] {
           PersonalizationStore.PREF_WORDS,
           PersonalizationStore.PREF_BIGRAMS,
-          PersonalizationStore.PREF_CORRECTIONS
+          PersonalizationStore.PREF_CORRECTIONS,
+          PersonalizationStore.PREF_REPLACEMENTS
         })
     {
       Set<String> values = prefs.getStringSet(key, null);

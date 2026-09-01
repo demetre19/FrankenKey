@@ -1,0 +1,5 @@
+FrankenKey no longer teaches a word immediately from an upward gesture. Teach actions now ask whether to keep the word, use the best safe suggestion, or set an exact replacement.
+
+Typing the same unknown pattern three times in one editor session opens the same review without storing passive typing history. Learned Words now has an editable Corrections tab showing each source-to-replacement rule.
+
+Exact user replacements now win even when the typed pattern and intended word are unrelated.

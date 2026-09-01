@@ -107,12 +107,38 @@ public class KeyEventHandlerLearningContractTest
 
     harness.handler.suggestion_swiped_up(key, "woohoo");
 
-    assertEquals("A deliberate Teach tap must use the explicit worker path.",
+    assertEquals("A deliberate Teach gesture must ask before using the explicit worker path.",
+        1, harness.receiver.reviewCalls);
+    assertEquals(0, harness.receiver.explicitTeachCalls);
+    assertFalse(new PersonalizationStore(harness.prefs).is_taught("woohoo"));
+
+    harness.receiver.confirmReviewLearn();
+
+    assertEquals("A positive Teach decision must use the explicit worker path.",
         1, harness.receiver.explicitTeachCalls);
     awaitCounts(harness.prefs, "woohoo", "woohoo", 1, 0);
     PersonalizationStore stored = new PersonalizationStore(harness.prefs);
-    assertTrue("The taught word must appear in Learned Words.",
+    assertTrue("The confirmed word must appear in Learned Words.",
         stored.taught_words().contains("woohoo"));
+  }
+
+  @Test
+  public void repeated_unknown_best_choice_persists_explicit_rule()
+      throws Exception
+  {
+    Harness harness = harness("agol", true, true);
+
+    harness.handler.review_repeated_unknown_word(harness.session, "agol");
+
+    assertEquals(1, harness.receiver.reviewCalls);
+    assertEquals("agol", harness.receiver.reviewWord);
+    assertNull(new PersonalizationStore(harness.prefs)
+        .replacement_rule("agol"));
+
+    harness.receiver.confirmReviewBest();
+    awaitReplacement(harness.prefs, "agol", null);
+    assertTrue(new PersonalizationStore(harness.prefs)
+        .replacement_rule("agol").uses_best_match());
   }
 
   @Test
@@ -407,6 +433,24 @@ public class KeyEventHandlerLearningContractTest
         + "/" + correctionCount(prefs, source, target));
   }
 
+  private static void awaitReplacement(SharedPreferences prefs,
+      String source, String target)
+      throws Exception
+  {
+    long deadline = System.nanoTime() + 3_000_000_000L;
+    do
+    {
+      PersonalizationStore.ReplacementRule rule =
+        new PersonalizationStore(prefs).replacement_rule(source);
+      if (rule != null && (target == null ? rule.target == null
+            : target.equals(rule.target)))
+        return;
+      Thread.sleep(2L);
+    }
+    while (System.nanoTime() < deadline);
+    fail("Timed out waiting for replacement rule for " + source);
+  }
+
   private static void assertCountsRemain(SharedPreferences prefs,
       String target, String source, int expectedWordCount,
       int expectedCorrectionCount)
@@ -476,6 +520,11 @@ public class KeyEventHandlerLearningContractTest
     Runnable confirmationAction;
     int confirmationCalls;
     int explicitTeachCalls;
+    String reviewWord;
+    Runnable reviewLearnAction;
+    Runnable reviewBestAction;
+    int reviewCalls;
+    int explicitReplacementCalls;
     SharedDecoder decoder;
     long session;
     SharedDecoder.PersonalizationSpec personalization;
@@ -500,6 +549,26 @@ public class KeyEventHandlerLearningContractTest
       action.run();
     }
 
+    void confirmReviewLearn()
+    {
+      Runnable action = reviewLearnAction;
+      reviewLearnAction = null;
+      reviewBestAction = null;
+      assertNotNull("A positive review decision requires a captured Teach action.",
+          action);
+      action.run();
+    }
+
+    void confirmReviewBest()
+    {
+      Runnable action = reviewBestAction;
+      reviewLearnAction = null;
+      reviewBestAction = null;
+      assertNotNull("A best-match review decision requires a captured action.",
+          action);
+      action.run();
+    }
+
     @Override public void handle_event_key(KeyValue.Event event) {}
     @Override public void set_shift_state(boolean state, boolean lock) {}
     @Override public void set_compose_pending(boolean pending) {}
@@ -511,11 +580,27 @@ public class KeyEventHandlerLearningContractTest
       confirmationAction = positiveAction;
       ++confirmationCalls;
     }
+    @Override public void review_unknown_word(String word,
+        Runnable learnAction, Runnable bestAction)
+    {
+      reviewWord = word;
+      reviewLearnAction = learnAction;
+      reviewBestAction = bestAction;
+      ++reviewCalls;
+    }
     @Override public boolean explicitly_teach_word(Decoder.RequestKey key,
         String word)
     {
       ++explicitTeachCalls;
       decoder.explicitly_teach_word(session, key, personalization, word);
+      return true;
+    }
+    @Override public boolean explicitly_set_replacement(
+        String source, String target)
+    {
+      ++explicitReplacementCalls;
+      decoder.explicitly_set_replacement(
+          session, personalization, source, target);
       return true;
     }
     @Override public RecordingInputConnection getCurrentInputConnection()

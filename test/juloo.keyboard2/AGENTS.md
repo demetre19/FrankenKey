@@ -18,7 +18,7 @@
 
 ## Work Guidance
 
-- Run only affected classes unless failure requires expansion; adaptive-learning changes cover personalization, scoring, decoder, key events, candidates, Settings confirmation/theme, and Direct Boot privacy.
+- Run only affected classes unless failure requires expansion; adaptive-learning changes cover personalization, explicit replacement precedence, best-safe delegation, bounded session-only three-strike review, gesture confirmation, decoder controls, Learned Words Corrections editing, Settings confirmation/theme, and Direct Boot privacy.
 
 ## Verification
 

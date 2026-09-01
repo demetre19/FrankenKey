@@ -118,12 +118,24 @@ public class FleksyLearningGestureTest
   }
 
   @Test
-  public void swipe_up_learns_and_keyboard_down_requires_positive_confirmation()
+  public void swipe_up_and_down_both_require_positive_confirmation()
       throws Exception
   {
     Harness harness = harness("cazoo", true, true);
 
     harness.handler.keyboard_swiped_up();
+
+    assertEquals("An upward Teach gesture must ask once before persisting a new literal.",
+        1, harness.receiver.reviewCalls);
+    assertEquals("The Teach review must name the exact current word.",
+        "cazoo", harness.receiver.reviewWord);
+    assertLearnedRemains("cazoo", false);
+
+    harness.receiver.cancelReview();
+    assertLearnedRemains("cazoo", false);
+
+    harness.handler.keyboard_swiped_up();
+    harness.receiver.confirmLearn();
     awaitLearned("cazoo", true);
     SharedDecoder.Presentation learned = awaitFeedback(harness.decoder,
         SharedDecoder.Presentation.Feedback.LEARNED, "cazoo");
@@ -193,6 +205,9 @@ public class FleksyLearningGestureTest
           + " must not show feedback for a mutation that was refused.",
           SharedDecoder.Presentation.Feedback.LEARNED,
           harness.decoder.current_presentation().feedback);
+      assertEquals(gate.name
+          + " must not offer a review action for an ineligible token.",
+          0, harness.receiver.reviewCalls);
     }
   }
 
@@ -400,10 +415,29 @@ public class FleksyLearningGestureTest
     String confirmationWord;
     Runnable confirmationAction;
     int confirmationCalls;
+    String reviewWord;
+    Runnable learnAction;
+    Runnable bestAction;
+    int reviewCalls;
 
     void cancelConfirmation()
     {
       confirmationAction = null;
+    }
+
+    void cancelReview()
+    {
+      learnAction = null;
+      bestAction = null;
+    }
+
+    void confirmLearn()
+    {
+      Runnable action = learnAction;
+      cancelReview();
+      assertNotNull("A positive Teach decision requires a captured action.",
+          action);
+      action.run();
     }
 
     void confirmPositive()
@@ -425,6 +459,14 @@ public class FleksyLearningGestureTest
       confirmationWord = word;
       confirmationAction = positiveAction;
       ++confirmationCalls;
+    }
+    @Override public void review_unknown_word(String word,
+        Runnable learn, Runnable best)
+    {
+      reviewWord = word;
+      learnAction = learn;
+      bestAction = best;
+      ++reviewCalls;
     }
     @Override public BaseInputConnection getCurrentInputConnection()
     {

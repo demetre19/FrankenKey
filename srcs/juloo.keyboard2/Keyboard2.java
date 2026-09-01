@@ -66,6 +66,7 @@ public class Keyboard2 extends InputMethodService
   private SystemGrammarChecker _grammar_checker;
   private SystemGrammarChecker.Correction _grammar_correction;
   private MultimodalVoiceInput _voice_input;
+  private AlertDialog _learning_review_dialog;
   private int _selection_start = -1;
   private int _selection_end = -1;
   private SharedDecoder _decoder;
@@ -1375,6 +1376,7 @@ public class Keyboard2 extends InputMethodService
   {
     _reader_composing = false;
     _reader_controls_expanded = false;
+    dismiss_learning_review();
     _keyeventhandler.finished();
     _decoder_session = 0;
     if (_candidates_view != null)
@@ -1664,6 +1666,53 @@ public class Keyboard2 extends InputMethodService
       return true;
     }
 
+    public boolean explicitly_set_replacement(String source, String target)
+    {
+      if (_personalization_spec == null
+          || _personalization_spec.preferences == null)
+        return false;
+      _decoder.explicitly_set_replacement(_decoder_session,
+          _personalization_spec, source, target);
+      return true;
+    }
+
+    public void review_unknown_word(String word, final Runnable learn_action,
+        final Runnable best_match_action)
+    {
+      if (word == null || learn_action == null || best_match_action == null
+          || _keyboard_container_view == null)
+        return;
+      IBinder token = _keyboard_container_view.getWindowToken();
+      if (token == null || (_learning_review_dialog != null
+            && _learning_review_dialog.isShowing()))
+        return;
+      AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(
+            Keyboard2.this, _config.theme))
+        .setTitle(getString(R.string.unknown_word_review_title, word))
+        .setMessage(R.string.unknown_word_review_message)
+        .setPositiveButton(R.string.unknown_word_review_learn,
+            (_dialog, _which) -> learn_action.run())
+        .setNegativeButton(R.string.unknown_word_review_best,
+            (_dialog, _which) -> best_match_action.run())
+        .setNeutralButton(R.string.unknown_word_review_replace,
+            (_dialog, _which) -> {
+              Intent intent = new Intent(
+                  Keyboard2.this, LearnedWordsActivity.class);
+              intent.putExtra(
+                  LearnedWordsActivity.EXTRA_REPLACEMENT_SOURCE, word);
+              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+              startActivity(intent);
+            })
+        .create();
+      dialog.setCanceledOnTouchOutside(true);
+      dialog.setOnDismissListener(_dialog -> {
+          if (_learning_review_dialog == dialog)
+            _learning_review_dialog = null;
+        });
+      _learning_review_dialog = dialog;
+      Utils.show_dialog_on_ime(dialog, token);
+    }
+
     public void confirm_unlearn_word(String word, final Runnable positive_action)
     {
       if (word == null || positive_action == null
@@ -1723,6 +1772,12 @@ public class Keyboard2 extends InputMethodService
           });
     }
 
+    @Override
+    public void unknown_word_review_requested(long sessionEpoch, String word)
+    {
+      _keyeventhandler.review_repeated_unknown_word(sessionEpoch, word);
+    }
+
     public String provide_stateful_key_symbol(KeyValue.Stateful q)
     {
       SharedDecoder.Presentation presentation = _decoder.current_presentation();
@@ -1744,6 +1799,14 @@ public class Keyboard2 extends InputMethodService
       }
       return "";
     }
+
+  }
+  private void dismiss_learning_review()
+  {
+    AlertDialog dialog = _learning_review_dialog;
+    _learning_review_dialog = null;
+    if (dialog != null && dialog.isShowing())
+      dialog.dismiss();
   }
 
   private IBinder getConnectionToken()

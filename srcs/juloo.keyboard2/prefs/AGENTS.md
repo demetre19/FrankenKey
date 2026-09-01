@@ -14,7 +14,7 @@
 - Use compact square color chips beside labels.
 - Dynamic extra-key checkboxes use the shared concise “added only where absent” summary.
 - Extra Keys manager persists visibility/order, shows row drag handles, and accepts bounded supported Ctrl/Alt/Shift/Cmd key/command combinations.
-- Learned Words remains a separate searchable list; direct teaching validates one word and per-row forgetting requires confirmation.
+- Learned Words remains a separate searchable list with Taught and Corrections tabs. Direct teaching validates one word; Corrections exposes editable source-to-fixed-target or source-to-best-safe rules plus deliberate adaptive pairs. Per-row forgetting/deletion requires confirmation.
 
 ## Work Guidance
 

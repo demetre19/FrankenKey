@@ -73,6 +73,7 @@ public final class DirectBootAwarePreferences
     e.remove(PersonalizationStore.PREF_BIGRAMS);
     e.remove(PersonalizationStore.PREF_CORRECTIONS);
     e.remove(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS);
+    e.remove(PersonalizationStore.PREF_REPLACEMENTS);
     e.remove(PersonalizationStore.PREF_TOUCH_SAMPLES);
     e.remove(PersonalizationStore.PREF_TOUCH_OFFSET_X);
     e.remove(PersonalizationStore.PREF_TOUCH_OFFSET_Y);
@@ -87,6 +88,7 @@ public final class DirectBootAwarePreferences
           || PersonalizationStore.PREF_BIGRAMS.equals(k)
           || PersonalizationStore.PREF_CORRECTIONS.equals(k)
           || PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS.equals(k)
+          || PersonalizationStore.PREF_REPLACEMENTS.equals(k)
           || PersonalizationStore.PREF_TOUCH_SAMPLES.equals(k)
           || PersonalizationStore.PREF_TOUCH_OFFSET_X.equals(k)
           || PersonalizationStore.PREF_TOUCH_OFFSET_Y.equals(k)

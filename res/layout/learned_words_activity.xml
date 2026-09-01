@@ -51,13 +51,13 @@
         android:text="@string/learned_words_taught_tab"
         android:textAllCaps="false"/>
     <Button
-        android:id="@+id/learned_words_adaptive_tab"
+        android:id="@+id/learned_words_corrections_tab"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginStart="4dp"
         android:layout_weight="1"
         android:background="@drawable/reader_icon_button"
-        android:text="@string/learned_words_adaptive_tab"
+        android:text="@string/learned_words_corrections_tab"
         android:textAllCaps="false"/>
   </LinearLayout>
 
@@ -68,7 +68,7 @@
       android:layout_marginTop="6dp"
       android:paddingStart="4dp"
       android:paddingEnd="4dp"
-      android:text="@string/learned_words_scope_explanation"
+      android:text="@string/learned_words_taught_explanation"
       android:textColor="#A8B2BE"
       android:textSize="13sp"/>
 
@@ -102,7 +102,7 @@
           android:textColorHint="#A8B2BE"/>
     </FrameLayout>
     <Button
-        android:id="@+id/learned_words_learn"
+        android:id="@+id/learned_words_primary_action"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginStart="8dp"

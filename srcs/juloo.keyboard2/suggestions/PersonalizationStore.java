@@ -69,6 +69,44 @@ public final class PersonalizationStore
     }
   }
 
+  /** Explicit user-owned replacement for one exact typed source. */
+  public static final class ReplacementRule
+  {
+    public final String source;
+    /** Null means use the highest-ranked safe recognized candidate. */
+    public final String target;
+
+    private ReplacementRule(String source_, String target_)
+    {
+      source = source_;
+      target = target_;
+    }
+
+    public boolean uses_best_match()
+    {
+      return target == null;
+    }
+  }
+
+  /** One editable row on the Corrections settings surface. */
+  public static final class CorrectionEntry
+  {
+    public final String source;
+    /** Null means use the highest-ranked safe recognized candidate. */
+    public final String target;
+    public final boolean explicit;
+    public final int count;
+
+    private CorrectionEntry(String source_, String target_, boolean explicit_,
+        int count_)
+    {
+      source = source_;
+      target = target_;
+      explicit = explicit_;
+      count = count_;
+    }
+  }
+
   private static final class TopWords
   {
     private final String[] _values;
@@ -255,6 +293,8 @@ public final class PersonalizationStore
     _contextual_correction_counts = prefs == null
       ? new HashMap<ContextualCorrection, Integer>()
       : load_contextual_corrections();
+    _replacement_rules = prefs == null ? new HashMap<String, String>()
+      : load_replacement_rules();
     if (prefs != null)
     {
       _touch_samples = Math.max(0, Math.min(MAX_TOUCH_SAMPLES,
@@ -357,6 +397,135 @@ public final class PersonalizationStore
     return words;
   }
 
+  public ReplacementRule replacement_rule(String source)
+  {
+    source = normalize(source);
+    if (!_replacement_rules.containsKey(source))
+      return null;
+    String target = _replacement_rules.get(source);
+    return new ReplacementRule(source, target.length() == 0 ? null : target);
+  }
+
+  /**
+   * Store an explicit exact-source replacement. A null or blank target means
+   * "use the best safe recognized candidate".
+   */
+  public boolean set_replacement(String source, String target)
+  {
+    source = normalize(source);
+    String normalizedTarget = target == null || target.trim().length() == 0
+      ? "" : normalize(target);
+    if (!is_learnable(source)
+        || (normalizedTarget.length() != 0
+          && (!is_learnable(normalizedTarget)
+            || source.equals(normalizedTarget))))
+      return false;
+    if (!_replacement_rules.containsKey(source)
+        && _replacement_rules.size() >= MAX_REPLACEMENT_RULES)
+      return false;
+
+    String previous = _replacement_rules.put(source, normalizedTarget);
+    boolean changed = previous == null || !previous.equals(normalizedTarget);
+    changed |= _word_counts.remove(source) != null;
+    changed |= _word_surfaces.remove(source) != null;
+    changed |= _taught_words.remove(source);
+    changed |= remove_bigrams_containing(source);
+    changed |= remove_corrections_from_source(source);
+    if (!changed)
+      return false;
+    _generation++;
+    save();
+    return true;
+  }
+
+  public boolean remove_replacement(String source)
+  {
+    source = normalize(source);
+    if (_replacement_rules.remove(source) == null)
+      return false;
+    _generation++;
+    save();
+    return true;
+  }
+
+  /**
+   * Remove one adaptive source-to-target relationship without deleting an
+   * unrelated taught target.
+   */
+  public boolean remove_correction(String source, String target)
+  {
+    source = normalize(source);
+    target = normalize(target);
+    if (!is_learnable(source) || !is_learnable(target))
+      return false;
+    boolean changed = _correction_counts.remove(
+        new CorrectionPair(source, target)) != null;
+    List<ContextualCorrection> contextual =
+      new ArrayList<ContextualCorrection>();
+    for (ContextualCorrection correction
+        : _contextual_correction_counts.keySet())
+      if (correction.source.equals(source)
+          && correction.target.equals(target))
+        contextual.add(correction);
+    for (ContextualCorrection correction : contextual)
+      changed |= _contextual_correction_counts.remove(correction) != null;
+    if (!changed)
+      return false;
+    remove_orphan_adaptive_word(target);
+    _generation++;
+    save();
+    return true;
+  }
+
+  /** Return explicit rules and adaptive source-to-target evidence. */
+  public List<CorrectionEntry> correction_entries()
+  {
+    Map<String, CorrectionEntry> entries =
+      new HashMap<String, CorrectionEntry>();
+    for (Map.Entry<String, String> rule : _replacement_rules.entrySet())
+      entries.put(correction_entry_key(rule.getKey(), rule.getValue()),
+          new CorrectionEntry(rule.getKey(),
+            rule.getValue().length() == 0 ? null : rule.getValue(), true, 0));
+    for (Map.Entry<CorrectionPair, Integer> correction
+        : _correction_counts.entrySet())
+      if (!_replacement_rules.containsKey(correction.getKey().source))
+        merge_correction_entry(entries, correction.getKey().source,
+            correction.getKey().target, correction.getValue());
+    for (Map.Entry<ContextualCorrection, Integer> correction
+        : _contextual_correction_counts.entrySet())
+      if (!_replacement_rules.containsKey(correction.getKey().source))
+        merge_correction_entry(entries, correction.getKey().source,
+            correction.getKey().target, correction.getValue());
+    List<CorrectionEntry> out =
+      new ArrayList<CorrectionEntry>(entries.values());
+    Collections.sort(out, (left, right) -> {
+        int sourceOrder = String.CASE_INSENSITIVE_ORDER.compare(
+            left.source, right.source);
+        if (sourceOrder != 0)
+          return sourceOrder;
+        String leftTarget = left.target == null ? "" : left.target;
+        String rightTarget = right.target == null ? "" : right.target;
+        return String.CASE_INSENSITIVE_ORDER.compare(leftTarget, rightTarget);
+      });
+    return out;
+  }
+
+  private static void merge_correction_entry(
+      Map<String, CorrectionEntry> entries, String source, String target,
+      int count)
+  {
+    String key = correction_entry_key(source, target);
+    CorrectionEntry existing = entries.get(key);
+    int total = existing == null ? count
+      : saturating_count_add(existing.count, count);
+    entries.put(key, new CorrectionEntry(source, target, false, total));
+  }
+
+  private static String correction_entry_key(String source, String target)
+  {
+    return source + "\t" + (target == null ? "" : target);
+  }
+
 
   /**
    * Record transient context and eligible touch calibration for an ordinary
@@ -450,6 +619,7 @@ public final class PersonalizationStore
     changed |= remove_bigrams_containing(word);
     changed |= remove_corrections_involving(word);
     changed |= remove_contextual_corrections_involving(word);
+    changed |= remove_replacements_involving(word);
     if (word.equals(_last_word) || word.equals(_prior_word))
     {
       _prior_word = null;
@@ -637,7 +807,8 @@ public final class PersonalizationStore
     PersonalizationStore store = new PersonalizationStore(prefs);
     return new Stats(store._word_counts.size(), store._bigram_counts.size(),
         store._correction_counts.size()
-          + store._contextual_correction_counts.size(),
+          + store._contextual_correction_counts.size()
+          + store._replacement_rules.size(),
         store._touch_samples);
   }
   public static long external_revision(SharedPreferences prefs)
@@ -708,7 +879,8 @@ public final class PersonalizationStore
     boolean changed = !_word_counts.isEmpty() || !_word_surfaces.isEmpty()
       || !_taught_words.isEmpty() || !_bigram_counts.isEmpty()
       || !_correction_counts.isEmpty()
-      || !_contextual_correction_counts.isEmpty() || _last_word != null
+      || !_contextual_correction_counts.isEmpty()
+      || !_replacement_rules.isEmpty() || _last_word != null
       || _touch_samples != 0 || has_data(_prefs);
     _word_counts.clear();
     _word_surfaces.clear();
@@ -716,6 +888,7 @@ public final class PersonalizationStore
     _bigram_counts.clear();
     _correction_counts.clear();
     _contextual_correction_counts.clear();
+    _replacement_rules.clear();
     _prior_word = null;
     _last_word = null;
     _touch_samples = 0;
@@ -737,6 +910,7 @@ public final class PersonalizationStore
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
       .remove(PREF_CONTEXTUAL_CORRECTIONS)
+      .remove(PREF_REPLACEMENTS)
       .remove(PREF_TOUCH_SAMPLES)
       .remove(PREF_TOUCH_OFFSET_X)
       .remove(PREF_TOUCH_OFFSET_Y)
@@ -749,6 +923,7 @@ public final class PersonalizationStore
       && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_WORD_SURFACES)
         || prefs.contains(PREF_BIGRAMS) || prefs.contains(PREF_CORRECTIONS)
         || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS)
+        || prefs.contains(PREF_REPLACEMENTS)
         || prefs.getInt(PREF_TOUCH_SAMPLES, 0) > 0);
   }
 
@@ -1036,6 +1211,32 @@ public final class PersonalizationStore
     return out;
   }
 
+  private Map<String, String> load_replacement_rules()
+  {
+    Map<String, String> out = new HashMap<String, String>();
+    Set<String> entries = _prefs.getStringSet(PREF_REPLACEMENTS, null);
+    if (entries == null)
+      return out;
+    for (String entry : entries)
+    {
+      if (entry == null)
+        continue;
+      int separator = entry.indexOf('\t');
+      if (separator <= 0 || separator != entry.lastIndexOf('\t'))
+        continue;
+      String source = normalize(entry.substring(0, separator));
+      String target = normalize(entry.substring(separator + 1));
+      if (!is_learnable(source)
+          || (target.length() != 0
+            && (!is_learnable(target) || source.equals(target))))
+        continue;
+      if (out.size() >= MAX_REPLACEMENT_RULES && !out.containsKey(source))
+        continue;
+      out.put(source, target);
+    }
+    return out;
+  }
+
   private void save()
   {
     if (_prefs == null)
@@ -1065,6 +1266,11 @@ public final class PersonalizationStore
     else
       editor.putStringSet(PREF_CONTEXTUAL_CORRECTIONS,
           encode_contextual_corrections(_contextual_correction_counts));
+    if (_replacement_rules.isEmpty())
+      editor.remove(PREF_REPLACEMENTS);
+    else
+      editor.putStringSet(PREF_REPLACEMENTS,
+          encode_replacement_rules(_replacement_rules));
     if (_touch_samples == 0)
     {
       editor.remove(PREF_TOUCH_SAMPLES);
@@ -1126,6 +1332,15 @@ public final class PersonalizationStore
       out.add(correction.previous + "\t" + correction.source + "\t"
           + correction.target + "\t" + entry.getValue());
     }
+    return out;
+  }
+
+  private static Set<String> encode_replacement_rules(
+      Map<String, String> replacements)
+  {
+    Set<String> out = new HashSet<String>();
+    for (Map.Entry<String, String> entry : replacements.entrySet())
+      out.add(entry.getKey() + "\t" + entry.getValue());
     return out;
   }
 
@@ -1231,6 +1446,69 @@ public final class PersonalizationStore
     for (String bigram : toRemove)
       changed |= _bigram_counts.remove(bigram) != null;
     return changed;
+  }
+
+  private boolean remove_corrections_from_source(String source)
+  {
+    boolean changed = false;
+    Set<String> possibleOrphans = new HashSet<String>();
+    List<CorrectionPair> pairs = new ArrayList<CorrectionPair>();
+    for (CorrectionPair pair : _correction_counts.keySet())
+      if (pair.source.equals(source))
+      {
+        pairs.add(pair);
+        possibleOrphans.add(pair.target);
+      }
+    for (CorrectionPair pair : pairs)
+      changed |= _correction_counts.remove(pair) != null;
+    List<ContextualCorrection> contextual =
+      new ArrayList<ContextualCorrection>();
+    for (ContextualCorrection correction
+        : _contextual_correction_counts.keySet())
+      if (correction.source.equals(source))
+      {
+        contextual.add(correction);
+        possibleOrphans.add(correction.target);
+      }
+    for (ContextualCorrection correction : contextual)
+      changed |= _contextual_correction_counts.remove(correction) != null;
+    for (String target : possibleOrphans)
+      remove_orphan_adaptive_word(target);
+    return changed;
+  }
+
+  private boolean remove_replacements_involving(String word)
+  {
+    boolean changed = false;
+    List<String> sources = new ArrayList<String>();
+    for (Map.Entry<String, String> replacement
+        : _replacement_rules.entrySet())
+      if (replacement.getKey().equals(word)
+          || replacement.getValue().equals(word))
+        sources.add(replacement.getKey());
+    for (String source : sources)
+      changed |= _replacement_rules.remove(source) != null;
+    return changed;
+  }
+
+  private void remove_orphan_adaptive_word(String target)
+  {
+    if (_taught_words.contains(target) || has_correction_target(target))
+      return;
+    _word_counts.remove(target);
+    _word_surfaces.remove(target);
+  }
+
+  private boolean has_correction_target(String target)
+  {
+    for (CorrectionPair pair : _correction_counts.keySet())
+      if (pair.target.equals(target))
+        return true;
+    for (ContextualCorrection correction
+        : _contextual_correction_counts.keySet())
+      if (correction.target.equals(target))
+        return true;
+    return false;
   }
 
   private boolean remove_corrections_involving(String word)
@@ -1398,6 +1676,7 @@ public final class PersonalizationStore
   private final Map<CorrectionPair, Integer> _correction_counts;
   private final Map<ContextualCorrection, Integer>
     _contextual_correction_counts;
+  private final Map<String, String> _replacement_rules;
   private String _prior_word = null;
   private String _last_word = null;
   private int _touch_samples = 0;
@@ -1411,6 +1690,7 @@ public final class PersonalizationStore
   private static final int MAX_CORRECTION_COUNT = 15;
   private static final int MAX_CORRECTION_PAIRS = 512;
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
+  private static final int MAX_REPLACEMENT_RULES = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
   private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
   private static final int MIN_TOUCH_SAMPLES = 20;
@@ -1427,6 +1707,8 @@ public final class PersonalizationStore
     "typing_model_corrections_v1";
   public static final String PREF_CONTEXTUAL_CORRECTIONS =
     "typing_model_contextual_corrections_v1";
+  public static final String PREF_REPLACEMENTS =
+    "typing_model_replacements_v1";
   public static final String PREF_TOUCH_SAMPLES =
     "typing_model_touch_samples_v1";
   public static final String PREF_TOUCH_OFFSET_X =

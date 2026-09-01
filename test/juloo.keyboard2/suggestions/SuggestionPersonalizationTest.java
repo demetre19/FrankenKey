@@ -115,6 +115,101 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void fixed_replacement_persists_and_overrides_unknown_literal()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertTrue(store.learn_word("archaxi"));
+    assertTrue(store.set_replacement("archaxi", "architecture"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    PersonalizationStore.ReplacementRule rule =
+      reloaded.replacement_rule("ARCHAXI");
+    assertNotNull(rule);
+    assertEquals("architecture", rule.target);
+    assertFalse("Converting a taught mash into a correction must stop protecting the mash as a literal.",
+        reloaded.is_taught("archaxi"));
+
+    Decoder.Result result = decode(
+        "archaxi", reloaded, enabledConfig(), 70);
+    assertNotNull("An explicit replacement must be actionable without waiting for adaptive counts.",
+        result.autocorrection);
+    assertEquals("architecture", result.autocorrection.canonical);
+    assertTrue("The decoder result must retain explicit-rule provenance.",
+        (result.autocorrection.sourceMask & Decoder.SOURCE_REPLACEMENT) != 0);
+  }
+
+  @Test
+  public void fixed_replacement_bypasses_key_distance_for_unrelated_words()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertTrue(store.set_replacement("qzxqz", "hello"));
+
+    Decoder.Result result = decode(
+        "qzxqz", new PersonalizationStore(_prefs), enabledConfig(), 700);
+
+    assertNotNull("A user-authored exact mapping must not be rejected as too distant.",
+        result.autocorrection);
+    assertEquals("hello", result.autocorrection.canonical);
+    assertTrue("The fixture must cross the adaptive typo-distance limit.",
+        result.autocorrection.editCount > 2);
+    assertTrue((result.autocorrection.sourceMask
+          & Decoder.SOURCE_REPLACEMENT) != 0);
+  }
+
+  @Test
+  public void best_replacement_uses_safe_learned_candidate_until_deleted()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertTrue(store.learn_word("agola"));
+    assertTrue(store.set_replacement("agol", null));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertTrue(reloaded.replacement_rule("agol").uses_best_match());
+    Decoder.Result delegated = decode(
+        "agol", reloaded, enabledConfig(), 71);
+    assertNotNull("Best-match mode must delegate to a complete safe candidate rather than the rejected literal.",
+        delegated.autocorrection);
+    assertEquals("agola", delegated.autocorrection.canonical);
+
+    assertTrue(reloaded.remove_replacement("agol"));
+    Decoder.Result restored = decode(
+        "agol", new PersonalizationStore(_prefs), enabledConfig(), 72);
+    assertTrue("Deleting the explicit rule must restore ordinary ranking without retaining hidden replacement provenance.",
+        restored.autocorrection == null
+          || (restored.autocorrection.sourceMask
+            & Decoder.SOURCE_REPLACEMENT) == 0);
+  }
+
+  @Test
+  public void correction_rows_expose_editable_pairs_and_delete_orphan_targets()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.record_selected_correction("ordimary", "ordinary");
+
+    List<PersonalizationStore.CorrectionEntry> adaptive =
+      store.correction_entries();
+    assertEquals(1, adaptive.size());
+    assertEquals("ordimary", adaptive.get(0).source);
+    assertEquals("ordinary", adaptive.get(0).target);
+    assertFalse(adaptive.get(0).explicit);
+
+    assertTrue(store.set_replacement("ordimary", "ordinarily"));
+    List<PersonalizationStore.CorrectionEntry> explicit =
+      new PersonalizationStore(_prefs).correction_entries();
+    assertEquals("Editing an adaptive pair must leave one deterministic explicit override for its source.",
+        1, explicit.size());
+    assertTrue(explicit.get(0).explicit);
+    assertEquals("ordinarily", explicit.get(0).target);
+    assertEquals("Superseded adaptive targets must not remain as orphan vocabulary.",
+        0, new PersonalizationStore(_prefs).word_count("ordinary"));
+
+    assertTrue(new PersonalizationStore(_prefs)
+        .remove_replacement("ordimary"));
+    assertTrue(new PersonalizationStore(_prefs)
+        .correction_entries().isEmpty());
+  }
+
+  @Test
   public void repeated_ordinary_words_and_fragments_never_enter_vocabulary()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
@@ -656,6 +751,7 @@ public class SuggestionPersonalizationTest
     store.learn_word("alpha");
     store.record_word("alpha");
     store.record_selected_correction("beto", "beta");
+    store.set_replacement("agol", "goal");
 
     assertTrue(_prefs.contains(PersonalizationStore.PREF_WORDS));
     assertFalse("The correction-only policy must not persist bigram rows.",
@@ -663,6 +759,7 @@ public class SuggestionPersonalizationTest
     assertTrue(_prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
     assertTrue(_prefs.contains(
           PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
+    assertTrue(_prefs.contains(PersonalizationStore.PREF_REPLACEMENTS));
     assertEquals("beta", store.previous_word());
 
     store.clear();
@@ -675,6 +772,8 @@ public class SuggestionPersonalizationTest
         _prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
     assertFalse("Clear must remove contextual correction triples from persistent storage.",
         _prefs.contains(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS));
+    assertFalse("Clear must remove explicit replacement rules from persistent storage.",
+        _prefs.contains(PersonalizationStore.PREF_REPLACEMENTS));
     assertNull("Clear must reset the active in-memory context as well as persisted data.",
         store.previous_word());
     assertFalse(PersonalizationStore.has_data(_prefs));

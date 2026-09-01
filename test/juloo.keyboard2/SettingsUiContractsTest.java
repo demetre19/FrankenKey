@@ -34,7 +34,7 @@ public class SettingsUiContractsTest
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",
-        "Show Settings, Read Clipboard, Library, Attach Image, voice and playback controls above the keyboard. Turn off for a clean keyboard." },
+        "Show Settings, Read Clipboard, Library, image insertion for supported apps, voice and playback controls above the keyboard. Turn off for a clean keyboard." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "show_period_key", "pref_show_period_key_summary",
@@ -99,12 +99,12 @@ public class SettingsUiContractsTest
     }
 
     Element learnedRow = layoutRoot("res/layout/learned_words_row.xml");
-    Element learnedWord = (Element)learnedRow
-      .getElementsByTagName("TextView").item(0);
-    assertEquals("Learned-word labels must stay 12dp inside the row border.",
-        "12dp", learnedWord.getAttribute("android:paddingStart"));
-    assertEquals("Learned-word labels must keep a readable trailing inset.",
-        "8dp", learnedWord.getAttribute("android:paddingEnd"));
+    Element learnedTextContainer = (Element)learnedRow
+      .getElementsByTagName("LinearLayout").item(0);
+    assertEquals("Learned-word text must stay 12dp inside the row border.",
+        "12dp", learnedTextContainer.getAttribute("android:paddingStart"));
+    assertEquals("Learned-word text must keep a readable trailing inset.",
+        "8dp", learnedTextContainer.getAttribute("android:paddingEnd"));
   }
 
   @Test
@@ -127,10 +127,11 @@ public class SettingsUiContractsTest
   {
     assertEquals("Launcher guidance must name the current text-editing workflow.",
         "Navigate and delete", resourceString("launcher_delete_heading"));
-    assertEquals("Users must be told that G owns navigation while other letters retain teaching, and that Shift selects.",
+    assertEquals("Users must be told that G owns navigation while other letters review learning, and that Shift selects.",
         "Swipe from G to move the cursor up, down, left or right. "
           + "Tap Shift first to select text while swiping, then tap Delete. "
-          + "Swipe up or down from other letters to teach or forget the current word.",
+          + "Swipe up from another letter to review the current word, or "
+          + "swipe down to forget it.",
         resourceString("launcher_delete_summary"));
   }
 

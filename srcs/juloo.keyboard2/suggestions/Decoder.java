@@ -38,6 +38,7 @@ public final class Decoder
   public static final int SOURCE_CONTRACTION = 1 << 8;
   public static final int SOURCE_CONTEXTUAL_CORRECTION = 1 << 9;
   public static final int SOURCE_HUNSPELL_PRIMARY = 1 << 10;
+  public static final int SOURCE_REPLACEMENT = 1 << 11;
 
   public static final int EDIT_SUBSTITUTION = 1;
   public static final int EDIT_OMISSION = 1 << 1;
@@ -173,7 +174,34 @@ public final class Decoder
     boolean boundedInput = inputLength <= MAX_WORD_CODEPOINTS
       && request.normalizedCodePointCount <= MAX_WORD_CODEPOINTS;
     boolean generateCandidates = inputLength >= 1 && boundedInput;
+    PersonalizationStore.ReplacementRule replacementRule = null;
     CostTable costs = null;
+    if (generateCandidates && personalization != null)
+    {
+      try
+      {
+        replacementRule = personalization.replacement_rule(
+            request.correctionSource);
+        if (replacementRule != null && !replacementRule.uses_best_match())
+        {
+          // Reserve explicit user intent before bounded heuristic providers
+          // can fill the merged candidate set.
+          Accumulator replacement =
+            accumulator_for(merged, replacementRule.target);
+          if (replacement != null)
+          {
+            replacement.sourceMask |= SOURCE_CORRECTION | SOURCE_REPLACEMENT;
+            replacement.learned = true;
+            replacement.set_correction(replacementRule.target, 0, 0, 0);
+          }
+        }
+      }
+      catch (RuntimeException e)
+      {
+        failure.resource();
+      }
+    }
+
 
     if (dictionary != null)
     {
@@ -412,13 +440,20 @@ public final class Decoder
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure);
     }
-    if (boundaryPreview && !is_safe_boundary_autocorrection(
+    if (replacementRule != null)
+      autocorrection = choose_replacement_autocorrection(
+          replacementRule, request, ranked, literalCandidate,
+          autocorrectEnabled);
+    boolean replacementApplied = replacementRule != null
+      && autocorrection != null;
+    if (boundaryPreview && !replacementApplied
+        && !is_safe_boundary_autocorrection(
           request, literalCandidate, autocorrection, ranked))
       autocorrection = null;
     String preferredShortSurface = preferred_short_surface(
         request, literalCandidate, personalization);
-    if (autocorrection == null && autocorrectEnabled
-        && preferredShortSurface != null
+    if (replacementRule == null && autocorrection == null
+        && autocorrectEnabled && preferredShortSurface != null
         && !preferredShortSurface.equals(request.typed))
       autocorrection = literalCandidate.with_surface(preferredShortSurface);
     String emoji = displayEnabled && boundedInput
@@ -893,8 +928,33 @@ public final class Decoder
 
   private static boolean is_proven_fast_autocorrection(Candidate candidate)
   {
-    return candidate != null && (candidate.exactCorrectionCount > 0
-      || (candidate.sourceMask & SOURCE_CONTEXTUAL_CORRECTION) != 0);
+    return candidate != null
+      && ((candidate.sourceMask & SOURCE_REPLACEMENT) != 0
+        || candidate.exactCorrectionCount > 0
+        || (candidate.sourceMask & SOURCE_CONTEXTUAL_CORRECTION) != 0);
+  }
+
+  private static Candidate choose_replacement_autocorrection(
+      PersonalizationStore.ReplacementRule rule, Request request,
+      List<Candidate> ranked, Candidate literal, boolean enabled)
+  {
+    if (rule == null || !enabled)
+      return null;
+    if (!rule.uses_best_match())
+    {
+      Candidate fixed = candidate_for_canonical(ranked,
+          normalize(rule.target));
+      return fixed == null ? null : present_candidate(fixed, request, true);
+    }
+    if (literal == null)
+      return null;
+    for (Candidate candidate : ranked)
+      if (candidate != literal && (candidate.recognized || candidate.learned)
+          && candidate.completeEvidence
+          && is_autocorrection_candidate_text(candidate, literal)
+          && is_case_compatible_autocorrection(request, candidate))
+        return present_candidate(candidate, request, true);
+    return null;
   }
 
   private static boolean is_safe_boundary_autocorrection(Request request,
