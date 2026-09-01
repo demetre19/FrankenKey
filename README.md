@@ -28,24 +28,25 @@ Optional online GIF search and opt-in Reader AI are the only network-backed feat
 
 ## Adaptive learning
 
-FrankenKey learns how you type without uploading your typing history.
+FrankenKey learns how you type without uploading your typing history or silently turning repeated mistakes into vocabulary.
 
 Vocabulary enters FrankenKey only when:
 
-- You explicitly teach a word with **Teach**, the keyboard teach gesture, or the suggestion teach affordance.
+- You explicitly enter a word with **Teach** or choose **Keep word** from a keyboard review.
 - You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-Ordinary typing, repeated commits, consecutive words, and automatic autocorrection do not teach vocabulary. On first launch after this policy update, FrankenKey removes passive-only Adaptive words and old consecutive-word memory while preserving explicitly taught words, historical correction-backed targets, and touch calibration.
+Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session opens a review, but that bounded counter stays in memory and disappears when the editor session ends.
 
 You stay in control:
 
 - Press Backspace immediately after a fresh autocorrection to restore the exact original text.
-- Swipe up on the keyboard to teach the current word when Suggestions are enabled.
-- Swipe down to forget the current word, then confirm the removal.
-- Exact correction evidence helps immediately. If FrankenKey keeps preferring an old or valid spelling, correct the same typo to the same intended word and choose it **four times**. The fourth exact pair becomes the strongest recall and can override a protected or previously accepted spelling, including supported corrections up to two textual edits.
-- Use **Clear adaptive learning** in Settings to remove taught and correction-backed words, typo-correction patterns, and touch calibration.
+- Swipe up on the keyboard to review the current word instead of saving it immediately; choose **Keep word**, **Use best**, **Replace…**, or dismiss without changing anything.
+- Use **Learned words > Corrections** to see, search, edit, or delete exact `source → replacement` rules and `source → Best suggestion` decisions.
+- Convert an accidentally taught word into a correction directly from its Taught words row.
+- Exact user-authored replacements take precedence even when the source and intended word are unrelated. Adaptive correction evidence still helps immediately; correcting the same typo to the same intended suggestion four times makes that learned pair the strongest recall, including supported corrections up to two textual edits.
+- Use **Clear adaptive accuracy** in Settings to remove taught words, correction patterns and rules, and touch calibration.
 
-Passwords and unsupported or no-suggestions fields are excluded from adaptive learning.
+Passwords, structured fields, terminals, and other unsafe editors are excluded from adaptive learning and replacement review.
 
 ## Suggestions and autocorrect
 
@@ -130,8 +131,9 @@ The same compact map is available from **Keyboard shortcut map** below the Space
 | Cut / Copy / Paste | **X ↖ / C ↖ / V ↖** |
 | Delete the previous word | **Backspace ←** |
 | Preview and delete more words or sentences | Hold **Backspace**, drag left, reverse to shrink, then release |
-| Teach / forget the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
-| Make one exact typo correction the strongest recall | Correct the same typo to the same intended word and choose it **four times** |
+| Review / forget the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
+| Review one recurring unknown pattern | Type the same exact unknown literal three times in one editor session |
+| Make one exact adaptive typo correction the strongest recall | Correct the same typo to the same intended word and choose it **four times** |
 
 In terminal-style fields that do not advertise an editor action, bare Enter falls back to a raw Enter key event. `Ctrl`, `Alt`, or `Meta` combinations with Enter also remain raw key combinations.
 
@@ -304,9 +306,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.102
-Version code: 153
-SHA-256: 8665a8a053a229f188b1f005969752d569df3d492079bb37a7beae75de0db308
+Version: 2.0.106
+Version code: 157
+SHA-256: 55df96d91095f56156cbb9396d1004c36de612f1e4fa6e75b533c58f7ab36f48
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

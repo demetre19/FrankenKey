@@ -95,6 +95,18 @@
       "sha256": "8665a8a053a229f188b1f005969752d569df3d492079bb37a7beae75de0db308",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release with compact Reader controls, reliable 3D settings, complete chapter summaries, and resumable per-chapter book quizzes."
+    },
+    {
+      "label": "confirmed-learning-and-replacement-rules-release",
+      "file": "FrankenKey-2.0.106-vc157-new-release-key-9fdb3633-55df96d9.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "157",
+      "versionName": "2.0.106",
+      "size": 14468029,
+      "sha256": "55df96d91095f56156cbb9396d1004c36de612f1e4fa6e75b533c58f7ab36f48",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release adding confirmation-first word learning, session-only unknown-pattern review, editable correction rules, and deterministic exact replacements."
     }
   ]
 }

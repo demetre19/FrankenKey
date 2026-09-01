@@ -2,6 +2,13 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.106 — version code 157
+
+- Made every keyboard Teach gesture ask before saving a word, and added a session-only review after the third exact use of one unknown literal without persisting passive typing history.
+- Added **Learned words > Corrections**, with searchable and editable `source → replacement` or `source → Best suggestion` rows, confirmed deletion, and direct conversion from an accidentally taught word.
+- Made explicit replacement rules deterministic even when the mistyped pattern and intended word are unrelated; user-authored rules now reserve their candidate ahead of bounded heuristic providers.
+- Updated Settings, launcher guidance, privacy copy, and the public README to explain the new review and correction-management workflow.
+
 ## 2.0.102 — version code 153
 
 - Rebuilt the Classic EPUB toolbar in a clean compact style, with smaller `A-`, `A+`, `Aa`, image, theme, `AI`, and `3D` controls and the greener FrankenKey Reader mint.
@@ -67,20 +74,4 @@ This file summarizes the 10 most recent major user-visible changes. For download
 - Made the Extra Keys bar configurable: every shortcut can be shown or hidden and dragged into a preferred order.
 - Added custom `Ctrl`, `Alt`, `Shift`, and `Cmd` combinations with supported keys and keyboard commands.
 - Limited the expanded Extra Keys panel to three horizontally scrollable rows.
-
-## 2.0.82 — version code 133
-
-- Added comfortable light and dark Reader modes, automatic follow-along scrolling, clearer spacing, compact source actions, and current-mode icons.
-- Added an Extra Keys panel with holdable modifiers, navigation and function keys, and common shortcuts behind a visible keyboard button.
-- Fixed a crash when opening Reader Library and improved separation between adaptive-learning cards.
-
-## 2.0.79 - version code 130
-
-- Added the optional, default-off Reader for private text-to-speech from clipboard text, prose fields, imported files, and saved public articles.
-- Added persistent playback, follow-along highlighting, tap-to-seek, speeds up to 800 words per minute, clear voice availability, and a searchable Library.
-- Improved article extraction so reading starts with the article, lazy-loaded images are retained in order, and large images fill the reading column.
-- Added a full-screen article image viewer with pinch zoom, panning, and double-tap reset.
-
-
-
 
