@@ -70,7 +70,6 @@
       </intent-filter>
       <meta-data android:name="android.intent.extra.PROCESS_TEXT_READONLY" android:value="true"/>
     </activity>
-    <activity android:name="juloo.keyboard2.ImageAttachmentPickerActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="false" android:excludeFromRecents="true"/>
 
     <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>

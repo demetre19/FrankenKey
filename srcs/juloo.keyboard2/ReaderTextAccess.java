@@ -149,7 +149,7 @@ final class ReaderTextAccess
   static boolean isReadableEditor(EditorInfo editor)
   {
     if (editor == null || EditorConfig.is_termux_raw_editor(editor) ||
-        EditorConfig.is_cmux_terminal_editor(editor))
+        EditorConfig.is_herdr_terminal_editor(editor))
       return false;
     if ((editor.inputType & InputType.TYPE_MASK_CLASS) !=
         InputType.TYPE_CLASS_TEXT)

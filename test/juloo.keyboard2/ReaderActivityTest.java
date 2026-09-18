@@ -401,8 +401,6 @@ public class ReaderActivityTest
     View settings = transport.findViewById(R.id.reader_transport_settings);
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
-    View attachImage = transport.findViewById(
-        R.id.reader_transport_attach_image);
     View voice = transport.findViewById(R.id.reader_transport_voice);
     int compactHeight = Math.round(36f *
         context.getResources().getDisplayMetrics().density);
@@ -426,11 +424,9 @@ public class ReaderActivityTest
         library.getMinimumHeight() >= compactHeight);
     assertEquals("The Settings shortcut uses the same compact 36dp height.",
         compactHeight, settings.getLayoutParams().height);
-    assertEquals("Attach Image uses the same compact 36dp height.",
-        compactHeight, attachImage.getLayoutParams().height);
     assertEquals("The Voice shortcut uses the same compact 36dp height.",
         compactHeight, voice.getLayoutParams().height);
-    for (View view : new View[] { settings, attachImage, voice })
+    for (View view : new View[] { settings, voice })
     {
       ImageButton iconButton = (ImageButton)view;
       assertEquals("Toolbar icons retain the established 7dp inset.",
@@ -460,18 +456,10 @@ public class ReaderActivityTest
         R.drawable.reader_keyboard_action_button,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_settings, "background"));
-    assertEquals("Attach Image uses the keyboard action surface.",
-        R.drawable.reader_keyboard_action_button,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_attach_image, "background"));
     assertEquals("Voice uses the keyboard action surface.",
         R.drawable.reader_keyboard_action_button,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_voice, "background"));
-    assertEquals("Attach Image uses its dedicated matching icon.",
-        R.drawable.ic_keyboard_gallery,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_attach_image, "src"));
     assertEquals("Voice uses its dedicated matching icon.",
         R.drawable.ic_keyboard_microphone,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
@@ -495,7 +483,7 @@ public class ReaderActivityTest
         horizontalPadding, library.getPaddingRight());
     int halfGap = actionGap / 2;
     for (View action : new View[] {
-        settings, clipboard, library, attachImage, voice
+        settings, clipboard, library, voice
     })
     {
       ViewGroup.MarginLayoutParams margins =
@@ -507,8 +495,6 @@ public class ReaderActivityTest
     }
     assertFalse("The Settings shortcut announces its destination.",
         settings.getContentDescription().toString().isEmpty());
-    assertFalse("Attach Image announces its action.",
-        attachImage.getContentDescription().toString().isEmpty());
     assertFalse("The Voice shortcut announces its destination.",
         voice.getContentDescription().toString().isEmpty());
     assertEquals("Settings stays first in the centered action group.", 0,
@@ -517,9 +503,7 @@ public class ReaderActivityTest
         actions.indexOfChild(clipboard));
     assertEquals("Library is centered between Reader actions.", 2,
         actions.indexOfChild(library));
-    assertEquals("Attach Image stays in the right-side quick actions.", 3,
-        actions.indexOfChild(attachImage));
-    assertEquals("Voice stays last in the right-side quick actions.", 4,
+    assertEquals("Voice stays last in the right-side quick actions.", 3,
         actions.indexOfChild(voice));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
@@ -528,9 +512,9 @@ public class ReaderActivityTest
     assertEquals("The action group can exceed narrow screens without clipping.",
         ViewGroup.LayoutParams.WRAP_CONTENT, actions.getLayoutParams().width);
     Application application = RuntimeEnvironment.getApplication();
-    int[] quickActions = {0, 0};
+    int[] voiceTaps = {0};
     Keyboard2.wire_reader_quick_shortcuts(application, transport,
-        () -> quickActions[0]++, () -> quickActions[1]++);
+        () -> voiceTaps[0]++);
     assertTrue("The Settings shortcut must handle a tap.", settings.performClick());
     Intent settingsIntent = shadowOf(application).getNextStartedActivity();
     assertNotNull("The Settings shortcut must launch a destination.",
@@ -540,25 +524,8 @@ public class ReaderActivityTest
         settingsIntent.getComponent().getClassName());
     assertTrue("Launching Settings from the IME service requires a new task.",
         (settingsIntent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
-    assertTrue("Attach Image must handle a tap.", attachImage.performClick());
-    assertEquals(1, quickActions[0]);
     assertTrue("The Voice shortcut must handle a tap.", voice.performClick());
-    assertEquals(1, quickActions[1]);
-    Intent photoPicker = ImageAttachmentPickerActivity.pickerIntent(35);
-    assertEquals(android.provider.MediaStore.ACTION_PICK_IMAGES,
-        photoPicker.getAction());
-    assertEquals("image/*", photoPicker.getType());
-    assertTrue("The photo picker receives temporary read access.",
-        (photoPicker.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0);
-    Intent documentPicker =
-        ImageAttachmentPickerActivity.pickerIntent(32);
-    assertEquals(Intent.ACTION_OPEN_DOCUMENT, documentPicker.getAction());
-    assertTrue("The legacy picker only exposes openable documents.",
-        documentPicker.hasCategory(Intent.CATEGORY_OPENABLE));
-    assertEquals("image/*", documentPicker.getType());
-    assertTrue("The document picker can retain read access.",
-        (documentPicker.getFlags() &
-          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0);
+    assertEquals(1, voiceTaps[0]);
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     View speedRow = transport.findViewById(

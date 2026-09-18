@@ -104,10 +104,6 @@
     <string name="key_descr_º">Indicador d\'ordinal</string>
     <string name="key_descr_superscript">Superíndex</string>
     <string name="key_descr_subscript">Subíndex</string>
-    <string name="key_descr_page_up">Re Pàg</string>
-    <string name="key_descr_page_down">Av Pàg</string>
-    <string name="key_descr_home">Inici</string>
-    <string name="key_descr_end">Final</string>
     <string name="key_descr_clipboard">Porta-retalls</string>
     <string name="key_descr_combining">Combina un diacrític</string>
     <string name="key_descr_dead_key">Tecla morta</string>

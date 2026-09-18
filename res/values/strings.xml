@@ -31,6 +31,8 @@
     <string name="pref_clean_mode_summary">Use Fleksy layout; turn off for the computer/SSH layout.</string>
     <string name="pref_show_period_key_title">Show full stop beside spacebar</string>
     <string name="pref_show_period_key_summary">Turn off if you often hit the dedicated full-stop key by mistake.</string>
+    <string name="pref_speak_key_title">Show speak key</string>
+    <string name="pref_speak_key_summary">Show the voice-typing button next to ABC on the number and symbol pages.</string>
     <string name="pref_numpad_layout">NumPad layout</string>
     <string name="pref_numpad_layout_e_high_first">High digits first</string>
     <string name="pref_numpad_layout_e_low_first">Low digits first</string>
@@ -317,10 +319,6 @@
     <string name="key_descr_º">Ordinal Indicator</string>
     <string name="key_descr_superscript">Superscript</string>
     <string name="key_descr_subscript">Subscript</string>
-    <string name="key_descr_page_up">Page Up</string>
-    <string name="key_descr_page_down">Page Down</string>
-    <string name="key_descr_home">Home</string>
-    <string name="key_descr_end">End</string>
     <string name="key_descr_clipboard">Clipboard manager</string>
     <string name="key_descr_combining">Combining diacritic</string>
     <string name="key_descr_dead_key">Dead key</string>
@@ -462,13 +460,7 @@
     <string name="reader_activity_title">FrankenKey Reader</string>
     <string name="reader_back">Back</string>
     <string name="reader_open_settings">Open FrankenKey settings</string>
-    <string name="reader_attach_image">Insert image</string>
     <string name="reader_start_voice">Start voice typing</string>
-    <string name="reader_attach_image_unavailable">The image picker is unavailable on this device.</string>
-    <string name="reader_attach_image_unsupported">This app blocks image insertion from keyboards. Use the app’s attachment button instead.</string>
-    <string name="reader_attach_image_invalid">The selected item is not a supported image.</string>
-    <string name="reader_attach_image_failed">FrankenKey could not prepare this image. Try another image.</string>
-    <string name="reader_attach_image_commit_failed">This app could not insert the image. Use the app’s attachment button instead.</string>
     <string name="reader_use_light_mode">Use light mode</string>
     <string name="reader_use_dark_mode">Use dark mode</string>
     <string name="reader_light_mode">Light</string>

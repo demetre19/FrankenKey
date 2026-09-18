@@ -31,7 +31,24 @@ public class SnippetRowView extends HorizontalScrollView
   private final Paint _divider_paint = new Paint();
   private float _touch_down_x = Float.NaN;
   private float _touch_down_y;
+  /** Scroll offset when the current gesture started, after edge rotation. */
   private int _touch_down_scroll_x;
+  /** Target of an in-flight page snap; only meaningful when _snap_running. */
+  private int _snap_target_x;
+  private boolean _snap_running;
+
+  private final Runnable _settle_check = new Runnable()
+  {
+    public void run()
+    {
+      if (!_snap_running)
+        return;
+      if (Math.abs(getScrollX() - _snap_target_x) <= 1)
+        _snap_running = false;
+      else
+        postDelayed(this, 50);
+    }
+  };
 
   public SnippetRowView(Context context, AttributeSet attrs)
   {
@@ -63,6 +80,8 @@ public class SnippetRowView extends HorizontalScrollView
     for (int page = 0; page < pages; ++page)
       _pages.addView(makePage(page, SnippetPages.pageOf(slots, page), listener));
     applyPageWidths();
+    _snap_running = false;
+    removeCallbacks(_settle_check);
   }
 
   private LinearLayout makePage(int pageIndex, List<SnippetSlot> slots,
@@ -195,14 +214,75 @@ public class SnippetRowView extends HorizontalScrollView
     if (width <= 0)
       return;
     int page = (getScrollX() + width / 2) / width;
-    smoothScrollTo(page * width, 0);
+    smoothSnapTo(page * width);
   }
 
   private void beginSwipe(MotionEvent ev)
   {
+    prepareGesture();
     _touch_down_x = ev.getX();
     _touch_down_y = ev.getY();
     _touch_down_scroll_x = getScrollX();
+  }
+
+  /**
+   * Called when a gesture begins, before the offset is recorded: finish any
+   * page snap still gliding, then move the far-end page next to the visible
+   * edge page so a wrap swipe can slide it in. Both steps are invisible:
+   * finishing lands on the page the animation was already heading to, and
+   * rotating keeps the viewport on the same page content.
+   */
+  private void prepareGesture()
+  {
+    if (_snap_running)
+    {
+      scrollTo(_snap_target_x, 0);
+      _snap_running = false;
+    }
+    rotateEdgePage();
+  }
+
+  /**
+   * If the scroll offset sits at an end of the page ring, move the page from
+   * the opposite end next to it and shift the offset by one page so nothing
+   * appears to move. Idempotent within a gesture (after rotating, the offset
+   * is no longer at an edge). With only two pages both rotations cancel, so
+   * the instant-wrap fallback in finishSwipe() handles that case.
+   */
+  void rotateEdgePage()
+  {
+    int n = _pages.getChildCount();
+    int w = pageWidth();
+    if (n < 2 || w <= 0)
+      return;
+    int sx = getScrollX();
+    int maxX = (n - 1) * w;
+    int nearest = (int)Math.floor((sx / (float)w) + 0.5f);
+    if (nearest <= 0 && sx + w <= maxX)
+    {
+      // Left edge: the last page becomes the page on the left.
+      View last = _pages.getChildAt(n - 1);
+      _pages.removeView(last);
+      _pages.addView(last, 0);
+      scrollTo(sx + w, 0);
+    }
+    else if (nearest >= n - 1 && sx - w >= 0)
+    {
+      // Right edge: the first page becomes the page on the right.
+      View first = _pages.getChildAt(0);
+      _pages.removeView(first);
+      _pages.addView(first);
+      scrollTo(sx - w, 0);
+    }
+  }
+
+  private void smoothSnapTo(int x)
+  {
+    _snap_running = true;
+    _snap_target_x = x;
+    smoothScrollTo(x, 0);
+    removeCallbacks(_settle_check);
+    postDelayed(_settle_check, 50);
   }
 
   private void finishSwipe(float deltaX)
@@ -217,13 +297,17 @@ public class SnippetRowView extends HorizontalScrollView
         width, dp(24), dp(48));
     int targetPage = targetPageForSwipe(
         currentPage, pageCount, deltaX, activationDistance);
-    boolean wraps = pageCount > 1 &&
-      ((currentPage == 0 && targetPage == pageCount - 1) ||
-       (currentPage == pageCount - 1 && targetPage == 0));
-    if (wraps)
+    if (targetPage < 0 || targetPage >= pageCount)
+    {
+      // prepareGesture() could not rotate a neighbour into place
+      // (mid-animation edge grab with too few pages): wrap instantly.
+      targetPage = (targetPage + pageCount) % pageCount;
       scrollTo(targetPage * width, 0);
+    }
     else
-      smoothScrollTo(targetPage * width, 0);
+    {
+      smoothSnapTo(targetPage * width);
+    }
   }
 
   static int swipeActivationDistance(
@@ -241,6 +325,12 @@ public class SnippetRowView extends HorizontalScrollView
       Math.abs(deltaX) > Math.abs(deltaY);
   }
 
+  /**
+   * Returns the page a completed swipe lands on: the neighbour matching the
+   * drag direction (finger-right reveals the previous page, finger-left the
+   * next). An out-of-range result signals a wrap-around; the caller either
+   * slides to the rotated neighbour or wraps instantly.
+   */
   static int targetPageForSwipe(int currentPage, int pageCount,
       float deltaX, int activationDistance)
   {
@@ -249,8 +339,7 @@ public class SnippetRowView extends HorizontalScrollView
     int current = Math.max(0, Math.min(pageCount - 1, currentPage));
     if (Math.abs(deltaX) < activationDistance)
       return current;
-    int direction = deltaX > 0 ? 1 : -1;
-    return (current + direction + pageCount) % pageCount;
+    return current + (deltaX > 0 ? -1 : 1);
   }
 
   @Override

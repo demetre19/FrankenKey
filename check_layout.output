@@ -1,33 +1,164 @@
 arab_alt: Layout includes some ASCII punctuation but not all, missing: !, ", ', +, -, /, :, ;, <, =, >, ?, [, \, ], _, |, ~
+arab_alt: Layout contains unknown keys: hide esc, hide tab
 arab_hamvaj_tly: Layout includes some ASCII punctuation but not all, missing: ", %, ', ,, /, ;, <, =, >, ?, [, \, ], _, `, {, |, }
+arab_hamvaj_tly: Layout contains unknown keys: hide tab
 arab_pc: Layout includes some ASCII punctuation but not all, missing: !, ', +, ;, ?, \, |
+arab_pc: Layout contains unknown keys: hide esc, hide tab
 arab_pc_ckb: Layout includes some ASCII punctuation but not all, missing: ", %, ', +, ,, ;, <, =, >, ?, `, |, ~
+arab_pc_ckb: Layout contains unknown keys: hide esc, hide tab
 arab_pc_ckb_fa: Layout includes some ASCII punctuation but not all, missing: ", #, $, %, &, ', ,, /, ;, ?, @, \, ^, `, |, ~
 arab_pc_hindu: Layout includes some ASCII punctuation but not all, missing: !, ', +, ;, ?, \, |
+arab_pc_hindu: Layout contains unknown keys: hide esc, hide tab
 arab_pc_ir: Layout includes some ASCII punctuation but not all, missing: ", %, ', ,, /, ;, <, =, >, ?, [, \, ], `, {, |, }
+arab_pc_ir: Layout contains unknown keys: hide esc, hide tab
 armn_cpbsmo: Layout includes some ASCII punctuation but not all, missing: !, ", #, $, %, &, ', *, +, <, =, >, ?, @, [, ], ^, `, {, }, ~
+armn_cpbsmo: Layout contains unknown keys: hide esc, hide tab
 armn_kvertc: Layout includes some ASCII punctuation but not all, missing: !, ", #, $, %, &, ', *, +, <, =, >, ?, @, [, ], ^, `, {, }, ~
+armn_kvertc: Layout contains unknown keys: hide esc, hide tab
 beng_assamese: Layout includes some ASCII punctuation but not all, missing: #, $, %, &, ', *, +, -, /, :, ;, <, =, >, ?, [, \, ], ^, _, `, {, |, }, ~
 beng_national: Layout includes some ASCII punctuation but not all, missing: $
+beng_national: Layout contains unknown keys: hide esc, hide tab
 beng_provat: Layout includes some ASCII punctuation but not all, missing: $, &, *, ., /, <, >, [, \, ], `, {, |, }
+beng_provat: Layout contains unknown keys: hide esc, hide tab
+cyrl_fcuzhen_mn: Layout contains unknown keys: hide esc, hide tab
+cyrl_jcuken_as: Layout contains unknown keys: hide esc, hide tab
+cyrl_jcuken_kk: Layout contains unknown keys: hide esc, hide tab
+cyrl_jcuken_ru: Layout contains unknown keys: hide esc, hide tab
+cyrl_jcuken_uk: Layout contains unknown keys: hide esc, hide tab
 cyrl_jiuken: Layout includes some ASCII punctuation but not all, missing: #, $, &, ', *, +, <, =, >, @, [, ], ^, _, `, {, }, ~
+cyrl_jiuken: Layout contains unknown keys: hide esc
 cyrl_lynyertdz_mk: Layout includes some ASCII punctuation but not all, missing: "
+cyrl_lynyertz_sr: Layout contains unknown keys: hide esc, hide tab
+cyrl_ueishsht: Layout contains unknown keys: hide esc, hide tab
 cyrl_yaverti: Layout includes some ASCII punctuation but not all, missing: ~
+cyrl_yaverti: Layout contains unknown keys: hide esc, hide tab
 cyrl_yawerty: Layout includes some ASCII punctuation but not all, missing: #, $, &, ', *, <, >, @, [, ], ^, `, {, }, ~
+cyrl_yawerty: Layout contains unknown keys: hide esc, hide tab
 cyrl_yxukeng_os: Layout includes some ASCII punctuation but not all, missing: ", #, $, &, ', @, [, ], ~
 deva_alt: Layout includes some ASCII punctuation but not all, missing: #, $, %, &, ', (, ), *, +, ., /, :, <, =, >, [, \, ], ^, _, `, {, |, }, ~
 deva_inscript: Layout includes some ASCII punctuation but not all, missing: ", $, ', ^, _, `, |
+deva_inscript: Layout contains unknown keys: hide esc, hide tab
+deva_phonetic_in: Layout contains unknown keys: hide esc, hide tab
+georgian_mes: Layout contains unknown keys: hide esc, hide tab
+georgian_qwerty: Layout contains unknown keys: hide esc, hide tab
+grek_qwerty: Missing programming keys, missing: loc esc, loc tab
+grek_qwerty: Layout contains unknown keys: hide esc, hide tab
+guj_phonetic_in: Layout contains unknown keys: hide esc, hide tab
 hebr_1_il: Layout includes some ASCII punctuation but not all, missing: (, ), <, >, [, ], {, }
+hebr_1_il: Layout contains unknown keys: hide esc, hide tab
 hebr_2_il: Layout includes some ASCII punctuation but not all, missing: (, ), <, >, [, ], {, }
+hebr_2_il: Layout contains unknown keys: hide esc, hide tab
 kann_kannada: Layout includes some ASCII punctuation but not all, missing: #, $, %, (, ), *, +, /, <, =, >, [, \, ], ^, `, {, |, }, ~
 latin_kbdtuf_tr: Layout includes some ASCII punctuation but not all, missing: $
 latin_kbdtuf_tr: These keys are now added automatically, unexpected: f11_placeholder, f12_placeholder
 latin_kbdtuf_tr: Missing programming keys, missing: loc esc, loc tab
+latn_azerty_be: Missing programming keys, missing: loc esc, loc tab
+latn_azerty_be: Layout contains unknown keys: hide esc, hide tab
+latn_azerty_fr: Missing programming keys, missing: loc esc, loc tab
+latn_azerty_fr: Layout contains unknown keys: hide esc, hide tab
+latn_bepo_fr: Missing programming keys, missing: loc esc, loc tab
+latn_bepo_fr: Layout contains unknown keys: hide esc, hide tab
+latn_bone: Missing programming keys, missing: loc esc, loc tab
+latn_bone: Layout contains unknown keys: hide esc, hide tab
 latn_colemak: Some keys contain whitespaces, unexpected:  ́
+latn_colemak: Missing programming keys, missing: loc esc, loc tab
+latn_colemak: Layout contains unknown keys: hide esc, hide tab
 latn_dvorak: Missing important key, missing: loc capslock
+latn_dvorak: Missing programming keys, missing: loc esc, loc tab
+latn_dvorak: Layout contains unknown keys: hide esc, hide tab
+latn_neo2: Missing programming keys, missing: loc esc, loc tab
 latn_neo2: Layout redefines the bottom row but some important keys are missing, missing: extra_keys, gif, switch_clipboard, switch_number_entry, toggle_clean_mode
+latn_neo2: Layout contains unknown keys: hide alt, hide end, hide esc, hide home, hide meta, hide page_down, hide page_up, hide tab
+latn_qwerty_apl: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_apl: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_az: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_az: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_bqn: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_bqn: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_br: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_br: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_cy: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_cy: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_cz: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_cz: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_da: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_da: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_es: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_es: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_et: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_et: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_fi: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_fi: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_ga: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_ga: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_gb: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_gb: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_haw: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_haw: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_hu: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_hu: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_is: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_is: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_jp: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_jp: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_kk: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_kk: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_lt: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_lt: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_lv: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_lv: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_mt: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_mt: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_no: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_no: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_pl: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_pl: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_ro: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_ro: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_se: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_se: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_sk: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_sk: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_sr: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_sr: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_tly: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_tly: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_tr: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_tr: Layout contains unknown keys: hide esc, hide tab
 latn_qwerty_us: Layout includes some ASCII punctuation but not all, missing: ', ;
+latn_qwerty_us: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_us: Layout contains unknown keys: hide cursor_down, hide cursor_left, hide cursor_right, hide cursor_up, hide esc, hide tab
+latn_qwerty_uz: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_uz: Layout contains unknown keys: hide esc, hide tab
+latn_qwerty_vi: Missing programming keys, missing: loc esc, loc tab
+latn_qwerty_vi: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_cz: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_cz: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_cz_diacritics: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_cz_diacritics: Layout contains unknown keys: hide esc, hide tab
 latn_qwertz_cz_multifunctional: Layout includes some ASCII punctuation but not all, missing: `
+latn_qwertz_cz_multifunctional: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_cz_multifunctional: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_de: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_de: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_fr_ch: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_fr_ch: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_hu: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_hu: Layout contains unknown keys: hide esc, hide tab
 latn_qwertz_sk: Layout includes some ASCII punctuation but not all, missing: `
+latn_qwertz_sk: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_sk: Layout contains unknown keys: hide esc, hide tab
+latn_qwertz_sq: Missing programming keys, missing: loc esc, loc tab
+latn_qwertz_sq: Layout contains unknown keys: hide esc, hide tab
 latn_qzerty_it: Layout includes some ASCII punctuation but not all, missing: #, $, \, `, ~
+latn_qzerty_it: Missing programming keys, missing: loc esc, loc tab
+latn_qzerty_it: Layout contains unknown keys: hide esc, hide tab
+latn_workman_us: Missing programming keys, missing: loc esc, loc tab
+latn_workman_us: Layout contains unknown keys: hide esc, hide tab
+shaw_imperial_en: Layout contains unknown keys: hide esc, hide tab
+sinhala_phonetic: Layout contains unknown keys: hide esc, hide tab
+tamil_default: Layout contains unknown keys: hide esc, hide tab
 urdu_phonetic_ur: Layout includes some ASCII punctuation but not all, missing: <, >, ?, `, |, ~
+urdu_phonetic_ur: Layout contains unknown keys: hide esc, hide tab

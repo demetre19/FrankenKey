@@ -39,6 +39,8 @@ public class SettingsUiContractsTest
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "show_period_key", "pref_show_period_key_summary",
         "Turn off if you often hit the dedicated full-stop key by mistake." },
+      { "frankenkey_show_speak_key", "pref_speak_key_summary",
+        "Show the voice-typing button next to ABC on the number and symbol pages." },
       { "frankenkey_snippets_enabled", "pref_snippets_enabled_summary",
         "Show your snippet buttons above the keyboard." },
       { "keyrepeat_enabled", "pref_keyrepeat_enabled_summary",
@@ -140,7 +142,7 @@ public class SettingsUiContractsTest
       throws Exception
   {
     assertEquals("The generated extra-key inventory must remain fully covered.",
-        104, juloo.keyboard2.prefs.ExtraKeysPreference.extra_keys.length);
+        92, juloo.keyboard2.prefs.ExtraKeysPreference.extra_keys.length);
     String source = readSource(
         "srcs/juloo.keyboard2/prefs/ExtraKeysPreference.java");
     String constructor = methodBody(source,

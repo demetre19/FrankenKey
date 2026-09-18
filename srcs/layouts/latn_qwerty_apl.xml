@@ -13,7 +13,7 @@
     <key c="0" nw="∧"    ne="⍲"        sw=")"/>
   </row>
   <row>
-    <key c="q"                         ne="?" se="loc esc"/>
+    <key c="q"                         ne="?" se="hide esc"/>
     <key c="w"        ne="⍵"           sw="'" se="&quot;"/>
     <key c="e" nw="∊" ne="⍷"/>
     <key c="r" nw="⍴"        sw="←"/>
@@ -25,7 +25,7 @@
     <key c="p" nw="⍣" sw="⍬"/>
   </row>
   <row>
-    <key c="a"        ne="⍺"                  se="loc tab"/>
+    <key c="a"        ne="⍺"                  se="hide tab"/>
     <key c="s" nw="⌈" ne="ᑈ" se="«"/>
     <key c="d" nw="⌊" ne="ᐵ" se="»"/>
     <key c="f"  s="…"/>

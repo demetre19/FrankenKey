@@ -85,16 +85,60 @@ public class SnippetIconsTest
   @Test
   public void snippet_page_swipes_wrap_in_both_directions()
   {
-    assertEquals("A finger-right swipe past the last page must wrap to the first page.",
-        0, SnippetRowView.targetPageForSwipe(2, 3, 48, 48));
-    assertEquals("A finger-left swipe from the first page must wrap to the last page.",
-        2, SnippetRowView.targetPageForSwipe(0, 3, -48, 48));
-    assertEquals("Finger-right swipes still advance one page at a time.",
-        2, SnippetRowView.targetPageForSwipe(1, 3, 48, 48));
-    assertEquals("Finger-left swipes still move backward one page at a time.",
-        0, SnippetRowView.targetPageForSwipe(1, 3, -48, 48));
+    assertEquals("A finger-right swipe from the first page signals a wrap to the last page.",
+        -1, SnippetRowView.targetPageForSwipe(0, 3, 48, 48));
+    assertEquals("A finger-left swipe past the last page signals a wrap to the first page.",
+        3, SnippetRowView.targetPageForSwipe(2, 3, -48, 48));
+    assertEquals("Finger-right swipes reveal the previous page, matching the drag.",
+        0, SnippetRowView.targetPageForSwipe(1, 3, 48, 48));
+    assertEquals("Finger-left swipes reveal the next page, matching the drag.",
+        2, SnippetRowView.targetPageForSwipe(1, 3, -48, 48));
   }
 
+  @Test
+  public void edge_rotation_moves_the_far_page_next_to_the_visible_edge()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    SnippetRowView row = new SnippetRowView(context, null);
+    java.lang.reflect.Field pagesField =
+        SnippetRowView.class.getDeclaredField("_pages");
+    pagesField.setAccessible(true);
+    android.widget.LinearLayout pages =
+        (android.widget.LinearLayout)pagesField.get(row);
+    int width = 320;
+    android.view.View first = new android.view.View(context);
+    android.view.View middle = new android.view.View(context);
+    android.view.View last = new android.view.View(context);
+    for (android.view.View page : new android.view.View[]{first, middle, last})
+      pages.addView(page,
+          new android.widget.LinearLayout.LayoutParams(width, 50));
+    // Lay out for real so the scroll range covers all three pages; without
+    // measured children Robolectric clamps scrollTo() to zero.
+    row.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,
+          android.view.View.MeasureSpec.EXACTLY),
+        android.view.View.MeasureSpec.makeMeasureSpec(50,
+          android.view.View.MeasureSpec.EXACTLY));
+    row.layout(0, 0, width, 50);
+
+    row.scrollTo(0, 0);
+    row.rotateEdgePage();
+    assertSame("At the left edge the last page must become the left neighbour so a wrap swipe can slide it in.",
+        last, pages.getChildAt(0));
+    assertEquals("Rotating shifts the scroll offset by one page so the visible page does not appear to move.",
+        width, row.getScrollX());
+
+    row.rotateEdgePage();
+    assertSame("Mid-range offsets must not rotate: the ring stays put.",
+        last, pages.getChildAt(0));
+    assertEquals(width, row.getScrollX());
+
+    row.scrollTo(2 * width, 0);
+    row.rotateEdgePage();
+    assertSame("At the right edge the leftmost page must become the right neighbour.",
+        last, pages.getChildAt(2));
+    assertEquals(width, row.getScrollX());
+  }
   @Test
   public void snippet_page_swipes_use_a_short_bounded_activation_distance()
   {
@@ -107,7 +151,7 @@ public class SnippetIconsTest
     assertEquals("Movement below the activation distance must preserve taps.",
         1, SnippetRowView.targetPageForSwipe(1, 3, 143, distance));
     assertEquals("Movement at the activation distance must change pages.",
-        2, SnippetRowView.targetPageForSwipe(1, 3, 144, distance));
+        0, SnippetRowView.targetPageForSwipe(1, 3, 144, distance));
     assertTrue("A short horizontal drag must be intercepted for page movement.",
         SnippetRowView.isPageSwipe(-144, 20, distance));
     assertFalse("Sub-threshold movement must remain a snippet tap.",

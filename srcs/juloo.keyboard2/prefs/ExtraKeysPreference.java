@@ -21,8 +21,6 @@ public class ExtraKeysPreference extends PreferenceCategory
   /** Array of the keys that can be selected. */
   public static String[] extra_keys = new String[]
   {
-    "alt",
-    "meta",
     "compose",
     "voice_typing",
     "switch_clipboard",
@@ -57,12 +55,6 @@ public class ExtraKeysPreference extends PreferenceCategory
     "zwnj",
     "nbsp",
     "nnbsp",
-    "tab",
-    "esc",
-    "page_up",
-    "page_down",
-    "home",
-    "end",
     "switch_greekmath",
     "change_method",
     "capslock",
@@ -78,10 +70,6 @@ public class ExtraKeysPreference extends PreferenceCategory
     "forward_delete_word",
     "superscript",
     "subscript",
-    "f11_placeholder",
-    "f12_placeholder",
-    "menu",
-    "scroll_lock",
     "combining_dot_above",
     "combining_double_aigu",
     "combining_slash",
@@ -135,11 +123,6 @@ public class ExtraKeysPreference extends PreferenceCategory
       case "voice_typing":
       case "change_method":
       case "switch_clipboard":
-      case "compose":
-      case "tab":
-      case "esc":
-      case "f11_placeholder":
-      case "f12_placeholder":
         return true;
       default:
         return false;
@@ -158,22 +141,6 @@ public class ExtraKeysPreference extends PreferenceCategory
       case "compose": id = R.string.key_descr_compose; break;
       case "copy": id = R.string.key_descr_copy; break;
       case "cut": id = R.string.key_descr_cut; break;
-      case "end":
-        id = R.string.key_descr_end;
-        additional_info = format_key_combination(new String[]{"fn", "right"});
-        break;
-      case "home":
-        id = R.string.key_descr_home;
-        additional_info = format_key_combination(new String[]{"fn", "left"});
-        break;
-      case "page_down":
-        id = R.string.key_descr_page_down;
-        additional_info = format_key_combination(new String[]{"fn", "down"});
-        break;
-      case "page_up":
-        id = R.string.key_descr_page_up;
-        additional_info = format_key_combination(new String[]{"fn", "up"});
-        break;
       case "paste": id = R.string.key_descr_paste; break;
       case "pasteAsPlainText":
         id = R.string.key_descr_pasteAsPlainText;
@@ -284,11 +251,6 @@ public class ExtraKeysPreference extends PreferenceCategory
 
   static String key_title(String key_name, KeyValue kv)
   {
-    switch (key_name)
-    {
-      case "f11_placeholder": return "F11";
-      case "f12_placeholder": return "F12";
-    }
     return kv.getString();
   }
 
@@ -339,8 +301,6 @@ public class ExtraKeysPreference extends PreferenceCategory
       case "undo": return mk_preferred_pos("z", 2, 1, true);
       case "selectAll": return mk_preferred_pos("a", 1, 0, true);
       case "redo": return mk_preferred_pos("y", 0, 5, true);
-      case "f11_placeholder": return mk_preferred_pos("9", 0, 8, false);
-      case "f12_placeholder": return mk_preferred_pos("0", 0, 9, false);
       case "delete_word": return mk_preferred_pos("backspace", -1, -1, false);
       case "forward_delete_word": return mk_preferred_pos("backspace", -1, -1, true);
     }

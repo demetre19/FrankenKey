@@ -137,10 +137,6 @@
     <string name="key_descr_º">Järgarvu tunnus</string>
     <string name="key_descr_superscript">Ülaindeks</string>
     <string name="key_descr_subscript">Alaindeks</string>
-    <string name="key_descr_page_up">Leht üles</string>
-    <string name="key_descr_page_down">Leht alla</string>
-    <string name="key_descr_home">Algus</string>
-    <string name="key_descr_end">Lõpp</string>
     <string name="key_descr_ª">Järgarvu tunnus</string>
     <string name="dictionaries_download_success">Sõnastik on paigaldatud</string>
     <string name="dictionaries_activity_not_enabled">Sõnastike allalaadimiseks pead esmalt klahvistiku kasutusele võtma.</string>

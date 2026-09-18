@@ -1814,7 +1814,7 @@ public final class KeyEventHandler
   {
     if (_delete_selection != null)
       return true;
-    if (EditorConfig.is_cmux_terminal_editor(
+    if (EditorConfig.is_herdr_terminal_editor(
           _recv.getCurrentInputEditorInfo()))
     {
       String tracked_word = _typedword.get();
@@ -1884,7 +1884,7 @@ public final class KeyEventHandler
       int code_points = sel.textBeforeCursor.codePointCount(
           start, sel.textBeforeCursor.length());
       for (int i = 0; i < code_points; ++i)
-        if (!send_cmux_terminal_backspace(conn))
+        if (!send_herdr_terminal_backspace(conn))
           break;
       _recv.selection_state_changed(false);
       return;
@@ -1915,7 +1915,7 @@ public final class KeyEventHandler
     _recv.selection_state_changed(false);
   }
 
-  private boolean send_cmux_terminal_backspace(InputConnection conn)
+  private boolean send_herdr_terminal_backspace(InputConnection conn)
   {
     boolean accepted;
     conn.beginBatchEdit();
@@ -2504,11 +2504,11 @@ public final class KeyEventHandler
       return;
     }
     InputConnection conn = _recv.getCurrentInputConnection();
-    if (EditorConfig.is_cmux_terminal_editor(
+    if (EditorConfig.is_herdr_terminal_editor(
           _recv.getCurrentInputEditorInfo()))
     {
       if (conn != null)
-        send_cmux_terminal_backspace(conn);
+        send_herdr_terminal_backspace(conn);
       return;
     }
     boolean deleted = false;

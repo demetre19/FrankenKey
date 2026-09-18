@@ -179,28 +179,28 @@ public class EditorConfigTest
   }
 
   @Test
-  public void cmux_terminal_editor_allows_stateless_typing_assistance()
+  public void herdr_terminal_editor_allows_stateless_typing_assistance()
   {
-    EditorInfo cmux = editor(InputType.TYPE_CLASS_TEXT
+    EditorInfo herdr = editor(InputType.TYPE_CLASS_TEXT
         | InputType.TYPE_TEXT_FLAG_MULTI_LINE
         | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-    cmux.packageName = "dev.cmux.connector.debug";
-    cmux.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+    herdr.packageName = "dev.orca.connector.debug";
+    herdr.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
         | EditorInfo.IME_FLAG_NO_FULLSCREEN;
     EditorConfig config = new EditorConfig();
 
-    config.refresh(cmux, null);
+    config.refresh(herdr, null);
 
-    assertTrue("CMUX terminals must keep local dictionary suggestions.",
+    assertTrue("Herdr terminals must keep local dictionary suggestions.",
         config.should_show_candidates_view);
-    assertTrue("CMUX terminals must keep local correction.",
+    assertTrue("Herdr terminals must keep local correction.",
         config.should_use_typing_assistance);
     assertFalse("Terminal text may include hidden passwords and must never use persistent personalization.",
         config.should_use_personalization);
     assertFalse("Write-only terminal editors cannot safely run sentence grammar or multimodal voice.",
         config.should_use_sentence_assistance);
-    assertTrue("CMUX behavior must remain scoped to its exact terminal EditorInfo contract.",
-        EditorConfig.is_cmux_terminal_editor(cmux));
+    assertTrue("Herdr behavior must remain scoped to its exact terminal EditorInfo contract.",
+        EditorConfig.is_herdr_terminal_editor(herdr));
   }
 
   @Test

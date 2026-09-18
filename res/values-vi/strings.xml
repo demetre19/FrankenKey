@@ -104,10 +104,6 @@
     <string name="key_descr_º">Chỉ báo thứ tự giống đực, không phải dấu độ</string>
     <string name="key_descr_superscript">Chọn văn bản nhỏ bên trên, số mũ</string>
     <string name="key_descr_subscript">Chọn văn bản nhỏ bên dưới, số hóa học</string>
-    <string name="key_descr_page_up">Phím cuộn trang lên - Page Up</string>
-    <string name="key_descr_page_down">Phím cuộn trang xuống - Page Down</string>
-    <string name="key_descr_home">Về đầu dòng - Home</string>
-    <string name="key_descr_end">Về cuối dòng - End</string>
     <string name="key_descr_clipboard">Bảng nhớ tạm</string>
     <string name="key_descr_combining">Dấu trợ âm</string>
     <string name="key_descr_dead_key">Dấu giả, để tìm ký tự có dấu này</string>

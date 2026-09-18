@@ -5,7 +5,7 @@ Based on XKB Sinhala (phonetic) layout.
 -->
 <keyboard name="සිංහල" script="sinhala">
   <row>
-    <key sw="loc esc" se="1" c="ඍ" ne="ඎ" />
+    <key sw="hide esc" se="1" c="ඍ" ne="ඎ" />
     <key se="2" c="ඇ" nw="~" sw="\@" ne="ඈ" />
     <key se="3" c="එ" nw="!" sw="\#" ne="ඒ" />
     <key nw="loc €" se="4" c="ර" sw="$" />
@@ -17,7 +17,7 @@ Based on XKB Sinhala (phonetic) layout.
     <key sw=")" se="0" c="ප" ne="ඵ" />
   </row>
   <row>
-    <key nw="`" sw="loc tab" shift="0.5" c="අ" ne="ආ" />
+    <key nw="`" sw="hide tab" shift="0.5" c="අ" ne="ආ" />
     <key nw="loc §" c="ස" sw="loc ß" ne="ශ" />
     <key c="ද" ne="ධ" />
     <key c="ෆ" ne="ඓ" />

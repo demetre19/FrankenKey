@@ -13,7 +13,7 @@
     <key key0="ջ" key1="՞" key2="0" key3="ՙ"/>
   </row>
   <row>
-    <key key0="ք" key4="loc esc"/>
+    <key key0="ք" key4="hide esc"/>
     <key key0="վ"/>
     <key key0="ը"/>
     <key key0="ր"/>
@@ -25,7 +25,7 @@
     <key key0="պ"/>
   </row>
   <row>
-    <key key0="ա" key1="loc tab"/>
+    <key key0="ա" key1="hide tab"/>
     <key key0="ս"/>
     <key key0="դ"/>
     <key key0="հ"/>

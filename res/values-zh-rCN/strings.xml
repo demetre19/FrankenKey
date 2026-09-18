@@ -104,10 +104,6 @@
     <string name="key_descr_º">次序标志</string>
     <string name="key_descr_superscript">上标</string>
     <string name="key_descr_subscript">下标</string>
-    <string name="key_descr_page_up">上一页</string>
-    <string name="key_descr_page_down">下一页</string>
-    <string name="key_descr_home">Home</string>
-    <string name="key_descr_end">End</string>
     <string name="key_descr_clipboard">管理剪贴板</string>
     <string name="key_descr_combining">组合用附加符号</string>
     <string name="key_descr_dead_key">前置组合键</string>

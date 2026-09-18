@@ -201,7 +201,8 @@ public class Keyboard2 extends InputMethodService
 
   KeyboardData loadCleanNumericLayout()
   {
-    return KeyboardData.load(getResources(), R.xml.clean_numeric);
+    KeyboardData layout = KeyboardData.load(getResources(), R.xml.clean_numeric);
+    return _config.show_speak_key ? layout : removeSpeakKey(layout);
   }
 
   KeyboardData selectedNumberEntryLayout()
@@ -221,7 +222,51 @@ public class Keyboard2 extends InputMethodService
 
   KeyboardData loadCleanSymbolsLayout()
   {
-    return KeyboardData.load(getResources(), R.xml.clean_symbols);
+    KeyboardData layout = KeyboardData.load(getResources(), R.xml.clean_symbols);
+    return _config.show_speak_key ? layout : removeSpeakKey(layout);
+  }
+
+  /**
+   * Returns [kb] without its dedicated key0="voice_typing" button, giving the
+   * freed width to the space key on the same row. Only dedicated keys whose
+   * primary slot is voice_typing are removed; loc corner entries on other
+   * keys (e.g. Enter) are untouched. Mirrors without_clean_period_key().
+   * [KeyboardData.load] returns a cached shared instance, so a modified copy
+   * is built instead of mutating it.
+   */
+  static KeyboardData removeSpeakKey(KeyboardData kb)
+  {
+    if (kb == null)
+      return null;
+    KeyValue voice = KeyValue.getKeyByName("voice_typing");
+    List<KeyboardData.Row> rows =
+      new ArrayList<KeyboardData.Row>(kb.rows);
+    boolean changed = false;
+    for (int r = 0; r < rows.size(); r++)
+    {
+      KeyboardData.Row row = rows.get(r);
+      float freed = 0.f;
+      List<KeyboardData.Key> kept =
+        new ArrayList<KeyboardData.Key>(row.keys.size());
+      for (KeyboardData.Key key : row.keys)
+      {
+        if (voice.equals(key.getKeyValue(0)))
+          freed += key.width + key.shift;
+        else
+          kept.add(key);
+      }
+      if (freed == 0.f)
+        continue;
+      changed = true;
+      for (int i = 0; i < kept.size(); i++)
+      {
+        KeyboardData.Key key = kept.get(i);
+        if (key.role == KeyboardData.Key.Role.Space_bar)
+          kept.set(i, key.withWidth(key.width + freed));
+      }
+      rows.set(r, row.with_keys(kept));
+    }
+    return changed ? kb.with_rows(rows) : kb;
   }
 
   KeyboardData loadPinentry(int layout_id)
@@ -826,43 +871,6 @@ public class Keyboard2 extends InputMethodService
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
   }
 
-  private void attach_image()
-  {
-    if (!GifInserter.editorAcceptsAnyImage(getCurrentInputEditorInfo()))
-    {
-      Toast.makeText(this, R.string.reader_attach_image_unsupported,
-          Toast.LENGTH_SHORT).show();
-      return;
-    }
-    startActivity(new Intent(this, ImageAttachmentPickerActivity.class)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-  }
-
-  private void commit_pending_image_attachment()
-  {
-    PendingImageAttachment.Item item = PendingImageAttachment.peek();
-    if (item == null)
-      return;
-    EditorInfo info = getCurrentInputEditorInfo();
-    InputConnection connection = getCurrentInputConnection();
-    if (info == null || connection == null)
-      return;
-    if (!GifInserter.editorAcceptsImage(info, item.mimeType))
-    {
-      PendingImageAttachment.clear(item);
-      ImageAttachmentPickerActivity.pruneCache(this);
-      Toast.makeText(this, R.string.reader_attach_image_commit_failed,
-          Toast.LENGTH_SHORT).show();
-      return;
-    }
-    PendingImageAttachment.clear(item);
-    boolean inserted = GifInserter.insertImage(this, connection, info, item.uri,
-        item.mimeType, item.description);
-    ImageAttachmentPickerActivity.pruneCache(this);
-    if (!inserted)
-      Toast.makeText(this, R.string.reader_attach_image_commit_failed,
-          Toast.LENGTH_SHORT).show();
-  }
 
   static void wire_reader_settings_shortcut(Context context, View root)
   {
@@ -872,11 +880,9 @@ public class Keyboard2 extends InputMethodService
   }
 
   static void wire_reader_quick_shortcuts(Context context, View root,
-      Runnable attachmentAction, Runnable voiceAction)
+      Runnable voiceAction)
   {
     wire_reader_settings_shortcut(context, root);
-    root.findViewById(R.id.reader_transport_attach_image).setOnClickListener(
-        _view -> attachmentAction.run());
     root.findViewById(R.id.reader_transport_voice).setOnClickListener(
         _view -> voiceAction.run());
   }
@@ -908,8 +914,7 @@ public class Keyboard2 extends InputMethodService
         _view -> send_reader_action(ReaderPlaybackService.ACTION_STOP));
     root.findViewById(R.id.reader_transport_library).setOnClickListener(
         _view -> open_reader_library());
-    wire_reader_quick_shortcuts(this, root, this::attach_image,
-        this::start_voice_typing);
+    wire_reader_quick_shortcuts(this, root, this::start_voice_typing);
     root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
         _view -> read_reader_clipboard());
     SeekBar speed = (SeekBar)root.findViewById(
@@ -1224,18 +1229,22 @@ public class Keyboard2 extends InputMethodService
     _selection_start = info.initialSelStart;
     _selection_end = info.initialSelEnd;
     update_reader_entry();
+    /* Editors backed by WebView/Compose may answer getTextBeforeCursor with
+       null until the connection settles; retry once shortly after start. */
+    _keyboard_container_view.postDelayed(this::update_reader_entry, 150);
     start_grammar_checker();
     setInputView(_keyboard_container_view);
     bind_reader_playback();
     Logs.debug_startup_input_view(info, _config);
-    commit_pending_image_attachment();
   }
 
   @Override
   public void onWindowShown()
   {
     super.onWindowShown();
-    commit_pending_image_attachment();
+    /* Some editors only answer text queries once the window is visible;
+       re-evaluate so the Reader shortcuts never wait for a selection change. */
+    update_reader_entry();
   }
 
   @Override

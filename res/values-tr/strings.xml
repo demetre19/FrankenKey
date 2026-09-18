@@ -104,10 +104,6 @@
     <string name="key_descr_º">Sıralı göstergesi</string>
     <string name="key_descr_superscript">Süperscript</string>
     <string name="key_descr_subscript">Anascript</string>
-    <string name="key_descr_page_up">Yukarı</string>
-    <string name="key_descr_page_down">Aşağı</string>
-    <string name="key_descr_home">BAŞ(Sol yön tuşu)</string>
-    <string name="key_descr_end">SON(Sağ yön tuşu)</string>
     <string name="key_descr_clipboard">Pano</string>
     <string name="key_descr_combining">Aksanları birleştir</string>
     <string name="key_descr_dead_key">Boş tuş</string>

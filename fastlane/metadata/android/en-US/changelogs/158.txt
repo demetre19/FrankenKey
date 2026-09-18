@@ -1,0 +1,9 @@
+The keyboard's typing surface is now clean by default: keys already provided by the Extra Keys strip (Ctrl, Alt, Meta, Esc, Tab, arrows, Home/End/Page Up/Page Down, Insert, Delete, F1–F12) no longer appear as visible keys or corner labels. They remain in the `…` Extra Keys strip, and their hidden swipe gestures still work for SSH and terminal use.
+
+The bottom-left key is now a plain `123` numeric switch, and the Spacebar's top corners show a keyboard icon for switching between Everyday and Coding modes.
+
+Snippet pages now wrap around when swiping past the first or last page, and a new Keyboard setting can hide the dedicated speak key on the clean number and symbol pages.
+
+The keyboard Reader strip (Settings, Read Clipboard, Library, Voice) now appears reliably on empty editors instead of waiting for the first tap or selection change.
+
+Attach Image was removed: it only worked in apps that declare image support, so it could not be honest elsewhere.

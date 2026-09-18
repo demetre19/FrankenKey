@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <keyboard bottom_row="false">
   <row>
-    <key width="0.75" role="action" key0="loc esc" key2="~" key4="!"/>
+    <key width="0.75" role="action" key0="hide esc" key2="~" key4="!"/>
     <key width="0.75" role="action" key0="(" key2="[" key4="{"/>
     <key key0="7"/>
     <key key0="8"/>
@@ -13,7 +13,7 @@
     <key width="0.75" role="action" key0="/" key1="%" key3="÷"/>
   </row>
   <row>
-    <key width="0.75" role="action" key0="loc tab" key2="|" key4="\\"/>
+    <key width="0.75" role="action" key0="hide tab" key2="|" key4="\\"/>
     <key width="0.75" role="action" key0=")" key2="]" key4="}"/>
     <key key0="4"/>
     <key key0="5"/>
@@ -26,7 +26,7 @@
   </row>
   <row>
     <key width="0.75" role="action" key0="switch_greekmath"/>
-    <key width="0.75" role="action" key0="shift" key2="fn" key4="loc alt"/>
+    <key width="0.75" role="action" key0="shift" key2="fn" key4="hide alt"/>
     <key key0="1"/>
     <key key0="2"/>
     <key key0="3"/>

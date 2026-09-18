@@ -113,7 +113,7 @@ public final class EditorConfig
     initial_sel_start = info.initialSelStart;
     initial_sel_end = info.initialSelEnd;
     boolean terminal_editor =
-      is_termux_raw_editor(info) || is_cmux_terminal_editor(info);
+      is_termux_raw_editor(info) || is_herdr_terminal_editor(info);
     should_use_typing_assistance = should_use_typing_assistance(info);
     should_use_sentence_assistance = should_use_typing_assistance
       && !terminal_editor && !is_structured_text_editor(info);
@@ -137,10 +137,10 @@ public final class EditorConfig
       && "com.termux".equals(info.packageName);
   }
 
-  static boolean is_cmux_terminal_editor(EditorInfo info)
+  static boolean is_herdr_terminal_editor(EditorInfo info)
   {
     if (info == null || info.packageName == null
-        || !info.packageName.startsWith("dev.cmux.connector"))
+        || !info.packageName.startsWith("dev.orca.connector"))
       return false;
     int terminal_flags = InputType.TYPE_TEXT_FLAG_MULTI_LINE
       | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;

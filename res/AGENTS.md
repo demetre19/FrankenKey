@@ -10,9 +10,10 @@
 
 ## Local Contracts
 
-- Keep clean/dense modes coherent. Clean mode hides Q/P/D/F/G/H/J/123/Backspace legends but preserves gestures; Space owns clipboard/mode/emoji/GIF corners; Enter's northwest corner owns voice while bare Enter owns the editor action.
+- Keep clean/dense modes coherent. Clean mode hides Q/P/D/F/G/H/J/123/Backspace legends but preserves gestures; Space owns clipboard/mode/emoji/GIF corners; Enter's northwest corner owns voice while bare Enter owns the editor action. The default-on `frankenkey_show_speak_key` setting removes the dedicated `voice_typing` key on the clean number/symbol pages and gives its width to Space; Enter's voice corner stays untouched.
 - Clean/dense text modes reserve G for hidden four-direction cursor movement with a faint availability border; other letter swipes retain global teach/forget behavior. Numeric/symbol middle rows retain gradual word-delete.
 - `…` opens saved-order Extra Keys: one row, up to three expanded scrollable rows, and `+` manager for visibility/order/custom modifier combinations.
+- The dense bottom row is `123` (numeric switch, with number-entry on its NE corner), `Fn`, `…` (Extra Keys), Space, Enter. Keys duplicated by the Extra Keys panel (Ctrl, Alt, Meta, Esc, Tab, arrows, Home/End/PgUp/PgDn, Ins, Del, F-keys) never appear as visible keyboard keys; their layout gestures use `hide` so they work invisibly for SSH without cluttering the typing surface.
 - Launcher guidance teaches G-only four-direction cursor movement, Shift+G selection, Z/X/C/V corner editing, Backspace word/progressive deletion, global teach/forget swipes, Enter/Shift+Enter behavior, Spacebar corners, and four-exact-correction recall through a compact modal below the Spacebar guide.
 - Bundle matching AU/UK/US subtype labels/dictionaries. Preserve launcher icons unless explicitly changed.
 - Strings/settings keys are contracts. Paste/delete repeats are separate and depend on global repeat.
@@ -27,7 +28,7 @@
 - Reader Library defaults to Books, keeps Articles &amp; Text in a separate tab, caps the compact cover grid at two portrait-phone or three wide/landscape columns, uses restrained graphite cards/fallback covers, and exposes ≥48dp favorite/menu controls plus compact horizontally scrollable collection chips. Selected Books and filter states use the Reader mint accent with graphite text, not platform blue.
 - Classic EPUB uses a compact Private Drive-style title/author/progress header, continuous reading canvas, and one fixed 52dp bottom row containing `A-`, `A+`, `Aa`, outline image, outline sun, `AI`, and `3D` in that order. Compact 17sp text marks and 18dp artwork keep evenly weighted ≥48dp targets, accessible labels, borderless pressed feedback, and dark/sepia/light contrast across the native header, controls, system bars, and content. Selected controls use Reader mint rather than platform blue.
 - Reader images fill the column with aspect ratio and open private zoom/pan viewer.
-- Keyboard Reader is explicit default-off. Empty readable editors show Settings, Read Clipboard, Library, Insert Image, and Voice; Insert Image uses a bounded private FrankenKey cache for compatible rich-content editors and gives unsupported apps an honest attachment-button fallback. Real input/candidates hide the shortcuts. Explicit playback replaces candidates with title, transport, and speed.
+- Keyboard Reader is explicit default-off. Empty readable editors show Settings, Read Clipboard, Library, and Voice. Real input/candidates hide the shortcuts. Explicit playback replaces candidates with title, transport, and speed.
 - Android backup keeps Reader library metadata, collections, progress, EPUB appearance, non-secret AI prompts/settings, and saved AI outputs eligible. It excludes the encrypted OpenRouter key, active playback text, disposable AI response/evidence/job caches, and derived Reader covers; user-owned EPUBs and transient parsed content never enter app backup domains.
 - Voice rows use human names, AU/US/UK flags, truthful offline/network status, and gender only for documented exact voice IDs.
 
