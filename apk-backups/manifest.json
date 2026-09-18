@@ -107,6 +107,18 @@
       "sha256": "55df96d91095f56156cbb9396d1004c36de612f1e4fa6e75b533c58f7ab36f48",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release adding confirmation-first word learning, session-only unknown-pattern review, editable correction rules, and deterministic exact replacements."
+    },
+    {
+      "label": "clean-typing-surface-and-reader-strip-release",
+      "file": "FrankenKey-2.0.107-vc158-new-release-key-9fdb3633-50709991.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "158",
+      "versionName": "2.0.107",
+      "size": 14459155,
+      "sha256": "50709991b0e39c4f6f3749e28e60503662d3c3b1bada304e629fe7cd6fde3c3f",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release moving coding-row keys off the typing surface into the Extra Keys strip with hidden gestures, wrapping snippet pages, a removable speak key, and reliable empty-editor Reader shortcuts."
     }
   ]
 }

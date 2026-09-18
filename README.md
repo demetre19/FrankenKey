@@ -108,12 +108,12 @@ Everyday mode is the default. It includes:
 
 ### Coding mode
 
-Coding mode adds compact access to:
+Coding mode keeps the typing surface clean and puts computer keys in the `…` Extra Keys strip:
 
-- `Ctrl`, `Fn`, `Alt`, and `Meta`.
-- Arrow and navigation keys.
-- Tab and Esc.
-- Brackets, braces, pipes, slashes, quotes, operators, and shell punctuation.
+- `Ctrl`, `Alt`, `Shift`, and `Cmd` modifiers.
+- Arrow and navigation keys, Tab, Esc, Insert, Delete, and F1–F12.
+- Brackets, braces, pipes, slashes, quotes, operators, and shell punctuation on the symbol pages.
+- Hidden swipe gestures for Esc, Tab, Home, End, and Page Up/Page Down that keep working without visible labels.
 - A configurable Extra Keys strip with navigation, editing, modifier, shortcut, and function keys.
 
 ### Extra Keys
@@ -171,12 +171,10 @@ FrankenKey includes a keyboard-native clipboard panel for text and images.
 
 Clipboard data remains local to FrankenKey.
 
-## Images and voice
+## Voice
 
-When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, Attach Image, and Voice reachable even on narrow screens or with larger text.
+When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, and Voice reachable even on narrow screens or with larger text.
 
-- **Attach Image** opens Android's image picker and inserts the selected image into compatible rich-content editors.
-- Unsupported editors get an honest handoff to the app's own attachment control instead of a false success.
 - **Voice** starts Android voice input, while Reader provides separate spoken playback with selectable installed voices.
 
 ## G-key mouse-like cursor control, selection and deletion
@@ -327,9 +325,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.106
-Version code: 157
-SHA-256: 55df96d91095f56156cbb9396d1004c36de612f1e4fa6e75b533c58f7ab36f48
+Version: 2.0.107
+Version code: 158
+SHA-256: 50709991b0e39c4f6f3749e28e60503662d3c3b1bada304e629fe7cd6fde3c3f
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 

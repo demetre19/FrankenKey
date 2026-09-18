@@ -2,6 +2,14 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+## 2.0.107 — version code 158
+
+- Moved every key already provided by the `…` Extra Keys strip (Ctrl, Alt, Meta, Esc, Tab, arrows, Home/End/Page Up/Page Down, Insert, Delete, F1–F12) off the visible typing surface; they stay in the strip and as hidden swipe gestures for SSH and terminal use.
+- Made the bottom-left key a plain `123` numeric switch and gave the Spacebar's top corners a keyboard icon for switching Everyday and Coding modes.
+- Made snippet pages wrap around when swiping past the first or last page, and added a Keyboard setting that can hide the dedicated speak key on the clean number and symbol pages.
+- Fixed the keyboard Reader strip (Settings, Read Clipboard, Library, Voice) so it appears reliably on empty editors instead of waiting for the first tap or selection change.
+- Removed Attach Image, which only worked in apps that declare image support.
+
 ## 2.0.106 — version code 157
 
 - Made every keyboard Teach gesture ask before saving a word, and added a session-only review after the third exact use of one unknown literal without persisting passive typing history.
