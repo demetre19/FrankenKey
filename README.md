@@ -20,6 +20,27 @@
 
 ---
 
+## Overview
+
+FrankenKey is a specialized Android application that functions as both a high-performance Input Method Editor (IME) and a sophisticated content-consumption platform. It is designed for users who require a seamless transition between everyday messaging, technical coding workflows, and focused reading sessions.
+
+The project is built on a foundation of privacy, capability, and minimalism, ensuring that user data remains local while providing powerful tools like adaptive learning, a 3D RSVP reader, and opt-in AI summarization.
+
+## Core identity
+
+FrankenKey serves a dual purpose:
+
+- **Input Platform:** a dual-mode keyboard (Everyday and Coding) featuring gesture-based navigation, a deliberate-only adaptive learning model, and deep terminal/coding support.
+- **Consumption Platform:** a Reader subsystem that handles TTS (Text-to-Speech), EPUB management, and AI-powered content synthesis via OpenRouter.
+
+## Design philosophy
+
+The development of FrankenKey is governed by a strict set of product principles:
+
+- **Content-Primary:** UI chrome is secondary to user content.
+- **Privacy by Design:** typing history, adaptive vocabulary, and touch calibration are stored locally; cloud features are strictly opt-in.
+- **Deliberate Learning:** the system only learns new vocabulary through explicit "Teach" gestures or corrected edits, never from passive typing.
+
 ## Private by design
 
 FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
