@@ -21,7 +21,7 @@ import java.util.Set;
 /** Bounded OpenRouter text-model client shared by Reader AI surfaces. */
 final class ReaderAiOpenRouter
 {
-  static final String PREFERRED_MODEL_ID = "inception/mercury-2";
+  static final String PREFERRED_MODEL_ID = "inception/mercury-2.5";
   private static final String MODELS_URL = "https://openrouter.ai/api/v1/models";
   private static final String CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
   private static final int MAX_RESPONSE_BYTES = 16 * 1024 * 1024;

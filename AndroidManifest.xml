@@ -21,6 +21,13 @@
       <meta-data android:name="android.view.im" android:resource="@xml/method"/>
     </service>
     <service android:name="juloo.keyboard2.ReaderPlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
+    <service android:name="juloo.keyboard2.ReaderPageCaptureService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="false">
+      <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService"/>
+      </intent-filter>
+      <meta-data android:name="android.accessibilityservice" android:resource="@xml/reader_page_capture_service"/>
+    </service>
+
 
     <provider android:name="juloo.keyboard2.GifContentProvider" android:authorities="${applicationId}.gifcontent" android:exported="false" android:grantUriPermissions="true"/>
     <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
@@ -50,6 +57,7 @@
     <activity android:name="juloo.keyboard2.Reader3dActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_3d_title" android:theme="@style/readerThemeDark" android:exported="false" android:hardwareAccelerated="true"/>
     <activity android:name="juloo.keyboard2.ReaderLibraryActivity" android:icon="@mipmap/ic_launcher" android:label="@string/reader_library_title" android:theme="@style/readerThemeDark" android:exported="false"/>
     <activity android:name="juloo.keyboard2.ReaderAiLibraryActivity" android:icon="@mipmap/ic_launcher" android:label="Saved Reader AI" android:theme="@style/readerThemeDark" android:exported="false"/>
+    <activity android:name="juloo.keyboard2.ReaderAiQuickActivity" android:label="@string/reader_open_ai_chat" android:theme="@style/readerThemeDark" android:exported="false" android:excludeFromRecents="true"/>
     <activity android:name="juloo.keyboard2.ReaderShareActivity" android:label="@string/reader_activity_title" android:theme="@android:style/Theme.Material.Dialog.Alert" android:exported="true" android:excludeFromRecents="true">
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>

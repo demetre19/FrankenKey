@@ -34,7 +34,7 @@ public class SettingsUiContractsTest
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",
-        "Show Settings, Read Clipboard, Library, image insertion for supported apps, voice and playback controls above the keyboard. Turn off for a clean keyboard." },
+        "Show Settings, Read Clipboard, Library, voice, playback controls, and the centered AI button above the keyboard. Turn off for a clean keyboard." },
       { "clean_mode", "pref_clean_mode_summary",
         "Use Fleksy layout; turn off for the computer/SSH layout." },
       { "show_period_key", "pref_show_period_key_summary",
@@ -664,6 +664,16 @@ public class SettingsUiContractsTest
     assertEquals("Clear adaptive learning must point to the copy covering every adaptive data type.",
         "@string/pref_clear_typing_assistance_summary",
         clear.getAttribute("android:summary"));
+    Element aiButton = directChildWithKey(typingAssistance,
+        "reader_ai_button");
+    assertNotNull("The Reader AI button editor must be a standalone row in the typing-assistance category.",
+        aiButton);
+    assertEquals("The Reader AI button editor must remain a normal one-tap Preference row.",
+        "Preference", aiButton.getTagName());
+    assertEquals("@string/pref_reader_ai_button_title",
+        aiButton.getAttribute("android:title"));
+    assertEquals("@string/pref_reader_ai_button_summary",
+        aiButton.getAttribute("android:summary"));
   }
 
   @Test

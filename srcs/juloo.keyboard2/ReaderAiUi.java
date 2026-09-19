@@ -57,10 +57,22 @@ final class ReaderAiUi
     return button;
   }
 
-  void selected(Button button, boolean selected)
+  void selected(android.view.View button, boolean selected)
   {
     button.setBackground(panel(selected ? highlight : surface,
           selected ? accent : border, 8));
+  }
+
+  android.widget.ImageButton iconButton(int drawableRes,
+      String contentDescription)
+  {
+    android.widget.ImageButton button = new android.widget.ImageButton(context);
+    button.setImageResource(drawableRes);
+    button.setColorFilter(text);
+    button.setContentDescription(contentDescription);
+    button.setPadding(dp(9), dp(9), dp(9), dp(9));
+    button.setBackground(panel(surface, border, 8));
+    return button;
   }
 
   GradientDrawable panel(int fill, int stroke, int radiusDp)

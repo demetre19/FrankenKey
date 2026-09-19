@@ -18,7 +18,7 @@ final class ReaderAiService
 {
   static final class Article
   {
-    enum SourceType { ARTICLE, CLIPBOARD, BOOK }
+    enum SourceType { ARTICLE, CLIPBOARD, BOOK, PAGE }
 
     final String readerItemId;
     final String title;
@@ -53,6 +53,13 @@ final class ReaderAiService
       this.sourceType = sourceType;
       this.bookChapters = Collections.unmodifiableList(
           new ArrayList<>(bookChapters));
+    }
+
+    static Article page(String title, String text)
+    {
+      return new Article(null, title, "", "", "",
+          ReaderAiRequest.contentHash(text), text, SourceType.PAGE,
+          Collections.<ReaderBookAiPlanner.Chapter>emptyList());
     }
 
     static Article book(ReaderLibrary.Item item, ReaderEpubImporter.Book book)
@@ -245,11 +252,19 @@ final class ReaderAiService
     if (article.isBook())
       return bookChat(apiKey, model, article, turns, null, null, question);
     List<ReaderAiOpenRouter.Message> messages = new ArrayList<>();
-    messages.add(new ReaderAiOpenRouter.Message("system",
-          ReaderAiRequest.DIRECT_CHAT_PROMPT));
-    messages.add(new ReaderAiOpenRouter.Message("user",
-          ReaderAiRequest.sourceMessage(article.title, article.sourceUrl,
-            article.text)));
+    if (article.text.trim().isEmpty())
+    {
+      messages.add(new ReaderAiOpenRouter.Message("system",
+            ReaderAiRequest.GENERAL_CHAT_PROMPT));
+    }
+    else
+    {
+      messages.add(new ReaderAiOpenRouter.Message("system",
+            ReaderAiRequest.DIRECT_CHAT_PROMPT));
+      messages.add(new ReaderAiOpenRouter.Message("user",
+            ReaderAiRequest.sourceMessage(article.title, article.sourceUrl,
+              article.text)));
+    }
     appendTurns(messages, turns);
     messages.add(new ReaderAiOpenRouter.Message("user", checkedQuestion(question)));
     return client.generate(apiKey, model.id, messages);

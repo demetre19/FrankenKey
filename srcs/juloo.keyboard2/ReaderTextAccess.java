@@ -90,6 +90,15 @@ final class ReaderTextAccess
     return Result.failure(Failure.UNAVAILABLE);
   }
 
+  /** Clipboard first, then the accessibility-captured foreground page text. */
+  static Result readClipboardOrPage(Context context)
+  {
+    Result clipboard = readClipboard(context);
+    if (clipboard.isSuccess())
+      return clipboard;
+    return Result.text(ReaderPageCaptureService.latestText());
+  }
+
   static Result readSelection(Context context, EditorInfo editor,
       InputConnection connection)
   {

@@ -891,7 +891,7 @@ public class Keyboard2 extends InputMethodService
   {
     _reader_controls_expanded = true;
     start_reader_result(getString(R.string.reader_title_clipboard),
-        ReaderTextAccess.readClipboard(this));
+        ReaderTextAccess.readClipboardOrPage(this));
   }
 
   private void wire_reader_transport(View root)
@@ -917,6 +917,7 @@ public class Keyboard2 extends InputMethodService
     wire_reader_quick_shortcuts(this, root, this::start_voice_typing);
     root.findViewById(R.id.reader_transport_clipboard).setOnClickListener(
         _view -> read_reader_clipboard());
+    wire_reader_ai_button(root);
     SeekBar speed = (SeekBar)root.findViewById(
         R.id.reader_transport_speed);
     speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
@@ -935,6 +936,100 @@ public class Keyboard2 extends InputMethodService
     });
     update_reader_transport(root);
   }
+
+  private void apply_reader_action_order(View root)
+  {
+    ViewGroup actions = (ViewGroup)root.findViewById(
+        R.id.reader_transport_actions);
+    View voice = root.findViewById(R.id.reader_transport_voice);
+    View ai = root.findViewById(R.id.reader_transport_ai);
+    if (actions == null || voice == null || ai == null)
+      return;
+    int last = actions.getChildCount() - 1;
+    int aiTarget = _config.reader_ai_button_ai_right ? last : 0;
+    int voiceTarget = _config.reader_ai_button_ai_right ? 0 : last;
+    if (actions.indexOfChild(voice) != voiceTarget)
+    {
+      actions.removeView(voice);
+      actions.addView(voice, voiceTarget);
+    }
+    if (actions.indexOfChild(ai) != aiTarget)
+    {
+      actions.removeView(ai);
+      actions.addView(ai, aiTarget);
+    }
+  }
+
+  private void wire_reader_ai_button(View root)
+  {
+    View ai = root.findViewById(R.id.reader_transport_ai);
+    if (ai == null)
+      return;
+    ai.setOnTouchListener(new ReaderAiButtonController(_prefs,
+          _config.swipe_dist_px, this::run_reader_ai_action));
+  }
+
+  private void run_reader_ai_action(ReaderAiAction action)
+  {
+    switch (action)
+    {
+      case NONE:
+        Toast.makeText(this, R.string.reader_ai_no_action_assigned,
+            Toast.LENGTH_SHORT).show();
+        return;
+      case VOICE:
+        start_voice_typing();
+        return;
+      case SAVED:
+        startActivity(new Intent(this, ReaderAiLibraryActivity.class)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        return;
+      case SHARE:
+        share_reader_clipboard();
+        return;
+      case SPEED_READ:
+        speed_read_reader_clipboard();
+        return;
+      case READ_CLIPBOARD:
+        read_reader_clipboard();
+        return;
+      default:
+        startActivity(ReaderAiQuickActivity.intent(this, action));
+        return;
+    }
+  }
+
+  private void share_reader_clipboard()
+  {
+    ReaderTextAccess.Result result = ReaderTextAccess.readClipboardOrPage(this);
+    if (!result.isSuccess())
+    {
+      Toast.makeText(this, R.string.reader_ai_clipboard_empty,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    Intent send = new Intent(Intent.ACTION_SEND)
+      .setType("text/plain")
+      .putExtra(Intent.EXTRA_TEXT, result.text);
+    startActivity(Intent.createChooser(send,
+          getString(R.string.reader_ai_share_clipboard))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  }
+
+  private void speed_read_reader_clipboard()
+  {
+    ReaderTextAccess.Result result = ReaderTextAccess.readClipboardOrPage(this);
+    if (!result.isSuccess())
+    {
+      Toast.makeText(this, R.string.reader_ai_clipboard_empty,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    ReaderActivity.startQuickRead(this,
+        "quick-read:" + System.currentTimeMillis(),
+        getString(R.string.reader_title_clipboard), result.text);
+  }
+
 
   private void send_reader_action(String action)
   {
@@ -1025,6 +1120,7 @@ public class Keyboard2 extends InputMethodService
         visible || actionsVisible ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.reader_transport_actions)
       .setVisibility(actionsVisible ? View.VISIBLE : View.GONE);
+    apply_reader_action_order(root);
     TextView title = (TextView)root.findViewById(
         R.id.reader_transport_title);
     title.setVisibility(visible ? View.VISIBLE : View.GONE);

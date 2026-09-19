@@ -19,5 +19,9 @@
     <TextView style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_space"/>
     <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_learning_heading"/>
     <TextView android:id="@+id/launcher_shortcuts_learning" style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_learning"/>
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_reader_ai_heading"/>
+    <TextView android:id="@+id/launcher_shortcuts_reader_ai" style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_reader_ai"/>
+    <TextView style="@style/launcher_shortcut_heading" android:text="@string/launcher_shortcuts_ai_heading"/>
+    <TextView style="@style/launcher_shortcut_body" android:text="@string/launcher_shortcuts_ai"/>
   </LinearLayout>
 </ScrollView>

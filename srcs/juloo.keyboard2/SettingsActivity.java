@@ -329,6 +329,20 @@ public class SettingsActivity extends PreferenceActivity
         showClearTypingAssistanceDialog();
         return true;
       });
+    Preference aiButton = findPreference("reader_ai_button");
+    if (aiButton != null)
+      aiButton.setOnPreferenceClickListener(preference -> {
+        ReaderAiButtonSettings.show(this,
+            getPreferenceManager().getSharedPreferences());
+        return true;
+      });
+    Preference pageCapture = findPreference("reader_page_capture");
+    if (pageCapture != null)
+      pageCapture.setOnPreferenceClickListener(preference -> {
+        startActivity(new Intent(
+              android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        return true;
+      });
   }
 
   private void setupVoiceTypingPreference()
