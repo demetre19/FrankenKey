@@ -2,6 +2,17 @@
 
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
+
+## 2.0.118 — version code 169
+
+- Added a floating omnibutton: a draggable overlay bubble hosted by the accessibility service that opens Reader AI over any app, even with the keyboard hidden. Tap for the tap action or swipe in a direction for that action; hold ~half a second then move to drag. It hides while the keyboard is up or a password field is on screen.
+- Added SpeedyWatch-style floating-button styling in Settings > Omnibutton: enable toggle, opacity slider with a live preview and percentage readout, round/square shape, and button + icon colors via swatches or `#AARRGGBB` hex.
+- Made the floating button dispatch the same configurable tap and eight-direction swipe actions as the keyboard omnibutton, reading the shared settings.
+- Fixed page capture to grab the live window on demand before Reader AI opens, skipping FrankenKey's own windows, so summaries and chat get real page text instead of a stale URL-bar snapshot.
+- Fixed a Reader AI crash when asking a question before a model was loaded by re-resolving the model instead of dereferencing a cleared selection.
+- Reordered the keyboard so the snippet row no longer jumps when the Reader strip appears, made all Reader strip buttons a uniform height, and moved the omnibutton to the right edge with voice on the opposite end.
+- Renamed the keyboard shortcut map entry to Omnibutton with a short explanation, added an AI section, and gave the Omnibutton settings row its icon.
+
 ## 2.0.107 — version code 158
 
 - Moved every key already provided by the `…` Extra Keys strip (Ctrl, Alt, Meta, Esc, Tab, arrows, Home/End/Page Up/Page Down, Insert, Delete, F1–F12) off the visible typing surface; they stay in the strip and as hidden swipe gestures for SSH and terminal use.

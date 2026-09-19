@@ -325,13 +325,44 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.107
-Version code: 158
-SHA-256: 50709991b0e39c4f6f3749e28e60503662d3c3b1bada304e629fe7cd6fde3c3f
+Version: 2.0.118
+Version code: 169
+SHA-256: a3a11c5f34622de1c3ca3014397132350fa0b3d3e1cfe490e15cdb45cadd1d1e
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
 Android may require one uninstall before installation if an older FrankenKey APK was signed with a different key. Builds signed with the current FrankenKey release key update normally after that.
+
+## Omnibutton and the floating button
+
+The **omnibutton** is FrankenKey's centered AI key. It appears in two places:
+
+- **On the keyboard Reader strip** — shown on empty text fields when Reader controls are on. Tap it, or swipe it in any of eight directions, to run a configurable Reader AI action (chat, two summaries, quiz, share, saved results, speed read, settings).
+- **As a floating bubble** — a draggable overlay that floats over *any* app, so you can open Reader AI even when the keyboard is hidden. Tap it for the tap action, or swipe it in a direction for that direction's action. It hides automatically while the keyboard is up or a password field is on screen.
+
+### Enable the floating omnibutton
+
+The floating button and page capture are powered by FrankenKey's accessibility service:
+
+1. Open **FrankenKey Settings > Typing assistance > Page capture for Reader AI** (or Android **Settings > Accessibility > Installed apps > FrankenKey**).
+2. Turn the service **on**.
+3. The floating bubble appears over other apps. Drag it to reposition (hold ~half a second, then move); the position is remembered.
+
+Because the APK is sideloaded, Android 13+ may mark the accessibility toggle as a **restricted setting**. To unlock it:
+
+1. Try to turn the service on once — Android shows a "Restricted setting" dialog.
+2. Go to **Settings > Apps > FrankenKey**, tap the **⋮ menu**, and choose **Allow restricted settings** (confirm with your PIN/biometric).
+3. Return to **Accessibility > Installed apps > FrankenKey** and turn it on.
+
+If "Allow restricted settings" does not appear, install the APK via `adb install` instead — adb-installed apps are not treated as sideloaded, so the toggle works immediately.
+
+### Configure the omnibutton
+
+Open **FrankenKey Settings > Typing assistance > Omnibutton** to:
+
+- Assign the **tap** and each **swipe direction** (↑ ↗ → ↘ ↓ ↙ ← ↖) to any Reader AI action or **No action**.
+- Place the omnibutton on the **right edge** (voice moves to the opposite end).
+- Style the **floating button**: enable/disable, **opacity** (with a live preview and percentage), **round or square**, and **button + icon colors** (swatches or a `#AARRGGBB` hex value).
 
 ## Installing a test APK safely
 
