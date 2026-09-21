@@ -160,4 +160,75 @@ public class SnippetIconsTest
         SnippetRowView.isPageSwipe(-144, 145, distance));
   }
 
+  @Test
+  public void edge_rotation_repairs_child_bounds_for_the_in_flight_tap()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    SnippetRowView row = new SnippetRowView(context, null);
+    java.lang.reflect.Field pagesField =
+        SnippetRowView.class.getDeclaredField("_pages");
+    pagesField.setAccessible(true);
+    android.widget.LinearLayout pages =
+        (android.widget.LinearLayout)pagesField.get(row);
+    int width = 320;
+    android.view.View first = new android.view.View(context);
+    android.view.View middle = new android.view.View(context);
+    android.view.View last = new android.view.View(context);
+    for (android.view.View page : new android.view.View[]{first, middle, last})
+      pages.addView(page,
+          new android.widget.LinearLayout.LayoutParams(width, 50));
+    row.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,
+          android.view.View.MeasureSpec.EXACTLY),
+        android.view.View.MeasureSpec.makeMeasureSpec(50,
+          android.view.View.MeasureSpec.EXACTLY));
+    row.layout(0, 0, width, 50);
+
+    row.scrollTo(0, 0);
+    row.rotateEdgePage();
+    assertEquals("After a left-edge rotation the moved page must occupy slot 0 "
+        + "immediately, or the in-flight ACTION_DOWN hit-tests stale bounds.",
+        0, last.getLeft());
+    assertEquals(width, first.getLeft());
+    assertEquals(2 * width, middle.getLeft());
+
+    // In rotated order [last, first, middle] the right-edge rotation moves
+    // child 0 (last) to the end, restoring natural order.
+    row.scrollTo(2 * width, 0);
+    row.rotateEdgePage();
+    assertEquals("After a right-edge rotation the moved page must occupy the "
+        + "last slot immediately.", 2 * width, last.getLeft());
+    assertEquals(0, first.getLeft());
+    assertEquals(width, middle.getLeft());
+  }
+
+  @Test
+  public void refresh_config_reopens_on_the_first_snippet_page()
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    android.content.SharedPreferences prefs =
+        android.preference.PreferenceManager.getDefaultSharedPreferences(
+            context);
+    prefs.edit().putBoolean(SnippetStore.PREF_ENABLED, true).commit();
+    java.util.List<SnippetSlot> slots = new java.util.ArrayList<>();
+    for (int i = 0; i < 2 * SnippetSlot.PAGE_SIZE; ++i)
+      slots.add(SnippetSlot.of(i, "phrase " + i, "S" + i));
+    SnippetStore.saveSlots(context, slots);
+
+    SnippetRowView row = new SnippetRowView(context, null);
+    row.refresh_config(prefs, true, null);
+    int width = 320;
+    row.measure(android.view.View.MeasureSpec.makeMeasureSpec(width,
+          android.view.View.MeasureSpec.EXACTLY),
+        android.view.View.MeasureSpec.makeMeasureSpec(50,
+          android.view.View.MeasureSpec.EXACTLY));
+    row.layout(0, 0, width, 50);
+
+    // Simulate the leftover rotated offset a tap on an edge page produces.
+    row.scrollTo(width, 0);
+    row.refresh_config(prefs, true, null);
+    assertEquals("Rebuilding pages must reset the scroll offset so the row "
+        + "reopens on snippet 1, not snippet 8.", 0, row.getScrollX());
+  }
+
 }
