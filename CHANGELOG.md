@@ -3,6 +3,12 @@
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
 
+## 2.0.119 — version code 170
+
+- Fixed the snippet strip reopening on the second page (snippet 8) instead of the first: a tap on an edge page left a shifted scroll offset that the rebuilt strip kept.
+- Fixed snippet taps needing a second press: the first tap after the keyboard opened was swallowed because page-wrap rotation reordered buttons mid-touch with stale bounds.
+- Made the hidden floating omnibutton overlay untouchable while invisible so it cannot intercept taps meant for the keyboard.
+
 ## 2.0.118 — version code 169
 
 - Added a floating omnibutton: a draggable overlay bubble hosted by the accessibility service that opens Reader AI over any app, even with the keyboard hidden. Tap for the tap action or swipe in a direction for that action; hold ~half a second then move to drag. It hides while the keyboard is up or a password field is on screen.

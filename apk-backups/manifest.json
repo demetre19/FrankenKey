@@ -119,6 +119,18 @@
       "sha256": "50709991b0e39c4f6f3749e28e60503662d3c3b1bada304e629fe7cd6fde3c3f",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "Official release moving coding-row keys off the typing surface into the Extra Keys strip with hidden gestures, wrapping snippet pages, a removable speak key, and reliable empty-editor Reader shortcuts."
+    },
+    {
+      "label": "snippet-strip-tap-and-page-reset-release",
+      "file": "FrankenKey-2.0.119-vc170-new-release-key-9fdb3633-dfd95d82.apk",
+      "source": "FrankenKey-installable-release.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "170",
+      "versionName": "2.0.119",
+      "size": 14502480,
+      "sha256": "dfd95d82d7a56595afb55eeb93b878a342b084db395aa924755f4372a2c4dc67",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "Official release fixing the snippet strip reopening on page 2 and first taps being swallowed after edge-page rotation; hidden floating omnibutton overlay is now untouchable."
     }
   ]
 }

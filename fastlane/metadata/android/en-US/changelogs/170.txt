@@ -1,0 +1,1 @@
+Fixed the snippet strip reopening on the second page (snippet 8) instead of the first, and fixed snippet taps needing a second press: the first tap after the keyboard opened was swallowed by the page-wrap rotation. The hidden floating omnibutton overlay can no longer intercept taps while invisible.
