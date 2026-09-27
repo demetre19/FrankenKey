@@ -18,6 +18,7 @@
 ## Work Guidance
 
 - `PRODUCT.md` owns durable product/user/design/accessibility context. `PRD-FrankenKey-Reader-2026-07-30.md` owns the approved Reader plan; `PRD-FrankenKey-Reader-URL-AI-2026-08-16.md` owns the approved Reader AI plan; `PRD-FrankenKey-Reader-EPUB-2026-08-17.md` owns the implemented EPUB library, Classic/3D resume, and Book AI contract. The implemented EPUB experience uses compact Classic controls with Reader mint, reliable 3D settings-gear activation without redesigning the modal, complete every-readable-chapter summaries that reject stale partial outputs, and quizzes that cache/display incomplete chapters, continue later chapters, and resume only missing questions. `MACMINI-HANDOFF-PRD-FrankenKey-Reader-2026-07-30.md` owns resume state/commands.
+- `PRD-FrankenKey-Typing-Intelligence-2026-09-27/` owns the approved typing-intelligence program (strip tap reliability, email memory/domains, optional adaptive learning, shortcuts/completion, grammar) as an overview plus five parallel lane handoffs; start with its `00-Overview-and-Philosophy.md`.
 - Inspect/execute supplied reference artifacts before parity work.
 - Prefer programmatic paths; use UI only for UI behavior or unavailable programmatic surfaces.
 - Re-check changed paths, DOX chains/indexes, stale text, and relevant verification at closeout.
@@ -45,3 +46,4 @@
 ## Child DOX Index
 
 - `apk-backups/AGENTS.md` — archive naming, identity metadata, and manifest rules.
+- `PRD-FrankenKey-Typing-Intelligence-2026-09-27/AGENTS.md` — typing-intelligence overview and lane handoff PRDs.
