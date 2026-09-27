@@ -26,6 +26,7 @@ Bring the keyboard's self-learning up to the level users expect from mainstream 
 ## 2. Background and why the current policy exists
 
 - 2026-07-07 investigation (`CHANGELOG-learned-suggestions-unlearn-2026-07-07.md`): passive learning taught typos, and there was no per-word unlearn. The fix was an explicit-only policy (`PRODUCT.md` Design Principles; `suggestions/AGENTS.md` "Credential-protected vocabulary…"; `srcs/juloo.keyboard2/AGENTS.md` "Vocabulary learning requires…").
+- The strip makes it worse: for an unknown word, `expose_learn_action` puts `📖+` in the slot where the typed literal would appear (`CandidatesView.java:295-308`), so the user can't tap to keep what they typed. C3 fixes this.
 - The current result is safe but tiring. New names and slang need a manual Teach or a dialog on the third use. Backspace after an autocorrect never brings back what you typed. Personal word pairs are never learned.
 - This lane keeps the safety properties (bounded, reversible, no single-session evidence, and corrections never learned as vocabulary) and removes the friction.
 
@@ -49,7 +50,7 @@ Below the switches, one non-switch row reads **"What FrankenKey has learned"** a
 ### C-F1 Backspace undoes the last automatic change (behavior 1)
 
 - **Undo window opens** right after any of these, as long as the cursor sits immediately after `target + separator` and nothing else has changed:
-  - an automatic separator autocorrect (`commit_correction` via the separator path);
+  - an automatic separator autocorrect. **Timing:** autocorrect is asynchronous. The separator is committed literally at once, and the correction lands later through the pending/latent boundary path (`stage_pending_autocorrect_boundary` → `stage_pending_replacement`, `KeyEventHandler.java:1253-1345`). The window opens **when the correction is actually applied** to the editor, not when the separator is typed;
   - a suggestion tap that replaced the typed word (`stage_pending_replacement`);
   - a D1b shortcut expansion.
 - **Undo window closes** on:
@@ -59,6 +60,8 @@ Below the switches, one non-switch row reads **"What FrankenKey has learned"** a
   - a field or connection change;
   - the late-correction window committing that word;
   - a 5 s idle timeout.
+- **Backspace before the correction lands:** existing behavior. The mutation freezes the literal, the pending correction is dropped, and the backspace deletes the separator. No veto is recorded.
+- **Held backspace:** only the discrete key-down may undo (`isRepeat=false`). Auto-repeat events delete normally from whatever text is present, so holding backspace to erase a sentence never produces surprising restorations mid-hold.
 - **First backspace inside the window** (registered as a `BackspaceHook` through A0):
   1. Verify that the text before the cursor equals `target + separator`, reusing `pending_replacement_matches_editor`.
   2. Replace it with `source`, **without** the separator, in one batch edit.
@@ -86,14 +89,23 @@ Below the switches, one non-switch row reads **"What FrankenKey has learned"** a
   - it was **not edited afterwards**: no backspace reached into the word before the next word was committed, and no suggestion replaced it;
   - it isn't an email, URL, or path token (contains `@`, `://`, `www.`, or `/`), isn't all digits, and is 2–32 code points long;
   - it was typed, not pasted (only IME-typed characters form a word; the `CurrentlyTypedWord` revision covers this).
-- **Evidence** is kept per word as `{uses, sessions (distinct session-day ids), firstDay, lastDay}`. There is at most **one use counted per session**: the first commit counts, and later commits in the same editor session don't. This blocks "one burst of repeated typos".
+- **Evidence** is kept per word as `{uses, sessions, lastSessionStartMs, firstDay, lastDay, explicitSignals}`.
+  - There is at most **one use counted per session**.
+  - A new session counts only if it starts ≥60 min after the last counted one. Many apps restart the input session on every sent message, so raw editor sessions alone are a weak signal.
+  - This blocks "one burst of repeated typos".
+- **Repeated-typo guard** (the 2026-07 failure mode: people repeat the *same* typos across days):
+  - An unknown word within one edit or one adjacent transposition of a Cdict word in the top 20,000 by frequency (`teh`, `adn`, `recieve`) is **near-dictionary**.
+  - Passive use alone can never promote a near-dictionary word. It needs at least one **explicit signal**: a C1 undo veto of that correction, a C3 keep tap, a D3 cycle back to the literal, or explicit Teach.
+  - Words not near the dictionary (names, slang, product terms) learn passively.
 - **Tiers:**
 
   | Tier | Promotion rule | Suggest | Protected from autocorrect | Autocorrect target |
   |---|---|---|---|---|
-  | Observed | 1 session | ✗ | ✗ | ✗ |
-  | **Provisional** | ≥2 sessions on ≥2 distinct days | ✓ (ranked below dictionary words of equal prefix fit) | ✓ (typing it exactly never gets it corrected away) | ✗ |
-  | **Learned (auto)** | ≥5 uses across ≥3 sessions on ≥3 distinct days, with no veto or removal | ✓ (normal learned rank) | ✓ | ✓ only for one-edit repairs with the existing margins |
+  | Observed | 1 counted session | ✗ | ✗ | ✗ |
+  | **Provisional** | ≥3 uses across ≥2 counted sessions (≥60 min apart); near-dictionary words additionally need ≥1 explicit signal | ✓ (ranked below dictionary words of equal prefix fit) | ✓ (typing it exactly never gets it corrected away) | ✗ |
+  | **Learned (auto)** | ≥6 uses across ≥3 distinct days, with no veto or removal | ✓ (normal learned rank) | ✓ | ✓ only for one-edit repairs with the existing margins |
+
+  Rationale for these thresholds: a new colleague's name typed in three messages over an afternoon starts being suggested the same day, which is the smoothness the user asked for. Protection from autocorrect still needs ≥2 separated sessions, and becoming a correction *target* needs three separate days.
 
 - **Decay:**
   - Observed entries expire after 14 days with no new session.
@@ -113,7 +125,7 @@ Below the switches, one non-switch row reads **"What FrankenKey has learned"** a
 ### C-F3 Tap your typed word to keep it, then tap again to save it (behavior 3)
 
 - While the typed word isn't recognized, the entered-literal slot (page 0, slot 2) shows the literal **in quotes** (`"teh"`, role `KEEP_TYPED`) instead of `📖+`.
-- **First tap:** commit the literal exactly as typed plus a space, with no autocorrect for this instance. It counts as an observation for C-F2 (even if C-F2 is off, this is explicit and harmless: the evidence is simply unused). The strip then shows `Tap again to save "teh"` (role `SAVE_TYPED`) in the center slot until the next key is pressed.
+- **First tap:** commit the literal exactly as typed plus a space, with no autocorrect for this instance. It counts as an **explicit signal** for C-F2, which lifts the near-dictionary guard for that word. Even if C-F2 is off this is harmless, because the evidence is simply unused. The strip then shows `Tap again to save "teh"` (role `SAVE_TYPED`) in the center slot until the next key is pressed.
 - **Second tap on `SAVE_TYPED`:** teach the word immediately. It's a positive explicit choice, so no dialog is needed (the existing contract requires a positive choice, and this is one). Then show `📖✓`.
 - Recognized or learned literals keep the existing behavior (the `📖−` unlearn action on swipe-up).
 - **OFF state:** today's `📖+` / `📖−` actions and review dialog.
@@ -207,9 +219,10 @@ Every tab has search, delete one (with confirmation), and a clear-tab action (wi
   - after 2 vetoes it isn't auto-applied anywhere, but is still suggested.
 - **Tiers:**
   - 3 uses in one session → stays Observed;
-  - 2 sessions on 2 days → Provisional;
+  - 3 uses across 2 sessions 10 min apart → stays Observed; 3 uses across 2 sessions 2 h apart → Provisional;
+  - near-dictionary `teh` used on 5 days without any explicit signal → stays Observed; after one C3 keep tap → Provisional;
   - Provisional is not corrected when typed exactly, and is never an autocorrect target;
-  - 5 uses / 3 sessions / 3 days → Learned;
+  - 6 uses over 3 days → Learned;
   - decay at 14, 45, and 180 days (inject a clock);
   - an edited word doesn't count; a corrected-away word doesn't count; an undone correction counts.
 - **Typed-word tap:** a first tap commits the literal; a second tap teaches; typing a new key cancels `SAVE_TYPED`.
@@ -232,7 +245,7 @@ Every tab has search, delete one (with confirmation), and a clear-tab action (wi
 
 | Risk | Mitigation |
 |---|---|
-| Learned typos return | Per-session counting, multi-day requirement, edited/corrected-away exclusion, Provisional words never autocorrect-targets, decay, visible tiers, long-press remove |
+| Learned typos return | Near-dictionary guard (repeated typos need an explicit signal), per-session counting with 60-min separation, multi-day requirement for correction targets, edited/corrected-away exclusion, Provisional words never autocorrect-targets, decay, visible tiers, long-press remove |
 | Backspace undo surprises users who expect delete | The window is only the first backspace right after the change, with a 5 s cap and a switch |
 | Contacts permission scares users | Default OFF, explicit copy, names only, never stored |
 | Ranking regressions | All-OFF equality suite; ranking changes limited to new inputs; throughput gate |

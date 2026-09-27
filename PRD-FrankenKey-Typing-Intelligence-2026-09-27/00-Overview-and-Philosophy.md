@@ -23,10 +23,14 @@ User report (2026-09-27): suggestions feel janky. A suggestion often has to be t
 
 Root causes found in the 2.0.119 source:
 
-1. **Dropped taps.** Every editor/word change submits a new decode request with a new `requestGeneration`, even when the text hasn't changed (`suggestions/Decoder.java:2135` `RequestKey`). While the request is pending, `CandidatesView.set_decoder_state` clears the strip and nulls its request key (`suggestions/CandidatesView.java:81-85`, `:131`). A tap during that gap is ignored. A tap just before the gap fails the exact-key check in `KeyEventHandler.suggestion_entered` (`KeyEventHandler.java:549`, `SharedDecoder.java:1093`). In both cases nothing happens and the user sees no feedback.
+1. **Dropped taps (three separate silent failures).**
+   - (a) Each word change and each editor refresh submits a new decode request with a new `requestGeneration` (`suggestions/Decoder.java:2135` `RequestKey`). While the request is pending, `CandidatesView.set_decoder_state` sets every candidate view to `GONE` and nulls the request key (`suggestions/CandidatesView.java:81-85`, `:122-147`). A finger that lands in that gap lands on nothing, because `GONE` views receive no touch events.
+   - (b) A tap just before the gap fails the exact-key check in `KeyEventHandler.suggestion_entered` (`KeyEventHandler.java:549`, `SharedDecoder.java:1093`) and returns silently.
+   - (c) Even with a current key, `commit_correction` returns `false` silently when the tracked word doesn't match the editor (it refreshes and gives up), or when the word is `INCOMPLETE` (`KeyEventHandler.java:775-782`). The refresh then republishes the strip, so the *second* tap works. This matches the report "I have to select a word a few times".
+   - Also: `onClick` reads `_items[slot]` at release time (`CandidatesView.java:363-377`). If the strip re-renders during a press, the tap can insert a **different** word from the one the finger landed on.
 2. **Sloppy taps become swipes.** A 24dp vertical drift on a candidate counts as a swipe. Swiping up opens the learn/forget review instead of inserting the word (`CandidatesView.java:386-418`).
-3. **No email support.** Email/URI fields are "structured" and keep no state (`EditorConfig.java:183-197`). `@` and `.` are not word characters (`CurrentlyTypedWord.java:455`), so after `@` the current word is empty.
-4. **Learning is explicit-only by policy.** The policy in `PRODUCT.md` and the source `AGENTS.md` came from the 2026-07-07 "learned typos" investigation. New words are learned only through Teach or a correction choice after editing. The third repeated unknown word opens a dialog. Backspace never restores an autocorrected word.
+3. **No email support, and addresses can be corrupted.** Email/URI fields are "structured" and keep no state (`EditorConfig.java:183-197`), but autocorrect still runs in them: `should_try_autocorrect` checks only typing assistance (`KeyEventHandler.java:2340`), and `.` is an autocorrect separator (`:2270`). `@` and `.` are not word characters (`CurrentlyTypedWord.java:455`), so the domain part after `@` gets decoded and can be "corrected" when `.` is typed. The only existing `@` guard protects the `word.word` period conversion (`KeyEventHandler.java:1568`). Lane B confirms this with a failing test first, then fixes it.
+4. **Learning is explicit-only by policy, and the typed word can't even be tapped.** The policy in `PRODUCT.md` and the source `AGENTS.md` came from the 2026-07-07 "learned typos" investigation. New words are learned only through Teach or a correction choice after editing. The third repeated unknown word opens a dialog. Backspace never restores an autocorrected word. When a typed word is unknown, `expose_learn_action` puts `📖+` into the slot where the literal would appear (`CandidatesView.java:295-308`), so there's no one-tap way to keep what you typed.
 5. **Grammar depends on the phone.** Grammar uses only the platform spell-checker's sentence API, so quality varies by phone, and it is off by default.
 
 ## 2. Philosophy
@@ -37,7 +41,7 @@ These principles are binding on every lane. If a lane requirement conflicts with
 2. **Nothing you typed is ever lost.** Every automatic change (autocorrect, shortcut expansion, suggestion replacement, grammar fix) can be undone with one backspace or one tap, and the original text comes back.
 3. **Suggest freely, correct cautiously.** New and learned knowledge shows up as a suggestion long before it can become an automatic correction. Automatic changes need much stronger evidence than suggestions.
 4. **Learn from what you do, forget what you don't use.** Learning is evidence-based, bounded, and decays over time. One typo in one session must never become permanent vocabulary.
-5. **Every adaptive behavior can be explained and switched off.** Each optional learning behavior has a Settings switch whose summary says what it does and why you would want it. With the switch off, behavior is byte-for-byte the 2.0.119 behavior.
+5. **Every adaptive behavior can be explained and switched off.** Each optional learning behavior has a Settings switch whose summary says what it does and why you would want it. With a switch off, that behavior's learning and correction results are identical to 2.0.119. The acceptance and strip fixes from Lane A still apply, because they aren't learning behaviors.
 6. **You can see and delete everything learned.** Every learned artifact (words, word pairs, email addresses, blocked corrections, blocked suggestions, shortcuts, touch calibration) is listed, searchable, deletable, and cleared by "Clear typing data".
 7. **Private by default.** All learning stays on the device, in credential-protected storage. Vocabulary keeps its current backup behavior. New sensitive stores (email addresses) are excluded from Android backup and from settings export. Contact names are never stored. The network is used only when you explicitly tap an AI action, after a disclosure.
 8. **Structured text gets structured help.** Email addresses, URLs, and domains get completion, never spelling correction.
@@ -61,7 +65,11 @@ These principles are binding on every lane. If a lane requirement conflicts with
 
 - **Q1 (D0):** Are items 7–10 "always on under the master switches" (assumed), or does each also get its own switch? Recommended: no extra switches, except that inline completion follows the Suggestions switch.
 - **Q2 (C0):** Defaults for the optional behaviors 1–6. Recommended: 1 ON, 2 ON, 3 ON, 4 ON, 5 ON, 6 OFF (6 needs the Contacts permission).
-- **Q3 (D3):** Swipe down on the space bar is currently `switch_backward` (`res/xml/bottom_row.xml:6`, `key8`). Recommended: swipe down cycles corrections **only** during the correction-undo window, and otherwise keeps `switch_backward`. Alternative: use the free swipe-right (`key6`).
+- **Q3 (D3):** No space-bar direction is really free.
+  - In the dense layout, swipe down is `switch_backward` (`res/xml/bottom_row.xml:6`, `key8`).
+  - In the default clean layout (`res/xml/clean_text.xml:41`), down and right have no value, but `Pointers.getNearestKeyAtDirection` (`Pointers.java:255-277`) snaps a swipe to the nearest assigned direction within about ±67°. So today, a straight down swipe opens emoji or GIF, and a straight right swipe toggles coding mode or opens GIF.
+  - Recommended: swipe down cycles corrections **only** inside the correction-undo window, and **only** for a near-vertical swipe (the exact S direction ±1 of 16). It's intercepted in `Pointers` before the nearest-direction snap. Outside the window, nothing changes.
+  - The space-bar "accept completion" gesture is **dropped** (D4 accepts by tap only) for the same reason.
 - **Q4 (B2):** Remember email addresses typed in normal prose fields (not only in email fields)? Recommended: yes, as a lower-weight source.
 - **Q5 (E3):** Which model does AI "Fix grammar" use? Recommended: a separate "Writing model" setting that defaults to the selected Reader AI model.
 
@@ -94,7 +102,8 @@ These documents say, deliberately, "never" to things these lanes now do. Each la
 | `suggestions/SharedDecoder.java` (presentation/acceptance) | A | B, C, D | A0 adds `CandidateSource` (pinned external candidates merged at presentation time). B and D register sources; they don't edit merge logic. |
 | `suggestions/Decoder.java` (ranking) | C | D4 | D4 only reads the ranked result (completion flag). C owns every scoring change. |
 | `suggestions/PersonalizationStore.java` | C | — | B and D use their own stores. |
-| `KeyEventHandler.java` | A (accept path), C (backspace/undo) | B, D | A0 extracts `SuggestionAcceptor`, `BackspaceHooks`, and `SpaceGestureHooks` seams. C owns the undo window. D3 plugs into C's undo window (hard dependency). |
+| `KeyEventHandler.java` | A (accept path), C (backspace/undo) | B, D | A0 extracts the `SuggestionAcceptor` and `BackspaceHooks` seams. C owns the undo window. D3 plugs into C's undo window (hard dependency). |
+| `Pointers.java` | A (A0 seam only) | D3 | A0 adds `SpaceGestureHook`, consulted with the **raw** swipe direction before `getNearestKeyAtDirection`, so contextual gestures don't steal corner actions. |
 | `Keyboard2.java` | E (grammar section) | A, B | Line-disjoint regions; trivial merges. |
 | `EditorConfig.java` | B | C | B adds `should_use_email_memory`. C adds nothing (it reuses `should_use_personalization`). |
 | `ReaderAiAction.java` + Reader AI files | E | — | Exclusive. |
@@ -211,3 +220,28 @@ A0 defines `CandidateRole`: `WORD`, `ENTERED_TEXT`, `NEXT_WORD`, `EMOJI`, `LEARN
 - Swipe/glide typing.
 - Multilingual grammar beyond English (`en_AU`, `en_GB`, `en_US`).
 - In-editor ghost text. FrankenKey commits text directly; styling composing spans behaves differently from app to app. Completion is shown in the strip instead (D4).
+
+## 10. Adversarial review log (2026-09-27)
+
+A second pass re-checked every claim against the 2.0.119 source and attacked each design. Results, all already applied to the lane PRDs:
+
+| # | Finding | Evidence | Change |
+|---|---|---|---|
+| R1 | A third silent tap failure: `commit_correction` returns `false` with no feedback on a tracked-word mismatch or `INCOMPLETE`, then refreshes. This is the most likely cause of "tap it a few times" in slow editors | `KeyEventHandler.java:764-797` | A-F2b: synchronous refresh + one retry; otherwise the visible reject cue; no bare returns |
+| R2 | A tap can insert a *different* word if the strip re-renders mid-press | `onClick` reads `_items[slot]` at release (`CandidatesView.java:363-377`) | A-F2: ticket captured at `ACTION_DOWN` |
+| R3 | The first design (reject if the word changed at all) would have shaken on most fast-typing taps, because stale-but-visible items were computed for a shorter prefix | Design flaw | A-F2 "intent wins": replace the current word within the same slot; reject only on a slot change. A-F1: old-word candidates removed when the slot changes |
+| R4 | Autocorrect can already run inside email fields and on `.` inside addresses in prose | `KeyEventHandler.java:2270`, `:2340`; guard only at `:1568` | B-F7 moved to B1 (immediate), with a failing test first |
+| R5 | `@name` is a mention in chat apps; domain suggestions would be noise | Design flaw | Email context requires a non-empty local part |
+| R6 | A space after a domain completion breaks `.com.au` or subdomains | Design flaw | Never add a trailing space |
+| R7 | Hint text containing "email" (for example "Email subject") would turn prose fields into email fields | Design flaw | Strict hint regex, single-line only, "soft" email fields that keep word suggestions |
+| R8 | Credential-protected email store is unreadable before first unlock | Android direct boot | Fail closed and retry after unlock |
+| R9 | No space-bar direction is really free: unassigned directions snap to the nearest corner within about ±67°, so a clean-layout down swipe opens emoji/GIF | `Pointers.java:255-277`, `clean_text.xml:41` | The `SpaceGestureHook` moved to `Pointers` (raw direction, before the snap); D3 limited to near-vertical swipes inside the undo window; D4 space-swipe accept dropped (tap only) |
+| R10 | Autocorrect is asynchronous, so a backspace-undo window keyed to the separator would misfire | `stage_pending_autocorrect_boundary` → `stage_pending_replacement` (`KeyEventHandler.java:1253-1345`) | C-F1: the window opens when the correction lands; backspace before it lands keeps today's freeze; held-backspace repeats never undo |
+| R11 | Automatic learning would re-learn *consistent* typos (`teh` typed on many days), the exact 2026-07 failure | Design flaw | Near-dictionary guard: passive use can't promote a word within one edit of a common word without an explicit signal |
+| R12 | "Two distinct days" before a new name is suggested is too slow; raw editor sessions are too weak, because many apps restart input per message | Design flaw | Provisional after 3 uses in 2 sessions ≥60 min apart; becoming a correction target still needs 3 days |
+| R13 | Several grammar patterns misfire on valid English ("its time complexity", "better then we'll go"); double-space collapsing conflicts with double-space-period | Precision review | `ITS_ITS` and `THEN_THAN` narrowed; `SPACE_DOUBLE` removed |
+| R14 | Sentence-end-only grammar never runs on chat messages without punctuation; an IME-action trigger fires after the text has already been sent | Design flaw | Offline rules run on a word-boundary sliding window; IME-action trigger removed |
+| R15 | Replacing a whole field with plain AI text flattens rich spans (mention chips, links, bold); many editors return partial `ExtractedText` | Android IME behavior | Minimal back-to-front segment edits with rollback; require a selection when the whole field isn't provably returned |
+| R16 | "Switch off = byte-for-byte 2.0.119" conflicted with the unconditional Lane A fixes | Wording | Principle 5 scoped to learning/correction results |
+
+Confirmed unchanged by the review: the strip's `GONE`-on-`PENDING` blanking (A-F1); the 24dp swipe threshold (A-F4); structured-field no-learning policy (B needs an explicit exception); `SettingsBackup` exporting all default prefs (B's separate store is required); the unused `undoToken`/`learnSourceOnUndo` plumbing (C1 reuses it); next-word decoding already existing (`Decoder.decode_next_words`, C5 extends it); replacement-rule targets being single words only (D needs its own shortcut store).

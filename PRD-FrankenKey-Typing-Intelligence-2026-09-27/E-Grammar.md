@@ -20,7 +20,7 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
 
 ## 1. Objective
 
-1. **Offline grammar rules.** Deterministic, high-precision, on-device checks that catch the common mistakes spell-check misses (`your welcome`, `could of`, `a apple`, `the the`, `its a`, `more then`). They're offered as a one-tap fix in the assistant strip and never applied silently.
+1. **Offline grammar rules.** Deterministic, high-precision, on-device checks that catch the common mistakes spell-check misses (`your welcome`, `could of`, `a apple`, `the the`, `its a`, `rather then`). They're offered as a one-tap fix in the assistant strip and never applied silently.
 2. **AI "Fix grammar".** An explicit omnibutton action that sends the current field text, or the selection, to the user's OpenRouter model after a disclosure. It shows a clear before/after preview and replaces the text only when you tap Replace.
 
 ## 2. Current behavior (2.0.119)
@@ -48,18 +48,21 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
   | `A_AN` | `a` + a vowel-sound word, or `an` + a consonant-sound word | `an`/`a` | exception lists: hour, honest, honour/honor, heir → an; university, unicorn, user, one, once, European, eulogy → a; initialisms by letter name (an FBI, an MBA, a URL) |
   | `COULD_OF` | `could/should/would/must/might of` + (non-noun) | `… have` | "would of course" (skip when followed by "course") |
   | `YOUR_YOURE` | `your` + {welcome, going, not, being, the, a, right, wrong, so, very, too} | `you're` | "your right hand", "your welcome pack" (skip when a noun follows the adjective; v1 uses an explicit stop-list) |
-  | `ITS_ITS` | `its` + {a, the, been, going, not, time, ok, okay, fine, over, all} → `it's`; `it's` + {own} → `its` | as shown | "its own" stays |
+  | `ITS_ITS` | `its` + {a, an, the, been, going, gonna, not, ok, okay} → `it's`; `it's` + {own} → `its` | as shown | "its own" stays. Dropped from the draft list: time, all, over, fine, which misfire on "its time complexity", "its all-new design", "its over-the-air update" |
   | `THEIR_THERE` | `their` + {is, are, was, were, will be, has been} → `there` | `there` | "their is-" (rare, accepted) |
-  | `THEN_THAN` | comparative (`-er` word or more/less/rather/other/better/worse) + `then` | `than` | "and then", "since then" |
+  | `THEN_THAN` | narrowed: `rather then`, `other then` (always); `more/less/fewer then` + {a number, a, an, ever, before, usual, expected} | `than` | Any `-er` word + `then` was dropped, because "If it gets better then we'll go" is valid |
   | `ALOT` | `alot` | `a lot` | — |
-  | `SPACE_DOUBLE` | two or more spaces between words, in prose only | one space | code-like lines (contain `{`, `;`, or backticks) skipped |
 
 - **Not duplicated.** Before adding a rule, check the existing decoder repairs: contractions/apostrophes, `im`→`I'm`, `i`→`I`, and space-before-punctuation all already exist. The lane report lists each overlap checked.
 - **Rule data.** Word lists live in `assets/grammar/en.json`, versioned and loaded once on a background thread. Code must not hardcode long phrase lists (consistent with the existing "code must not hardcode phrases" rule for suggestions).
 
 ### E-F2 Coordinator and presentation (`GrammarCoordinator`)
 
-- **Triggers:** the same trigger points as the system checker (a sentence completed with `.`, `!`, or `?`), plus the IME action key (Send, Go, Done) for the last unfinished sentence.
+- **Triggers:**
+  - **Offline rules run at every word boundary** (space or punctuation) on a sliding window of the last ≤8 words of the current sentence. This is cheap and deterministic, and it's needed because chat messages often never end in `.`, `!`, or `?`.
+  - The system checker keeps its trigger, the sentence end.
+  - There's **no** IME-action trigger. By the time Send or Go is pressed, the text has left the field, and a prompt after sending would be useless.
+  - A rule fires once its full pattern is complete, for example after the space that follows `your welcome`, and at most once per `(ruleId, span)`.
 - **Execution:** runs on the grammar background handler. Latest wins: a newer sentence cancels an older pending check.
 - **Merging:** issues from `GrammarRules` and `SystemGrammarChecker` are combined. Identical `(offset, length, replacement)` entries are deduplicated. Offline issues come first.
 - **Presentation:** the existing `AssistantStripView` prompt, one issue at a time:
@@ -86,7 +89,7 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
   - Allowed in eligible prose editors (overview §7.4).
   - Refused, with a toast naming the reason, in password, numeric, phone, email, URI, terminal, or unreadable editors.
   - From the **floating** omnibutton, the action shows "Open the keyboard in a text field to fix grammar" and does nothing else (v1).
-- **Input:** the selection if non-empty, otherwise the whole field text through `getExtractedText` (limit **4,000** UTF-16). Longer text → refuse with "Select up to 4,000 characters to fix". Keep `{text, selectionStart, selectionEnd, extractedStartOffset}` plus the SHA-256 of the text as the revalidation snapshot.
+- **Input:** the selection if non-empty, otherwise the whole field text through `getExtractedText` (limit **4,000** UTF-16). Many editors return partial or windowed extracted text: `startOffset > 0`, `partialStartOffset` set, a truncated `text`, or `null`. When the whole field isn't provably returned, **require a selection** ("Select the text to fix") rather than silently fixing a fragment. Longer text → refuse with "Select up to 4,000 characters to fix". Keep `{text, selectionStart, selectionEnd, extractedStartOffset}` plus the SHA-256 of the text as the revalidation snapshot.
 - **Disclosure:** bump to `disclosure_accepted_v4`. The v4 text adds: "Fix grammar sends the text in the current field (or your selection) to OpenRouter and the model you picked, only when you tap it." Users who accepted v3 see the v4 disclosure once, the first time they use Fix grammar. Other Reader AI actions keep working under v3.
 - **Key:** the existing encrypted user key. With no key, the action opens AI settings.
 - **Request:**
@@ -103,7 +106,12 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
   - Accessibility: the description lists the changes ("changed 'your' to 'you're'; …").
 - **Replace:**
   - Revalidate that the field text and selection still match the snapshot hash.
-  - If they match, replace the exact range in one batch edit: `setSelection(range)` + `commitText(corrected)`, then restore the cursor to the end of the replaced range.
+  - If they match, apply the correction as **minimal edits**:
+    - compute the word-level diff;
+    - apply each changed segment back-to-front with `setSelection(segment)` + `commitText(newSegment)` inside one `beginBatchEdit`/`endBatchEdit`;
+    - restore the cursor.
+  - Untouched text is never rewritten, so rich-text spans in unchanged parts (mention chips, links, bold in mail and chat apps) survive. A whole-field `commitText` would flatten them.
+  - If any segment fails its expected-text check, stop, undo the segments already applied, and show "The text changed. Run Fix grammar again".
   - If they don't match: "The text changed. Run Fix grammar again", with no edit.
   - After Replace, show **Undo** for 5 s, which restores the original text if the field still equals the corrected text.
 - **Privacy:**
@@ -125,7 +133,7 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
 ## 5. Tests (minimum)
 
 - **Rules:** fixture-driven for each family; casing preserved; offsets correct with emoji and surrogate pairs; nothing flagged in code-like lines.
-- **Coordinator:** dedupe with the system checker; queue of 3; Ignore suppresses repeats for the session; Undo restores; revalidation failure drops the issue.
+- **Coordinator:** `your welcome␣` with no final punctuation → prompt; no prompt after Send; dedupe with the system checker; queue of 3; Ignore suppresses repeats for the session; Undo restores; revalidation failure drops the issue.
 - **AI:**
   - eligibility per editor class;
   - 4,000-character limit;
@@ -133,13 +141,15 @@ Read first: `00-Overview-and-Philosophy.md` (principles 2, 3, 7, 9; §4, §7.4).
   - no-key path;
   - response sanitization (quotes, fences, length ratio);
   - the hash mismatch path makes no edit;
+  - partial or windowed `ExtractedText` → a selection is required;
+  - minimal-edit apply leaves an unchanged span (a styled mention) intact; a mid-apply mismatch rolls back;
   - Replace + Undo;
   - nothing written to the Reader AI cache or store (assert the database and prefs are untouched).
 - **Throughput:** rules on a 500-character sentence ≤2 ms p95 on the emulator.
 
 ## 6. DOX and contract updates
 
-- `srcs/juloo.keyboard2/AGENTS.md`, the grammar bullet: add "Offline grammar rules (default on) run locally on the latest completed sentence and on the IME action, and are offered one at a time with Fix/Ignore/Undo; they never auto-apply."
+- `srcs/juloo.keyboard2/AGENTS.md`, the grammar bullet: add "Offline grammar rules (default on) run locally on a sliding window of the current sentence at each word boundary, and are offered one at a time with Fix/Ignore/Undo; they never auto-apply."
 - `srcs/juloo.keyboard2/AGENTS.md`, the Reader AI bullets, **and** the delivery `AGENTS.md` "Reader AI release artifacts" line: add "the current field text or selection (≤4,000) sent only through the explicit Fix grammar action after the v4 disclosure, previewed as a diff, and replaced only after revalidation; never cached or saved".
 - `PRODUCT.md` Product Purpose: extend the Reader AI sentence to mention Fix grammar under the same explicit-use rule.
 - New `grammar/AGENTS.md` (Purpose, Ownership, Local Contracts, Work Guidance, Verification, Child DOX Index), indexed from `srcs/juloo.keyboard2/AGENTS.md`.

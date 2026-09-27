@@ -19,7 +19,7 @@ Read first: `00-Overview-and-Philosophy.md` (principles 1–3, 9; §5.3).
 | Base / branch / worktree | `57f1356` / `ti/lane-d` / `../FrankenKey-ti-d` |
 | DOX chain | source `AGENTS.md` → `srcs/AGENTS.md` → `srcs/juloo.keyboard2/AGENTS.md` → `suggestions/AGENTS.md`; `res/AGENTS.md`; `srcs/layouts/AGENTS.md` (not edited; see D3) |
 | New files | `suggestions/shortcuts/ShortcutStore.java`, `ShortcutCandidateSource.java`, `ShortcutsTab.java`, `ShortcutEditDialog.java`; `suggestions/CompletionPolicy.java` |
-| Touched files | `KeyEventHandler.java` (only via A0 `SpaceGestureHook`, plus C1's undo window API), `suggestions/CandidatesView.java` (only the `COMPLETION` rendering hook added by A0), `suggestions/PersonalizationStore.java` (read-only touch calibration stats accessor), `SettingsBackup.java` (export shortcuts), `res/xml/settings.xml`, strings |
+| Touched files | `Pointers.java` (only via the A0 `SpaceGestureHook`), `KeyEventHandler.java` (only via C1's undo window API), `suggestions/CandidatesView.java` (only the `COMPLETION` rendering hook added by A0), `suggestions/PersonalizationStore.java` (read-only touch calibration stats accessor), `SettingsBackup.java` (export shortcuts), `res/xml/settings.xml`, strings |
 | Tests | new `ShortcutStoreTest`, `ShortcutExpansionTest`, `CorrectionCycleTest`, `CompletionPolicyTest`; extend `SettingsBackupTest`, `SpacebarGestureLayoutTest`; replay scripts |
 
 ## 1. Objective
@@ -28,7 +28,7 @@ Four behaviors that make fast typists faster:
 - (7) personal text shortcuts that expand as you type;
 - (8) the existing touch-zone learning, made visible and resettable;
 - (9) swipe down on the space bar right after a correction to cycle to the next suggestion;
-- (10) word completion shown in the strip that you can accept with one gesture.
+- (10) word completion shown in the strip that you accept with one tap.
 
 These are standard behaviors (no separate opt-in, Q1). They follow the existing master **Suggestions** and **Autocorrect** switches.
 
@@ -47,7 +47,11 @@ These are standard behaviors (no separate opt-in, Q1). They follow the existing 
   | SE | GIF |
   | up (`key7`) | `switch_forward` |
   | down (`key8`) | `switch_backward` |
-  | left (`key5`) and right (`key6`) | **unassigned** |
+  | left (`key5`) and right (`key6`) | no value |
+
+  That's the dense `bottom_row.xml`. The default **clean** layout (`clean_text.xml:41`) defines only the four corners.
+
+  **Important:** a direction with no value is not free. `Pointers.getNearestKeyAtDirection` (`Pointers.java:255-277`) scans ±3 of 16 directions (about ±67°) and snaps to the nearest assigned one. So in the clean layout a straight down swipe triggers emoji or GIF today, and a straight right swipe triggers coding mode or GIF.
 
 - There's no completion affordance; a completion shows up only as an ordinary candidate.
 
@@ -95,10 +99,13 @@ Default per Q3: **contextual swipe-down.**
   - replaces it in one batch edit;
   - keeps the undo window open, with an updated `target`;
   - highlights the active alternative in the strip (pressed state).
-- Outside the undo window, swipe down keeps `switch_backward` (unchanged).
-- Implementation: `SpaceGestureHook` (A0), which returns `handled` only inside the window. The layout XML is **not** edited, because the hook intercepts before the key value is dispatched.
+- Outside the undo window, every space-bar swipe resolves exactly as today (`switch_backward` in dense; the nearest corner in clean).
+- Implementation: the A0 `SpaceGestureHook` in `Pointers`, called with the **raw** 16-way direction before the nearest-direction snap.
+  - It returns `handled` only when the undo window is open **and** the raw direction is straight down (S ±1 of 16, about ±22°).
+  - Diagonal swipes still reach the corner actions even inside the window.
+  - The layout XML is **not** edited.
 - Cycling to the literal records a C1 veto, exactly as backspace-undo does.
-- If Q3 is answered "use swipe right": the same logic moves to `key6`, with no other change.
+- If Q3 is answered with a different direction, only the raw-direction constant changes.
 
 ### D-F4 Inline completion in the strip (behavior 10)
 
@@ -110,8 +117,8 @@ Default per Q3: **contextual swipe-down.**
   - the prefix is not itself a recognized complete word with higher frequency.
 - **Rendering** (A0 `COMPLETION` role): the middle slot shows the prefix at normal weight and the remainder at 55% alpha, for example **prob**<span>ably</span>. The accessibility description reads "Complete to probably".
 - **Accept:**
-  - tap it (normal acceptance, exactly once); or
-  - swipe right on the space bar (`key6`, currently unassigned), which commits the completion plus a space through `SpaceGestureHook`. When there's no completion, swipe right does nothing (as today).
+  - **tap it** (normal acceptance, exactly once).
+  - A space-bar swipe-right accept was considered and **dropped**. Because of the nearest-direction snap, a swipe right in the clean layout currently reaches coding mode or GIF, so a contextual accept gesture would make those corner actions unpredictable whenever a completion is visible. Revisit only with explicit user approval and a Pointers-level design like D3's.
 - Completion never auto-applies on a plain space; plain space follows normal autocorrect rules. It follows the master **Suggestions** switch.
 - There is no in-editor ghost text (overview §9).
 
@@ -124,7 +131,7 @@ Default per Q3: **contextual swipe-down.**
 | **D2** | Touch calibration stats, status row, reset, training exclusions | After A0 (Settings sub-screen) | Tests green |
 | **D1b** | `ShortcutCandidateSource`, tap acceptance, separator expansion through C1's undo window | **After C1 merged** | `ShortcutExpansionTest` + replay "omw␣ → On my way! ␣, ⌫ → omw" green |
 | **D3** | Space-bar correction cycling | **After C1 merged** | `CorrectionCycleTest` + replay green; `switch_backward` still works outside the window |
-| **D4** | `CompletionPolicy`, `COMPLETION` rendering, space swipe-right accept | After A0 (and A2 for stable rendering) | `CompletionPolicyTest` green; replay precision ≥95% on the corpus (completion shown ⇒ user wanted it) |
+| **D4** | `CompletionPolicy`, `COMPLETION` rendering, tap-to-accept | After A0 (and A2 for stable rendering) | `CompletionPolicyTest` green; replay precision ≥95% on the corpus (completion shown ⇒ user wanted it) |
 
 Parallelism inside the lane: D1a, D0, D2, and D4 can go to one agent while it waits for C1. D1b and D3 are serialized behind C1 and then run back to back.
 
@@ -141,19 +148,20 @@ Parallelism inside the lane: D1a, D0, D2, and D4 can go to one agent while it wa
 - **Cycling:**
   - order through the alternatives and back to target;
   - cycling to the literal records a veto;
-  - outside the window, `switch_backward` fires;
+  - outside the window, `switch_backward` fires in dense and the emoji/GIF corner snap is unchanged in clean;
+  - inside the window, a diagonal (SW/SE) swipe still opens emoji/GIF;
   - any other key closes the window.
 - **Completion:**
   - margin gate;
   - a prefix that is a frequent complete word → no completion;
-  - swipe right accepts with a space;
-  - swipe right with no completion → no-op;
+  - a tap accepts with a space;
+  - space-bar swipes are unchanged whether or not a completion is shown (regression);
   - it never auto-applies on space.
 
 ## 6. DOX and contract updates
 
 - `srcs/juloo.keyboard2/AGENTS.md`:
-  - Add a bullet: "Text shortcuts are user-authored trigger→expansion rules (≤300) stored in `text_shortcuts`, exported with settings backups. They expand only in prose editors (tap, or separator with Autocorrect on) and always open a one-backspace undo window. Space-bar swipe down cycles alternatives only inside that window; otherwise it keeps its layout action. Swipe right accepts a strip completion only when one is shown."
+  - Add a bullet: "Text shortcuts are user-authored trigger→expansion rules (≤300) stored in `text_shortcuts`, exported with settings backups. They expand only in prose editors (tap, or separator with Autocorrect on) and always open a one-backspace undo window. Space-bar swipe down cycles alternatives only inside that window; otherwise it keeps its layout action. Strip completions are accepted by tap only."
   - Extend the space-bar sentence of the layout contract, if one exists.
 - `suggestions/AGENTS.md`: add the `COMPLETION` role rule, `CompletionPolicy` constants, and the `ShortcutCandidateSource` precedence (a shortcut beats all ranked words; an exact replacement rule beats a shortcut when both match the same trigger).
 - `suggestions/AGENTS.md` touch calibration line: add the Settings status/reset and the email/shortcut/undo training exclusions.
@@ -163,7 +171,7 @@ Parallelism inside the lane: D1a, D0, D2, and D4 can go to one agent while it wa
 | Risk | Mitigation |
 |---|---|
 | A shortcut trigger collides with a real word (`ty`, `ur`) | Warning on save; expansion only on an exact trigger; one-backspace undo; tap-to-keep the literal (C3) |
-| Swipe-down conflict with `switch_backward` | Contextual only inside the 5 s undo window; Q3 alternative ready |
+| Swipe-down conflict with `switch_backward` (dense) and with the emoji/GIF corner snap (clean) | Only inside the 5 s undo window, only for a near-vertical raw direction, intercepted before the snap; diagonals unchanged; Q3 alternative ready |
 | Completion shown too often (noise) | Margin gate tuned on the replay corpus; ≥95% precision target |
 | Waiting on C1 stalls the lane | D1a, D0, D2, and D4 fill the wait (≈60% of the lane) |
 
@@ -171,7 +179,7 @@ Parallelism inside the lane: D1a, D0, D2, and D4 can go to one agent while it wa
 
 - New: text shortcuts. Type a short trigger like "omw" and it expands to your full phrase. Backspace right away to undo. Manage them in Settings → Smart typing → Shortcuts & gestures.
 - New: after a correction, swipe down on the space bar to cycle through other suggestions.
-- New: when FrankenKey is confident how a word ends, the rest is shown faded in the suggestion bar. Tap it, or swipe right on the space bar, to accept.
+- New: when FrankenKey is confident how a word ends, the rest is shown faded in the suggestion bar. Tap it to accept.
 - Settings now show how much your touch zones have adapted, with a reset option.
 
 ## 9. Done definition

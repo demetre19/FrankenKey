@@ -27,6 +27,11 @@ Email addresses you type are remembered on this phone and offered again after a 
 - Email and URI fields are classed as structured (`EditorConfig.java:183-197`) and never learn.
 - `CurrentlyTypedWord.is_word_char` accepts only letters, digits, and `'` (`CurrentlyTypedWord.java:455`). After `@`, the current word is empty. Only the part after the last `.` is decoded.
 - Nothing stores or suggests email addresses or domains.
+- **Live bug (from code reading; confirm with a failing test first):** autocorrect can run inside email text.
+  - `EditorConfig` disables personalization and sentence assistance for structured fields, but `should_try_autocorrect` (`KeyEventHandler.java:2340`) checks only `should_use_typing_assistance`, which is true for email fields.
+  - `.` is an autocorrect separator (`KeyEventHandler.java:2270`).
+  - So typing `name@gmial.` can autocorrect `gmial` in an email field or in prose. The only existing `@` guard protects the `word.word` period conversion (`has_url_marker_before`, `KeyEventHandler.java:1568`).
+  - B-F7 fixes this in B1.
 - `SettingsBackup` exports **all** default SharedPreferences (`SettingsBackup.java:92-111`). Storing addresses there would leak them into exported backups. That's why this lane uses a separate named file.
 
 ## 3. Scope
@@ -56,11 +61,11 @@ Out of scope:
 2. Type `de`. The strip narrows to saved addresses whose local part **or** full address starts with `de` (case-insensitive).
 3. Type `demetre@`. The strip shows saved full addresses that start with `demetre@` first, then domains: the domains you use (by frecency), then built-ins `gmail.com`, `outlook.com`, `icloud.com` on page 1 and `hotmail.com`, `yahoo.com`, plus the locale extra, on page 2.
 4. Type `demetre@g`. The strip narrows to domains that start with `g`, so `gmail.com` appears.
-5. Tap `gmail.com`. The field now reads `demetre@gmail.com`, and no space is added in email fields.
+5. Tap `gmail.com`. The field now reads `demetre@gmail.com`. No space is ever added after a domain or address completion.
 6. Tapping a saved full address replaces the whole token with that address.
 
 **In a prose field (message, notes):**
-- After you type `x@`, the domain suggestions appear the same way. Selecting one completes the domain and **adds a space** (prose).
+- After you type `x@` (at least one character before `@`), the domain suggestions appear the same way. Selecting one completes the domain and adds **no** space, because you may still type `.au` or a subdomain. A bare `@name` is a mention (chat and social apps) and never triggers email suggestions.
 - Saved-address recall in prose starts once the token has ≥3 characters and matches the start of a saved address. The best match appears in the **third** slot, so it never displaces the top word suggestion, and it is never auto-applied.
 - A complete valid address followed by a space, comma, or Enter is remembered (source `PROSE`; Q4 default yes).
 
@@ -71,7 +76,7 @@ Out of scope:
 ### B-F1 Email token parsing (`EmailToken`)
 - Input: `EditorContext.textBeforeCursor` (≤256) and `textAfterCursor` (≤64).
 - Scan backward from the cursor until whitespace, start of text, or one of `,;<>()[]"'`, up to 254 UTF-16 units. If `textAfterCursor` begins with an address character, the token is "mid-token". In that case offer **no** email candidates, so text is never corrupted.
-- Output: `{token, localPart, hasAt, domainPrefix, tokenStartOffset}`. `hasAt` is true only with exactly one `@`. A token with two `@` produces no candidates.
+- Output: `{token, localPart, hasAt, domainPrefix, tokenStartOffset}`. `hasAt` is true only with exactly one `@` **and a non-empty local part** before it. A token with two `@` produces no candidates. A token that starts with `@` (a mention such as `@john`) is never an email context.
 - Allowed local characters: `A–Z a–z 0–9 . _ % + - '`. Allowed domain characters: letters, digits, `-`, `.`. Anything else ends the email context.
 
 ### B-F2 Address validation (`EmailAddressValidator`)
@@ -85,6 +90,7 @@ Out of scope:
 - Named SharedPreferences `email_memory` in **credential-protected** storage (not `DirectBootAwarePreferences`, so it can't be read before first unlock). Store it as one JSON string value, versioned (`v: 1`).
 - Entry: `{address, count, firstSeenDay, lastUsedDay, sources: bitmask FIELD|PROSE|SELECTED}`.
 - Maximum 200 entries. On overflow, evict the entry with the lowest frecency, ties broken by oldest `lastUsedDay`.
+- **Before first unlock** (direct boot), credential-protected prefs can't be read. The store reports "unavailable": no email candidates and no learning. It must never throw or cache the absence (same rule as installed dictionaries in `dict/AGENTS.md`), and it retries after `ACTION_USER_UNLOCKED`.
 - Loaded once, lazily, **on the `SharedDecoder` worker**. All reads and writes happen on the worker (existing contract: personalization access is worker-confined). Writes are `apply()`, debounced 2 s.
 - Excluded from Android backup: add `<exclude domain="sharedpref" path="email_memory.xml"/>` to `backup_rules.xml`, and the matching `<exclude>` to both `cloud-backup` and `device-transfer` in `data_extraction_rules.xml`.
 - **Not** exported by `SettingsBackup`. It isn't in `NAMED_PREFS`; add a test that asserts it.
@@ -119,7 +125,7 @@ Runs on the worker for every request whose `EditorContext` makes it eligible.
 - Budget: ≤1 ms for 200 entries (linear scan is acceptable). A unit test guards the budget.
 
 ### B-F6 Acceptance (A0 `SuggestionAcceptor` handlers)
-- `EMAIL_DOMAIN`: replace `domainPrefix` (the text between `@` and the cursor) with the domain, using `deleteSurroundingText(domainPrefix.length, 0)` + `commitText(domain)` in one batch edit, after verifying the text before the cursor still ends with `@` + `domainPrefix`. Add a space in prose; add nothing in email, URI, or search fields.
+- `EMAIL_DOMAIN`: replace `domainPrefix` (the text between `@` and the cursor) with the domain, using `deleteSurroundingText(domainPrefix.length, 0)` + `commitText(domain)` in one batch edit, after verifying the text before the cursor still ends with `@` + `domainPrefix`. Never add a trailing space.
 - `EMAIL_ADDRESS`: verify the text before the cursor ends with the token, then replace the whole token with the address (same verification and batch pattern). Count +2 (`SELECTED`).
 - Both use the Lane A ticket, so exactly-once and reject-feedback rules apply.
 - Neither creates C learning evidence (no unigram, bigram, or correction evidence) or D calibration samples.
@@ -144,7 +150,11 @@ Runs on the worker for every request whose `EditorContext` makes it eligible.
 
 ### B-F9 Editor eligibility (`EditorConfig.should_use_email_memory`)
 - True for `TYPE_TEXT_VARIATION_EMAIL_ADDRESS` and `TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS`.
-- Also true for normal text fields whose `EditorInfo.hintText` or `label` contains `email` or `e-mail` (case-insensitive; these fields are treated as email fields).
+- **Hint-based fields are weaker.** A normal single-line text field (no `TYPE_TEXT_FLAG_MULTI_LINE`) whose `hintText` or `label` matches `^\s*(your\s+)?e-?mail(\s+address)?\s*$` (case-insensitive) counts as a *soft* email field:
+  - it gets FIELD learning at finish only when the whole text is one valid address;
+  - it gets email candidates only after `local@` or as the pinned slot-3 recall (prose rules);
+  - word suggestions are never replaced.
+  - This prevents hints like "Email subject" or "Write an email…" from turning a prose field into an email field.
 - Prose recall and learning after `@` (B-F4 `PROSE` row, B-F5) use the general typing-assistance eligibility.
 - Always false for password variations, `TYPE_NULL`, and classes other than text.
 
@@ -170,9 +180,9 @@ The locale comes from the active keyboard locale, not the system locale.
 
 | Stage | Content | Parallel? | Exit |
 |---|---|---|---|
-| **B1** | `EmailToken`, `EmailAddressValidator`, resource arrays; pure unit tests (≥60 cases: valid, invalid, mid-token, double `@`, unicode) | **Starts immediately**, no gate | Tests green |
+| **B1** | `EmailToken`, `EmailAddressValidator`, resource arrays; pure unit tests (≥60 cases: valid, invalid, mid-token, double `@`, mention `@x`, unicode). **Also B-F7 autocorrect suppression**: it's a live bug and doesn't need A0. First write the failing test (`name@gmial.com` in an email field and in prose), then fix it | **Starts immediately**, no gate | Tests green; suppression regression green |
 | **B2** | `EmailMemoryStore`, `EmailLearningObserver`, `should_use_email_memory`, backup exclusions, finish-input hook, frecency (§8) | **Starts immediately**; `Keyboard2`/`KeyEventHandler` hooks are small and line-disjoint | Store, eviction, backup-exclusion, and learning-eligibility tests green |
-| **B3** | `EmailCandidateSource` registration, acceptance handlers, autocorrect suppression | **After A0 merged** | Candidate/acceptance tests + suppression regression green |
+| **B3** | `EmailCandidateSource` registration, acceptance handlers | **After A0 merged** | Candidate/acceptance tests + suppression regression green |
 | **B4** | Settings, Emails tab, clear-all integration | After A0 (tab host) | UI tests green; strings reviewed |
 | **B5** | Replay scripts (email field and prose), emulator proof (Chrome sign-in page, a WebView email field, Messages) | After A4 | Replay green; screenshots in the lane report |
 
@@ -188,7 +198,10 @@ The locale comes from the active keyboard locale, not the system locale.
 - Backup: `SettingsBackup.exportToJson` contains no `email_memory`; `backup_rules.xml` and `data_extraction_rules.xml` contain the exclusions (XML parse test).
 - Learning: `FIELD` learning on finish; no learning when there's a no-personalized-learning flag, a password field, text that was pre-filled and unchanged, or the switch is OFF.
 - Candidates: ordering (saved address > user domains > built-ins), cap 6, exact-domain hidden, prose slot-3 rule.
-- Acceptance: domain completion in an email field (no space) and in prose (space); a stale ticket is rejected; text verification failure → no change and reject feedback.
+- Acceptance: domain completion adds no space in email fields or prose; a stale ticket is rejected; text verification failure → no change and reject feedback.
+- Mentions: `@jo` in prose → no email candidates; `hi @jo` → none; `me@` → domains.
+- Direct boot: store unavailable → no candidates, no exception; it works after unlock.
+- Soft email fields: the hint "Email subject" is not an email field; the hint "Email" is a soft field that keeps word suggestions.
 - Suppression: the three prose examples stay byte-identical after space and after `.`.
 - Clear typing data removes emails.
 
