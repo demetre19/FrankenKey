@@ -37,7 +37,7 @@
   ]
  },
  "protected_paths": {
-  "gradlew": null,
+"gradlew*": null,
   "gradlew.bat": null,
   "build.gradle.kts": null,
   "settings.gradle.kts": null,
