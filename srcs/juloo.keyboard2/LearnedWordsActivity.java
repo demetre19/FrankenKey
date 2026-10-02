@@ -33,8 +33,12 @@ import juloo.keyboard2.suggestions.PersonalizationStore;
  *
  * This activity is a tab host: tabs are registered by class through
  * [register_tab] so feature lanes add their panes without editing this file.
- * Tabs are instantiated once and kept; [Tab.onVisible] is called whenever a
- * tab is selected and on every [Activity.onResume].
+ * A tab that returns null from [Tab.createContent] drives the shared
+ * word-list pane (scope text, add field, search, length filters, and the row
+ * list); that is what the built-in Words and Corrections tabs do. A tab that
+ * returns a view owns the whole content area below the tab strip.
+ * [Tab.onVisible] runs whenever a tab is selected and on every
+ * [Activity.onResume].
  */
 public final class LearnedWordsActivity extends Activity
 {
@@ -48,8 +52,7 @@ public final class LearnedWordsActivity extends Activity
 
   /**
    * One tab of the host. Implementations must expose a public no-arg
-   * constructor. [createContent] is called lazily the first time the tab is
-   * selected; the returned view is retained and its visibility toggled.
+   * constructor.
    */
   public static abstract class Tab
   {
@@ -70,8 +73,16 @@ public final class LearnedWordsActivity extends Activity
     /** The label on the tab button. */
     public abstract CharSequence title();
 
-    /** Build the tab's content view. Called once, on first selection. */
-    protected abstract View createContent();
+    /**
+     * Build the tab's own content view. Called lazily the first time the
+     * tab is selected; the returned view is retained and re-attached on
+     * later selections. Returning null means the tab drives the shared
+     * word-list pane instead — see [WordListTab].
+     */
+    protected View createContent()
+    {
+      return null;
+    }
 
     /** Called when this tab becomes visible, including on [onResume]. */
     public void onVisible() {}
@@ -113,10 +124,20 @@ public final class LearnedWordsActivity extends Activity
   private final List<Button> _tabButtons = new ArrayList<Button>();
   private LinearLayout _tabStrip;
   private FrameLayout _tabContent;
+  private View _sharedPane;
   private int _selectedTab = -1;
+  private WordListTab _activeListTab;
   private SharedPreferences _prefs;
   private String _searchText = "";
   private int _lengthFilter = 0;
+  private EditText _addWord;
+  private EditText _search;
+  private TextView _scopeExplanation;
+  private TextView _message;
+  private ListView _list;
+  private Button _primaryAction;
+  private Button[] _lengthButtons;
+  private RowAdapter _adapter;
 
   @Override
   protected void onCreate(Bundle savedInstanceState)
@@ -129,8 +150,42 @@ public final class LearnedWordsActivity extends Activity
     _tabStrip = (LinearLayout)findViewById(R.id.learned_words_tabs);
     _tabContent =
       (FrameLayout)findViewById(R.id.learned_words_tab_content);
+    _sharedPane = findViewById(R.id.learned_words_shared_pane);
+    _addWord = (EditText)findViewById(R.id.learned_words_add);
+    _search = (EditText)findViewById(R.id.learned_words_search);
+    _scopeExplanation = (TextView)findViewById(
+        R.id.learned_words_scope_explanation);
+    _message = (TextView)findViewById(R.id.learned_words_message);
+    _list = (ListView)findViewById(R.id.learned_words_list);
+    _primaryAction = (Button)findViewById(R.id.learned_words_primary_action);
+    _adapter = new RowAdapter();
+    _list.setAdapter(_adapter);
     findViewById(R.id.learned_words_back).setOnClickListener(
         _view -> finish());
+    _primaryAction.setOnClickListener(_view -> {
+        if (_activeListTab != null)
+          _activeListTab.performPrimaryAction();
+      });
+    _addWord.setOnEditorActionListener((_view, actionId, _event) -> {
+        if (actionId != EditorInfo.IME_ACTION_DONE || _activeListTab == null)
+          return false;
+        _activeListTab.performPrimaryAction();
+        return true;
+      });
+    _search.addTextChangedListener(new TextWatcher()
+    {
+      @Override public void beforeTextChanged(CharSequence value, int start,
+          int count, int after) {}
+      @Override public void onTextChanged(CharSequence value, int start,
+          int before, int count)
+      {
+        _searchText = value == null ? "" : value.toString();
+        if (_activeListTab != null)
+          _activeListTab.filter(_searchText);
+      }
+      @Override public void afterTextChanged(Editable value) {}
+    });
+    setupLengthFilters();
     buildTabs();
     selectTab(0);
 
@@ -162,6 +217,7 @@ public final class LearnedWordsActivity extends Activity
       Button button = new Button(this);
       button.setAllCaps(false);
       button.setText(tab.title());
+      button.setBackgroundResource(R.drawable.reader_icon_button);
       if (tab.buttonId() != View.NO_ID)
         button.setId(tab.buttonId());
       button.setOnClickListener(_view -> selectTab(index));
@@ -202,23 +258,27 @@ public final class LearnedWordsActivity extends Activity
     if (index < 0 || index >= _tabs.size())
       return;
     _selectedTab = index;
+    Tab selected = _tabs.get(index);
     for (int i = 0; i < _tabs.size(); i++)
-    {
-      Tab tab = _tabs.get(i);
-      if (i == index)
-      {
-        View content = tab.content();
-        if (content.getParent() == null)
-          _tabContent.addView(content, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        content.setVisibility(View.VISIBLE);
-      }
-      else if (tab._content != null)
-        tab._content.setVisibility(View.GONE);
       styleFilterButton(_tabButtons.get(i), i == index);
+    _tabContent.removeAllViews();
+    View content = selected.content();
+    if (content != null)
+    {
+      _tabContent.addView(content, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT));
+      _tabContent.setVisibility(View.VISIBLE);
+      _sharedPane.setVisibility(View.GONE);
+      _activeListTab = null;
     }
-    _tabs.get(index).onVisible();
+    else
+    {
+      _tabContent.setVisibility(View.GONE);
+      _sharedPane.setVisibility(View.VISIBLE);
+      _activeListTab = (WordListTab)selected;
+    }
+    selected.onVisible();
   }
 
   @Override
@@ -248,64 +308,124 @@ public final class LearnedWordsActivity extends Activity
     return (int)(value * getResources().getDisplayMetrics().density + 0.5f);
   }
 
-  /** Shared list pane used by the Words and Corrections tabs. */
+  private void setupLengthFilters()
+  {
+    LinearLayout row = (LinearLayout)findViewById(
+        R.id.learned_words_length_filters);
+    _lengthButtons = new Button[11];
+    for (int length = 0; length <= 10; length++)
+    {
+      final int selectedLength = length;
+      Button button = new Button(this);
+      button.setAllCaps(false);
+      button.setMinWidth(dp(length == 0 ? 92 : 48));
+      button.setText(length == 0
+          ? getString(R.string.learned_words_length_all)
+          : length == 10 ? "10+" : Integer.toString(length));
+      button.setOnClickListener(_view -> setLengthFilter(selectedLength));
+      LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.WRAP_CONTENT, dp(48));
+      params.setMarginEnd(dp(8));
+      row.addView(button, params);
+      _lengthButtons[length] = button;
+    }
+    updateLengthButtons();
+  }
+
+  private void setLengthFilter(int length)
+  {
+    if (_lengthFilter == length)
+      return;
+    _lengthFilter = length;
+    updateLengthButtons();
+    if (_activeListTab != null)
+      _activeListTab.filter(_searchText);
+  }
+
+  private void updateLengthButtons()
+  {
+    if (_lengthButtons == null)
+      return;
+    for (int i = 0; i < _lengthButtons.length; i++)
+      styleFilterButton(_lengthButtons[i], i == _lengthFilter);
+  }
+
+  /**
+   * Row source for the shared word-list pane. The list always renders the
+   * rows of whichever [WordListTab] is selected; a tab supplying its own
+   * [Tab.createContent] view owns the whole content area instead.
+   */
+  private final class RowAdapter extends BaseAdapter
+  {
+    @Override public int getCount()
+    { return _activeListTab == null ? 0 : _activeListTab._rows.size(); }
+    @Override public RowItem getItem(int position)
+    { return _activeListTab._rows.get(position); }
+    @Override public long getItemId(int position) { return position; }
+
+    @Override
+    public View getView(int position, View recycled, ViewGroup parent)
+    {
+      View rowView = recycled == null
+        ? LayoutInflater.from(LearnedWordsActivity.this).inflate(
+            R.layout.learned_words_row, parent, false)
+        : recycled;
+      RowItem row = getItem(position);
+      TextView wordView = (TextView)rowView.findViewById(
+          R.id.learned_words_row_word);
+      TextView mappingView = (TextView)rowView.findViewById(
+          R.id.learned_words_row_mapping);
+      Button edit = (Button)rowView.findViewById(
+          R.id.learned_words_row_edit);
+      Button delete = (Button)rowView.findViewById(
+          R.id.learned_words_row_forget);
+
+      wordView.setText(row.word);
+      wordView.setScrollX(0);
+      wordView.setTextColor(row.isTaught() ? COLOR_ACCENT : COLOR_PRIMARY);
+      if (row.isTaught())
+      {
+        mappingView.setVisibility(View.GONE);
+        edit.setText(R.string.learned_words_replace_action);
+        edit.setContentDescription(getString(
+              R.string.learned_words_replace_accessibility, row.word));
+      }
+      else
+      {
+        String target = row.correction.target == null
+          ? getString(R.string.learned_words_best_suggestion)
+          : row.correction.target;
+        mappingView.setText(getString(
+              R.string.learned_words_mapping, target));
+        mappingView.setVisibility(View.VISIBLE);
+        edit.setText(R.string.learned_words_edit_action);
+        edit.setContentDescription(getString(
+              R.string.learned_words_edit_accessibility, row.word, target));
+      }
+      edit.setOnClickListener(_view -> _activeListTab.editRow(row));
+      delete.setContentDescription(row.isTaught()
+          ? getString(R.string.learned_words_forget_accessibility, row.word)
+          : getString(
+            R.string.learned_words_delete_correction_accessibility,
+            row.word));
+      delete.setOnClickListener(_view -> _activeListTab.confirmDelete(row));
+      return rowView;
+    }
+  }
+
+  /**
+   * Shared list pane used by the Words and Corrections tabs. A tab of this
+   * kind supplies only its row source, header copy, and primary action; the
+   * host binds the shared views to it each time it becomes visible.
+   */
   private static abstract class WordListTab extends Tab
   {
     final List<RowItem> _allRows = new ArrayList<RowItem>();
     final List<RowItem> _rows = new ArrayList<RowItem>();
-    EditText _addWord;
-    EditText _search;
-    TextView _scopeExplanation;
-    TextView _message;
-    ListView _list;
-    RowAdapter _adapter;
-    Button _primaryAction;
-    Button[] _lengthButtons;
-
-    @Override
-    protected View createContent()
-    {
-      final LearnedWordsActivity activity = host();
-      View content = LayoutInflater.from(activity).inflate(
-          R.layout.learned_words_tab, null);
-      _addWord = (EditText)content.findViewById(R.id.learned_words_add);
-      _search = (EditText)content.findViewById(R.id.learned_words_search);
-      _scopeExplanation = (TextView)content.findViewById(
-          R.id.learned_words_scope_explanation);
-      _message = (TextView)content.findViewById(R.id.learned_words_message);
-      _list = (ListView)content.findViewById(R.id.learned_words_list);
-      _primaryAction = (Button)content.findViewById(
-          R.id.learned_words_primary_action);
-      _adapter = new RowAdapter();
-      _list.setAdapter(_adapter);
-      _primaryAction.setOnClickListener(_view -> performPrimaryAction());
-      setupLengthFilters(content);
-      updateModeControls();
-      _addWord.setOnEditorActionListener((_view, actionId, _event) -> {
-          if (actionId != EditorInfo.IME_ACTION_DONE)
-            return false;
-          performPrimaryAction();
-          return true;
-        });
-      _search.addTextChangedListener(new TextWatcher()
-      {
-        @Override public void beforeTextChanged(CharSequence value, int start,
-            int count, int after) {}
-        @Override public void onTextChanged(CharSequence value, int start,
-            int before, int count)
-        {
-          activity._searchText = value == null ? "" : value.toString();
-          filter(activity._searchText);
-        }
-        @Override public void afterTextChanged(Editable value) {}
-      });
-      refreshRows();
-      return content;
-    }
 
     abstract boolean isTaughtMode();
 
-    private void performPrimaryAction()
+    void performPrimaryAction()
     {
       if (isTaughtMode())
         teachWord();
@@ -316,22 +436,23 @@ public final class LearnedWordsActivity extends Activity
     private void teachWord()
     {
       LearnedWordsActivity activity = host();
-      String word = _addWord.getText().toString().trim();
+      String word = activity._addWord.getText().toString().trim();
       if (!PersonalizationStore.is_learnable(word))
       {
-        _addWord.setError(activity.getString(R.string.learned_words_invalid));
+        activity._addWord.setError(activity.getString(
+              R.string.learned_words_invalid));
         return;
       }
       PersonalizationStore store =
         new PersonalizationStore(activity.prefs());
       if (!store.learn_word(word))
       {
-        _addWord.setError(activity.getString(
+        activity._addWord.setError(activity.getString(
               R.string.learned_words_already_learned));
         return;
       }
       PersonalizationStore.notify_external_change(activity.prefs());
-      _addWord.setText("");
+      activity._addWord.setText("");
       refreshRows();
       Toast.makeText(activity, activity.getString(
             R.string.learned_words_learned, word),
@@ -341,10 +462,11 @@ public final class LearnedWordsActivity extends Activity
     private void beginReplacement()
     {
       LearnedWordsActivity activity = host();
-      String source = _addWord.getText().toString().trim();
+      String source = activity._addWord.getText().toString().trim();
       if (!PersonalizationStore.is_learnable(source))
       {
-        _addWord.setError(activity.getString(R.string.learned_words_invalid));
+        activity._addWord.setError(activity.getString(
+              R.string.learned_words_invalid));
         return;
       }
       PersonalizationStore.ReplacementRule existing =
@@ -429,7 +551,7 @@ public final class LearnedWordsActivity extends Activity
         return;
       }
       PersonalizationStore.notify_external_change(activity.prefs());
-      _addWord.setText("");
+      activity._addWord.setText("");
       refreshRows();
       String destination = target.length() == 0
         ? activity.getString(R.string.learned_words_best_suggestion)
@@ -442,9 +564,10 @@ public final class LearnedWordsActivity extends Activity
 
     private void refreshRows()
     {
+      LearnedWordsActivity activity = host();
       _allRows.clear();
       PersonalizationStore store =
-        new PersonalizationStore(host().prefs());
+        new PersonalizationStore(activity.prefs());
       if (isTaughtMode())
         for (String word : store.taught_words())
           _allRows.add(RowItem.taught(word));
@@ -452,10 +575,10 @@ public final class LearnedWordsActivity extends Activity
         for (PersonalizationStore.CorrectionEntry correction
             : store.correction_entries())
           _allRows.add(RowItem.correction(correction));
-      filter(host()._searchText);
+      filter(activity._searchText);
     }
 
-    private void filter(String query)
+    void filter(String query)
     {
       LearnedWordsActivity activity = host();
       String normalized = query == null ? ""
@@ -474,87 +597,35 @@ public final class LearnedWordsActivity extends Activity
               || target.contains(normalized)))
           _rows.add(row);
       }
-      _adapter.notifyDataSetChanged();
+      activity._adapter.notifyDataSetChanged();
       boolean noRows = _allRows.isEmpty();
       boolean noMatches = !noRows && _rows.isEmpty();
-      _message.setText(noRows
+      activity._message.setText(noRows
           ? (isTaughtMode() ? R.string.learned_words_taught_empty
             : R.string.learned_words_corrections_empty)
           : R.string.learned_words_no_matches);
-      _message.setVisibility(noRows || noMatches ? View.VISIBLE : View.GONE);
-      _list.setVisibility(noRows || noMatches ? View.GONE : View.VISIBLE);
+      activity._message.setVisibility(
+          noRows || noMatches ? View.VISIBLE : View.GONE);
+      activity._list.setVisibility(
+          noRows || noMatches ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onVisible()
     {
       LearnedWordsActivity activity = host();
-      if (_addWord != null)
-      {
-        _addWord.setText("");
-        _addWord.setError(null);
-      }
-      updateModeControls();
-      if (_list != null)
-        refreshRows();
-    }
-
-    private void updateModeControls()
-    {
-      LearnedWordsActivity activity = host();
-      _scopeExplanation.setText(isTaughtMode()
+      activity._addWord.setText("");
+      activity._addWord.setError(null);
+      activity._scopeExplanation.setText(isTaughtMode()
           ? R.string.learned_words_taught_explanation
           : R.string.learned_words_corrections_explanation);
-      _addWord.setHint(isTaughtMode()
+      activity._addWord.setHint(isTaughtMode()
           ? R.string.learned_words_add_hint
           : R.string.learned_words_replacement_source_hint);
-      _primaryAction.setText(isTaughtMode()
+      activity._primaryAction.setText(isTaughtMode()
           ? R.string.learned_words_add_action
           : R.string.learned_words_replacement_add_action);
-    }
-
-    private void setupLengthFilters(View content)
-    {
-      final LearnedWordsActivity activity = host();
-      LinearLayout row = (LinearLayout)content.findViewById(
-          R.id.learned_words_length_filters);
-      _lengthButtons = new Button[11];
-      for (int length = 0; length <= 10; length++)
-      {
-        final int selectedLength = length;
-        Button button = new Button(activity);
-        button.setAllCaps(false);
-        button.setMinWidth(activity.dp(length == 0 ? 92 : 48));
-        button.setText(length == 0
-            ? activity.getString(R.string.learned_words_length_all)
-            : length == 10 ? "10+" : Integer.toString(length));
-        button.setOnClickListener(_view -> setLengthFilter(selectedLength));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, activity.dp(48));
-        params.setMarginEnd(activity.dp(8));
-        row.addView(button, params);
-        _lengthButtons[length] = button;
-      }
-      updateLengthButtons();
-    }
-
-    private void setLengthFilter(int length)
-    {
-      LearnedWordsActivity activity = host();
-      if (activity._lengthFilter == length)
-        return;
-      activity._lengthFilter = length;
-      updateLengthButtons();
-      filter(activity._searchText);
-    }
-
-    private void updateLengthButtons()
-    {
-      if (_lengthButtons == null)
-        return;
-      for (int i = 0; i < _lengthButtons.length; i++)
-        host().styleFilterButton(_lengthButtons[i],
-            i == host()._lengthFilter);
+      refreshRows();
     }
 
     private void editRow(RowItem row)
@@ -614,65 +685,6 @@ public final class LearnedWordsActivity extends Activity
           : activity.getString(R.string.learned_words_correction_deleted),
           Toast.LENGTH_SHORT).show();
     }
-
-    private final class RowAdapter extends BaseAdapter
-    {
-      @Override public int getCount() { return _rows.size(); }
-      @Override public RowItem getItem(int position)
-      { return _rows.get(position); }
-      @Override public long getItemId(int position) { return position; }
-
-      @Override
-      public View getView(int position, View recycled, ViewGroup parent)
-      {
-        LearnedWordsActivity activity = host();
-        View rowView = recycled == null
-          ? LayoutInflater.from(activity).inflate(
-              R.layout.learned_words_row, parent, false)
-          : recycled;
-        RowItem row = getItem(position);
-        TextView wordView = (TextView)rowView.findViewById(
-            R.id.learned_words_row_word);
-        TextView mappingView = (TextView)rowView.findViewById(
-            R.id.learned_words_row_mapping);
-        Button edit = (Button)rowView.findViewById(
-            R.id.learned_words_row_edit);
-        Button delete = (Button)rowView.findViewById(
-            R.id.learned_words_row_forget);
-
-        wordView.setText(row.word);
-        wordView.setScrollX(0);
-        wordView.setTextColor(row.isTaught() ? COLOR_ACCENT : COLOR_PRIMARY);
-        if (row.isTaught())
-        {
-          mappingView.setVisibility(View.GONE);
-          edit.setText(R.string.learned_words_replace_action);
-          edit.setContentDescription(activity.getString(
-                R.string.learned_words_replace_accessibility, row.word));
-        }
-        else
-        {
-          String target = row.correction.target == null
-            ? activity.getString(R.string.learned_words_best_suggestion)
-            : row.correction.target;
-          mappingView.setText(activity.getString(
-                R.string.learned_words_mapping, target));
-          mappingView.setVisibility(View.VISIBLE);
-          edit.setText(R.string.learned_words_edit_action);
-          edit.setContentDescription(activity.getString(
-                R.string.learned_words_edit_accessibility, row.word, target));
-        }
-        edit.setOnClickListener(_view -> editRow(row));
-        delete.setContentDescription(row.isTaught()
-            ? activity.getString(R.string.learned_words_forget_accessibility,
-              row.word)
-            : activity.getString(
-              R.string.learned_words_delete_correction_accessibility,
-              row.word));
-        delete.setOnClickListener(_view -> confirmDelete(row));
-        return rowView;
-      }
-    }
   }
 
   /** The taught-words list. */
@@ -682,6 +694,12 @@ public final class LearnedWordsActivity extends Activity
     public CharSequence title()
     {
       return host().getString(R.string.learned_words_taught_tab);
+    }
+
+    @Override
+    public int buttonId()
+    {
+      return R.id.learned_words_taught_tab;
     }
 
     @Override
@@ -715,8 +733,8 @@ public final class LearnedWordsActivity extends Activity
     /** Open the replacement editor prefilled with [source]. */
     void prefillReplacement(String source)
     {
-      _addWord.setText(source);
-      _addWord.setSelection(_addWord.length());
+      host()._addWord.setText(source);
+      host()._addWord.setSelection(host()._addWord.length());
       showReplacementEditor(source, null);
     }
   }

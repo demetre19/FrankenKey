@@ -113,6 +113,7 @@
     <string name="learned_words_title">Learned words</string>
     <string name="learned_words_taught_tab">Taught words</string>
     <string name="learned_words_corrections_tab">Corrections</string>
+    <item type="id" name="learned_words_taught_tab"/>
     <item type="id" name="learned_words_corrections_tab"/>
     <string name="learned_words_taught_explanation">Words remain valid only when you deliberately teach them. Keyboard Teach gestures always ask before saving.</string>
     <string name="learned_words_corrections_explanation">Corrections show exactly what a typed pattern becomes. Explicit rules are permanent until you edit or delete them.</string>
