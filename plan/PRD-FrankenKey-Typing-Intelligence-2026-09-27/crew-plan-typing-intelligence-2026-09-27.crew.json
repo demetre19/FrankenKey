@@ -340,7 +340,7 @@
    "id": "b-email",
    "title": "B1\u2013B5 \u2014 EmailToken/parser+validator, EmailMemoryStore, learning observer, EmailCandidateSource, acceptance handlers, autocorrect suppression, settings + Emails tab, replay scripts",
    "depends_on": [
-    "a0-seams"
+    "d-power-store"
    ],
    "judge": false,
    "write_paths": [
@@ -438,7 +438,7 @@
    "id": "c-strip",
    "title": "C3, C4, C7 \u2014 typed-word keep/save, long-press remove + blocked suggestions, Learned Words tabs + tier badges + PRODUCT.md/DOX",
    "depends_on": [
-    "a-strip"
+    "c-learn"
    ],
    "judge": false,
    "write_paths": [
@@ -474,7 +474,7 @@
    "id": "d-power-store",
    "title": "D0, D1a, D2 \u2014 Shortcuts & gestures section, ShortcutStore + management UI + backup, touch-calibration surface/reset",
    "depends_on": [
-    "a0-seams"
+    "a-strip"
    ],
    "judge": false,
    "write_paths": [
@@ -511,7 +511,7 @@
    "id": "d-power-gestures",
    "title": "D1b, D3, D4 \u2014 shortcut expansion via C1 undo window, space-bar correction cycling (raw near-vertical inside window), COMPLETION policy + tap accept",
    "depends_on": [
-    "a-strip"
+    "c-strip"
    ],
    "judge": false,
    "write_paths": [
@@ -547,7 +547,9 @@
   {
    "id": "e-grammar",
    "title": "E1\u2013E5 \u2014 offline GrammarRules engine + coordinator + strip prompt + settings, FIX_GRAMMAR action, GrammarDiffView replace/undo",
-   "depends_on": [],
+   "depends_on": [
+    "a0-seams"
+   ],
    "judge": false,
    "write_paths": [
     "srcs/juloo.keyboard2/grammar/",
