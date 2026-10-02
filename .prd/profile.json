@@ -2,27 +2,24 @@
  "schema": "profile/v1",
  "argv": {
   "test": [
-   "python3",
-   "-c",
-   "import glob,sys;\nfiles=[f for f in glob.glob(\"plan/**/*.md\",recursive=True)+glob.glob(\"PRD-*.md\")] or [];\nempty=[f for f in files if len(open(f).read().strip())<40];\nassert not empty, f\"empty/stub docs: {empty}\";\nprint(f\"{len(files)} plan docs non-empty\")"
+   "make",
+   "test"
   ],
   "lint": [
-   "python3",
-   "-m",
-   "json.tool",
-   ".prd/profile.json"
+   "make",
+   "lint"
   ],
   "build": [
-   "python3",
-   "-c",
-   "import glob;\nassert glob.glob(\"plan/**/*.crew.json\"),\"no crew plan present\";\nprint(\"crew plan present\")"
+   "make",
+   "build"
   ]
  },
  "module_map": {
-  ".": 19,
+  ".": 20,
   "apk-backups": 14,
   "fastlane": 3,
-  "plan": 10
+  "plan": 10,
+  "scripts": 1
  },
  "hot_files": [],
  "land_target": "sprint",
