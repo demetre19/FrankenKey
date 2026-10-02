@@ -1,0 +1,18 @@
+name: docs
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decision records stay self-describing
+        run: |
+          set -e
+          test -f docs/decisions/0000-template.md
+          if grep -rnE '\.(py|js):[0-9]+' docs/decisions/*.md; then
+            echo "line anchors are banned in decisions (use path::symbol)" >&2
+            exit 1
+          fi

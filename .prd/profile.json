@@ -1,0 +1,19 @@
+{
+  "schema": "profile/v1",
+  "argv": {},
+  "module_map": {
+    ".": 19,
+    "apk-backups": 14,
+    "fastlane": 3,
+    "plan": 10
+  },
+  "hot_files": [],
+  "land_target": "sprint",
+  "max_parallel": 5,
+  "default_host": "2IC",
+  "protected_paths": [],
+  "docs": {
+    "machinery": "docs/machinery",
+    "decisions": "docs/decisions"
+  }
+}
