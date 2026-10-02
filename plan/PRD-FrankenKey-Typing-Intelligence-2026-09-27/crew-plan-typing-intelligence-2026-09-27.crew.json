@@ -288,7 +288,12 @@
     "LearnedWordsActivity is a class-registered tab host with existing Words+Corrections content; res/xml/settings.xml gains empty ti_smart_typing PreferenceScreen with five hidden categories under Typing assistance.",
     "suggestions/AGENTS.md + srcs/juloo.keyboard2/AGENTS.md record the new seams in the same commit."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "a-strip",
@@ -324,7 +329,12 @@
     "ImeReplayInstrumentedTest DSL exists and its 500-trial tap-during-pending script shows 0 dropped and 0 duplicated insertions; replay suite noted in verification lists.",
     "All \u00a77 tests 1\u201310 green, including: re-render between DOWN and UP inserts the word under the finger at DOWN; strip keeps items across PENDING and clears on session end/editor change/EMPTY; stale worker results still never publish."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "b-email",
@@ -369,7 +379,12 @@
     "should_use_email_memory per B-F9 including soft-field strict hint regex ('Email subject' is NOT an email field; 'Email' is a soft field keeping word suggestions).",
     "B5 replay scripts + emulator proof (Chrome sign-in, WebView email field, Messages) with screenshots in the lane report; AGENTS.md lines updated same-commit."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "c-learn",
@@ -411,7 +426,12 @@
     "C6: switch ON launches READ_CONTACTS from SettingsActivity (manifest adds uses-permission); denial reverts OFF with note; ContactNamesIndex holds \u22645000 tokens of DISPLAY_NAME_PRIMARY splits, ContentObserver 10 s debounce, dropped on revoke/OFF/shutdown, never persisted or logged; tokens are protected literals and suggest from \u22652-char prefix.",
     "Decode p95 regression \u226410% with 3000 passive + 5000 pairs + 5000 contact tokens; srcs/juloo.keyboard2/AGENTS.md + suggestions/AGENTS.md lines updated same-commit."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "c-strip",
@@ -444,7 +464,12 @@
     "PRODUCT.md design-principles bullet rewritten to the C-spec wording; srcs/juloo.keyboard2/AGENTS.md backspace-settles line rewritten for the undo window; Contacts permission scope added; all same-commit.",
     "All C3/C4/C7 tests green plus the all-OFF regression suite unchanged (co-owned with c-learn)."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "d-power-store",
@@ -476,7 +501,12 @@
     "Training exclusions wired so email tokens, shortcut triggers, and undone corrections never contribute samples (implementation may land the guard flags that d-power-gestures/c-learn consume).",
     "srcs/juloo.keyboard2/AGENTS.md + suggestions/AGENTS.md calibration/shortcuts lines updated same-commit; ShortcutStoreTest + SettingsBackupTest green."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "d-power-gestures",
@@ -509,7 +539,12 @@
     "SpacebarGestureLayoutTest: inside-window SW/SE diagonals still reach emoji/GIF; outside-window dense/clean resolution unchanged; any other key closes the window.",
     "srcs/juloo.keyboard2/AGENTS.md shortcut/cycle/completion bullet + suggestions/AGENTS.md COMPLETION/CompletionPolicy/ShortcutCandidateSource precedence lines same-commit."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   },
   {
    "id": "e-grammar",
@@ -544,7 +579,12 @@
     "E4: GrammarDiffView word-level diff (strikethrough removed, accent added) in the Reader quick-surface host within safe insets + Replace/Copy/Cancel + accessibility change list; SHA-256 revalidation; minimal back-to-front segment edits in one batch edit preserving untouched rich spans; mid-apply mismatch \u2192 full rollback + 'text changed' message; post-replace 5 s Undo; nothing cached/saved/logged beyond HTTP status + model id; NO_PERSONALIZED_LEARNING fields allowed with private-typing header.",
     "New grammar/AGENTS.md (DOX sections) indexed from srcs/juloo.keyboard2/AGENTS.md; grammar + Reader AI DOX lines and PRODUCT.md Reader AI sentence updated same-commit; E5 emulator proof recorded (live OpenRouter smoke only on separate user authorization)."
    ],
-   "non_goals": "Touching code outside this lane's write_paths; cross-lane refactors; unrelated lint/style churn; changes to lanes not listed in this plan's dependencies."
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
   }
  ]
 }
