@@ -70,6 +70,9 @@ public final class KeyEventHandler
   private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
     new ArrayList<Pointers.SpaceGestureHook>();
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
+  /** Incremented to invalidate a posted delayed DEL fallback; see
+      [schedule_backspace_fallback]. */
+  private long _backspace_fallback_generation = 0;
   private static final int DELETE_WORDS_CONTEXT_LIMIT = 4096;
   private static final int DELETE_WORDS_CURSOR_LOCAL = -1;
   private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
@@ -1857,6 +1860,12 @@ public final class KeyEventHandler
   @SuppressLint("InlinedApi")
   void handle_editing_key(KeyValue.Editing ev)
   {
+    handle_editing_key(ev, false);
+  }
+
+  @SuppressLint("InlinedApi")
+  void handle_editing_key(KeyValue.Editing ev, boolean isRepeat)
+  {
     if (ev != KeyValue.Editing.SPACE_BAR
         && ev != KeyValue.Editing.BACKSPACE)
       clear_manual_correction();
@@ -1877,7 +1886,7 @@ public final class KeyEventHandler
       case FORWARD_DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
       case SELECTION_CANCEL: cancel_selection(); break;
       case SPACE_BAR: handle_space_bar(); break;
-      case BACKSPACE: handle_backspace(); break;
+      case BACKSPACE: handle_backspace(isRepeat); break;
     }
   }
 
