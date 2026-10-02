@@ -78,7 +78,7 @@
     "assets/"
    ],
    "expected_exit": 0,
-   "integration_only": true,
+   "integration_only": false,
    "timeout_s": 3600
   },
   {

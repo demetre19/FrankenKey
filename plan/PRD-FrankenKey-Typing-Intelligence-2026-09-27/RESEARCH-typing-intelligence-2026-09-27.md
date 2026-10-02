@@ -3,6 +3,10 @@
 Date: 2026-09-28
 Purpose: Stage 2.5 evidence for `crew-plan-typing-intelligence-2026-09-27.json`. The research corpus is the 2026-09-27 plan bundle itself: `00-Overview-and-Philosophy.md` §1 (root causes with line anchors), §10 (adversarial review log R1–R16), plus the five lane handoff docs. Every claim below was verified against the 2.0.119 source @ `57f1356` on 2026-09-28.
 
+## Discovery research
+
+research: none — the evidence corpus is the 2026-09-27 plan bundle itself (overview §1 root causes + §10 adversarial review log R1–R16), with every anchor re-verified against the 2.0.119 source tree @ `57f1356` on 2026-09-28; this is a single-IME feature plan, no external product/protocol scan was required.
+
 ## Verified anchors (re-checked 2026-09-28 against source)
 
 - `srcs/juloo.keyboard2/suggestions/CandidatesView.java:81` — `set_decoder_state` clears `_request_key`/items on `PENDING` (strip blanking).
