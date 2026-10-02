@@ -390,7 +390,8 @@
    "id": "c-learn",
    "title": "C0\u2013C2, C5\u2013C6 \u2014 Learning switches+LearningPolicy, backspace undo+vetoes, automatic tiers, personal next-word pairs, ContactNamesIndex; all-OFF = 2.0.119",
    "depends_on": [
-    "a0-seams"
+    "a0-seams",
+    "a-strip"
    ],
    "judge": false,
    "write_paths": [
@@ -437,9 +438,7 @@
    "id": "c-strip",
    "title": "C3, C4, C7 \u2014 typed-word keep/save, long-press remove + blocked suggestions, Learned Words tabs + tier badges + PRODUCT.md/DOX",
    "depends_on": [
-    "a0-seams",
-    "a-strip",
-    "c-learn"
+    "a-strip"
    ],
    "judge": false,
    "write_paths": [
@@ -512,8 +511,7 @@
    "id": "d-power-gestures",
    "title": "D1b, D3, D4 \u2014 shortcut expansion via C1 undo window, space-bar correction cycling (raw near-vertical inside window), COMPLETION policy + tap accept",
    "depends_on": [
-    "a-strip",
-    "c-learn"
+    "a-strip"
    ],
    "judge": false,
    "write_paths": [
