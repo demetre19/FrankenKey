@@ -5,7 +5,9 @@ import android.os.Message;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
+import juloo.keyboard2.suggestions.EditorContext;
 
 /**
  * Manage pointers (fingers) on the screen and long presses.
@@ -320,6 +322,12 @@ public final class Pointers implements Handler.Callback
       { // Gesture starts
 
         ptr.gesture = new Gesture(direction);
+        if (isSpaceBar(ptr.value)
+            && consult_space_gesture_hooks(direction))
+        {
+          ptr.gesture = null;
+          return;
+        }
         if (isVerticalKeyboardSwipe(ptr))
           return;
         KeyValue new_value = backspaceSelectionSlider(ptr, dx, dy);
@@ -551,6 +559,33 @@ public final class Pointers implements Handler.Callback
       default:
         return false;
     }
+  }
+
+  private static boolean isSpaceBar(KeyValue value)
+  {
+    return value != null
+      && value.getKind() == KeyValue.Kind.Editing
+      && value.getEditing() == KeyValue.Editing.SPACE_BAR;
+  }
+
+  /**
+   * Consult the ordered space-bar swipe hooks with the raw 16-way direction,
+   * before [getNearestKeyAtDirection] snaps unassigned directions to the
+   * nearest corner action. A hook returning true consumes the gesture.
+   */
+  boolean consult_space_gesture_hooks(int rawDirection16)
+  {
+    Config.IKeyEventHandler handler = _config.handler;
+    if (handler == null)
+      return false;
+    List<SpaceGestureHook> hooks = handler.space_gesture_hooks();
+    if (hooks == null || hooks.isEmpty())
+      return false;
+    EditorContext ctx = handler.editor_context();
+    for (SpaceGestureHook hook : hooks)
+      if (hook.on_space_swipe(rawDirection16, ctx))
+        return true;
+    return false;
   }
 
   private static boolean isDeleteRepeatKey(KeyValue value)
@@ -1015,6 +1050,18 @@ public final class Pointers implements Handler.Callback
         }
       }
     }
+  }
+
+  /**
+   * Ordered hook consulted when a swipe gesture starts on the space bar.
+   * [rawDirection16] is the direction in sixteenths of a circle clockwise
+   * from the top, before any corner snapping. Returning true consumes the
+   * gesture. The list is empty by default and registered through
+   * [KeyEventHandler.register_space_gesture_hook].
+   */
+  public static interface SpaceGestureHook
+  {
+    public boolean on_space_swipe(int rawDirection16, EditorContext ctx);
   }
 
   public interface IPointerEventHandler

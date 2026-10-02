@@ -368,6 +368,32 @@ public final class Config
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(Decoder.RequestKey key, String text);
     public void suggestion_swiped_up(Decoder.RequestKey key, String text);
+    /** Single acceptance dispatch for every strip candidate. The default
+        reproduces the pre-seam routing; [KeyEventHandler] overrides it with a
+        [SuggestionAcceptor] role map that extension lanes can register into. */
+    public default void candidate_accepted(Decoder.RequestKey ticket,
+        juloo.keyboard2.suggestions.CandidateRole role, String text)
+    {
+      juloo.keyboard2.suggestions.SuggestionAcceptor.default_dispatch(
+          this, ticket, role, text);
+    }
+    /** Long press (>=450 ms within the tap slop) on a candidate. Default is a
+        no-op; a lane installs behavior by overriding or via the acceptor. */
+    public default void candidate_long_pressed(Decoder.RequestKey ticket,
+        juloo.keyboard2.suggestions.CandidateRole role, String text) {}
+    /** Ordered space-bar swipe hooks consulted by [Pointers] with the raw
+        16-way direction before corner snapping. Default empty. */
+    public default java.util.List<Pointers.SpaceGestureHook>
+        space_gesture_hooks()
+    {
+      return java.util.Collections.emptyList();
+    }
+    /** Latest editor context captured on the main thread for the current
+        input session; default [EditorContext.EMPTY]. */
+    public default juloo.keyboard2.suggestions.EditorContext editor_context()
+    {
+      return juloo.keyboard2.suggestions.EditorContext.EMPTY;
+    }
     public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();

@@ -2,9 +2,12 @@ package juloo.keyboard2.suggestions;
 
 import android.content.SharedPreferences;
 import android.os.Handler;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -56,10 +59,18 @@ public final class SharedDecoder implements AutoCloseable
     public final Decoder.Result result;
     public final Feedback feedback;
     public final String feedbackWord;
+    /** Pinned candidates merged ahead of the ranked words for this READY
+        state, or null when no [CandidateSource] was consulted. */
+    public final CandidateSource.Candidate[] pinned;
+    /** Ranked words left after NFC dedupe against [pinned], capped so
+        pinned+ranked stays within [Decoder.MAX_VISIBLE_WORDS]. Null when no
+        [CandidateSource] was consulted; callers then use [result.words()]. */
+    public final Decoder.Candidate[] ranked;
 
     private Presentation(State state_, long sessionEpoch_,
         Decoder.RequestKey key_, Decoder.Result result_, Feedback feedback_,
-        String feedbackWord_)
+        String feedbackWord_, CandidateSource.Candidate[] pinned_,
+        Decoder.Candidate[] ranked_)
     {
       state = state_;
       sessionEpoch = sessionEpoch_;
@@ -67,25 +78,35 @@ public final class SharedDecoder implements AutoCloseable
       result = result_;
       feedback = feedback_;
       feedbackWord = feedbackWord_;
+      pinned = pinned_;
+      ranked = ranked_;
     }
 
     static Presentation pending(long sessionEpoch, Decoder.RequestKey key)
     {
       return new Presentation(State.PENDING, sessionEpoch, key, null,
-          Feedback.NONE, null);
+          Feedback.NONE, null, null, null);
     }
 
     static Presentation ready(long sessionEpoch, Decoder.Result result,
         Feedback feedback, String feedbackWord)
     {
       return new Presentation(State.READY, sessionEpoch, result.key, result,
-          feedback, feedbackWord);
+          feedback, feedbackWord, null, null);
+    }
+
+    static Presentation ready(long sessionEpoch, Decoder.Result result,
+        Feedback feedback, String feedbackWord,
+        CandidateSource.Candidate[] pinned, Decoder.Candidate[] ranked)
+    {
+      return new Presentation(State.READY, sessionEpoch, result.key, result,
+          feedback, feedbackWord, pinned, ranked);
     }
 
     static Presentation empty(long sessionEpoch, Decoder.RequestKey key)
     {
       return new Presentation(State.EMPTY, sessionEpoch, key, null,
-          Feedback.NONE, null);
+          Feedback.NONE, null, null, null);
     }
   }
 
@@ -455,6 +476,33 @@ public final class SharedDecoder implements AutoCloseable
       return envelope.request.key;
     }
   }
+  /**
+   * Update the editor context stamped into subsequent requests. Called on the
+   * main thread when the handler observes editor state, before [request].
+   */
+  public void update_editor_context(EditorContext ctx)
+  {
+    synchronized (_lock)
+    {
+      _latestEditorContext = ctx == null ? EditorContext.EMPTY : ctx;
+    }
+  }
+
+  /**
+   * Register a worker-side pinned-candidate source. Sources run on the
+   * decoder worker while the READY presentation is built and must answer in
+   * under 2 ms without post-warm-up I/O.
+   */
+  public void register_source(CandidateSource source)
+  {
+    if (source == null)
+      throw new IllegalArgumentException("source must not be null");
+    synchronized (_lock)
+    {
+      _candidateSources.add(source);
+    }
+  }
+
 
   /**
    * Preserve the exact current word-boundary request while newer keystroke
@@ -849,7 +897,7 @@ public final class SharedDecoder implements AutoCloseable
         _configEpoch, _personalizationEpoch);
     Decoder.Request request = new Decoder.Request(key, word, _geometry, _config);
     return new PendingDecode(request, _resources, _personalizationSpecEpoch,
-        _personalization);
+        _personalization, _latestEditorContext);
   }
 
   /** Return the resubmitted key, or null when there is no current word. */
@@ -1488,14 +1536,91 @@ public final class SharedDecoder implements AutoCloseable
         feedback = null;
       Presentation presentation;
       if (should_publish_candidates_locked())
-        presentation = Presentation.ready(_sessionEpoch, result,
-            feedback == null ? Presentation.Feedback.NONE : feedback.feedback,
-            feedback == null ? null : feedback.word);
+      {
+        MergedCandidates merged = merge_pinned_locked(envelope, result);
+        presentation = merged == null
+          ? Presentation.ready(_sessionEpoch, result,
+              feedback == null
+                ? Presentation.Feedback.NONE : feedback.feedback,
+              feedback == null ? null : feedback.word)
+          : Presentation.ready(_sessionEpoch, result,
+              feedback == null
+                ? Presentation.Feedback.NONE : feedback.feedback,
+              feedback == null ? null : feedback.word,
+              merged.pinned, merged.ranked);
+      }
       else
         presentation = Presentation.empty(_sessionEpoch, result.key);
       _presentation = presentation;
       post_presentation_locked(presentation);
     }
+  }
+
+  /**
+   * Consult [CandidateSource]s and merge their pinned candidates ahead of the
+   * ranked words: surfaces deduplicated by NFC equality, first occurrence
+   * wins, at most [Decoder.MAX_VISIBLE_WORDS] entries in total. Returns null
+   * when no source is registered or every source pinned nothing, so callers
+   * keep the unmerged fast path.
+   */
+  private MergedCandidates merge_pinned_locked(PendingDecode envelope,
+      Decoder.Result result)
+  {
+    if (_candidateSources.isEmpty())
+      return null;
+    ArrayList<CandidateSource.Candidate> pinned =
+      new ArrayList<CandidateSource.Candidate>();
+    ArrayList<String> seen = new ArrayList<String>();
+    for (CandidateSource source : _candidateSources)
+    {
+      CandidateSource.Candidate[] candidates;
+      try
+      {
+        candidates = source.pinned(envelope.request,
+            envelope.editorContext);
+      }
+      catch (RuntimeException e)
+      {
+        Logs.exn("Candidate source failed", e);
+        continue;
+      }
+      if (candidates == null)
+        continue;
+      for (CandidateSource.Candidate candidate : candidates)
+      {
+        if (candidate == null || pinned.size() >= Decoder.MAX_VISIBLE_WORDS)
+          continue;
+        String surface = Normalizer.normalize(candidate.surface,
+            Normalizer.Form.NFC);
+        if (seen.contains(surface))
+          continue;
+        seen.add(surface);
+        pinned.add(candidate);
+      }
+    }
+    if (pinned.isEmpty())
+      return null;
+    Decoder.Candidate[] words = result.words();
+    ArrayList<Decoder.Candidate> ranked =
+      new ArrayList<Decoder.Candidate>();
+    for (Decoder.Candidate word : words)
+    {
+      if (pinned.size() + ranked.size() >= Decoder.MAX_VISIBLE_WORDS)
+        break;
+      if (!seen.contains(Normalizer.normalize(word.surface,
+            Normalizer.Form.NFC)))
+        ranked.add(word);
+    }
+    MergedCandidates merged = new MergedCandidates();
+    merged.pinned = pinned.toArray(new CandidateSource.Candidate[0]);
+    merged.ranked = ranked.toArray(new Decoder.Candidate[0]);
+    return merged;
+  }
+
+  private static final class MergedCandidates
+  {
+    CandidateSource.Candidate[] pinned;
+    Decoder.Candidate[] ranked;
   }
 
   private void run_control(Control control)
@@ -1701,6 +1826,7 @@ public final class SharedDecoder implements AutoCloseable
   private ResourceSpec _resources;
   private PersonalizationSpec _personalization;
   private CurrentlyTypedWord.Snapshot _latestWord;
+  private EditorContext _latestEditorContext = EditorContext.EMPTY;
   private Decoder.RequestKey _latestKey;
   private PendingDecode _pending;
   private final ArrayDeque<PendingDecode> _retained =
@@ -1730,6 +1856,9 @@ public final class SharedDecoder implements AutoCloseable
   private PersonalizationStore _workerPersonalization;
   private boolean _workerPersonalizationFailed = false;
 
+  private final List<CandidateSource> _candidateSources =
+    new ArrayList<CandidateSource>();
+
   private static final int MAX_CONTROLS = 64;
   private static final int MAX_RETAINED_BOUNDARIES = 48;
   private static final int MAX_COMPLETED_RESULTS = 64;
@@ -1742,16 +1871,19 @@ public final class SharedDecoder implements AutoCloseable
     final ResourceSpec resources;
     final long personalizationSpecEpoch;
     final PersonalizationSpec personalization;
+    final EditorContext editorContext;
     volatile boolean boundary;
     boolean boundaryPreviewed;
 
     PendingDecode(Decoder.Request request_, ResourceSpec resources_,
-        long personalizationSpecEpoch_, PersonalizationSpec personalization_)
+        long personalizationSpecEpoch_, PersonalizationSpec personalization_,
+        EditorContext editorContext_)
     {
       request = request_;
       resources = resources_;
       personalizationSpecEpoch = personalizationSpecEpoch_;
       personalization = personalization_;
+      editorContext = editorContext_;
     }
   }
 

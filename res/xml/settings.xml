@@ -10,6 +10,13 @@
     <Preference android:key="typing_assistance_status" android:title="@string/pref_typing_assistance_status_title" android:selectable="false"/>
     <Preference android:key="manage_learned_words" android:title="@string/pref_manage_learned_words_title" android:summary="@string/pref_manage_learned_words_summary"/>
     <Preference android:key="clear_typing_assistance_data" android:title="@string/pref_clear_typing_assistance_title" android:summary="@string/pref_clear_typing_assistance_summary"/>
+    <PreferenceScreen android:key="ti_smart_typing" android:title="@string/pref_smart_typing_title">
+      <PreferenceCategory android:key="ti_strip_category" android:title="@string/pref_smart_typing_suggestions" android:isPreferenceVisible="false"/>
+      <PreferenceCategory android:key="ti_email_category" android:title="@string/pref_smart_typing_email" android:isPreferenceVisible="false"/>
+      <PreferenceCategory android:key="ti_learn_category" android:title="@string/pref_smart_typing_learning" android:isPreferenceVisible="false"/>
+      <PreferenceCategory android:key="ti_power_category" android:title="@string/pref_smart_typing_shortcuts" android:isPreferenceVisible="false"/>
+      <PreferenceCategory android:key="ti_grammar_category" android:title="@string/pref_smart_typing_grammar" android:isPreferenceVisible="false"/>
+    </PreferenceScreen>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_updates">
     <SwitchPreference android:key="update_automatic_checks" android:title="@string/pref_update_automatic_checks_title" android:summary="@string/pref_update_automatic_checks_summary" android:defaultValue="true"/>
