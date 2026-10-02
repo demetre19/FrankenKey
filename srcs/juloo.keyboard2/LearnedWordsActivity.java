@@ -61,6 +61,12 @@ public final class LearnedWordsActivity extends Activity
       _host = host;
     }
 
+    /** Stable id for this tab's strip button; [View.NO_ID] by default. */
+    public int buttonId()
+    {
+      return View.NO_ID;
+    }
+
     /** The label on the tab button. */
     public abstract CharSequence title();
 
@@ -156,6 +162,8 @@ public final class LearnedWordsActivity extends Activity
       Button button = new Button(this);
       button.setAllCaps(false);
       button.setText(tab.title());
+      if (tab.buttonId() != View.NO_ID)
+        button.setId(tab.buttonId());
       button.setOnClickListener(_view -> selectTab(index));
       LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
           0, dp(48), 1f);
@@ -690,6 +698,12 @@ public final class LearnedWordsActivity extends Activity
     public CharSequence title()
     {
       return host().getString(R.string.learned_words_corrections_tab);
+    }
+
+    @Override
+    public int buttonId()
+    {
+      return R.id.learned_words_corrections_tab;
     }
 
     @Override

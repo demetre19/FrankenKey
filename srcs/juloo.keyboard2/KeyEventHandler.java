@@ -2788,6 +2788,11 @@ public final class KeyEventHandler
     }
   }
 
+  void handle_backspace()
+  {
+    handle_backspace(false);
+  }
+
   /** Commit an accepted correction, then perform ordinary Backspace. The
       ordered [BackspaceHook] list runs first; a hook that consumes the press
       skips the deletion. */
