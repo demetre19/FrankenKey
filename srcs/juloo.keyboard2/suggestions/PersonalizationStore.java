@@ -548,8 +548,11 @@ public final class PersonalizationStore
     _last_word = normalizedWord;
     boolean persisted = record_touch_calibration(typedWord, normalizedWord,
         normalize(correctedFrom), touches);
-    _generation++;
+    boolean changed = persisted;
     if (persisted)
+      changed |= increment(_word_counts, normalizedWord);
+    _generation++;
+    if (changed)
       save();
   }
 
@@ -834,34 +837,33 @@ public final class PersonalizationStore
       String normalizedWord, String normalizedCorrection,
       TouchTrace.Snapshot touches)
   {
-    if (typedWord == null || touches == null
+    if (typedWord == null
         || normalizedCorrection.length() != 0
-        || !normalize(typedWord).equals(normalizedWord)
-        || typedWord.codePointCount(0, typedWord.length()) != touches.size())
+        || !normalize(typedWord).equals(normalizedWord))
       return false;
-    boolean changed = false;
-    for (int i = 0; i < touches.size(); ++i)
+    if (touches != null)
     {
-      TouchTrace.Entry touch = touches.get(i);
-      if (touch == null || touch.keyWidth <= 0f || touch.keyHeight <= 0f)
-        continue;
-      float x = (touch.touchX - touch.keyCenterX) / touch.keyWidth;
-      float y = (touch.touchY - touch.keyCenterY) / touch.keyHeight;
-      if (!finite(x) || !finite(y) || Math.abs(x) > 0.6f
-          || Math.abs(y) > 0.6f)
-        continue;
-      int denominator = Math.min(_touch_samples + 1, 256);
-      _touch_offset_x += (clamp_touch_offset(x) - _touch_offset_x)
-        / denominator;
-      _touch_offset_y += (clamp_touch_offset(y) - _touch_offset_y)
-        / denominator;
-      if (_touch_samples < MAX_TOUCH_SAMPLES)
-        ++_touch_samples;
-      changed = true;
+      for (int i = 0; i < touches.size(); ++i)
+      {
+        TouchTrace.Entry touch = touches.get(i);
+        if (touch == null || touch.keyWidth <= 0f || touch.keyHeight <= 0f)
+          continue;
+        float x = (touch.touchX - touch.keyCenterX) / touch.keyWidth;
+        float y = (touch.touchY - touch.keyCenterY) / touch.keyHeight;
+        if (!finite(x) || !finite(y) || Math.abs(x) > 0.6f
+            || Math.abs(y) > 0.6f)
+          continue;
+        int denominator = Math.min(_touch_samples + 1, 256);
+        _touch_offset_x += (clamp_touch_offset(x) - _touch_offset_x)
+          / denominator;
+        _touch_offset_y += (clamp_touch_offset(y) - _touch_offset_y)
+          / denominator;
+        if (_touch_samples < MAX_TOUCH_SAMPLES)
+          ++_touch_samples;
+      }
     }
-    return changed;
+    return true;
   }
-
   private static float clamp_touch_offset(float value)
   {
     if (!finite(value))

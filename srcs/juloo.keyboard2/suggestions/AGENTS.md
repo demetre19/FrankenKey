@@ -6,7 +6,7 @@
 
 ## Ownership
 
-- `Decoder` owns synchronous scoring; `SharedDecoder` owns worker serialization/resources/stale rejection/presentations; parent owns IME routing/session integration.
+- `Decoder` owns synchronous scoring; `SharedDecoder` owns worker serialization/resources/stale rejection/presentations; `CandidateRole`, `CandidateSource`, `EditorContext` and `SuggestionAcceptor` are the cross-lane seams; parent owns IME routing/session integration.
 
 ## Local Contracts
 
@@ -17,6 +17,11 @@
 - Preserve touch traces only for identical normalized word/cursor/code-point count with complete readback.
 - Native recall is bounded, Unicode-scalar/layout-coordinate aware, and completes nearby/Hunspell passes for unknown words. Resource/corruption failures fail closed.
 - Truncation alone does not veto a clear recognized one-edit winner; two-edit repairs require complete evidence. Apply explicit omission/deletion ambiguity gates for short words and repeated letters.
+- `CandidateRole` is the strip's public role enum. Roles with no display or accept handler render and read as plain words; no debug or source labels are shown.
+- `SharedDecoder.register_source` adds worker-side `CandidateSource`s whose pinned candidates merge ahead of ranked words in READY, NFC-deduplicated, capped at six entries with the ranked remainder. Sources answer in ≤2 ms with no post-warm-up I/O.
+- `EditorContext` snapshots editor class, personalized-learning flag, bounded surrounding text, and locale on the main thread; each request carries the context captured when it was made.
+- `CandidatesView` sends every tap, swipe-accept and learn gesture through `IKeyEventHandler.candidate_accepted(ticket, role, text)`, dispatched by `SuggestionAcceptor` role registrations; `candidate_long_pressed(ticket, role, text)` fires at the platform long-press without consuming the tap. Unregistered roles are dropped.
+- `KeyEventHandler.BackspaceHook` (`isRepeat` flag) and `Pointers.SpaceGestureHook` (raw 16-way direction, pre-snap) are ordered hook lists that default empty.
 - Only exact current `RequestKey` may publish, commit, learn/forget, or accept actions; PENDING/EMPTY are inert. Prepared tokens require valid captured session/domain.
 - Prewarm exact resource descriptors; same-key worker resources survive sessions and changes advance by epochs.
 - Treat matching Cdict or bundled Hunspell as installed; never show a false install banner.
