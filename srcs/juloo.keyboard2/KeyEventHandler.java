@@ -52,6 +52,7 @@ public final class KeyEventHandler
   boolean _autocorrect_enabled = false;
   private PendingReplacement _pending_replacement = null;
   private ManualCorrection _manual_correction = null;
+  private boolean _skip_next_word_learning = false;
   private boolean _preserve_manual_correction_transition = false;
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
   private final ArrayDeque<LatentAutocorrectBoundary>
@@ -332,6 +333,7 @@ public final class KeyEventHandler
     _current_request_key = null;
     _pending_replacement = null;
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _preserve_manual_correction_transition = false;
     _pending_autocorrect_boundary = null;
     _latent_autocorrect_boundaries.clear();
@@ -351,6 +353,7 @@ public final class KeyEventHandler
     commit_pending_replacement();
     commit_latent_boundaries();
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _delete_selection = null;
     _autocap.finished();
     _typedword.finished();
@@ -1110,9 +1113,13 @@ public final class KeyEventHandler
   private String manual_selected_correction_source(
       CurrentlyTypedWord.Snapshot snapshot, String target)
   {
-    if (!manual_target_matches_snapshot(snapshot))
-      return null;
-    return plausible_correction_source(_manual_correction.source, target);
+    String source = null;
+    if (manual_target_matches_snapshot(snapshot) && target.equals(snapshot.word))
+      source = _manual_correction.source;
+    else if (snapshot != null && !snapshot.hasSelection
+        && snapshot.cursorRelative == 0)
+      source = snapshot.word;
+    return plausible_correction_source(source, target);
   }
 
   private void commit_prepared(SharedDecoder.CommitToken token)
@@ -1338,6 +1345,7 @@ public final class KeyEventHandler
       SharedDecoder.CommitToken undoToken, String source, String target,
       String separator, boolean learnSourceOnUndo)
   {
+    commit_prepared(token);
     InputConnection conn = _recv.getCurrentInputConnection();
     ExtractedText et = conn == null ? null : get_cursor_pos(conn);
     int cursor = et != null && et.selectionStart == et.selectionEnd
@@ -2541,6 +2549,22 @@ public final class KeyEventHandler
       _typedword.refresh_current_word();
       snapshot = _typedword.snapshot();
     }
+    // A short fragment left by a manual edit is a cross-boundary split; do not
+    // learn it and skip the following word until the boundary is re-established.
+    if (_manual_correction != null
+        && manual_target_matches_snapshot(snapshot)
+        && snapshot.word.length() < 3
+        && _manual_correction.source.startsWith(snapshot.word)
+        && !_manual_correction.source.equals(snapshot.word))
+    {
+      _current_request_key = null;
+      if (_decoder_session != 0)
+        _decoder.invalidate(_decoder_session);
+      send_text(separator);
+      clear_manual_correction();
+      _skip_next_word_learning = true;
+      return;
+    }
     if (snapshot.completeness
         == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
     {
@@ -2549,6 +2573,7 @@ public final class KeyEventHandler
         _decoder.invalidate(_decoder_session);
       send_text(separator);
       clear_manual_correction();
+      _skip_next_word_learning = true;
       return;
     }
     Decoder.RequestKey key = _current_request_key;
@@ -2559,14 +2584,23 @@ public final class KeyEventHandler
       correction = null;
     if (should_preserve_manual_word_case(snapshot.word, correction))
       correction = null;
-    boolean should_record = should_record_personalization() && key != null;
+    boolean is_learned_correction = correction != null
+      && (correction.learned || (correction.sourceMask & Decoder.SOURCE_PERSONAL) != 0);
+    boolean broad_or_unsafe_edit = _manual_correction != null
+      && manual_target_matches_snapshot(snapshot)
+      && plausible_correction_source(_manual_correction.source, snapshot.word) == null;
+    boolean skip_learning = _skip_next_word_learning || broad_or_unsafe_edit;
+    boolean should_record = should_record_personalization() && key != null
+      && !is_learned_correction && !skip_learning;
     SharedDecoder.CommitToken literal_token = should_record
       ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
     SharedDecoder.CommitToken correction_token = null;
     if (should_record && correction != null)
-      correction_token = _decoder.prepare_commit(_decoder_session, key,
-          correction.surface, null);
+      correction_token = correction.surface.equals(snapshot.word)
+        ? literal_token
+        : _decoder.prepare_selected_correction(_decoder_session, key,
+            correction.surface, snapshot.word);
     boolean should_capitalize_i = correction == null && _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
@@ -2620,6 +2654,7 @@ public final class KeyEventHandler
         && _decoder_session != 0)
       _decoder.invalidate(_decoder_session);
     clear_manual_correction();
+    _skip_next_word_learning = false;
   }
 
   /** Implement autocorrect and optional double-space period insertion. */
