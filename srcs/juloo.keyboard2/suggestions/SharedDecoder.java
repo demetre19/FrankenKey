@@ -617,12 +617,13 @@ public final class SharedDecoder implements AutoCloseable
     synchronized (_lock)
     {
       PendingDecode sourceEnvelope = find_envelope_locked(source);
-      if (!is_active_session_locked(sessionEpoch)
+      boolean _dbg_bad = !is_active_session_locked(sessionEpoch)
           || !is_valid_request_key_locked(source)
           || sourceEnvelope == null
           || (!is_current_locked(source) && !sourceEnvelope.boundary)
           || !_config.useTypingAssistance
-          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled))
+          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled);
+      if (_dbg_bad)
         return null;
       Boolean recognized = recognized_from_result_locked(source,
           committedWord, sourceEnvelope);
@@ -979,6 +980,9 @@ public final class SharedDecoder implements AutoCloseable
 
   private PendingDecode find_envelope_locked(Decoder.RequestKey key)
   {
+    if (_acceptedEnvelope != null
+        && _acceptedEnvelope.request.key.equals(key))
+      return _acceptedEnvelope;
     if (_lastRequestEnvelope != null
         && _lastRequestEnvelope.request.key.equals(key))
       return _lastRequestEnvelope;
@@ -989,9 +993,6 @@ public final class SharedDecoder implements AutoCloseable
     for (PendingDecode envelope : _retained)
       if (envelope.request.key.equals(key))
         return envelope;
-    if (_acceptedEnvelope != null
-        && _acceptedEnvelope.request.key.equals(key))
-      return _acceptedEnvelope;
     CompletedDecode completed = completed_for_key_locked(key);
     return completed == null ? null : completed.envelope;
   }
