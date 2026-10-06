@@ -15,13 +15,14 @@
     ]
   },
   "module_map": {
-    ".": 29,
+    ".": 30,
     "androidTest": 9,
     "assets": 31,
     "bin": 505,
     "doc": 3,
     "fastlane": 206,
     "gradle": 2,
+    "lessons": 1,
     "res": 226,
     "scripts": 2,
     "srcs": 368,
