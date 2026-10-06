@@ -139,10 +139,22 @@ val buildKeyboardFont by tasks.registering(Exec::class) {
   commandLine("fontforge", "-lang=ff", "-script", "build.pe", out.asFile.absolutePath, *svgFiles)
 }
 
+// Python may live outside the minimal PATH used by CI/gate executors.
+val pythonExe: String = listOfNotNull(
+  System.getenv("PYTHON"),
+  "${System.getProperty("user.home")}/.local/bin/python",
+  "python",
+  "python3"
+).firstOrNull { candidates ->
+  try {
+    ProcessBuilder(candidates, "--version").start().waitFor() == 0
+  } catch (e: Exception) { false }
+} ?: "python3"
+
 val genEmojis by tasks.registering(Exec::class) {
   doFirst { println("\nGenerating res/raw/emojis.txt") }
   workingDir = projectDir
-  commandLine("python", "gen_emoji.py")
+  commandLine(pythonExe, "gen_emoji.py")
 }
 
 val genLayoutsList by tasks.registering(Exec::class) {
@@ -150,7 +162,7 @@ val genLayoutsList by tasks.registering(Exec::class) {
   outputs.file(projectDir.resolve("res/values/layouts.xml"))
   doFirst { println("\nGenerating res/values/layouts.xml") }
   workingDir = projectDir
-  commandLine("python", "gen_layouts.py")
+  commandLine(pythonExe, "gen_layouts.py")
 }
 
 val genMethodXml by tasks.registering(Exec::class) {
@@ -161,7 +173,7 @@ val genMethodXml by tasks.registering(Exec::class) {
   doFirst { println("\nGenerating res/xml/method.xml") }
   doFirst { standardOutput = FileOutputStream(out) }
   workingDir = projectDir
-  commandLine("python", "gen_method_xml.py")
+  commandLine(pythonExe, "gen_method_xml.py")
 }
 
 val checkKeyboardLayouts by tasks.registering(Exec::class) {
@@ -170,7 +182,7 @@ val checkKeyboardLayouts by tasks.registering(Exec::class) {
   outputs.file(projectDir.resolve("check_layout.output"))
   doFirst { println("\nChecking layouts") }
   workingDir = projectDir
-  commandLine("python", "check_layout.py")
+  commandLine(pythonExe, "check_layout.py")
 }
 
 val compileComposeSequences by tasks.registering(Exec::class) {
@@ -183,7 +195,7 @@ val compileComposeSequences by tasks.registering(Exec::class) {
     !it.name.endsWith(".py") && !it.name.endsWith(".md")
   }!!.map { it.absolutePath }.toTypedArray()
   workingDir = projectDir
-  commandLine("python", `in`.resolve("compile.py").absolutePath, *sequences)
+  commandLine(pythonExe, `in`.resolve("compile.py").absolutePath, *sequences)
   doFirst { standardOutput = FileOutputStream(out) }
 }
 
