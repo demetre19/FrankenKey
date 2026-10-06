@@ -1,0 +1,26 @@
+{
+  "schema": "profile/v1",
+  "argv": {},
+  "module_map": {
+    ".": 28,
+    "androidTest": 9,
+    "assets": 31,
+    "bin": 505,
+    "doc": 3,
+    "fastlane": 206,
+    "gradle": 2,
+    "res": 226,
+    "scripts": 2,
+    "srcs": 368,
+    "test": 82
+  },
+  "hot_files": [],
+  "land_target": "sprint",
+  "max_parallel": 5,
+  "default_host": "2IC",
+  "protected_paths": [],
+  "docs": {
+    "machinery": "docs/machinery",
+    "decisions": "docs/decisions"
+  }
+}
