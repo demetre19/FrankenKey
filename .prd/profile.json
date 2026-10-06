@@ -1,8 +1,21 @@
 {
   "schema": "profile/v1",
-  "argv": {},
+  "argv": {
+    "build": [
+      "make",
+      "build"
+    ],
+    "lint": [
+      "make",
+      "lint"
+    ],
+    "test": [
+      "make",
+      "test"
+    ]
+  },
   "module_map": {
-    ".": 28,
+    ".": 29,
     "androidTest": 9,
     "assets": 31,
     "bin": 505,
