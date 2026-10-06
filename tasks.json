@@ -1,8 +1,8 @@
 {"tasks": [
-  {"content": "Extract EmailAddressValidator.java + test from manual/b-email B1 into worktree", "status": "completed"},
-  {"content": "Write EmailToken.java per B-F1 spec (backward scan, mid-token, hasAt, offsets)", "status": "completed"},
-  {"content": "Write EmailTokenTest.java; ensure >=60 parser/validator cases total", "status": "completed"},
-  {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "completed"},
-  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
-  {"content": "prd_step done", "status": "completed"}
+  {"content": "CandidateTicket type in Decoder.java (extends RequestKey, consume-once, same_word_slot)", "status": "completed"},
+  {"content": "SharedDecoder: envelope identity fields, READY carries snapshot+connection+wordStart, recent-results ring ≤2, prepare_commit_for_ticket, ticket_epochs_current", "status": "completed"},
+  {"content": "CandidatesView: per-slot tickets on READY, ACTION_DOWN capture, consume-once dispatch, ACTION_CANCEL clears", "status": "completed"},
+  {"content": "CandidateTicketTest unit tests + update ready() call sites", "status": "completed"},
+  {"content": "KeyEventHandler ordering: validate ticket before commit_pending_replacement; intent-wins in-slot replace; use prepare_commit_for_ticket (blocked: outside write_paths, ask pending)", "status": "in_progress"},
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
 ]}
