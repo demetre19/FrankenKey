@@ -12,6 +12,8 @@ Android phone users who want a fast, private keyboard and an integrated reading 
 
 FrankenKey provides capable everyday and coding-oriented input without ads or tracking, plus an optional Reader for listening to text and saved documents. Success means common actions are immediately understandable, private data stays local, and keyboard or Reader controls never obscure more of the host app than their current task requires.
 
+Optional AI features stay off by default: Reader AI answers questions about user-opened sources with a user-owned encrypted key, and the keyboard's Fix grammar sends only the current field or selection to the chosen model after an explicit first-use disclosure, while offline grammar fixes never leave the device.
+
 ## Brand Personality
 
 Private, capable, compact. The voice is direct and approachable rather than technical or promotional. User-facing names describe people and outcomes, not implementation identifiers.

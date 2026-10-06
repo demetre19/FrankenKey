@@ -146,6 +146,7 @@ public final class GrammarCoordinator
     if (_showing == null)
       return;
     _disabledRules.add(_showing.ruleId);
+    _presenter.disableRule(_showing.ruleId);
     _showing = null;
     presentNext();
   }
@@ -174,7 +175,7 @@ public final class GrammarCoordinator
   public GrammarIssue undoCandidate() { return _undoing; }
   public int queueSize() { return _queue.size(); }
 
-  static String windowOf(String beforeCursor)
+  public static String windowOf(String beforeCursor)
   {
     int end = beforeCursor.length();
     int words = 0;

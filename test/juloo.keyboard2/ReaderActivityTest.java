@@ -398,28 +398,41 @@ public class ReaderActivityTest
         Keyboard2.candidate_strip_visible(false, false));
     ViewGroup actions = (ViewGroup)transport.findViewById(
         R.id.reader_transport_actions);
-    View voice = transport.findViewById(R.id.reader_transport_voice);
     View settings = transport.findViewById(R.id.reader_transport_settings);
-    View ai = transport.findViewById(R.id.reader_transport_ai);
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
-    int textButtonHeight = Math.round(40f *
+
+    View voice = transport.findViewById(R.id.reader_transport_voice);
+    View fixGrammar = transport.findViewById(
+        R.id.reader_transport_fix_grammar);
+    int compactHeight = Math.round(36f *
+        context.getResources().getDisplayMetrics().density);
+    int verticalPadding = Math.round(4f *
+        context.getResources().getDisplayMetrics().density);
+    int horizontalPadding = Math.round(16f *
         context.getResources().getDisplayMetrics().density);
     int actionGap = Math.round(8f *
         context.getResources().getDisplayMetrics().density);
-    int iconPadding = Math.round(8f *
+    int iconPadding = Math.round(7f *
         context.getResources().getDisplayMetrics().density);
     int iconSize = Math.round(24f *
         context.getResources().getDisplayMetrics().density);
-    View[] iconActions = { voice, settings, ai };
-    for (View view : iconActions)
+    assertEquals("Read Clipboard grows vertically for large text.",
+        ViewGroup.LayoutParams.WRAP_CONTENT, clipboard.getLayoutParams().height);
+    assertEquals("Library grows vertically for large text.",
+        ViewGroup.LayoutParams.WRAP_CONTENT, library.getLayoutParams().height);
+    assertTrue("Read Clipboard retains a compact minimum height.",
+        clipboard.getMinimumHeight() >= compactHeight);
+    assertTrue("Library retains a compact minimum height.",
+        library.getMinimumHeight() >= compactHeight);
+    assertEquals("The Settings shortcut uses the same compact 36dp height.",
+        compactHeight, settings.getLayoutParams().height);
+    assertEquals("The Voice shortcut uses the same compact 36dp height.",
+        compactHeight, voice.getLayoutParams().height);
+    for (View view : new View[] { settings, voice })
     {
       ImageButton iconButton = (ImageButton)view;
-      assertEquals("Strip icon actions use the uniform 40dp height.",
-          textButtonHeight, iconButton.getLayoutParams().height);
-      assertEquals("Strip icon actions use the uniform 40dp width.",
-          textButtonHeight, iconButton.getLayoutParams().width);
-      assertEquals("Toolbar icons retain the 8dp inset.",
+      assertEquals("Toolbar icons retain the established 7dp inset.",
           iconPadding, iconButton.getPaddingLeft());
       assertEquals(iconPadding, iconButton.getPaddingTop());
       assertEquals(iconPadding, iconButton.getPaddingRight());
@@ -430,53 +443,53 @@ public class ReaderActivityTest
           iconSize, iconButton.getDrawable().getIntrinsicWidth());
       assertEquals(iconSize, iconButton.getDrawable().getIntrinsicHeight());
     }
-    android.widget.Button clipboardButton = (android.widget.Button)clipboard;
-    assertEquals("Read keeps the larger 40dp text-button height.",
-        textButtonHeight, clipboardButton.getLayoutParams().height);
-    assertEquals("Clipboard action is a Read text button.",
-        "Read", clipboardButton.getText().toString());
-    android.widget.Button libraryButton = (android.widget.Button)library;
-    assertEquals("Library keeps the larger 40dp text-button height.",
-        textButtonHeight, libraryButton.getLayoutParams().height);
-    assertEquals("Library is a text button, not another file icon.",
-        "Library", libraryButton.getText().toString());
-    View[] stripActions = { voice, settings, ai, clipboard, library };
-    for (View view : stripActions)
-      assertFalse("Every strip action announces its purpose.",
-          view.getContentDescription().toString().isEmpty());
     assertEquals("The Reader strip keeps an 8dp breathing space above its controls.",
         actionGap, transport.getPaddingTop());
     assertEquals("The Reader strip keeps an 8dp breathing space below its controls.",
         actionGap, transport.getPaddingBottom());
-    for (View action : stripActions)
-    {
-      assertEquals("Every strip action uses the keyboard action surface.",
-          R.drawable.reader_keyboard_action_button,
-          layoutAttributeResource(context, R.layout.reader_transport_strip,
-            action.getId(), "background"));
-    }
+    assertEquals("Read Clipboard uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_clipboard, "background"));
+    assertEquals("Library uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_library, "background"));
+    assertEquals("Settings uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_settings, "background"));
+
+    assertEquals("Voice uses the keyboard action surface.",
+        R.drawable.reader_keyboard_action_button,
+        layoutAttributeResource(context, R.layout.reader_transport_strip,
+          R.id.reader_transport_voice, "background"));
+
     assertEquals("Voice uses its dedicated matching icon.",
         R.drawable.ic_keyboard_microphone,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_voice, "src"));
-    assertEquals("Settings uses the cog icon.",
-        R.drawable.cog_outline,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_settings, "src"));
-    assertEquals("AI uses the Reader AI icon.",
-        R.drawable.ic_reader_ai,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_ai, "src"));
-    assertEquals("Read Clipboard uses the clipboard icon.",
-        R.drawable.ic_clipboard_paste,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_clipboard, "src"));
-    assertEquals("Library uses the file icon.",
-        R.drawable.snippet_icon_file_text,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_library, "src"));
+    android.util.TypedValue labelColor = new android.util.TypedValue();
+    assertTrue(context.getTheme().resolveAttribute(
+        R.attr.colorLabel, labelColor, true));
+    assertEquals("Read Clipboard uses the keyboard label color.",
+        labelColor.data, ((TextView)clipboard).getCurrentTextColor());
+    assertEquals("Library uses the keyboard label color.",
+        labelColor.data, ((TextView)library).getCurrentTextColor());
+    assertEquals("Compact actions keep 4dp top and bottom padding.",
+        verticalPadding, clipboard.getPaddingTop());
+    assertEquals("Read Clipboard keeps professional horizontal padding.",
+        horizontalPadding, clipboard.getPaddingLeft());
+    assertEquals("Read Clipboard text stays clear of its right edge.",
+        horizontalPadding, clipboard.getPaddingRight());
+    assertEquals("Library keeps professional horizontal padding.",
+        horizontalPadding, library.getPaddingLeft());
+    assertEquals("Library text stays clear of its right edge.",
+        horizontalPadding, library.getPaddingRight());
     int halfGap = actionGap / 2;
-    for (View action : stripActions)
+    for (View action : new View[] {
+        settings, clipboard, library, fixGrammar, voice
+    })
     {
       ViewGroup.MarginLayoutParams margins =
           (ViewGroup.MarginLayoutParams)action.getLayoutParams();
@@ -485,16 +498,21 @@ public class ReaderActivityTest
       assertEquals("Every action uses half the shared gap after it.",
           halfGap, margins.getMarginEnd());
     }
-    assertEquals("Voice stays first in the centered action group.", 0,
-        actions.indexOfChild(voice));
-    assertEquals("Settings follows Voice.", 1,
+    assertFalse("The Settings shortcut announces its destination.",
+        settings.getContentDescription().toString().isEmpty());
+
+    assertFalse("The Voice shortcut announces its destination.",
+        voice.getContentDescription().toString().isEmpty());
+    assertEquals("Settings stays first in the centered action group.", 0,
         actions.indexOfChild(settings));
-    assertEquals("AI stays centered between Reader actions.", 2,
-        actions.indexOfChild(ai));
-    assertEquals("Read Clipboard follows AI.", 3,
+    assertEquals("Read Clipboard follows Settings.", 1,
         actions.indexOfChild(clipboard));
-    assertEquals("Library stays last in the centered action group.", 4,
+    assertEquals("Library is centered between Reader actions.", 2,
         actions.indexOfChild(library));
+    assertEquals("Fix grammar follows Library in the right-side quick actions.", 3,
+        actions.indexOfChild(fixGrammar));
+    assertEquals("Voice stays last in the right-side quick actions.", 4,
+        actions.indexOfChild(voice));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
     assertTrue("The action group fills normal screens so it can stay centered.",
@@ -502,9 +520,9 @@ public class ReaderActivityTest
     assertEquals("The action group can exceed narrow screens without clipping.",
         ViewGroup.LayoutParams.WRAP_CONTENT, actions.getLayoutParams().width);
     Application application = RuntimeEnvironment.getApplication();
-    int[] voiceTaps = {0};
+    int[] quickActions = {0, 0};
     Keyboard2.wire_reader_quick_shortcuts(application, transport,
-        () -> voiceTaps[0]++);
+        () -> quickActions[0]++, () -> quickActions[1]++);
     assertTrue("The Settings shortcut must handle a tap.", settings.performClick());
     Intent settingsIntent = shadowOf(application).getNextStartedActivity();
     assertNotNull("The Settings shortcut must launch a destination.",
@@ -514,8 +532,25 @@ public class ReaderActivityTest
         settingsIntent.getComponent().getClassName());
     assertTrue("Launching Settings from the IME service requires a new task.",
         (settingsIntent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
+    assertTrue("Fix Grammar must handle a tap.", fixGrammar.performClick());
+    assertEquals(1, quickActions[1]);
     assertTrue("The Voice shortcut must handle a tap.", voice.performClick());
-    assertEquals(1, voiceTaps[0]);
+    assertEquals(1, quickActions[0]);
+    Intent photoPicker = ImageAttachmentPickerActivity.pickerIntent(35);
+    assertEquals(android.provider.MediaStore.ACTION_PICK_IMAGES,
+        photoPicker.getAction());
+    assertEquals("image/*", photoPicker.getType());
+    assertTrue("The photo picker receives temporary read access.",
+        (photoPicker.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0);
+    Intent documentPicker =
+        ImageAttachmentPickerActivity.pickerIntent(32);
+    assertEquals(Intent.ACTION_OPEN_DOCUMENT, documentPicker.getAction());
+    assertTrue("The legacy picker only exposes openable documents.",
+        documentPicker.hasCategory(Intent.CATEGORY_OPENABLE));
+    assertEquals("image/*", documentPicker.getType());
+    assertTrue("The document picker can retain read access.",
+        (documentPicker.getFlags() &
+          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0);
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     View speedRow = transport.findViewById(

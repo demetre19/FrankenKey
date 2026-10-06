@@ -312,13 +312,13 @@ public final class GrammarDiffView extends LinearLayout
         String replacement = corrected.substring(seg.repStart, seg.repEnd);
         if (!revalidateSegment(connection, base + seg.start, expected))
         {
-          rollback(connection, original, applied);
+          rollback(connection, original, base, applied);
           return false;
         }
         if (!connection.setSelection(base + seg.start, base + seg.end)
             || !connection.commitText(replacement, 1))
         {
-          rollback(connection, original, applied);
+          rollback(connection, original, base, applied);
           return false;
         }
         applied.add(new int[]{ base + seg.start, base + seg.end,
