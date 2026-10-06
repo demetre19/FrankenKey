@@ -2,5 +2,6 @@
   {"content": "Run ./gradlew testDebugUnitTest on merged tip", "status": "completed"},
   {"content": "Run ./gradlew assembleDebug on merged tip", "status": "completed"},
   {"content": "Write verdict report to reports/VER-S1-typing-intelligence-2026-10-06.md", "status": "completed"},
-  {"content": "Notify boss + prd_step done", "status": "in_progress"}
+  {"content": "Notify boss + prd_step done", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}
 ]}
