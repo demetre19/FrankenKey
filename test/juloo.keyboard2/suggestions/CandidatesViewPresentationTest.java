@@ -62,7 +62,8 @@ public class CandidatesViewPresentationTest
     CandidatesView view = candidatesView(context);
     Decoder.Result result = result("ca", 11);
     SharedDecoder.Presentation ready = SharedDecoder.Presentation.ready(
-        1, result, SharedDecoder.Presentation.Feedback.NONE, null);
+        1, result, SharedDecoder.Presentation.Feedback.NONE, null,
+        null, -1, -1);
 
     view.set_decoder_state(ready);
     TextView middle = view.findViewById(R.id.candidates_middle);
@@ -92,7 +93,7 @@ public class CandidatesViewPresentationTest
     Decoder.Result result = result("cazoo", 12);
 
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.NONE, null));
+          SharedDecoder.Presentation.Feedback.NONE, null, null, -1, -1));
     TextView middle = view.findViewById(R.id.candidates_middle);
     TextView left = view.findViewById(R.id.candidates_left);
 
@@ -116,7 +117,7 @@ public class CandidatesViewPresentationTest
     CandidatesView view = candidatesView(context);
     Decoder.Result result = result("ca", 21);
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.NONE, null));
+          SharedDecoder.Presentation.Feedback.NONE, null, null, -1, -1));
     TextView middle = view.findViewById(R.id.candidates_middle);
     middle.performClick();
     int calls = _handler.enteredCalls;
@@ -151,7 +152,7 @@ public class CandidatesViewPresentationTest
     TextView left = view.findViewById(R.id.candidates_left);
 
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.LEARNED, "cazoo"));
+          SharedDecoder.Presentation.Feedback.LEARNED, "cazoo", null, -1, -1));
     assertEquals("Learning feedback must keep the typed token visible.",
         "cazoo", middle.getText().toString());
     assertEquals("Learning feedback must be immediate and explicit.",
@@ -166,7 +167,7 @@ public class CandidatesViewPresentationTest
         actionCalls, _handler.actionCalls);
 
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.FORGOT, "cazoo"));
+          SharedDecoder.Presentation.Feedback.FORGOT, "cazoo", null, -1, -1));
     assertEquals("Unlearning feedback must use the distinct forgot state.",
         "📖−", left.getText().toString());
     assertEquals("Forgot cazoo", left.getContentDescription().toString());
@@ -186,7 +187,7 @@ public class CandidatesViewPresentationTest
     assertEquals("The decoder must retain two ranked pages for the suggestion strip.",
         6, result.words().length);
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.NONE, null));
+          SharedDecoder.Presentation.Feedback.NONE, null, null, -1, -1));
     TextView middle = view.findViewById(R.id.candidates_middle);
 
     long now = android.os.SystemClock.uptimeMillis();
@@ -230,7 +231,8 @@ public class CandidatesViewPresentationTest
     View rightSeparator = view.findViewById(R.id.candidates_separator_right);
 
     view.set_decoder_state(SharedDecoder.Presentation.ready(1,
-          result("ca", 41), SharedDecoder.Presentation.Feedback.NONE, null));
+          result("ca", 41), SharedDecoder.Presentation.Feedback.NONE, null,
+          null, -1, -1));
 
     assertEquals("Three visible word slots require the left boundary separator.",
         View.VISIBLE, leftSeparator.getVisibility());
@@ -243,7 +245,7 @@ public class CandidatesViewPresentationTest
           new Decoder.DecoderConfig(true, false, true, true)),
         null, null, null, PersonalizationStore.empty(), false);
     view.set_decoder_state(SharedDecoder.Presentation.ready(1, oneWord,
-          SharedDecoder.Presentation.Feedback.NONE, null));
+          SharedDecoder.Presentation.Feedback.NONE, null, null, -1, -1));
     assertEquals("A lone entered literal still has a visible boundary before its learn action.",
         View.VISIBLE, leftSeparator.getVisibility());
     assertEquals("No right separator may appear without a second word candidate.",

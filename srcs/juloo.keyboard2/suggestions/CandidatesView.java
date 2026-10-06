@@ -38,9 +38,15 @@ public class CandidatesView extends LinearLayout
   String[][] _page_items = new String[WORD_PAGES][WORDS_PER_PAGE];
   CandidateRole[][] _page_roles =
     new CandidateRole[WORD_PAGES][WORDS_PER_PAGE];
+  /** One [Decoder.CandidateTicket] per visible candidate, captured when a
+      READY presentation renders and bound to a finger at ACTION_DOWN. */
+  Decoder.CandidateTicket[][] _page_tickets =
+    new Decoder.CandidateTicket[WORD_PAGES][WORDS_PER_PAGE];
+  Decoder.CandidateTicket _emoji_ticket = null;
+  /** Ticket captured at ACTION_DOWN for the slot under the finger. */
+  Decoder.CandidateTicket _down_ticket = null;
   int _page = 0;
   Decoder.RequestKey _request_key = null;
-
 
   /** Text views showing the candidates in [_items]. Text views visibility is
       set to [GONE] when there are less than [NUM_CANDIDATES] suggestions. */
@@ -88,6 +94,8 @@ public class CandidatesView extends LinearLayout
           pinned.surface;
         _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
           pinned.role;
+        _page_tickets[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+          make_ticket(state, pinned.surface, pinned.role);
         count++;
       }
     for (int i = 0; i < words.length && count < WORDS_PER_PAGE * WORD_PAGES;
@@ -97,13 +105,21 @@ public class CandidatesView extends LinearLayout
         words[i].surface;
       _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
         display_role(words[i].role);
+      _page_tickets[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+        make_ticket(state, words[i].surface, _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE]);
       count++;
     }
     expose_learn_action(words);
     expose_learn_feedback(state);
+    for (int slot = count; slot < WORDS_PER_PAGE * WORD_PAGES; slot++)
+      _page_tickets[slot / WORDS_PER_PAGE][slot % WORDS_PER_PAGE] = null;
+    _page_tickets[0][2] = _page_items[0][2] == null ? null
+      : make_ticket(state, _page_items[0][2], _page_roles[0][2]);
     _items[3] = state.result.emoji;
     _roles[3] = state.result.emoji == null
       ? CandidateRole.NONE : CandidateRole.EMOJI;
+    _emoji_ticket = _items[3] == null ? null
+      : make_ticket(state, _items[3], _roles[3]);
     _request_key = state.key;
     render_page(0, false);
     if (count != 0 && _status_no_dict != null)
@@ -132,9 +148,28 @@ public class CandidatesView extends LinearLayout
       separator.setVisibility(visible ? View.VISIBLE : View.GONE);
   }
 
+  /** Immutable acceptance ticket for one rendered candidate. */
+  static Decoder.CandidateTicket make_ticket(
+      SharedDecoder.Presentation state, String surface, CandidateRole role)
+  {
+    return new Decoder.CandidateTicket(state.key, state.connectionId,
+        state.word, state.absoluteWordStart, surface, role,
+        android.os.SystemClock.uptimeMillis());
+  }
+
+  /** The live ticket for an item index on the current page. */
+  Decoder.CandidateTicket ticket_for(int item_index)
+  {
+    if (item_index == 3)
+      return _emoji_ticket;
+    return _page_tickets[_page][item_index];
+  }
+
+
 
   void clear_candidates()
   {
+    _emoji_ticket = null;
     _request_key = null;
     _page = 0;
     for (int page = 0; page < WORD_PAGES; page++)
@@ -142,6 +177,7 @@ public class CandidatesView extends LinearLayout
       {
         _page_items[page][slot] = null;
         _page_roles[page][slot] = CandidateRole.NONE;
+        _page_tickets[page][slot] = null;
       }
     for (int i = 0; i < _item_views.length; i++)
     {
@@ -424,6 +460,7 @@ public class CandidatesView extends LinearLayout
               case MotionEvent.ACTION_DOWN:
                 _down_x = event.getX();
                 _down_y = event.getY();
+                _down_ticket = ticket_for(item_index);
                 return false;
               case MotionEvent.ACTION_UP:
                 float dx = event.getX() - _down_x;
@@ -443,6 +480,9 @@ public class CandidatesView extends LinearLayout
                   ? CandidateRole.LEARN_ACTION : role;
                 dispatch_accept(item_index, dispatch);
                 return true;
+              case MotionEvent.ACTION_CANCEL:
+                _down_ticket = null;
+                return false;
               default:
                 return false;
             }

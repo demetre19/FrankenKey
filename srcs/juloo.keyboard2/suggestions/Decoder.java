@@ -2132,7 +2132,7 @@ public final class Decoder
     }
   }
 
-  public static final class RequestKey
+  public static class RequestKey
   {
     public final long sessionEpoch;
     public final long requestGeneration;
@@ -2183,6 +2183,87 @@ public final class Decoder
       hash = hash * 31 + configEpoch;
       hash = hash * 31 + personalizationEpoch;
       return (int)(hash ^ (hash >>> 32));
+    }
+  }
+
+  /**
+   * Content-validated acceptance ticket for one strip slot, captured when a
+   * READY presentation is rendered and bound to the slot under the finger at
+   * ACTION_DOWN. The source request's [requestGeneration], [wordRevision] and
+   * [personalizationEpoch] are deliberately excluded from acceptance: a tap is
+   * accepted against the live editor state described by the retained fields,
+   * never against request recency.
+   *
+   * Tickets are immutable except for the consumed marker. A ticket is consumed
+   * on first dispatch; every further touch or click against it is ignored, so
+   * duplicate onTouch/onClick pairs, double taps and multi-finger taps produce
+   * exactly one acceptance.
+   */
+  public static final class CandidateTicket extends RequestKey
+  {
+    /** Minimum interval between two distinct accepted tickets; a fresh ticket
+        dispatched sooner is a duplicate of the same press. */
+    public static final long REISSUE_MS = 300L;
+
+    /** Identity token of the input connection the ticket was rendered under. */
+    public final int connectionId;
+    /** Exact editor word at render time. */
+    public final String word;
+    /** Cursor position relative to the end of [word] in UTF-16 units. */
+    public final int cursorRelative;
+    public final boolean hasSelection;
+    /** Absolute start of the word slot, or a negative value when unreadable. */
+    public final long absoluteWordStart;
+    public final String candidate;
+    public final CandidateRole role;
+    /** Key of the request whose result produced this candidate. */
+    public final RequestKey sourceRequestKey;
+    /** Creation time on the main-thread clock, for reissue discrimination. */
+    public final long createdAt;
+
+    private boolean _consumed = false;
+
+    public CandidateTicket(RequestKey source, int connectionId_,
+        CurrentlyTypedWord.Snapshot snapshot, long absoluteWordStart_,
+        String candidate_, CandidateRole role_, long createdAt_)
+    {
+      super(source.sessionEpoch, source.requestGeneration,
+          source.wordRevision, source.resourceEpoch, source.layoutEpoch,
+          source.configEpoch, source.personalizationEpoch);
+      if (source == null || snapshot == null || candidate_ == null
+          || role_ == null)
+        throw new IllegalArgumentException("ticket fields must not be null");
+      connectionId = connectionId_;
+      word = snapshot.word;
+      cursorRelative = snapshot.cursorRelative;
+      hasSelection = snapshot.hasSelection;
+      absoluteWordStart = absoluteWordStart_;
+      candidate = candidate_;
+      role = role_;
+      sourceRequestKey = source;
+      createdAt = createdAt_;
+    }
+
+    /** Consume the ticket on first use; returns true exactly once. */
+    public boolean consume()
+    {
+      if (_consumed)
+        return false;
+      _consumed = true;
+      return true;
+    }
+
+    /** Whether the cursor still sits in this ticket's word slot. */
+    public boolean same_word_slot(CurrentlyTypedWord.Snapshot now,
+        long absoluteWordStartNow)
+    {
+      if (now == null || now.hasSelection)
+        return false;
+      if (absoluteWordStart >= 0 && absoluteWordStartNow >= 0)
+        return absoluteWordStart == absoluteWordStartNow;
+      // Fallback when the absolute position is unreadable: one word must still
+      // extend or edit the other with no separator typed in between.
+      return now.word.startsWith(word) || word.startsWith(now.word);
     }
   }
 
