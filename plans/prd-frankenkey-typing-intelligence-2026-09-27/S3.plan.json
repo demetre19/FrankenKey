@@ -1,0 +1,1309 @@
+{
+ "backend_template": "python3 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py {worktree} {brief} {lane_id}",
+ "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect",
+ "max_parallel": 3,
+ "driver": "code",
+ "base_sha": "e061034b742d589189789867d9c445f2a4b074e6",
+ "context_paths": [
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/00-Overview-and-Philosophy.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/A-Suggestion-Strip-Reliability.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/B-Email-Memory-and-Domains.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/C-Adaptive-Learning.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/D-Power-Typing.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/plan/PRD-FrankenKey-Typing-Intelligence-2026-09-27/E-Grammar.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/PRD-FrankenKey-TI-A-Strip-Reliability-2026-09-27.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/PRD-FrankenKey-TI-B-Email-Memory-2026-09-27.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/PRD-FrankenKey-TI-C-Adaptive-Learning-2026-09-27.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/PRD-FrankenKey-TI-D-Power-Typing-2026-09-27.md",
+  "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey/PRD-FrankenKey-TI-E-Grammar-2026-09-27.md"
+ ],
+ "evidence": {
+  "research": "RESEARCH-typing-intelligence-2026-09-27.md",
+  "anchors": [
+   "srcs/juloo.keyboard2/suggestions/CandidatesView.java:81",
+   "srcs/juloo.keyboard2/suggestions/SharedDecoder.java:1093",
+   "srcs/juloo.keyboard2/KeyEventHandler.java:764",
+   "srcs/juloo.keyboard2/KeyEventHandler.java:2340",
+   "srcs/juloo.keyboard2/EditorConfig.java:183",
+   "srcs/juloo.keyboard2/CurrentlyTypedWord.java:455",
+   "srcs/juloo.keyboard2/Pointers.java:255",
+   "srcs/juloo.keyboard2/suggestions/Decoder.java:498",
+   "srcs/juloo.keyboard2/suggestions/PersonalizationStore.java:418",
+   "srcs/juloo.keyboard2/SettingsBackup.java:92",
+   "res/xml/bottom_row.xml:6",
+   "res/xml/clean_text.xml:41",
+   "srcs/juloo.keyboard2/Keyboard2.java:484"
+  ]
+ },
+ "protected_paths": {
+  "gradlew*": null,
+  "gradlew.bat": null,
+  "build.gradle.kts": null,
+  "settings.gradle.kts": null,
+  "gradle.properties": null,
+  "local.properties": null,
+  "debug.keystore": null
+ },
+ "stop_conditions": [
+  {
+   "match": "SDK location not found",
+   "action": "park"
+  },
+  {
+   "match": "ANDROID_HOME",
+   "action": "park"
+  },
+  {
+   "match": "environment defect",
+   "action": "park"
+  },
+  {
+   "match": "emulator not reachable",
+   "action": "park"
+  },
+  {
+   "match": "emulator: ERROR",
+   "action": "park"
+  },
+  {
+   "match": "adb: device offline",
+   "action": "park"
+  },
+  {
+   "match": "no devices/emulators found",
+   "action": "park"
+  },
+  {
+   "match": "Connection refused",
+   "action": "park"
+  },
+  {
+   "match": "No route to host",
+   "action": "park"
+  },
+  {
+   "match": "Operation timed out",
+   "action": "park"
+  },
+  {
+   "match": "Network is unreachable",
+   "action": "park"
+  }
+ ],
+ "gate_matrix": [
+  {
+   "gate_id": "g1-unit-suite",
+   "argv": [
+    "./gradlew",
+    "--no-daemon",
+    "--no-configuration-cache",
+    "testDebugUnitTest"
+   ],
+   "cwd": ".",
+   "covered_paths": [
+    "srcs/juloo.keyboard2/",
+    "test/juloo.keyboard2/",
+    "res/xml/",
+    "res/values/",
+    "AndroidManifest.xml",
+    "assets/"
+   ],
+   "expected_exit": 0,
+   "integration_only": false,
+   "timeout_s": 3600
+  },
+  {
+   "gate_id": "g2-assemble-debug",
+   "argv": [
+    "./gradlew",
+    "--no-daemon",
+    "--no-configuration-cache",
+    "assembleDebug"
+   ],
+   "cwd": ".",
+   "covered_paths": [
+    "srcs/",
+    "res/",
+    "AndroidManifest.xml",
+    "assets/"
+   ],
+   "expected_exit": 0,
+   "integration_only": true,
+   "timeout_s": 2400
+  },
+  {
+   "gate_id": "g3-lint-vital",
+   "argv": [
+    "./gradlew",
+    "--no-daemon",
+    "--no-configuration-cache",
+    "lintVitalRelease"
+   ],
+   "cwd": ".",
+   "covered_paths": [
+    "srcs/",
+    "res/",
+    "AndroidManifest.xml"
+   ],
+   "expected_exit": 0,
+   "integration_only": true,
+   "timeout_s": 2400
+  }
+ ],
+ "lanes": [
+  {
+   "id": "b-token",
+   "title": "B-F1/F2 — EmailToken + EmailAddressValidator (60+ cases)",
+   "depends_on": [],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailToken.java",
+    "srcs/juloo.keyboard2/suggestions/email/EmailAddressValidator.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "EmailToken/EmailAddressValidator per B-F1/B-F2 including: exactly-one-@ with non-empty local part; two-@/mention/mid-token/whitespace → no context; domain label + TLD rules; NFC + lowercase-domain normalization; ≥60 parser/validator cases."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-suppress",
+   "title": "B-F7 — autocorrect suppression for typed emails (failing-test-first)",
+   "depends_on": [
+    "b-token"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/KeyEventHandlerEmailSuppressionTest.java"
+   ],
+   "acceptance": [
+    "B-F7 autocorrect suppression: name@gmial.com / first.last@company.co.uk / a+b@x.io typed in an email field and in prose stay byte-identical through space and '.'; implemented failing-test-first, before other B work."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-store",
+   "title": "B-F3 — EmailMemoryStore (frecency, eviction, corrupt-safe, debounced)",
+   "depends_on": [
+    "b-suppress"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailMemoryStore.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "EmailMemoryStore: email_memory named prefs in credential-protected storage (not direct-boot), JSON v:1, ≤200 entries with lowest-frecency/oldest-lastUsedDay eviction, corrupt JSON → safe empty + rewritten on save, lazy worker-side load, apply() debounced 2 s, unavailable-before-unlock without throwing and works after ACTION_USER_UNLOCKED."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-observer",
+   "title": "B-F4 — email learning events (FIELD/PROSE/SELECTED) + editor guards",
+   "depends_on": [
+    "b-store"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/email/",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "Learning events per B-F4: FIELD +2 on finish with whole-field valid address (skip pre-filled unchanged text), PROSE +1 on separator completion, SELECTED +2; never in password/numeric/phone/unknown/terminal or NO_PERSONALIZED_LEARNING editors."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-source",
+   "title": "B-F5 — EmailCandidateSource (field recall, prose slot-3, post-@ ordering, <=1 ms)",
+   "depends_on": [
+    "b-observer"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailCandidateSource.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java",
+    "srcs/juloo.keyboard2/Keyboard2.java",
+    "res/values/email_domains.xml",
+    "res/values-en-rAU/email_domains.xml",
+    "res/values-en-rGB/email_domains.xml",
+    "res/values-en-rUS/email_domains.xml",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "EmailCandidateSource per B-F5: email-field recall + prefix narrowing; prose ≥3-char slot-3-only recall; post-@ ordering saved addresses ≥3 → user domains by summed frecency → built-ins resource order, deduped, cap 6, exact-domain hidden; ≤1 ms budget test; email context replaces ranked words per spec."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-handlers",
+   "title": "B-F6 — acceptance handlers (verify-then-batch, exactly-once, no evidence)",
+   "depends_on": [
+    "b-source"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "Acceptance handlers per B-F6: verify-then-batch replace for domains/addresses, never a trailing space, Lane A ticket exactly-once + reject cue, no learning/calibration evidence."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-backup",
+   "title": "B — backup/data-extraction exclusions + Clear-typing-data coverage",
+   "depends_on": [
+    "b-handlers"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/SettingsBackup.java",
+    "res/xml/backup_rules.xml",
+    "res/xml/data_extraction_rules.xml",
+    "res/AGENTS.md",
+    "test/juloo.keyboard2/SettingsBackupTest.java",
+    "srcs/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "Backup exclusions in backup_rules.xml and both data_extraction_rules.xml domains; SettingsBackup test asserts no email_memory export; Clear typing data covers emails."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-settings",
+   "title": "B — Smart typing Email switches + Keep/Delete dialog + Learned Words Emails tab",
+   "depends_on": [
+    "b-backup"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/learned/LearnedEmailsTab.java",
+    "srcs/juloo.keyboard2/SettingsActivity.java",
+    "res/xml/settings.xml",
+    "res/values/strings.xml",
+    "test/juloo.keyboard2/LearnedWordsActivityTest.java",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md",
+    "srcs/juloo.keyboard2/AGENTS.md"
+   ],
+   "acceptance": [
+    "Smart typing → Email has ti_email_memory_enabled + ti_email_domain_suggestions (default ON) with the spec'd summaries; Remember-OFF shows Keep/Delete dialog; Learned Words Emails tab lists/searches/deletes with confirmations."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-field",
+   "title": "B-F9 — should_use_email_memory field detection (soft-field strict hints)",
+   "depends_on": [
+    "b-settings"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/EditorConfig.java",
+    "test/juloo.keyboard2/EditorConfigTest.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "acceptance": [
+    "should_use_email_memory per B-F9 including soft-field strict hint regex ('Email subject' is NOT an email field; 'Email' is a soft field keeping word suggestions)."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "b-replay",
+   "title": "B5 — replay scripts + emulator proof (needs S2 a-replay DSL — satisfied by wave ordering)",
+   "depends_on": [
+    "b-field"
+   ],
+   "judge": false,
+   "write_paths": [
+    "androidTest/juloo.keyboard2/ImeReplayInstrumentedTest.java",
+    "androidTest/juloo.keyboard2/replay/",
+    "test/juloo.keyboard2/replay/"
+   ],
+   "acceptance": [
+    "B5 replay scripts + emulator proof (Chrome sign-in, WebView email field, Messages) with screenshots in the lane report; AGENTS.md lines updated same-commit."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "c3-typed",
+   "title": "C3 — KEEP_TYPED/SAVE_TYPED typed-word flow",
+   "depends_on": [
+    "b-replay"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/suggestions/",
+    "res/values/strings.xml"
+   ],
+   "acceptance": [
+    "C3: unknown typed word shows the literal in quotes (KEEP_TYPED) in the literal slot instead of 📖+; first tap commits literal+space with no autocorrect this instance and counts an explicit signal; strip then shows 'Tap again to save \"w\"' (SAVE_TYPED) until next key; second tap teaches immediately then shows 📖✓; recognized literals keep 📖− swipe-up; OFF state restores today's 📖+/📖−/dialog behavior."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "c4-remove",
+   "title": "C4 — long-press remove + blocked-suggestions store",
+   "depends_on": [
+    "c3-typed"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/PersonalizationStore.java",
+    "test/juloo.keyboard2/suggestions/",
+    "res/values/strings.xml"
+   ],
+   "acceptance": [
+    "C4: long-press ≥450 ms below tap slop on any suggestion switches the strip (no dialog) to Remove \"word\"? · Remove · Cancel for 4 s; Remove unlearns taught/auto/provisional words (pairs+correction evidence included) or blocks dictionary words via typing_model_blocked_suggestions ≤512; blocked words are never suggested/used as correction targets but are accepted when typed exactly and never 'corrected'; UNLEARNED_FEEDBACK shown; OFF state: long-press does nothing."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "c7-tabs",
+   "title": "C7 — Learned Words tab host + tier badges + clear-tab + per-row delete",
+   "depends_on": [
+    "c4-remove"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/LearnedWordsActivity.java",
+    "srcs/juloo.keyboard2/learned/",
+    "res/layout/learned_words*.xml",
+    "res/values/strings.xml",
+    "test/juloo.keyboard2/LearnedWordsActivityTest.java",
+    "srcs/juloo.keyboard2/AGENTS.md",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md"
+   ],
+   "acceptance": [
+    "C7: Learned Words tab host gains Words (tier badges Taught/Learned/New), Corrections, Word pairs, Blocked corrections, Blocked suggestions tabs — each with search, per-row delete+confirm, clear-tab+confirm; Clear typing data clears all tabs except Shortcuts with the confirming text.",
+    "All C3/C4/C7 tests green plus the all-OFF regression suite unchanged (co-owned with c-learn)."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "c-docs",
+   "title": "C — PRODUCT.md design-principles bullet + AGENTS.md undo/contacts lines (doc-only)",
+   "depends_on": [
+    "c7-tabs"
+   ],
+   "judge": false,
+   "write_paths": [
+    "PRODUCT.md",
+    "srcs/juloo.keyboard2/AGENTS.md"
+   ],
+   "acceptance": [
+    "PRODUCT.md design-principles bullet rewritten to the C-spec wording; srcs/juloo.keyboard2/AGENTS.md backspace-settles line rewritten for the undo window; Contacts permission scope added; all same-commit."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "d1b-expansion",
+   "title": "D1b — ShortcutCandidateSource + expansion via S2 UndoWindow (cross-wave dep — wave ordering)",
+   "depends_on": [
+    "c-docs"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/shortcuts/ShortcutCandidateSource.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java",
+    "test/juloo.keyboard2/ShortcutExpansionTest.java",
+    "androidTest/juloo.keyboard2/ImeReplayInstrumentedTest.java",
+    "res/values/strings.xml"
+   ],
+   "acceptance": [
+    "D1b: exact trigger (case-insensitive) pins expansion first as SHORTCUT (label truncated 24 chars + …); tap replaces trigger, newline-ending expansions get no trailing space; separator expansion only with Autocorrect ON in autocorrect-eligible editors and always opens C1's UndoWindow (kind=SHORTCUT) even when ti_learn_backspace_undo is OFF; never in email/URI/password/terminal/email-token; no C learning evidence; replay 'omw␣ → On my way! ␣, ⌫ → omw' green."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "d3-cycling",
+   "title": "D3 — space-bar correction cycling inside S2 undo window (cross-wave dep — wave ordering)",
+   "depends_on": [
+    "d1b-expansion"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/Pointers.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/CorrectionCycleTest.java",
+    "test/juloo.keyboard2/SpacebarGestureLayoutTest.java",
+    "res/xml/settings.xml",
+    "res/values/strings.xml"
+   ],
+   "acceptance": [
+    "D3: inside C1's undo window only, a raw straight-down space swipe (S ±1 of 16, pre-snap) cycles target → alt2 → … → source → target ≤6 with per-step verify of 'currentAlt + separator', one batch edit, window kept open with updated target, strip highlight; outside the window all swipes resolve exactly as today (dense switch_backward; clean corner snap); diagonal swipes keep corner actions inside the window; layout XML unedited; cycling to the literal records a C1 veto.",
+    "SpacebarGestureLayoutTest: inside-window SW/SE diagonals still reach emoji/GIF; outside-window dense/clean resolution unchanged; any other key closes the window."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "d4-completion",
+   "title": "D4 — CompletionPolicy + COMPLETION slot render (needs S2 a-ticket rules — wave ordering)",
+   "depends_on": [
+    "d3-cycling"
+   ],
+   "judge": false,
+   "write_paths": [
+    "srcs/juloo.keyboard2/suggestions/CompletionPolicy.java",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java",
+    "test/juloo.keyboard2/CompletionPolicyTest.java",
+    "srcs/juloo.keyboard2/AGENTS.md",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md",
+    "res/values/strings.xml"
+   ],
+   "acceptance": [
+    "D4: CompletionPolicy marks top candidate only when prefix ≥2 code points, candidate starts-with prefix (case-insensitive) and ≥2 longer, isn't the literal, beats runner-up by COMPLETION_MARGIN_Q8 (start 1.6×), and prefix isn't a recognized frequent complete word; COMPLETION slot renders prefix + 55%-alpha suffix with 'Complete to X' accessibility; tap accepts once per Lane A rules; never auto-applies on space; follows master Suggestions switch; no in-editor ghost text; replay-corpus precision ≥95%.",
+    "srcs/juloo.keyboard2/AGENTS.md shortcut/cycle/completion bullet + suggestions/AGENTS.md COMPLETION/CompletionPolicy/ShortcutCandidateSource precedence lines same-commit."
+   ],
+   "non_goals": [
+    "Work outside this lane's write_paths",
+    "Cross-lane refactors or shared-module edits another lane owns",
+    "Unrelated lint/style churn outside the declared home",
+    "Changes to other lanes in this plan or their dependencies"
+   ]
+  },
+  {
+   "id": "ver-s3",
+   "title": "S3 VER — email memory + learned-strip + power gestures on merged main (gradlew green, build, end-to-end smoke)",
+   "depends_on": [
+    "d4-completion"
+   ],
+   "judge": false,
+   "write_paths": [
+    "reports/VER-S3-typing-intelligence-2026-10-06.md",
+    "test/juloo.keyboard2/ver/",
+    "test/juloo.keyboard2/ver/"
+   ],
+   "acceptance": [
+    "Environment: sdk.dir/ANDROID_HOME -> /Users/apple/Library/Android/sdk ONLY (local Android Studio minimal profile, no phone needed). The code checkout's local.properties is gitignored and may carry a dead /Volumes/TheHoneyBadger sdk.dir — do NOT park on a fixable path: write local.properties sdk.dir=/Users/apple/Library/Android/sdk or export ANDROID_HOME=/Users/apple/Library/Android/sdk and continue. Any /Volumes/* reference in a file is a defect to fix, never a dependency.",
+    "On the merged target branch (all S3 build lanes landed): run ./gradlew --no-daemon --no-configuration-cache testDebugUnitTest and ./gradlew --no-daemon --no-configuration-cache assembleDebug; both must exit 0 on the lane-free merged tip.",
+    "If a gradle step requires an emulator or device and none is reachable (no devices/emulators found, emulator: ERROR, adb: device offline), the lane PARKS via stop_conditions — phone/emulator steps are the only park-worthy blocker; unit-test and assemble failures are lane defects to report, not park events.",
+    "Write the verdict to reports/VER-S3-typing-intelligence-2026-10-06.md: gate receipts (gradle exit codes + failing test ids if any), merged-tip sha, pass/fail per build lane's acceptance spot-checks, and a final VERDICT: GO/NO-GO line for the wave.",
+    "Report the verdict to the boss inbox (pane w2S:p9Q): crew notify boss 'VER S3: GO|NO-GO — <one-line reason>' — never dispatch fixes yourself."
+   ],
+   "non_goals": [
+    "Fixing failing build-lane code — defects go to the boss inbox, the wave's lanes own the fix",
+    "Emulator/device-level testing beyond reachability check — park on unreachable",
+    "Work outside this lane's write_paths"
+   ]
+  }
+ ],
+ "shared_paths": [
+  {
+   "lanes": [
+    "b-token",
+    "b-store"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before b-store): b-token owns B-F1/F2 regions; b-store owns B-F3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "b-observer"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailAddressValidator.java",
+    "srcs/juloo.keyboard2/suggestions/email/EmailToken.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before b-observer): b-token owns B-F1/F2 regions; b-observer owns B-F4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "b-source"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before b-source): b-token owns B-F1/F2 regions; b-source owns B-F5 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "b-handlers"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before b-handlers): b-token owns B-F1/F2 regions; b-handlers owns B-F6 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "b-backup"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailAddressValidator.java",
+    "srcs/juloo.keyboard2/suggestions/email/EmailToken.java"
+   ],
+   "why": "Ordered pair (b-token lands before b-backup): b-token owns B-F1/F2 regions; b-backup owns B regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "b-field"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before b-field): b-token owns B-F1/F2 regions; b-field owns B-F9 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "c3-typed"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before c3-typed): b-token owns B-F1/F2 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-token",
+    "c4-remove"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-token lands before c4-remove): b-token owns B-F1/F2 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "b-observer"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before b-observer): b-suppress owns B-F7 regions; b-observer owns B-F4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "b-handlers"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before b-handlers): b-suppress owns B-F7 regions; b-handlers owns B-F6 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "c3-typed"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before c3-typed): b-suppress owns B-F7 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "c4-remove"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before c4-remove): b-suppress owns B-F7 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before d1b-expansion): b-suppress owns B-F7 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-suppress",
+    "d3-cycling"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-suppress lands before d3-cycling): b-suppress owns B-F7 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "b-observer"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailMemoryStore.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before b-observer): b-store owns B-F3 regions; b-observer owns B-F4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "b-source"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before b-source): b-store owns B-F3 regions; b-source owns B-F5 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "b-handlers"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before b-handlers): b-store owns B-F3 regions; b-handlers owns B-F6 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "b-backup"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailMemoryStore.java"
+   ],
+   "why": "Ordered pair (b-store lands before b-backup): b-store owns B-F3 regions; b-backup owns B regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "b-field"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before b-field): b-store owns B-F3 regions; b-field owns B-F9 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "c3-typed"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before c3-typed): b-store owns B-F3 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-store",
+    "c4-remove"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-store lands before c4-remove): b-store owns B-F3 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "b-source"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before b-source): b-observer owns B-F4 regions; b-source owns B-F5 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "b-handlers"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before b-handlers): b-observer owns B-F4 regions; b-handlers owns B-F6 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "b-backup"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before b-backup): b-observer owns B-F4 regions; b-backup owns B regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "b-field"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before b-field): b-observer owns B-F4 regions; b-field owns B-F9 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "c3-typed"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before c3-typed): b-observer owns B-F4 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "c4-remove"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-observer lands before c4-remove): b-observer owns B-F4 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-observer lands before d1b-expansion): b-observer owns B-F4 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-observer",
+    "d3-cycling"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-observer lands before d3-cycling): b-observer owns B-F4 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "b-handlers"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-source lands before b-handlers): b-source owns B-F5 regions; b-handlers owns B-F6 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "b-backup"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/email/EmailCandidateSource.java"
+   ],
+   "why": "Ordered pair (b-source lands before b-backup): b-source owns B-F5 regions; b-backup owns B regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "b-field"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-source lands before b-field): b-source owns B-F5 regions; b-field owns B-F9 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "c3-typed"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-source lands before c3-typed): b-source owns B-F5 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "c4-remove"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-source lands before c4-remove): b-source owns B-F5 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java"
+   ],
+   "why": "Ordered pair (b-source lands before d1b-expansion): b-source owns B-F5 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-source",
+    "d4-completion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java"
+   ],
+   "why": "Ordered pair (b-source lands before d4-completion): b-source owns B-F5 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "b-field"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-handlers lands before b-field): b-handlers owns B-F6 regions; b-field owns B-F9 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "c3-typed"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-handlers lands before c3-typed): b-handlers owns B-F6 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "c4-remove"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-handlers lands before c4-remove): b-handlers owns B-F6 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-handlers lands before d1b-expansion): b-handlers owns B-F6 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "d3-cycling"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (b-handlers lands before d3-cycling): b-handlers owns B-F6 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-handlers",
+    "d4-completion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java"
+   ],
+   "why": "Ordered pair (b-handlers lands before d4-completion): b-handlers owns B-F6 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "c3-typed"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (b-settings lands before c3-typed): b-settings owns B regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "c4-remove"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (b-settings lands before c4-remove): b-settings owns B regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "c7-tabs"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/AGENTS.md",
+    "srcs/juloo.keyboard2/learned/LearnedEmailsTab.java",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md",
+    "test/juloo.keyboard2/LearnedWordsActivityTest.java"
+   ],
+   "why": "Ordered pair (b-settings lands before c7-tabs): b-settings owns B regions; c7-tabs owns C7 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "c-docs"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/AGENTS.md"
+   ],
+   "why": "Ordered pair (b-settings lands before c-docs): b-settings owns B regions; c-docs owns C regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (b-settings lands before d1b-expansion): b-settings owns B regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "d3-cycling"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "res/xml/settings.xml"
+   ],
+   "why": "Ordered pair (b-settings lands before d3-cycling): b-settings owns B regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-settings",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/AGENTS.md",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md"
+   ],
+   "why": "Ordered pair (b-settings lands before d4-completion): b-settings owns B regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-field",
+    "c3-typed"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-field lands before c3-typed): b-field owns B-F9 regions; c3-typed owns C3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-field",
+    "c4-remove"
+   ],
+   "paths": [
+    "test/juloo.keyboard2/suggestions/email/"
+   ],
+   "why": "Ordered pair (b-field lands before c4-remove): b-field owns B-F9 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "b-replay",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "androidTest/juloo.keyboard2/ImeReplayInstrumentedTest.java"
+   ],
+   "why": "Ordered pair (b-replay lands before d1b-expansion): b-replay owns B5 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c3-typed",
+    "c4-remove"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "test/juloo.keyboard2/suggestions/"
+   ],
+   "why": "Ordered pair (c3-typed lands before c4-remove): c3-typed owns C3 regions; c4-remove owns C4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c3-typed",
+    "c7-tabs"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (c3-typed lands before c7-tabs): c3-typed owns C3 regions; c7-tabs owns C7 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c3-typed",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java"
+   ],
+   "why": "Ordered pair (c3-typed lands before d1b-expansion): c3-typed owns C3 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c3-typed",
+    "d3-cycling"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (c3-typed lands before d3-cycling): c3-typed owns C3 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c3-typed",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java"
+   ],
+   "why": "Ordered pair (c3-typed lands before d4-completion): c3-typed owns C3 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c4-remove",
+    "c7-tabs"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (c4-remove lands before c7-tabs): c4-remove owns C4 regions; c7-tabs owns C7 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c4-remove",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (c4-remove lands before d1b-expansion): c4-remove owns C4 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c4-remove",
+    "d3-cycling"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (c4-remove lands before d3-cycling): c4-remove owns C4 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c4-remove",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/suggestions/CandidatesView.java"
+   ],
+   "why": "Ordered pair (c4-remove lands before d4-completion): c4-remove owns C4 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c7-tabs",
+    "c-docs"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/AGENTS.md"
+   ],
+   "why": "Ordered pair (c7-tabs lands before c-docs): c7-tabs owns C7 regions; c-docs owns C regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c7-tabs",
+    "d1b-expansion"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (c7-tabs lands before d1b-expansion): c7-tabs owns C7 regions; d1b-expansion owns D1b regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c7-tabs",
+    "d3-cycling"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (c7-tabs lands before d3-cycling): c7-tabs owns C7 regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c7-tabs",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/AGENTS.md",
+    "srcs/juloo.keyboard2/suggestions/AGENTS.md"
+   ],
+   "why": "Ordered pair (c7-tabs lands before d4-completion): c7-tabs owns C7 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "c-docs",
+    "d4-completion"
+   ],
+   "paths": [
+    "srcs/juloo.keyboard2/AGENTS.md"
+   ],
+   "why": "Ordered pair (c-docs lands before d4-completion): c-docs owns C regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "d1b-expansion",
+    "d3-cycling"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/KeyEventHandler.java"
+   ],
+   "why": "Ordered pair (d1b-expansion lands before d3-cycling): d1b-expansion owns D1b regions; d3-cycling owns D3 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "d1b-expansion",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml",
+    "srcs/juloo.keyboard2/suggestions/SharedDecoder.java"
+   ],
+   "why": "Ordered pair (d1b-expansion lands before d4-completion): d1b-expansion owns D1b regions; d4-completion owns D4 regions — disjoint within the shared files."
+  },
+  {
+   "lanes": [
+    "d3-cycling",
+    "d4-completion"
+   ],
+   "paths": [
+    "res/values/strings.xml"
+   ],
+   "why": "Ordered pair (d3-cycling lands before d4-completion): d3-cycling owns D3 regions; d4-completion owns D4 regions — disjoint within the shared files."
+  }
+ ]
+}
