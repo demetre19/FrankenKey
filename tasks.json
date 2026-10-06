@@ -1,9 +1,8 @@
 {"tasks": [
-  {"content": "Restore missing resources: res/layout/grammar_diff_view.xml + reader_ai_action_fix_grammar string", "status": "completed"},
-  {"content": "Wire GrammarCoordinator into Keyboard2 suggestion strip (boundary pump, Fix/Ignore/⋯/Undo)", "status": "completed"},
-  {"content": "Wire FIX_GRAMMAR action flow (AiGrammarFixer + GrammarDiffView host) into keyboard", "status": "completed"},
-  {"content": "Settings toggle for offline grammar rules in res/xml/settings.xml", "status": "completed"},
-  {"content": "Docs: grammar/AGENTS.md, srcs DOX index, PRODUCT.md Reader AI line", "status": "completed"},
-  {"content": "Run gate g1-unit-suite until green, then prd_step done", "status": "completed"},
-  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}
+  {"content": "CandidateTicket type in Decoder.java (extends RequestKey, consume-once, same_word_slot)", "status": "completed"},
+  {"content": "SharedDecoder: envelope identity fields, READY carries snapshot+connection+wordStart, recent-results ring ≤2, prepare_commit_for_ticket, ticket_epochs_current", "status": "completed"},
+  {"content": "CandidatesView: per-slot tickets on READY, ACTION_DOWN capture, consume-once dispatch, ACTION_CANCEL clears", "status": "completed"},
+  {"content": "CandidateTicketTest unit tests + update ready() call sites", "status": "completed"},
+  {"content": "KeyEventHandler ordering: validate ticket before commit_pending_replacement; intent-wins in-slot replace; use prepare_commit_for_ticket (blocked: outside write_paths, ask pending)", "status": "in_progress"},
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
 ]}
