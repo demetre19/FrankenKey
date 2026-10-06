@@ -148,13 +148,16 @@ public class CandidatesView extends LinearLayout
       separator.setVisibility(visible ? View.VISIBLE : View.GONE);
   }
 
-  /** Immutable acceptance ticket for one rendered candidate. */
+  /** Immutable acceptance ticket for one rendered candidate. Returns null
+      when the presentation carries no word snapshot (legacy READY) so the
+      dispatch can fall back to the bare request key. */
   static Decoder.CandidateTicket make_ticket(
       SharedDecoder.Presentation state, String surface, CandidateRole role)
   {
-    return new Decoder.CandidateTicket(state.key, state.connectionId,
-        state.word, state.absoluteWordStart, surface, role,
-        android.os.SystemClock.uptimeMillis());
+    return state.word == null ? null
+      : new Decoder.CandidateTicket(state.key, state.connectionId,
+          state.word, state.absoluteWordStart, surface, role,
+          android.os.SystemClock.uptimeMillis());
   }
 
   /** The live ticket for an item index on the current page. */
@@ -402,9 +405,28 @@ public class CandidatesView extends LinearLayout
     update_separator(index, false);
   }
 
-  /** Route every strip gesture through the single candidate dispatch seam. */
+  /** Route every strip gesture through the single candidate dispatch seam.
+      The accepted ticket is the one captured at ACTION_DOWN for this slot,
+      falling back to the slot's live ticket for events without a down record
+      (accessibility clicks, direct dispatch). The ticket carries the word the
+      user saw at press time even if the strip re-rendered mid-press, and
+      [Decoder.CandidateTicket.consume] makes a repeated dispatch a no-op, so
+      onTouch+onClick, double taps, and two-finger taps insert exactly once.
+      Presentations without ticket data dispatch the bare request key, the
+      pre-ticket behavior. */
   void dispatch_accept(int item_index, CandidateRole role)
   {
+    Decoder.CandidateTicket ticket = _down_ticket != null
+      ? _down_ticket : ticket_for(item_index);
+    _down_ticket = null;
+    if (ticket != null)
+    {
+      if (role == null || role == CandidateRole.NONE || !ticket.consume())
+        return;
+      Config.globalConfig().handler.candidate_accepted(ticket, role,
+          ticket.candidate);
+      return;
+    }
     String it = _items[item_index];
     Decoder.RequestKey key = _request_key;
     if (it == null || key == null || role == null
@@ -434,9 +456,17 @@ public class CandidatesView extends LinearLayout
             // Seam for role-specific long-press behavior. Not consumed: the
             // release still performs the default accept so a plain long tap
             // keeps its pre-seam outcome unless a lane registers a handler.
+            Decoder.CandidateTicket ticket = _down_ticket != null
+              ? _down_ticket : ticket_for(item_index);
+            CandidateRole role = _roles[item_index];
+            if (ticket != null)
+            {
+              Config.globalConfig().handler.candidate_long_pressed(
+                  ticket, role, ticket.candidate);
+              return false;
+            }
             String it = _items[item_index];
             Decoder.RequestKey key = _request_key;
-            CandidateRole role = _roles[item_index];
             if (it == null || key == null || role == CandidateRole.NONE)
               return false;
             Config.globalConfig().handler.candidate_long_pressed(

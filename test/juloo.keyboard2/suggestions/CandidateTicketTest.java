@@ -153,12 +153,12 @@ public class CandidateTicketTest
         snapshot(1, "ca", false));
     awaitReady(decoder, first);
     Decoder.RequestKey second = decoder.request(session,
-        snapshot(2, "cab", false));
+        snapshot(2, "ca", false));
     awaitReady(decoder, second);
 
     // A ticket rendered from the first READY stays preparable after a newer
-    // READY replaced the current key: the retained ring matches the word
-    // fingerprint even though the key itself is stale.
+    // READY replaced the current key: the retained ring matches the newer
+    // result by word fingerprint even though the ticket's key is stale.
     Decoder.CandidateTicket ticket = ticket(first, 7, "ca", -1, "cat");
     assertFalse("The stale source key is not current.",
         decoder.is_current(first));
