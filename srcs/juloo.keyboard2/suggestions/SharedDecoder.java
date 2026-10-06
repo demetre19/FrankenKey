@@ -1693,6 +1693,7 @@ public final class SharedDecoder implements AutoCloseable
               feedback == null ? null : feedback.word,
               merged.pinned, merged.ranked, envelope.word,
               envelope.connectionId, envelope.absoluteWordStart);
+      }
       else
         presentation = Presentation.empty(_sessionEpoch, result.key);
       _presentation = presentation;
