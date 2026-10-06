@@ -4,5 +4,6 @@
   {"content": "CandidatesView: per-slot tickets on READY, ACTION_DOWN capture, consume-once dispatch, ACTION_CANCEL clears", "status": "completed"},
   {"content": "CandidateTicketTest unit tests + update ready() call sites", "status": "completed"},
   {"content": "KeyEventHandler ordering: validate ticket before commit_pending_replacement; intent-wins in-slot replace; use prepare_commit_for_ticket (blocked: outside write_paths, ask pending)", "status": "in_progress"},
-  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}
 ]}
