@@ -26,7 +26,7 @@
   },
   "hot_files": [],
   "land_target": "sprint",
-  "primary_branch": "autobuild/frankenkey-autocorrect-suggestions",
+  "primary_branch": "main",
   "max_parallel": 5,
   "default_host": "2IC",
   "protected_paths": [],
