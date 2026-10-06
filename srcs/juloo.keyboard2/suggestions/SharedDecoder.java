@@ -723,14 +723,17 @@ public final class SharedDecoder implements AutoCloseable
       && ticket.configEpoch == _configEpoch;
   }
 
-  /** The ticket's retained result: its own request key first, then a recent
-      READY result with the same queried-word fingerprint. */
+  /** The ticket's retained result: its own request key first — verified
+      against the ticket's word fingerprint, so a forged or mismatched ticket
+      cannot bind an unrelated result — then any recent READY result with the
+      same queried-word fingerprint. */
   private CompletedDecode retained_for_ticket_locked(
       Decoder.CandidateTicket ticket)
   {
     for (CompletedDecode completed : _recentResults)
     {
-      if (completed.result.key.equals(ticket.sourceRequestKey))
+      if (completed.result.key.equals(ticket.sourceRequestKey)
+          && completed.result.queriedWord.equals(ticket.word))
         return completed;
     }
     for (CompletedDecode completed : _recentResults)
