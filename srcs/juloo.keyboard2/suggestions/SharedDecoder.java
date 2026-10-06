@@ -92,10 +92,16 @@ public final class SharedDecoder implements AutoCloseable
       ranked = ranked_;
     }
 
-    static Presentation pending(long sessionEpoch, Decoder.RequestKey key)
+    /** PENDING carries the request's word snapshot plus connection/slot
+        identity so the strip can keep the prior READY items only while they
+        still describe the same word slot. */
+    static Presentation pending(long sessionEpoch, Decoder.RequestKey key,
+        CurrentlyTypedWord.Snapshot word, int connectionId,
+        long absoluteWordStart)
     {
       return new Presentation(State.PENDING, sessionEpoch, key, null,
-          Feedback.NONE, null, null, null, null, -1, -1);
+          Feedback.NONE, null, null, null, word, connectionId,
+          absoluteWordStart);
     }
 
     static Presentation ready(long sessionEpoch, Decoder.Result result,
@@ -481,7 +487,7 @@ public final class SharedDecoder implements AutoCloseable
         _pending = envelope;
         if (should_publish_candidates_locked())
           _presentation = Presentation.pending(_sessionEpoch,
-              envelope.request.key);
+              envelope.request.key, word, _connectionId, _absoluteWordStart);
         else
           _presentation = Presentation.empty(_sessionEpoch,
               envelope.request.key);
@@ -1069,7 +1075,8 @@ public final class SharedDecoder implements AutoCloseable
       _pending = envelope;
       if (should_publish_candidates_locked())
         _presentation = Presentation.pending(_sessionEpoch,
-            envelope.request.key);
+            envelope.request.key, _latestWord, _connectionId,
+            _absoluteWordStart);
       else
         _presentation = Presentation.empty(_sessionEpoch,
             envelope.request.key);
