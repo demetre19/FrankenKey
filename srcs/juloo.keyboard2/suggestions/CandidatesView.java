@@ -4,6 +4,8 @@ import android.content.Context;
 import android.os.Build.VERSION;
 import android.text.InputType;
 import android.util.AttributeSet;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,6 +28,23 @@ public class CandidatesView extends LinearLayout
   static final int LONG_CANDIDATE_LENGTH = 10;
   static final float LONG_CANDIDATE_TEXT_SCALE = 0.78f;
   static final long PAGE_ANIMATION_MS = 180L;
+  static final long PENDING_DIM_MS = 150L;
+  static final float PENDING_DIM_ALPHA = 0.70f;
+  /** Identity of the READY presentation whose items are currently rendered;
+      used to decide whether a PENDING may keep them visible. */
+  long _rendered_session_epoch = -1;
+  int _rendered_connection_id = -1;
+  long _rendered_word_start = -2;
+  /** Posts the pending-dim cue on the main looper; an explicit handler keeps
+      the cue working while the view is detached (tests, pre-attach). */
+  final Handler _ui = new Handler(Looper.getMainLooper());
+  /** Dims the strip once a PENDING outlives [PENDING_DIM_MS]. */
+  final Runnable _dim_pending = new Runnable()
+  {
+    @Override
+    public void run() { setAlpha(PENDING_DIM_ALPHA); }
+  };
+
   float _candidate_text_size_px = 0f;
 
 
@@ -76,6 +95,19 @@ public class CandidatesView extends LinearLayout
 
   public void set_decoder_state(SharedDecoder.Presentation state)
   {
+    // A PENDING for the same session/connection/word slot keeps the prior
+    // READY items visible and tappable; the dim cue marks them as refresh in
+    // progress. Any other state, or a PENDING for a different slot, clears.
+    if (state != null
+        && state.state == SharedDecoder.Presentation.State.PENDING
+        && keeps_rendered_items(state))
+    {
+      _ui.removeCallbacks(_dim_pending);
+      _ui.postDelayed(_dim_pending, PENDING_DIM_MS);
+      return;
+    }
+    _ui.removeCallbacks(_dim_pending);
+    setAlpha(1f);
     clear_candidates();
     if (state == null || state.state != SharedDecoder.Presentation.State.READY
         || state.result == null || state.key == null)
@@ -121,9 +153,23 @@ public class CandidatesView extends LinearLayout
     _emoji_ticket = _items[3] == null ? null
       : make_ticket(state, _items[3], _roles[3]);
     _request_key = state.key;
+    _rendered_session_epoch = state.sessionEpoch;
+    _rendered_connection_id = state.connectionId;
+    _rendered_word_start = state.absoluteWordStart;
     render_page(0, false);
     if (count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
+  }
+
+  /** Whether a PENDING still describes the word slot whose items are on
+      screen. When slot identity was never reported both sides carry the
+      sentinel and the items are kept. */
+  boolean keeps_rendered_items(SharedDecoder.Presentation pending)
+  {
+    return _request_key != null
+      && pending.sessionEpoch == _rendered_session_epoch
+      && pending.connectionId == _rendered_connection_id
+      && pending.absoluteWordStart == _rendered_word_start;
   }
 
   static CandidateRole display_role(Decoder.Role role)
@@ -251,6 +297,8 @@ public class CandidatesView extends LinearLayout
 
   public void refresh_config(Config config, boolean dictionary_available)
   {
+    _ui.removeCallbacks(_dim_pending);
+    setAlpha(1f);
     clear_candidates();
     if (!dictionary_available)
       inflate_status_no_dict(config);

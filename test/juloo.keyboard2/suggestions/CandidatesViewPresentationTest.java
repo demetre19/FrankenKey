@@ -9,6 +9,7 @@ import android.view.MotionEvent;
 import android.widget.TextView;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import juloo.keyboard2.CurrentlyTypedWord;
 import juloo.keyboard2.Config;
 import juloo.keyboard2.KeyValue;
 import juloo.keyboard2.Pointers;
@@ -22,6 +23,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import static org.junit.Assert.*;
 
+import org.robolectric.Robolectric;
 @RunWith(RobolectricTestRunner.class)
 @org.robolectric.annotation.Config(sdk = 35)
 public class CandidatesViewPresentationTest
@@ -111,25 +113,69 @@ public class CandidatesViewPresentationTest
   }
 
   @Test
-  public void pending_empty_and_null_states_clear_text_and_disable_old_click_targets()
+  public void pending_for_same_slot_keeps_items_then_ready_restores_alpha()
+      throws Exception
   {
     Context context = RuntimeEnvironment.getApplication();
     CandidatesView view = candidatesView(context);
-    Decoder.Result result = result("ca", 21);
-    view.set_decoder_state(SharedDecoder.Presentation.ready(1, result,
-          SharedDecoder.Presentation.Feedback.NONE, null, null, -1, -1));
+    Decoder.Result first = result("ca", 21);
+    CurrentlyTypedWord.Snapshot word = snapshot(1, "ca");
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1, first,
+          SharedDecoder.Presentation.Feedback.NONE, null, word, 7, 500));
     TextView middle = view.findViewById(R.id.candidates_middle);
+
+    Decoder.RequestKey replacement = new Decoder.RequestKey(
+        1, 22, 22, 1, 1, 1, 1);
+    view.set_decoder_state(SharedDecoder.Presentation.pending(1, replacement,
+          snapshot(2, "cas"), 7, 500));
+    assertEquals("A same-slot PENDING must keep the prior READY items visible.",
+        View.VISIBLE, middle.getVisibility());
+    assertEquals("ca", middle.getText().toString());
+    assertEquals(1f, view.getAlpha(), 0.001f);
+
     middle.performClick();
+    assertEquals("Items kept across PENDING stay tappable and insert once.",
+        1, _handler.enteredCalls);
+    assertEquals(first.key, _handler.enteredKey);
+    assertEquals("ca", _handler.enteredText);
+
+    Robolectric.getForegroundThreadScheduler().advanceBy(
+        CandidatesView.PENDING_DIM_MS + 1, java.util.concurrent.TimeUnit.MILLISECONDS);
+    assertEquals("A PENDING older than 150 ms dims the strip to 70%.",
+        CandidatesView.PENDING_DIM_ALPHA, view.getAlpha(), 0.001f);
+
+    Decoder.Result second = result("cas", 23);
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1, second,
+          SharedDecoder.Presentation.Feedback.NONE, null,
+          snapshot(2, "cas"), 7, 500));
+    assertEquals("A READY presentation restores full alpha.",
+        1f, view.getAlpha(), 0.001f);
+    assertEquals("cas", middle.getText().toString());
+  }
+
+  @Test
+  public void pending_for_different_slot_then_empty_and_null_clear_targets()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    CandidatesView view = candidatesView(context);
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1,
+          result("ca", 21), SharedDecoder.Presentation.Feedback.NONE, null,
+          snapshot(1, "ca"), 7, 500));
+    TextView middle = view.findViewById(R.id.candidates_middle);
     int calls = _handler.enteredCalls;
 
     Decoder.RequestKey replacement = new Decoder.RequestKey(
         1, 22, 22, 1, 1, 1, 1);
-    view.set_decoder_state(SharedDecoder.Presentation.pending(1, replacement));
-    assertEquals("PENDING must remove old text immediately instead of leaving a clickable stale row.",
+    // The pending request targets a different absolute word start: the old
+    // slot's candidates are stale and must go away immediately.
+    view.set_decoder_state(SharedDecoder.Presentation.pending(1, replacement,
+          snapshot(2, "next"), 7, 560));
+    assertEquals("A slot change must remove old-word items immediately.",
         View.GONE, middle.getVisibility());
     assertEquals("", middle.getText().toString());
     middle.performClick();
-    assertEquals("Candidate clicks are legal only for READY presentations.",
+    assertEquals("Cleared items are not tappable.",
         calls, _handler.enteredCalls);
 
     view.set_decoder_state(SharedDecoder.Presentation.empty(1, replacement));
@@ -140,6 +186,32 @@ public class CandidatesViewPresentationTest
     view.set_decoder_state(null);
     assertEquals("A missing decoder presentation must fail closed.",
         View.GONE, middle.getVisibility());
+  }
+
+  @Test
+  public void rerender_between_down_and_up_inserts_word_under_finger_at_down()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    CandidatesView view = candidatesView(context);
+    Decoder.Result first = result("ca", 31);
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1, first,
+          SharedDecoder.Presentation.Feedback.NONE, null,
+          snapshot(1, "ca"), 7, 500));
+    TextView middle = view.findViewById(R.id.candidates_middle);
+
+    long now = android.os.SystemClock.uptimeMillis();
+    middle.dispatchTouchEvent(MotionEvent.obtain(
+          now, now, MotionEvent.ACTION_DOWN, 20f, 20f, 0));
+    // A newer READY lands mid-press and re-renders the strip.
+    view.set_decoder_state(SharedDecoder.Presentation.ready(1,
+          result("cb", 32), SharedDecoder.Presentation.Feedback.NONE, null,
+          snapshot(2, "cb"), 7, 500));
+    middle.performClick();
+
+    assertEquals("The word under the finger at DOWN is inserted, not the new occupant of the slot.",
+        "ca", _handler.enteredText);
+    assertEquals(1, _handler.enteredCalls);
   }
 
   @Test
@@ -252,10 +324,11 @@ public class CandidatesViewPresentationTest
         View.GONE, rightSeparator.getVisibility());
   }
 
-  private static Decoder.Result result(String typed, long generation)
+  private static Decoder.Result result(String typed, long generation,
+      String... learn)
   {
     PersonalizationStore store = PersonalizationStore.empty();
-    for (String word : new String[] { "cabin", "cazoo", "camel", "candle" })
+    for (String word : learn)
       store.learn_word(word);
     Decoder.RequestKey key = new Decoder.RequestKey(
         1, generation, generation, 1, 1, 1, 1);
@@ -263,6 +336,23 @@ public class CandidatesViewPresentationTest
         (TouchTrace.Snapshot)null, Decoder.Geometry.from(null),
         new Decoder.DecoderConfig(true, false, true, true));
     return new Decoder().decode(request, null, null, null, store, false);
+  }
+
+  private static Decoder.Result result(String typed, long generation)
+  {
+    return result(typed, generation, "cabin", "cazoo", "camel", "candle");
+  }
+
+  private static CurrentlyTypedWord.Snapshot snapshot(long revision,
+      String word)
+      throws Exception
+  {
+    Constructor<CurrentlyTypedWord.Snapshot> constructor =
+      CurrentlyTypedWord.Snapshot.class.getDeclaredConstructor(long.class,
+          String.class, int.class, boolean.class, TouchTrace.Snapshot.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(revision, word, 0, false,
+        new TouchTrace().snapshot());
   }
 
   private static Decoder.Result sixWordResult(String typed, long generation)
