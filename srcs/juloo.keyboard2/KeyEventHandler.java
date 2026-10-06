@@ -14,11 +14,16 @@ import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import juloo.keyboard2.suggestions.CandidateRole;
 import juloo.keyboard2.suggestions.Decoder;
+import juloo.keyboard2.suggestions.EditorContext;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.SharedDecoder;
+import juloo.keyboard2.suggestions.SuggestionAcceptor;
 import juloo.keyboard2.snippets.SnippetInserter;
 
 public final class KeyEventHandler
@@ -47,6 +52,7 @@ public final class KeyEventHandler
   boolean _autocorrect_enabled = false;
   private PendingReplacement _pending_replacement = null;
   private ManualCorrection _manual_correction = null;
+  private boolean _skip_next_word_learning = false;
   private boolean _preserve_manual_correction_transition = false;
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
   private final ArrayDeque<LatentAutocorrectBoundary>
@@ -54,8 +60,20 @@ public final class KeyEventHandler
       new ArrayDeque<LatentAutocorrectBoundary>();
   private boolean _preserve_autocorrect_boundary_transition = false;
   private DeleteSelection _delete_selection = null;
-  private long _backspace_fallback_generation = 0;
+  private final SuggestionAcceptor _suggestion_acceptor =
+    new SuggestionAcceptor();
+  /** Ordered backspace hooks. Consulted for discrete presses and held-key
+      repeats; empty by default so behavior is unchanged. */
+  private final List<BackspaceHook> _backspace_hooks =
+    new ArrayList<BackspaceHook>();
+  /** Ordered space-bar swipe hooks exposed to [Pointers] through
+      [space_gesture_hooks]; empty by default. */
+  private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
+    new ArrayList<Pointers.SpaceGestureHook>();
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
+  /** Incremented to invalidate a posted delayed DEL fallback; see
+      [schedule_backspace_fallback]. */
+  private long _backspace_fallback_generation = 0;
   private static final int DELETE_WORDS_CONTEXT_LIMIT = 4096;
   private static final int DELETE_WORDS_CURSOR_LOCAL = -1;
   private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
@@ -190,6 +208,120 @@ public final class KeyEventHandler
     _mods = Pointers.Modifiers.EMPTY;
     _decoder = decoder;
     _typedword = new CurrentlyTypedWord(handler, this);
+    SuggestionAcceptor.Action enter = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          suggestion_entered(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.WORD, enter);
+    _suggestion_acceptor.register(CandidateRole.ENTERED_TEXT, enter);
+    _suggestion_acceptor.register(CandidateRole.NEXT_WORD, enter);
+    _suggestion_acceptor.register(CandidateRole.EMOJI, enter);
+    SuggestionAcceptor.Action learn = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          suggestion_swiped_up(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
+    _suggestion_acceptor.register(CandidateRole.UNLEARN_ACTION, learn);
+  }
+
+  /**
+   * One entry point for every candidate strip action. Dispatches by
+   * [CandidateRole] through the acceptor's registration map.
+   */
+  @Override
+  public void candidate_accepted(Decoder.RequestKey ticket,
+      CandidateRole role, String text)
+  {
+    _suggestion_acceptor.accept(ticket, role, text);
+  }
+
+  @Override
+  public void candidate_long_pressed(Decoder.RequestKey ticket,
+      CandidateRole role, String text)
+  {
+    _suggestion_acceptor.long_pressed(ticket, role, text);
+  }
+
+  /** Exposed so lanes can register actions for new candidate roles. */
+  public SuggestionAcceptor suggestion_acceptor()
+  {
+    return _suggestion_acceptor;
+  }
+
+  /** Register an ordered backspace hook; first handled result wins. */
+  public void register_backspace_hook(BackspaceHook hook)
+  {
+    if (hook == null)
+      throw new IllegalArgumentException("hook must not be null");
+    _backspace_hooks.add(hook);
+  }
+
+  /** Register an ordered space-bar swipe hook consumed by [Pointers]. */
+  public void register_space_gesture_hook(Pointers.SpaceGestureHook hook)
+  {
+    if (hook == null)
+      throw new IllegalArgumentException("hook must not be null");
+    _space_gesture_hooks.add(hook);
+  }
+
+  @Override
+  public List<Pointers.SpaceGestureHook> space_gesture_hooks()
+  {
+    return _space_gesture_hooks;
+  }
+
+  @Override
+  public EditorContext editor_context()
+  {
+    return capture_editor_context();
+  }
+
+  /** Snapshot the editor the next request runs against. Main thread only. */
+  EditorContext capture_editor_context()
+  {
+    EditorInfo info = _recv.getCurrentInputEditorInfo();
+    InputConnection conn = _recv.getCurrentInputConnection();
+    Locale locale = null;
+    if (_config != null && _config.device_locales != null
+        && _config.device_locales.default_ != null)
+      locale = Locale.forLanguageTag(_config.device_locales.default_.lang_tag);
+    return EditorContext.capture(info, conn, locale);
+  }
+
+  void update_editor_context()
+  {
+    _decoder.update_editor_context(capture_editor_context());
+  }
+
+  /** Run the ordered backspace hooks; true when one consumed the press. */
+  boolean consult_backspace_hooks(boolean isRepeat)
+  {
+    if (_backspace_hooks.isEmpty())
+      return false;
+    EditorContext ctx = capture_editor_context();
+    for (BackspaceHook hook : _backspace_hooks)
+      if (hook.on_backspace(ctx, isRepeat))
+        return true;
+    return false;
+  }
+
+  /**
+   * Ordered hook consulted for each backspace key event. [isRepeat] is true
+   * for held-key repeats and false for the discrete press. Returning true
+   * consumes the event: no character is deleted. Registered via
+   * [register_backspace_hook].
+   */
+  public static interface BackspaceHook
+  {
+    public boolean on_backspace(EditorContext ctx, boolean isRepeat);
   }
 
   /** Editing just started. */
@@ -201,6 +333,7 @@ public final class KeyEventHandler
     _current_request_key = null;
     _pending_replacement = null;
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _preserve_manual_correction_transition = false;
     _pending_autocorrect_boundary = null;
     _latent_autocorrect_boundaries.clear();
@@ -220,6 +353,7 @@ public final class KeyEventHandler
     commit_pending_replacement();
     commit_latent_boundaries();
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _delete_selection = null;
     _autocap.finished();
     _typedword.finished();
@@ -435,6 +569,12 @@ public final class KeyEventHandler
   @Override
   public void key_up(KeyValue key, Pointers.Modifiers mods, TouchTrace.Entry touch)
   {
+    key_up(key, mods, touch, false);
+  }
+
+  void key_up(KeyValue key, Pointers.Modifiers mods, TouchTrace.Entry touch,
+      boolean isRepeat)
+  {
     if (key == null)
       return;
     if (!is_backspace_action(key))
@@ -474,7 +614,7 @@ public final class KeyEventHandler
         }
         break;
       case Modifier: break;
-      case Editing: handle_editing_key(key.getEditing()); break;
+      case Editing: handle_editing_key(key.getEditing(), isRepeat); break;
       case Compose_pending:
         clear_manual_correction();
         _recv.set_compose_pending(true);
@@ -519,7 +659,7 @@ public final class KeyEventHandler
   @Override
   public void key_hold(KeyValue key, Pointers.Modifiers mods, int holdCount)
   {
-    key_up(key, mods, null);
+    key_up(key, mods, null, true);
   }
 
   @Override
@@ -864,6 +1004,7 @@ public final class KeyEventHandler
       _current_request_key = null;
       return;
     }
+    update_editor_context();
     _current_request_key = _decoder.request(_decoder_session, snapshot);
   }
 
@@ -972,9 +1113,13 @@ public final class KeyEventHandler
   private String manual_selected_correction_source(
       CurrentlyTypedWord.Snapshot snapshot, String target)
   {
-    if (!manual_target_matches_snapshot(snapshot))
-      return null;
-    return plausible_correction_source(_manual_correction.source, target);
+    String source = null;
+    if (manual_target_matches_snapshot(snapshot) && target.equals(snapshot.word))
+      source = _manual_correction.source;
+    else if (snapshot != null && !snapshot.hasSelection
+        && snapshot.cursorRelative == 0)
+      source = snapshot.word;
+    return plausible_correction_source(source, target);
   }
 
   private void commit_prepared(SharedDecoder.CommitToken token)
@@ -989,8 +1134,11 @@ public final class KeyEventHandler
     if (pending == null || pending.sessionEpoch != _decoder_session)
       return;
     if (_decoder.is_current(pending.key))
+    {
+      update_editor_context();
       _current_request_key = _decoder.request(
           pending.sessionEpoch, _typedword.snapshot());
+    }
     else if (pending.key.equals(_current_request_key))
       _current_request_key = null;
   }
@@ -1197,6 +1345,7 @@ public final class KeyEventHandler
       SharedDecoder.CommitToken undoToken, String source, String target,
       String separator, boolean learnSourceOnUndo)
   {
+    commit_prepared(token);
     InputConnection conn = _recv.getCurrentInputConnection();
     ExtractedText et = conn == null ? null : get_cursor_pos(conn);
     int cursor = et != null && et.selectionStart == et.selectionEnd
@@ -1719,6 +1868,12 @@ public final class KeyEventHandler
   @SuppressLint("InlinedApi")
   void handle_editing_key(KeyValue.Editing ev)
   {
+    handle_editing_key(ev, false);
+  }
+
+  @SuppressLint("InlinedApi")
+  void handle_editing_key(KeyValue.Editing ev, boolean isRepeat)
+  {
     if (ev != KeyValue.Editing.SPACE_BAR
         && ev != KeyValue.Editing.BACKSPACE)
       clear_manual_correction();
@@ -1739,7 +1894,7 @@ public final class KeyEventHandler
       case FORWARD_DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
       case SELECTION_CANCEL: cancel_selection(); break;
       case SPACE_BAR: handle_space_bar(); break;
-      case BACKSPACE: handle_backspace(); break;
+      case BACKSPACE: handle_backspace(isRepeat); break;
     }
   }
 
@@ -2394,6 +2549,22 @@ public final class KeyEventHandler
       _typedword.refresh_current_word();
       snapshot = _typedword.snapshot();
     }
+    // A short fragment left by a manual edit is a cross-boundary split; do not
+    // learn it and skip the following word until the boundary is re-established.
+    if (_manual_correction != null
+        && manual_target_matches_snapshot(snapshot)
+        && snapshot.word.length() < 3
+        && _manual_correction.source.startsWith(snapshot.word)
+        && !_manual_correction.source.equals(snapshot.word))
+    {
+      _current_request_key = null;
+      if (_decoder_session != 0)
+        _decoder.invalidate(_decoder_session);
+      send_text(separator);
+      clear_manual_correction();
+      _skip_next_word_learning = true;
+      return;
+    }
     if (snapshot.completeness
         == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
     {
@@ -2402,6 +2573,7 @@ public final class KeyEventHandler
         _decoder.invalidate(_decoder_session);
       send_text(separator);
       clear_manual_correction();
+      _skip_next_word_learning = true;
       return;
     }
     Decoder.RequestKey key = _current_request_key;
@@ -2412,14 +2584,23 @@ public final class KeyEventHandler
       correction = null;
     if (should_preserve_manual_word_case(snapshot.word, correction))
       correction = null;
-    boolean should_record = should_record_personalization() && key != null;
+    boolean is_learned_correction = correction != null
+      && (correction.learned || (correction.sourceMask & Decoder.SOURCE_PERSONAL) != 0);
+    boolean broad_or_unsafe_edit = _manual_correction != null
+      && manual_target_matches_snapshot(snapshot)
+      && plausible_correction_source(_manual_correction.source, snapshot.word) == null;
+    boolean skip_learning = _skip_next_word_learning || broad_or_unsafe_edit;
+    boolean should_record = should_record_personalization() && key != null
+      && !is_learned_correction && !skip_learning;
     SharedDecoder.CommitToken literal_token = should_record
       ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
     SharedDecoder.CommitToken correction_token = null;
     if (should_record && correction != null)
-      correction_token = _decoder.prepare_commit(_decoder_session, key,
-          correction.surface, null);
+      correction_token = correction.surface.equals(snapshot.word)
+        ? literal_token
+        : _decoder.prepare_selected_correction(_decoder_session, key,
+            correction.surface, snapshot.word);
     boolean should_capitalize_i = correction == null && _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
@@ -2473,6 +2654,7 @@ public final class KeyEventHandler
         && _decoder_session != 0)
       _decoder.invalidate(_decoder_session);
     clear_manual_correction();
+    _skip_next_word_learning = false;
   }
 
   /** Implement autocorrect and optional double-space period insertion. */
@@ -2641,9 +2823,18 @@ public final class KeyEventHandler
     }
   }
 
-  /** Commit an accepted correction, then perform ordinary Backspace. */
   void handle_backspace()
   {
+    handle_backspace(false);
+  }
+
+  /** Commit an accepted correction, then perform ordinary Backspace. The
+      ordered [BackspaceHook] list runs first; a hook that consumes the press
+      skips the deletion. */
+  void handle_backspace(boolean isRepeat)
+  {
+    if (consult_backspace_hooks(isRepeat))
+      return;
     commit_pending_replacement();
     capture_manual_correction_source();
     send_backspace();
