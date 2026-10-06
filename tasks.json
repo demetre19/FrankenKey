@@ -7,5 +7,6 @@
   {"content": "LearnedWordsActivity → class-registered tab host; learned_words layout split", "status": "pending"},
   {"content": "settings.xml ti_smart_typing PreferenceScreen + 5 hidden categories; strings.xml", "status": "pending"},
   {"content": "AGENTS.md updates (suggestions/ + juloo.keyboard2/)", "status": "pending"},
-  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}
 ]}
