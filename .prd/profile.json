@@ -1,6 +1,10 @@
 {
   "schema": "profile/v1",
-  "argv": {},
+  "argv": {
+    "build": ["./gradlew", "assembleDebug"],
+    "lint": ["./gradlew", "lintDebug"],
+    "test": ["./gradlew", "testDebugUnitTest"]
+  },
   "module_map": {
     ".": 29,
     "androidTest": 9,
