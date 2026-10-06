@@ -48,6 +48,11 @@ import juloo.keyboard2.suggestions.Decoder;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
+import juloo.keyboard2.grammar.AiGrammarFixer;
+import juloo.keyboard2.grammar.GrammarCoordinator;
+import juloo.keyboard2.grammar.GrammarData;
+import juloo.keyboard2.grammar.GrammarDiffView;
+import juloo.keyboard2.grammar.GrammarIssue;
 
 public class Keyboard2 extends InputMethodService
   implements SharedPreferences.OnSharedPreferenceChangeListener,
@@ -65,6 +70,15 @@ public class Keyboard2 extends InputMethodService
   private ExtraKeysPanelView _extra_keys_panel;
   private SystemGrammarChecker _grammar_checker;
   private SystemGrammarChecker.Correction _grammar_correction;
+  private GrammarCoordinator _grammar_coordinator;
+  private GrammarData _grammar_data;
+  private GrammarDiffView _grammar_diff_view;
+  private GrammarIssue _grammar_undo_issue;
+  private String _grammar_fix_original;
+  private int _grammar_fix_base = -1;
+  private AiGrammarFixer.Snapshot _grammar_fix_snapshot;
+  private Runnable _grammar_undo_clear;
+  private long _grammar_last_pump = -1;
   private MultimodalVoiceInput _voice_input;
   private AlertDialog _learning_review_dialog;
   private int _selection_start = -1;
@@ -238,6 +252,47 @@ public class Keyboard2 extends InputMethodService
     _handler = new Handler(getMainLooper());
     _grammar_checker = new SystemGrammarChecker(this, _handler,
         correction -> grammar_correction_changed(correction));
+    _grammar_coordinator = new GrammarCoordinator(null,
+        new GrammarCoordinator.Presenter()
+        {
+          @Override public void present(GrammarIssue issue)
+          {
+            grammar_issue_presented(issue);
+          }
+
+          @Override public void apply(GrammarIssue issue)
+          {
+            apply_offline_grammar_fix(issue);
+          }
+
+          @Override public void undo(GrammarIssue issue)
+          {
+            undo_offline_grammar_fix(issue);
+          }
+
+          @Override public void disableRule(String ruleId) {}
+        });
+    for (String ruleId : _prefs.getStringSet("ti_grammar_rules_off",
+        java.util.Collections.<String>emptySet()))
+      _grammar_coordinator.disabledRules().add(ruleId);
+    new Thread(() ->
+      {
+        try
+        {
+          GrammarData data = GrammarData.load(
+              getAssets().open("grammar/en.json"));
+          _handler.post(() ->
+            {
+              _grammar_data = data;
+              _grammar_coordinator.setData(data);
+            });
+        }
+        catch (java.io.IOException error)
+        {
+          android.util.Log.w("Keyboard2", "Grammar word data missing",
+              error);
+        }
+      }).start();
     _voice_input = new MultimodalVoiceInput(this, _handler,
         new MultimodalVoiceInput.Callback()
         {

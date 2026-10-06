@@ -153,6 +153,30 @@ public final class ReaderAiOpenRouter
       activeConnections.remove(connection);
     }
   }
+  /**
+   * Completion with explicit request parameters and timeout — used by the
+   * Fix grammar action, which posts a prebuilt temperature-0 body.
+   */
+  String generate(String apiKey, JSONObject body, int timeoutMs)
+      throws IOException, JSONException
+  {
+    HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
+        timeoutMs);
+    activeConnections.add(connection);
+    try
+    {
+      byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
+      connection.setFixedLengthStreamingMode(payload.length);
+      connection.getOutputStream().write(payload);
+      return parseCompletion(readJsonResponse(connection).toString());
+    }
+    finally
+    {
+      connection.disconnect();
+      activeConnections.remove(connection);
+    }
+  }
+
 
   void cancel()
   {
