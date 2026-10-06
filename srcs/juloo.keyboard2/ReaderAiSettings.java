@@ -25,10 +25,13 @@ final class ReaderAiSettings
   private static final String API_KEY_CIPHERTEXT = "openrouter_key_ciphertext";
   private static final String API_KEY_IV = "openrouter_key_iv";
   private static final String MODEL_ID = "openrouter_model_id";
+  private static final String WRITING_MODEL_ID = "ti_ai_writing_model";
   private static final String SUMMARY_ONE = "summary_one_prompt";
   private static final String SUMMARY_TWO = "summary_two_prompt";
   private static final String QUIZ = "quiz_prompt";
   private static final String DISCLOSURE_ACCEPTED = "disclosure_accepted_v3";
+  private static final String DISCLOSURE_ACCEPTED_V4 =
+    "disclosure_accepted_v4";
   private static final int MAX_PROMPT_LENGTH = 20_000;
 
   private final SharedPreferences preferences;
@@ -130,6 +133,30 @@ final class ReaderAiSettings
   void setDisclosureAccepted(boolean accepted)
   {
     preferences.edit().putBoolean(DISCLOSURE_ACCEPTED, accepted).apply();
+  }
+
+  /** Fix grammar uses its own model or falls back to the Reader AI model. */
+  String getWritingModelId()
+  {
+    String value = preferences.getString(WRITING_MODEL_ID, "");
+    return value == null || value.trim().isEmpty()
+      ? getModelId() : value.trim();
+  }
+
+  void setWritingModelId(String modelId)
+  {
+    preferences.edit().putString(WRITING_MODEL_ID,
+        modelId == null ? "" : modelId.trim()).apply();
+  }
+
+  boolean isDisclosureAcceptedV4()
+  {
+    return preferences.getBoolean(DISCLOSURE_ACCEPTED_V4, false);
+  }
+
+  void setDisclosureAcceptedV4(boolean accepted)
+  {
+    preferences.edit().putBoolean(DISCLOSURE_ACCEPTED_V4, accepted).apply();
   }
 
   private String prompt(String key, String fallback)
