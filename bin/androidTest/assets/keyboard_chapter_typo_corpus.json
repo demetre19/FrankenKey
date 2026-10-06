@@ -15,8 +15,8 @@
     },
     {
       "classes": ["protected-name", "substitution", "transposition", "omission"],
-      "typed": "a cautios keybaord shold corect clera slpis but shold kep naems lkie samsung gboard frankenkey omp adn cmux exaclty aa writen.",
-      "expected": "a cautious keyboard should correct clear slips but should keep names like samsung gboard frankenkey omp and cmux exactly as written."
+      "typed": "a cautios keybaord shold corect clera slpis but shold kep naems lkie samsung gboard frankenkey omp adn herdr exaclty aa writen.",
+      "expected": "a cautious keyboard should correct clear slips but should keep names like samsung gboard frankenkey omp and herdr exactly as written."
     },
     {
       "classes": ["reported-typo", "substitution", "transposition", "omission", "insertion"],
@@ -113,8 +113,8 @@
       "id": "uppercase-protection-fast",
       "context": "mid-sentence",
       "classes": ["protected-name", "maximum-throughput"],
-      "typed": "we use STM GLM API AI OMP CMUX daily.",
-      "expected": "we use STM GLM API AI OMP CMUX daily."
+      "typed": "we use STM GLM API AI OMP Herdr daily.",
+      "expected": "we use STM GLM API AI OMP Herdr daily."
     }
   ]
 }

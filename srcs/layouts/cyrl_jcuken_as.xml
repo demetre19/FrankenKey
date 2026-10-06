@@ -27,7 +27,7 @@
     <key key0="ѣ" key1="ԑ" key2="/" key3="\\" key4="|" />
   </row>
   <row>
-    <key role="action" width="1.18" key0="shift" key2="loc capslock" key3="loc tab" key4="loc esc"
+    <key role="action" width="1.18" key0="shift" key2="loc capslock" key3="hide tab" key4="hide esc"
  />
     <key width="0.96" key0="я" key1="ꙗ" key2="ꙝ" key4="combining_titlo" />
     <key width="0.96" key0="ч" key1="ћ" key2="ќ" key4="combining_breve" />

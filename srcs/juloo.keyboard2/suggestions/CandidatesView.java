@@ -34,9 +34,10 @@ public class CandidatesView extends LinearLayout
       - Entries at indexes [0] to [2] are word suggestions.
       - Entry at index [3] is the emoji suggestion. */
   String[] _items = new String[NUM_CANDIDATES];
-  DisplayRole[] _roles = new DisplayRole[NUM_CANDIDATES];
+  CandidateRole[] _roles = new CandidateRole[NUM_CANDIDATES];
   String[][] _page_items = new String[WORD_PAGES][WORDS_PER_PAGE];
-  DisplayRole[][] _page_roles = new DisplayRole[WORD_PAGES][WORDS_PER_PAGE];
+  CandidateRole[][] _page_roles =
+    new CandidateRole[WORD_PAGES][WORDS_PER_PAGE];
   int _page = 0;
   Decoder.RequestKey _request_key = null;
 
@@ -49,17 +50,6 @@ public class CandidatesView extends LinearLayout
   /** Message when no dictionary is installed. Visible when no candidates are
       shown. Might be [null]. */
   View _status_no_dict = null;
-  private static enum DisplayRole
-  {
-    NONE,
-    WORD,
-    ENTERED_TEXT,
-    LEARN_ACTION,
-    UNLEARN_ACTION,
-    LEARNED_FEEDBACK,
-    UNLEARNED_FEEDBACK,
-    EMOJI
-  }
 
   public CandidatesView(Context context, AttributeSet attrs)
   {
@@ -84,26 +74,50 @@ public class CandidatesView extends LinearLayout
     if (state == null || state.state != SharedDecoder.Presentation.State.READY
         || state.result == null || state.key == null)
       return;
-    Decoder.Candidate[] words = state.result.words();
-    int count = Math.min(words.length, WORDS_PER_PAGE * WORD_PAGES);
-    for (int i = 0; i < count; i++)
+    // Pinned [CandidateSource] candidates, when present, were already merged
+    // ahead of the ranked words by [SharedDecoder].
+    Decoder.Candidate[] words = state.ranked != null
+      ? state.ranked : state.result.words();
+    int count = 0;
+    if (state.pinned != null)
+      for (CandidateSource.Candidate pinned : state.pinned)
+      {
+        if (count >= WORDS_PER_PAGE * WORD_PAGES)
+          break;
+        _page_items[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+          pinned.surface;
+        _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+          pinned.role;
+        count++;
+      }
+    for (int i = 0; i < words.length && count < WORDS_PER_PAGE * WORD_PAGES;
+        i++)
     {
-      int page = i / WORDS_PER_PAGE;
-      int slot = i % WORDS_PER_PAGE;
-      _page_items[page][slot] = words[i].surface;
-      _page_roles[page][slot] =
-        words[i].role == Decoder.Role.ENTERED_LITERAL
-        ? DisplayRole.ENTERED_TEXT : DisplayRole.WORD;
+      _page_items[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+        words[i].surface;
+      _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+        display_role(words[i].role);
+      count++;
     }
     expose_learn_action(words);
     expose_learn_feedback(state);
     _items[3] = state.result.emoji;
     _roles[3] = state.result.emoji == null
-      ? DisplayRole.NONE : DisplayRole.EMOJI;
+      ? CandidateRole.NONE : CandidateRole.EMOJI;
     _request_key = state.key;
     render_page(0, false);
     if (count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
+  }
+
+  static CandidateRole display_role(Decoder.Role role)
+  {
+    switch (role)
+    {
+      case ENTERED_LITERAL: return CandidateRole.ENTERED_TEXT;
+      case NEXT_WORD: return CandidateRole.NEXT_WORD;
+      default: return CandidateRole.WORD;
+    }
   }
   void update_separators()
   {
@@ -127,12 +141,12 @@ public class CandidatesView extends LinearLayout
       for (int slot = 0; slot < WORDS_PER_PAGE; slot++)
       {
         _page_items[page][slot] = null;
-        _page_roles[page][slot] = DisplayRole.NONE;
+        _page_roles[page][slot] = CandidateRole.NONE;
       }
     for (int i = 0; i < _item_views.length; i++)
     {
       _items[i] = null;
-      _roles[i] = DisplayRole.NONE;
+      _roles[i] = CandidateRole.NONE;
       _item_views[i].animate().cancel();
       _item_views[i].setTranslationX(0f);
       _item_views[i].setText("");
@@ -206,7 +220,7 @@ public class CandidatesView extends LinearLayout
     set_sizes(config);
   }
 
-  void set_candidate_text(TextView v, String text, DisplayRole role)
+  void set_candidate_text(TextView v, String text, CandidateRole role)
   {
     String label = label_for(text, role);
     v.setText(label);
@@ -305,7 +319,7 @@ public class CandidatesView extends LinearLayout
       return;
     _page_items[0][2] = entered.surface;
     _page_roles[0][2] = entered.learned
-      ? DisplayRole.UNLEARN_ACTION : DisplayRole.LEARN_ACTION;
+      ? CandidateRole.UNLEARN_ACTION : CandidateRole.LEARN_ACTION;
   }
 
   void expose_learn_feedback(SharedDecoder.Presentation state)
@@ -316,32 +330,32 @@ public class CandidatesView extends LinearLayout
     _page_items[0][2] = state.feedbackWord;
     _page_roles[0][2] =
       state.feedback == SharedDecoder.Presentation.Feedback.LEARNED
-      ? DisplayRole.LEARNED_FEEDBACK : DisplayRole.UNLEARNED_FEEDBACK;
+      ? CandidateRole.LEARNED_FEEDBACK : CandidateRole.UNLEARNED_FEEDBACK;
   }
 
 
-  String label_for(String text, DisplayRole role)
+  String label_for(String text, CandidateRole role)
   {
-    if (role == DisplayRole.LEARN_ACTION)
+    if (role == CandidateRole.LEARN_ACTION)
       return "📖+";
-    if (role == DisplayRole.UNLEARN_ACTION)
+    if (role == CandidateRole.UNLEARN_ACTION)
       return "📖−";
-    if (role == DisplayRole.LEARNED_FEEDBACK)
+    if (role == CandidateRole.LEARNED_FEEDBACK)
       return "📖✓";
-    if (role == DisplayRole.UNLEARNED_FEEDBACK)
+    if (role == CandidateRole.UNLEARNED_FEEDBACK)
       return "📖−";
     return text;
   }
 
-  String description_for(String text, DisplayRole role)
+  String description_for(String text, CandidateRole role)
   {
-    if (role == DisplayRole.LEARN_ACTION)
+    if (role == CandidateRole.LEARN_ACTION)
       return "Learn " + text;
-    if (role == DisplayRole.UNLEARN_ACTION)
+    if (role == CandidateRole.UNLEARN_ACTION)
       return "Forget " + text;
-    if (role == DisplayRole.LEARNED_FEEDBACK)
+    if (role == CandidateRole.LEARNED_FEEDBACK)
       return "Learned " + text;
-    if (role == DisplayRole.UNLEARNED_FEEDBACK)
+    if (role == CandidateRole.UNLEARNED_FEEDBACK)
       return "Forgot " + text;
     return text;
   }
@@ -350,6 +364,17 @@ public class CandidatesView extends LinearLayout
   {
     _separators[index] = findViewById(item_id);
     update_separator(index, false);
+  }
+
+  /** Route every strip gesture through the single candidate dispatch seam. */
+  void dispatch_accept(int item_index, CandidateRole role)
+  {
+    String it = _items[item_index];
+    Decoder.RequestKey key = _request_key;
+    if (it == null || key == null || role == null
+        || role == CandidateRole.NONE)
+      return;
+    Config.globalConfig().handler.candidate_accepted(key, role, it);
   }
 
   private void setup_item_view(final int item_index, int item_id)
@@ -362,16 +387,25 @@ public class CandidatesView extends LinearLayout
           @Override
           public void onClick(View _v)
           {
+            dispatch_accept(item_index, _roles[item_index]);
+          }
+        });
+    v.setOnLongClickListener(new View.OnLongClickListener()
+        {
+          @Override
+          public boolean onLongClick(View _v)
+          {
+            // Seam for role-specific long-press behavior. Not consumed: the
+            // release still performs the default accept so a plain long tap
+            // keeps its pre-seam outcome unless a lane registers a handler.
             String it = _items[item_index];
             Decoder.RequestKey key = _request_key;
-            if (it == null || key == null)
-              return;
-            if (_roles[item_index] == DisplayRole.LEARN_ACTION
-                || _roles[item_index] == DisplayRole.UNLEARN_ACTION)
-              Config.globalConfig().handler.suggestion_swiped_up(key, it);
-            else if (_roles[item_index] != DisplayRole.LEARNED_FEEDBACK
-                && _roles[item_index] != DisplayRole.UNLEARNED_FEEDBACK)
-              Config.globalConfig().handler.suggestion_entered(key, it);
+            CandidateRole role = _roles[item_index];
+            if (it == null || key == null || role == CandidateRole.NONE)
+              return false;
+            Config.globalConfig().handler.candidate_long_pressed(
+                key, role, it);
+            return false;
           }
         });
     v.setOnTouchListener(new View.OnTouchListener()
@@ -400,14 +434,14 @@ public class CandidatesView extends LinearLayout
                 String it = _items[item_index];
                 if (it == null || Math.abs(dy) < swipe_threshold_px())
                   return false;
-                if (_roles[item_index] == DisplayRole.LEARNED_FEEDBACK
-                    || _roles[item_index] == DisplayRole.UNLEARNED_FEEDBACK)
+                CandidateRole role = _roles[item_index];
+                if (role == CandidateRole.LEARNED_FEEDBACK
+                    || role == CandidateRole.UNLEARNED_FEEDBACK)
                   return true;
-                if (dy < 0 || _roles[item_index] == DisplayRole.LEARN_ACTION
-                    || _roles[item_index] == DisplayRole.UNLEARN_ACTION)
-                  Config.globalConfig().handler.suggestion_swiped_up(key, it);
-                else
-                  Config.globalConfig().handler.suggestion_entered(key, it);
+                // An upward swipe on any candidate is the learn gesture.
+                CandidateRole dispatch = dy < 0
+                  ? CandidateRole.LEARN_ACTION : role;
+                dispatch_accept(item_index, dispatch);
                 return true;
               default:
                 return false;

@@ -9,7 +9,7 @@
     <fn a="cursor_right" b="end" />
   </modmap>
   <row>
-    <key key0="q" ne="1" se="loc esc"/>
+    <key key0="q" ne="1" se="hide esc"/>
     <key key0="w" nw="~" ne="2" sw="\@"/>
     <key key0="e" ne="3" sw="\#" se="€"/>
     <key key0="r" ne="4" sw="$" se="loc £"/>
@@ -21,7 +21,7 @@
     <key key0="p" ne="0" sw="[" se="]"/>
   </row>
   <row>
-    <key key0="a" nw="loc tab" ne="loc selectAll"/>
+    <key key0="a" nw="hide tab" ne="loc selectAll"/>
     <key key0="s" nw="loc §" ne="š"/>
     <key key0="d" ne="đ"/>
     <key key0="f"/>

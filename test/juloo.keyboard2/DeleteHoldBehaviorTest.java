@@ -346,11 +346,11 @@ public class DeleteHoldBehaviorTest
   }
 
   @Test
-  public void cmux_single_backspace_uses_exactly_one_terminal_callback()
+  public void herdr_single_backspace_uses_exactly_one_terminal_callback()
       throws Exception
   {
     FakeReceiver receiver = new FakeReceiver("omp ");
-    receiver.editorInfo.packageName = "dev.cmux.connector.debug";
+    receiver.editorInfo.packageName = "dev.orca.connector.debug";
     receiver.editorInfo.inputType =
       android.text.InputType.TYPE_CLASS_TEXT
       | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -368,22 +368,22 @@ public class DeleteHoldBehaviorTest
     org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(
         100, TimeUnit.MILLISECONDS);
 
-    assertEquals("One CMUX Backspace must emit exactly one terminal 0x7f callback.",
+    assertEquals("One Herdr Backspace must emit exactly one terminal 0x7f callback.",
         1, receiver.input.terminalBackspaces);
-    assertEquals("CMUX does not implement the generic codepoint deletion contract.",
+    assertEquals("Herdr does not implement the generic codepoint deletion contract.",
         0, receiver.input.codePointDeleteCalls);
     assertEquals(1, receiver.input.deleteSurroundingTextCalls);
-    assertTrue("CMUX Backspace must not append a synthetic DEL event.",
+    assertTrue("Herdr Backspace must not append a synthetic DEL event.",
         receiver.input.keyEvents.isEmpty());
     handler.finished();
   }
 
   @Test
-  public void delete_words_left_uses_tracked_word_in_cmux_terminal()
+  public void delete_words_left_uses_tracked_word_in_herdr_terminal()
       throws Exception
   {
     FakeReceiver receiver = new FakeReceiver("omp");
-    receiver.editorInfo.packageName = "dev.cmux.connector.debug";
+    receiver.editorInfo.packageName = "dev.orca.connector.debug";
     receiver.editorInfo.inputType =
       android.text.InputType.TYPE_CLASS_TEXT
       | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -402,14 +402,14 @@ public class DeleteHoldBehaviorTest
     handler.key_down(grow, true);
     handler.key_up(release, Pointers.Modifiers.EMPTY, null);
 
-    assertEquals("CMUX exposes no readable terminal buffer, so swipe deletion must reuse the working Backspace path once per tracked codepoint.",
+    assertEquals("Herdr exposes no readable terminal buffer, so swipe deletion must reuse the working Backspace path once per tracked codepoint.",
         3, receiver.input.terminalBackspaces);
     java.lang.reflect.Field typedWordField =
       KeyEventHandler.class.getDeclaredField("_typedword");
     typedWordField.setAccessible(true);
     CurrentlyTypedWord typedWord =
       (CurrentlyTypedWord)typedWordField.get(handler);
-    assertEquals("CMUX cannot refresh word state from its write-only connection, so swipe deletion must clear the tracked word synchronously.",
+    assertEquals("Herdr cannot refresh word state from its write-only connection, so swipe deletion must clear the tracked word synchronously.",
         "", typedWord.get());
     assertEquals(0, receiver.input.codePointDeleteCalls);
     assertEquals(3, receiver.input.deleteSurroundingTextCalls);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <keyboard name="ЙІУКЕН" script="cyrillic">
   <row>
-    <key shift="1" key0="й" key2="1" key4="loc esc"/>
+    <key shift="1" key0="й" key2="1" key4="hide esc"/>
     <key key0="і" key2="2" key3="-"/>
     <key key0="у" key2="3" key3="&quot;"/>
     <key key0="к" key2="4" key3="|"/>

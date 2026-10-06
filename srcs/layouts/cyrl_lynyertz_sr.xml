@@ -36,7 +36,7 @@
     <ctrl a="м" b="м:m" />
   </modmap>
   <row>
-    <key key0="љ" ne="1" se="loc esc"/>
+    <key key0="љ" ne="1" se="hide esc"/>
     <key key0="њ" nw="~" ne="2" sw="\@"/>
     <key key0="е" ne="3" sw="\#" se="€"/>
     <key key0="р" ne="4" sw="$" se="loc £"/>
@@ -49,7 +49,7 @@
     <key key0="ш"/>
   </row>
   <row>
-    <key key0="а" nw="loc tab" ne="loc selectAll"/>
+    <key key0="а" nw="hide tab" ne="loc selectAll"/>
     <key key0="с" nw="loc §" ne="loc shareText"/>
     <key key0="д"/>
     <key key0="ф"/>

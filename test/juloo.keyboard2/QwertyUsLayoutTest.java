@@ -34,10 +34,10 @@ public class QwertyUsLayoutTest
     {
       Element key = key(layout, center);
       boolean isG = "g".equals(center);
-      assertEquals(isG ? "loc cursor_left" : "", key.getAttribute("w"));
-      assertEquals(isG ? "loc cursor_right" : "", key.getAttribute("e"));
-      assertEquals(isG ? "loc cursor_up" : "", key.getAttribute("n"));
-      assertEquals(isG ? "loc cursor_down" : "", key.getAttribute("s"));
+      assertEquals(isG ? "hide cursor_left" : "", key.getAttribute("w"));
+      assertEquals(isG ? "hide cursor_right" : "", key.getAttribute("e"));
+      assertEquals(isG ? "hide cursor_up" : "", key.getAttribute("n"));
+      assertEquals(isG ? "hide cursor_down" : "", key.getAttribute("s"));
     }
   }
 

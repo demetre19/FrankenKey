@@ -39,7 +39,7 @@ final class ReaderAiDialog
   private static final float MAX_TEXT_SP = 30f;
 
   private final Activity activity;
-  private final ReaderAiService.Article article;
+  private ReaderAiService.Article article;
   private final ReaderAiUi ui;
   private final ReaderAiSettings settings;
   private final ReaderAiOpenRouter client = new ReaderAiOpenRouter();
@@ -48,6 +48,9 @@ final class ReaderAiDialog
   private final ReaderAiService service;
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final List<ReaderAiService.ChatTurn> turns = new ArrayList<>();
+  private final ReaderAiAction autoAction;
+  private final SourceReloader sourceReloader;
+  private final Runnable onDismiss;
 
   private Dialog dialog;
   private TextView status;
@@ -56,15 +59,17 @@ final class ReaderAiDialog
   private ScrollView outputScroll;
   private LinearLayout chatRow;
   private EditText chatInput;
-  private Button summaryOne;
-  private Button summaryTwo;
-  private Button directChat;
-  private Button quiz;
-  private Button copy;
-  private Button save;
-  private Button read;
-  private Button share;
-  private Button send;
+  private TextView sourceLabel;
+  private TextView sourcePreview;
+  private ImageButton summaryOne;
+  private ImageButton summaryTwo;
+  private ImageButton directChat;
+  private ImageButton quiz;
+  private ImageButton copy;
+  private ImageButton save;
+  private ImageButton read;
+  private ImageButton share;
+  private ImageButton send;
   private float textSizeSp = MIN_TEXT_SP;
   private boolean busy;
   private ReaderAiOpenRouter.Model selectedModel;
@@ -75,13 +80,26 @@ final class ReaderAiDialog
 
   static void show(Activity activity, ReaderAiService.Article article)
   {
-    new ReaderAiDialog(activity, article).show();
+    new ReaderAiDialog(activity, article, null, null, null).show();
   }
 
-  private ReaderAiDialog(Activity activity, ReaderAiService.Article article)
+  static void show(Activity activity, ReaderAiService.Article article,
+      ReaderAiAction autoAction, SourceReloader sourceReloader,
+      Runnable onDismiss)
+  {
+    new ReaderAiDialog(activity, article, autoAction, sourceReloader,
+        onDismiss).show();
+  }
+
+  private ReaderAiDialog(Activity activity, ReaderAiService.Article article,
+      ReaderAiAction autoAction, SourceReloader sourceReloader,
+      Runnable onDismiss)
   {
     this.activity = activity;
     this.article = article;
+    this.autoAction = autoAction;
+    this.sourceReloader = sourceReloader;
+    this.onDismiss = onDismiss;
     ui = new ReaderAiUi(activity);
     settings = new ReaderAiSettings(activity);
     cache = new ReaderAiCache(activity);
@@ -118,31 +136,24 @@ final class ReaderAiDialog
     status.setEllipsize(android.text.TextUtils.TruncateAt.END);
     header.addView(status, new LinearLayout.LayoutParams(0,
           ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-    ImageButton savedItems = new ImageButton(activity);
-    savedItems.setImageResource(R.drawable.snippet_icon_bookmark);
-    savedItems.setColorFilter(ui.text);
-    savedItems.setContentDescription("Saved Reader AI results");
-    savedItems.setPadding(ui.dp(9), ui.dp(9), ui.dp(9), ui.dp(9));
-    savedItems.setBackground(ui.panel(ui.surface, ui.border, 8));
+    ImageButton savedItems = ui.iconButton(R.drawable.snippet_icon_bookmark,
+        "Saved Reader AI results");
     savedItems.setOnClickListener(ignored -> activity.startActivity(
           new Intent(activity, ReaderAiLibraryActivity.class)));
     LinearLayout.LayoutParams savedParams = new LinearLayout.LayoutParams(
         ui.dp(42), ui.dp(42));
     savedParams.setMarginStart(ui.dp(8));
     header.addView(savedItems, savedParams);
-    Button settingsButton = ui.button("Settings");
-    settingsButton.setContentDescription("Open Reader AI settings");
+    ImageButton settingsButton = ui.iconButton(R.drawable.cog_outline,
+        "Open Reader AI settings");
     settingsButton.setOnClickListener(ignored -> ReaderAiSettingsDialog.show(
           activity, this::settingsChanged));
     LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.WRAP_CONTENT, ui.dp(42));
+        ui.dp(42), ui.dp(42));
     settingsParams.setMarginStart(ui.dp(8));
     header.addView(settingsButton, settingsParams);
-    ImageButton close = new ImageButton(activity);
-    close.setImageResource(R.drawable.ic_reader_ai_close);
-    close.setContentDescription("Close Reader AI and cancel active work");
-    close.setPadding(ui.dp(9), ui.dp(9), ui.dp(9), ui.dp(9));
-    close.setBackground(ui.panel(ui.surface, ui.border, 8));
+    ImageButton close = ui.iconButton(R.drawable.ic_reader_ai_close,
+        "Close Reader AI and cancel active work");
     close.setOnClickListener(ignored -> dialog.dismiss());
     LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
         ui.dp(42), ui.dp(42));
@@ -151,11 +162,14 @@ final class ReaderAiDialog
     root.addView(header);
 
     LinearLayout modes = ui.row();
-    summaryOne = modeButton("Summary One", () -> summary(true));
-    summaryTwo = modeButton("Summary Two", () -> summary(false));
-    directChat = modeButton("Chat", this::startDirectChat);
-    quiz = modeButton("Quiz", this::chooseQuiz);
-    quiz.setContentDescription(sourceTitle() + " Quiz");
+    summaryOne = modeButton(R.drawable.ic_reader_ai_summary_one,
+        "Summary One", () -> summary(true));
+    summaryTwo = modeButton(R.drawable.ic_reader_ai_summary_two,
+        "Summary Two", () -> summary(false));
+    directChat = modeButton(R.drawable.snippet_icon_message_circle,
+        "Chat", this::startDirectChat);
+    quiz = modeButton(R.drawable.ic_reader_ai_quiz,
+        sourceTitle() + " Quiz", this::chooseQuiz);
     ui.addWeighted(modes, summaryOne, 1f, 0);
     ui.addWeighted(modes, summaryTwo, 1f, ui.dp(8));
     ui.addWeighted(modes, directChat, 1f, ui.dp(8));
@@ -163,6 +177,39 @@ final class ReaderAiDialog
     LinearLayout.LayoutParams modeParams = matchWrap();
     modeParams.topMargin = ui.dp(8);
     root.addView(modes, modeParams);
+
+    if (article.sourceType == ReaderAiService.Article.SourceType.CLIPBOARD
+        || sourceReloader != null)
+    {
+      LinearLayout sourceRow = ui.row();
+      sourceLabel = ui.text(sourceLabelText(), 12, ui.muted);
+      sourceLabel.setSingleLine(true);
+      sourceLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
+      sourceRow.addView(sourceLabel, new LinearLayout.LayoutParams(0,
+            ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+      ImageButton loadClipboard = ui.iconButton(R.drawable.ic_clipboard_paste,
+          activity.getString(R.string.reader_ai_load_clipboard));
+      loadClipboard.setOnClickListener(ignored -> reloadSource());
+      LinearLayout.LayoutParams loadParams = new LinearLayout.LayoutParams(
+          ui.dp(42), ui.dp(42));
+      loadParams.setMarginStart(ui.dp(8));
+      sourceRow.addView(loadClipboard, loadParams);
+      LinearLayout.LayoutParams sourceParams = matchWrap();
+      sourceParams.topMargin = ui.dp(8);
+      root.addView(sourceRow, sourceParams);
+    }
+    sourcePreview = ui.text("", 12, ui.muted);
+    sourcePreview.setTextIsSelectable(true);
+    ScrollView sourceScroll = new ScrollView(activity);
+    sourceScroll.setBackground(ui.panel(ui.surface, ui.border, 8));
+    sourceScroll.setPadding(ui.dp(10), ui.dp(8), ui.dp(10), ui.dp(8));
+    sourceScroll.addView(sourcePreview);
+    LinearLayout.LayoutParams sourceScrollParams = new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(96));
+    sourceScrollParams.topMargin = ui.dp(8);
+    root.addView(sourceScroll, sourceScrollParams);
+    refreshSourcePreview();
+
 
     conversation = new LinearLayout(activity);
     conversation.setOrientation(LinearLayout.VERTICAL);
@@ -195,7 +242,8 @@ final class ReaderAiDialog
 
     chatRow = ui.row();
     chatInput = new EditText(activity);
-    chatInput.setHint("Ask about this " + sourceLower() + "…");
+    chatInput.setHint(hasSource()
+        ? "Ask about this " + sourceLower() + "…" : "Ask anything…");
     chatInput.setTextColor(ui.text);
     chatInput.setHintTextColor(ui.muted);
     chatInput.setTextSize(14);
@@ -205,12 +253,12 @@ final class ReaderAiDialog
     chatInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2000)});
     chatInput.setPadding(ui.dp(10), 0, ui.dp(10), 0);
     chatInput.setBackground(ui.panel(ui.surface, ui.border, 8));
-    send = ui.button("Send");
-    send.setContentDescription("Send Reader AI question");
+    send = ui.iconButton(R.drawable.snippet_icon_send,
+        "Send Reader AI question");
     send.setOnClickListener(ignored -> ask());
     chatRow.addView(chatInput, new LinearLayout.LayoutParams(0, ui.dp(44), 1f));
     LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(
-        ui.dp(78), ui.dp(44));
+        ui.dp(44), ui.dp(44));
     sendParams.setMarginStart(ui.dp(8));
     chatRow.addView(send, sendParams);
     chatRow.setVisibility(View.GONE);
@@ -219,11 +267,15 @@ final class ReaderAiDialog
     root.addView(chatRow, chatParams);
 
     LinearLayout actions = ui.row();
-    copy = actionButton("Copy", this::copyCurrent);
-    save = actionButton("Save", this::chooseSave);
-    read = actionButton("Speed Read", this::readCurrent);
-    read.setContentDescription("Speed-read summary or chat in the plain-text Reader");
-    share = actionButton("Share", this::chooseShare);
+    copy = actionButton(R.drawable.ic_reader_ai_copy,
+        "Copy Reader AI result", this::copyCurrent);
+    save = actionButton(R.drawable.snippet_icon_bookmark,
+        "Save Reader AI result", this::chooseSave);
+    read = actionButton(R.drawable.ic_reader_play,
+        "Speed-read summary or chat in the plain-text Reader",
+        this::readCurrent);
+    share = actionButton(R.drawable.ic_reader_ai_share,
+        "Share Reader AI result", this::chooseShare);
     ui.addWeighted(actions, copy, 1f, 0);
     ui.addWeighted(actions, save, 1f, ui.dp(8));
     ui.addWeighted(actions, read, 1f, ui.dp(8));
@@ -239,6 +291,8 @@ final class ReaderAiDialog
       executor.shutdownNow();
       cache.close();
       store.close();
+      if (onDismiss != null)
+        onDismiss.run();
     });
     dialog.show();
     if (window != null)
@@ -248,10 +302,31 @@ final class ReaderAiDialog
       window.setGravity(Gravity.CENTER);
     }
     root.requestApplyInsets();
+    dispatchAutoAction();
+  }
+
+  private void dispatchAutoAction()
+  {
+    if (autoAction == null)
+      return;
+    switch (autoAction)
+    {
+      case NONE: return;
+      case SUMMARY_ONE: summary(true); return;
+      case SUMMARY_TWO: summary(false); return;
+      case QUIZ: chooseQuiz(); return;
+      case LOAD_CLIPBOARD: reloadSource(); return;
+      default: startDirectChat(); return;
+    }
   }
 
   private void summary(boolean first)
   {
+    if (!hasSource())
+    {
+      needSource();
+      return;
+    }
     runAfterDisclosure(() -> withModel(model -> {
       String prompt = first ? settings.getSummaryOnePrompt()
         : settings.getSummaryTwoPrompt();
@@ -309,17 +384,20 @@ final class ReaderAiDialog
   {
     runAfterDisclosure(() -> withModel(model -> {
       currentType = ReaderAiStore.Type.ARTICLE_CHAT;
-      currentPrompt = ReaderAiRequest.DIRECT_CHAT_PROMPT;
+      currentPrompt = hasSource() ? ReaderAiRequest.DIRECT_CHAT_PROMPT
+        : ReaderAiRequest.GENERAL_CHAT_PROMPT;
       currentMarkdown = "";
       currentCacheKey = "";
       turns.clear();
       selectedModel = model;
       renderConversation();
-      output.setText("Ask a question to start a grounded "
-          + sourceLower() + " chat.");
+      output.setText(hasSource()
+          ? "Ask a question to start a grounded " + sourceLower() + " chat."
+          : "Ask anything to start a chat.");
       chatRow.setVisibility(View.VISIBLE);
       setActionsVisible(false);
-      status.setText(sourceTitle() + " Chat | " + model.id);
+      status.setText((hasSource() ? sourceTitle() + " Chat" : "Chat")
+          + " | " + model.id);
       selectMode(directChat);
       chatInput.requestFocus();
     }));
@@ -327,6 +405,11 @@ final class ReaderAiDialog
 
   private void chooseQuiz()
   {
+    if (!hasSource())
+    {
+      needSource();
+      return;
+    }
     runAfterDisclosure(() -> withModel(model -> {
       String suffix = article.isBook() ? " per chapter" : " questions";
       String[] choices = {"6" + suffix, "10" + suffix, "12" + suffix,
@@ -392,6 +475,14 @@ final class ReaderAiDialog
     String question = chatInput.getText().toString().trim();
     if (question.isEmpty())
       return;
+    if (selectedModel == null)
+    {
+      withModel(model -> {
+        selectedModel = model;
+        ask();
+      });
+      return;
+    }
     begin((currentType == ReaderAiStore.Type.ARTICLE_CHAT
           ? sourceTitle() + " Chat" : currentType.label + " chat")
         + " | " + modelId());
@@ -423,6 +514,7 @@ final class ReaderAiDialog
     output.setText(currentMarkdown.isEmpty() ? ""
         : ReaderAiMarkdown.render(currentMarkdown, density()));
     output.setVisibility(currentMarkdown.isEmpty() ? View.GONE : View.VISIBLE);
+    output.setOnClickListener(ignored -> copyText(currentMarkdown));
     while (conversation.getChildCount() > 1)
       conversation.removeViewAt(1);
     for (ReaderAiService.ChatTurn turn : turns)
@@ -437,14 +529,27 @@ final class ReaderAiDialog
       conversation.addView(user, userParams);
 
       TextView ai = messageText();
-      ai.setPadding(ui.dp(10), ui.dp(8), ui.dp(10), ui.dp(8));
+      ai.setPadding(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(10));
+      ai.setBackground(ui.panel(ui.highlight, ui.border, 8));
       ai.setText(ReaderAiMarkdown.render("**AI**\n\n" + turn.answer,
             density()));
+      ai.setOnClickListener(ignored -> copyText(turn.answer));
       LinearLayout.LayoutParams aiParams = matchWrap();
       aiParams.topMargin = ui.dp(4);
       conversation.addView(ai, aiParams);
     }
     outputScroll.post(() -> outputScroll.fullScroll(View.FOCUS_DOWN));
+  }
+
+  private void copyText(String text)
+  {
+    if (text == null || text.isEmpty())
+      return;
+    ClipboardManager clipboard = (ClipboardManager)activity.getSystemService(
+        Context.CLIPBOARD_SERVICE);
+    clipboard.setPrimaryClip(ClipData.newPlainText("FrankenKey Reader AI",
+          text));
+    Toast.makeText(activity, "Copied", Toast.LENGTH_SHORT).show();
   }
 
   private void copyCurrent()
@@ -546,6 +651,8 @@ final class ReaderAiDialog
     String sourceDescription;
     if (article.sourceType == ReaderAiService.Article.SourceType.BOOK)
       sourceDescription = "selected excerpts from this book";
+    else if (article.sourceType == ReaderAiService.Article.SourceType.PAGE)
+      sourceDescription = "this captured page text";
     else if (article.sourceType == ReaderAiService.Article.SourceType.CLIPBOARD)
       sourceDescription = "this clipboard text";
     else
@@ -639,13 +746,13 @@ final class ReaderAiDialog
       setActionsVisible(false);
     }
   }
-
   private void finish(String message)
   {
     busy = false;
     status.setText(message);
     setEnabled(true);
   }
+
 
   private void fail(Exception error)
   {
@@ -654,11 +761,9 @@ final class ReaderAiDialog
       String message = error.getMessage() == null
         ? "Reader AI request failed" : error.getMessage();
       status.setText(message);
-      if (article.isBook())
-      {
-        output.setText("Book AI stopped\n\n" + message);
-        output.setVisibility(View.VISIBLE);
-      }
+      output.setText(article.isBook() ? "Book AI stopped\n\n" + message
+          : message);
+      output.setVisibility(View.VISIBLE);
       setEnabled(true);
     });
   }
@@ -691,7 +796,7 @@ final class ReaderAiDialog
     return type != null && type != ReaderAiStore.Type.ARTICLE_QUIZ;
   }
 
-  private void selectMode(Button selected)
+  private void selectMode(View selected)
   {
     ui.selected(summaryOne, selected == summaryOne);
     ui.selected(summaryTwo, selected == summaryTwo);
@@ -716,18 +821,18 @@ final class ReaderAiDialog
     return text;
   }
 
-  private Button modeButton(String label, Runnable action)
+  private ImageButton modeButton(int icon, String description, Runnable action)
   {
-    Button button = ui.button(label);
+    ImageButton button = ui.iconButton(icon, description);
     button.setOnClickListener(ignored -> action.run());
     return button;
   }
 
-  private Button actionButton(String label, Runnable action)
+  private ImageButton actionButton(int icon, String description,
+      Runnable action)
   {
-    Button button = ui.button(label);
+    ImageButton button = ui.iconButton(icon, description);
     button.setOnClickListener(ignored -> action.run());
-    button.setContentDescription(label + " Reader AI result");
     return button;
   }
 
@@ -747,13 +852,84 @@ final class ReaderAiDialog
 
   private String sourceTitle()
   {
-    return article.isBook() ? "Book" : "Article";
+    if (article.isBook())
+      return "Book";
+    if (article.sourceType == ReaderAiService.Article.SourceType.PAGE)
+      return "Page";
+    return article.sourceType == ReaderAiService.Article.SourceType.CLIPBOARD
+      ? "Clipboard" : "Article";
   }
 
   private String sourceLower()
   {
-    return article.isBook() ? "book" : "article";
+    if (article.isBook())
+      return "book";
+    if (article.sourceType == ReaderAiService.Article.SourceType.PAGE)
+      return "page";
+    return article.sourceType == ReaderAiService.Article.SourceType.CLIPBOARD
+      ? "clipboard text" : "article";
   }
+
+  private boolean hasSource()
+  {
+    return !article.text.trim().isEmpty();
+  }
+
+  private void needSource()
+  {
+    String message = activity.getString(R.string.reader_ai_need_source);
+    status.setText(message);
+    output.setText(message);
+    output.setVisibility(View.VISIBLE);
+  }
+
+  private void reloadSource()
+  {
+    if (sourceReloader == null)
+      return;
+    ReaderAiService.Article reloaded = sourceReloader.reload();
+    if (reloaded != null)
+      article = reloaded;
+    turns.clear();
+    currentMarkdown = "";
+    currentCacheKey = "";
+    currentType = null;
+    selectMode(null);
+    renderConversation();
+    chatRow.setVisibility(View.GONE);
+    setActionsVisible(false);
+    String message = hasSource()
+      ? sourceTitle() + " loaded"
+      : activity.getString(R.string.reader_ai_clipboard_empty);
+    status.setText(message);
+    output.setText(message);
+    output.setVisibility(View.VISIBLE);
+    if (sourceLabel != null)
+      sourceLabel.setText(sourceLabelText());
+    refreshSourcePreview();
+  }
+
+  private void refreshSourcePreview()
+  {
+    if (sourcePreview == null)
+      return;
+    if (!hasSource())
+    {
+      sourcePreview.setText(R.string.reader_ai_need_source);
+      return;
+    }
+    String text = article.text;
+    if (text.length() > 8000)
+      text = text.substring(0, 8000) + "\n…";
+    sourcePreview.setText(text);
+  }
+  private String sourceLabelText()
+  {
+    String title = article.title.isEmpty()
+      ? activity.getString(R.string.reader_title_clipboard) : article.title;
+    return title + " · " + article.text.length() + " chars";
+  }
+
 
   private String modelId()
   {
@@ -787,4 +963,9 @@ final class ReaderAiDialog
   }
 
   private interface ModelAction { void run(ReaderAiOpenRouter.Model model); }
+
+  interface SourceReloader
+  {
+    ReaderAiService.Article reload();
+  }
 }

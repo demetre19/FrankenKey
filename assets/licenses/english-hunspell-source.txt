@@ -8,7 +8,7 @@ da8a7e73fd26a134ad7c6438fa7c310730906b3a
 https://github.com/LibreOffice/dictionaries/tree/da8a7e73fd26a134ad7c6438fa7c310730906b3a/en
 
 FrankenKey adds missing lowercase entries so every pack recognizes the
-technical names gboard, omp, cmux, npm, pnpm, adb, and localhost plus the
+technical names gboard, omp, herdr, npm, pnpm, adb, and localhost plus the
 chat abbreviations lol, lmao, brb, idk, tbh, and omg. Existing upstream
 entries are retained where present. The .aff files remain unmodified.
 

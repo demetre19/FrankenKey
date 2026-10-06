@@ -36,6 +36,11 @@ final class ReaderAiSettingsDialog
   private final ReaderAiOpenRouter client = new ReaderAiOpenRouter();
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final Runnable onSaved;
+  private final Runnable onDismiss;
+  private final android.os.Handler autosaveHandler =
+    new android.os.Handler(android.os.Looper.getMainLooper());
+  private final Runnable autosavePrompts = this::savePrompts;
+  private final Runnable autosaveKey = this::saveKey;
   private EditText key;
   private Button model;
   private EditText summaryOne;
@@ -47,15 +52,22 @@ final class ReaderAiSettingsDialog
 
   static void show(Activity activity, Runnable onSaved)
   {
-    new ReaderAiSettingsDialog(activity, onSaved).show();
+    new ReaderAiSettingsDialog(activity, onSaved, null).show();
   }
 
-  private ReaderAiSettingsDialog(Activity activity, Runnable onSaved)
+  static void show(Activity activity, Runnable onSaved, Runnable onDismiss)
+  {
+    new ReaderAiSettingsDialog(activity, onSaved, onDismiss).show();
+  }
+
+  private ReaderAiSettingsDialog(Activity activity, Runnable onSaved,
+      Runnable onDismiss)
   {
     this.activity = activity;
     this.ui = new ReaderAiUi(activity);
     this.settings = new ReaderAiSettings(activity);
     this.onSaved = onSaved;
+    this.onDismiss = onDismiss;
     selectedModelId = settings.getModelId();
   }
 
@@ -73,13 +85,19 @@ final class ReaderAiSettingsDialog
     status.setPadding(0, ui.dp(4), 0, ui.dp(12));
     content.addView(status);
 
-    Button savedResults = ui.button("Open saved Reader AI results");
-    savedResults.setContentDescription("Open saved Reader AI results");
+    LinearLayout savedRow = ui.row();
+    TextView savedLabel = ui.text("Saved Reader AI results", 14, ui.text);
+    savedRow.addView(savedLabel, new LinearLayout.LayoutParams(0,
+          ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+    android.widget.ImageButton savedResults = ui.iconButton(
+        R.drawable.snippet_icon_bookmark, "Open saved Reader AI results");
     savedResults.setOnClickListener(ignored -> activity.startActivity(
           new Intent(activity, ReaderAiLibraryActivity.class)));
+    savedRow.addView(savedResults, new LinearLayout.LayoutParams(
+          ui.dp(42), ui.dp(42)));
     LinearLayout.LayoutParams savedResultsParams = matchWrap();
     savedResultsParams.bottomMargin = ui.dp(8);
-    content.addView(savedResults, savedResultsParams);
+    content.addView(savedRow, savedResultsParams);
 
     content.addView(label("OpenRouter API key"));
     key = input("sk-or-...", false, 1000);
@@ -92,6 +110,8 @@ final class ReaderAiSettingsDialog
     {
       status.setText(error.getMessage());
     }
+    key.addTextChangedListener(new SimpleTextWatcher(
+          () -> schedule(autosaveKey)));
     content.addView(key, matchWrap());
 
     CheckBox reveal = new CheckBox(activity);
@@ -115,67 +135,112 @@ final class ReaderAiSettingsDialog
       else
         showModelPicker();
     });
-    Button refresh = ui.button("Refresh models");
+    android.widget.ImageButton refresh = ui.iconButton(
+        R.drawable.ic_reader_ai_refresh, "Refresh OpenRouter models");
     refresh.setOnClickListener(ignored -> refreshModels(false));
-    ui.addWeighted(modelRow, model, 1.5f, 0);
-    ui.addWeighted(modelRow, refresh, 1f, ui.dp(8));
+    ui.addWeighted(modelRow, model, 1f, 0);
+    LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(
+        ui.dp(42), ui.dp(42));
+    refreshParams.setMarginStart(ui.dp(8));
+    modelRow.addView(refresh, refreshParams);
     content.addView(modelRow, matchWrap());
 
     content.addView(label("Summary One prompt"));
     summaryOne = promptInput(settings.getSummaryOnePrompt());
+    summaryOne.addTextChangedListener(new SimpleTextWatcher(
+          () -> schedule(autosavePrompts)));
     content.addView(summaryOne, promptParams());
     content.addView(label("Summary Two prompt"));
     summaryTwo = promptInput(settings.getSummaryTwoPrompt());
+    summaryTwo.addTextChangedListener(new SimpleTextWatcher(
+          () -> schedule(autosavePrompts)));
     content.addView(summaryTwo, promptParams());
     content.addView(label("Quiz prompt"));
     quiz = promptInput(settings.getQuizPrompt());
+    quiz.addTextChangedListener(new SimpleTextWatcher(
+          () -> schedule(autosavePrompts)));
     content.addView(quiz, promptParams());
 
-    Button restore = ui.button("Restore default Reader AI prompts");
+    LinearLayout restoreRow = ui.row();
+    TextView restoreLabel = ui.text("Restore default prompts", 14, ui.text);
+    restoreRow.addView(restoreLabel, new LinearLayout.LayoutParams(0,
+          ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+    android.widget.ImageButton restore = ui.iconButton(
+        R.drawable.ic_reader_ai_restore, "Restore default Reader AI prompts");
     restore.setOnClickListener(ignored -> {
       summaryOne.setText(ReaderAiRequest.SUMMARY_ONE_PROMPT);
       summaryTwo.setText(ReaderAiRequest.SUMMARY_TWO_PROMPT);
       quiz.setText(ReaderAiRequest.QUIZ_PROMPT);
     });
+    restoreRow.addView(restore, new LinearLayout.LayoutParams(
+          ui.dp(42), ui.dp(42)));
     LinearLayout.LayoutParams restoreParams = matchWrap();
     restoreParams.topMargin = ui.dp(10);
-    content.addView(restore, restoreParams);
+    content.addView(restoreRow, restoreParams);
 
     ScrollView scroll = new ScrollView(activity);
     scroll.addView(content);
     AlertDialog dialog = new AlertDialog.Builder(activity)
       .setView(scroll)
-      .setNegativeButton("Cancel", null)
-      .setPositiveButton("Save", null)
+      .setPositiveButton("Close", null)
       .create();
-    dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-        .setOnClickListener(view -> save(dialog)));
     dialog.setOnDismissListener(ignored -> {
+      flushAutosave();
       client.cancel();
       executor.shutdownNow();
+      if (onDismiss != null)
+        onDismiss.run();
     });
     dialog.show();
   }
 
-  private void save(AlertDialog dialog)
+  private void schedule(Runnable work)
+  {
+    autosaveHandler.removeCallbacks(work);
+    autosaveHandler.postDelayed(work, 600);
+  }
+
+  private void flushAutosave()
+  {
+    autosaveHandler.removeCallbacks(autosaveKey);
+    autosaveHandler.removeCallbacks(autosavePrompts);
+    saveKey();
+    savePrompts();
+  }
+
+  private void saveKey()
   {
     try
     {
       settings.setApiKey(key.getText().toString());
-      settings.setModelId(selectedModelId);
-      settings.setPrompts(summaryOne.getText().toString(),
-          summaryTwo.getText().toString(), quiz.getText().toString());
-      if (onSaved != null)
-        onSaved.run();
-      dialog.dismiss();
-      Toast.makeText(activity, "Reader AI settings saved", Toast.LENGTH_SHORT)
-        .show();
+      notifySaved();
     }
     catch (GeneralSecurityException | IllegalArgumentException error)
     {
       status.setText(error.getMessage());
     }
   }
+
+  private void savePrompts()
+  {
+    try
+    {
+      settings.setPrompts(summaryOne.getText().toString(),
+          summaryTwo.getText().toString(), quiz.getText().toString());
+      notifySaved();
+    }
+    catch (IllegalArgumentException error)
+    {
+      status.setText(error.getMessage());
+    }
+  }
+
+  private void notifySaved()
+  {
+    if (onSaved != null)
+      onSaved.run();
+  }
+
 
   private void refreshModels(boolean showPickerAfter)
   {
@@ -195,7 +260,11 @@ final class ReaderAiSettingsDialog
             ReaderAiOpenRouter.Model preferred = findModel(
                 ReaderAiOpenRouter.PREFERRED_MODEL_ID);
             if (preferred != null)
+            {
               selectedModelId = preferred.id;
+              settings.setModelId(selectedModelId);
+              notifySaved();
+            }
           }
           model.setText(modelLabel());
           status.setText(loaded.isEmpty() ? "No text models returned"
@@ -267,7 +336,10 @@ final class ReaderAiSettingsDialog
       if (position >= 0 && position < visible.size())
       {
         selectedModelId = visible.get(position).id;
+        settings.setModelId(selectedModelId);
         model.setText(modelLabel());
+        status.setText("Model saved: " + selectedModelId);
+        notifySaved();
         picker.dismiss();
       }
     });

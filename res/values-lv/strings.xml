@@ -104,10 +104,6 @@
     <string name="key_descr_º">Kārtas rādītājs</string>
     <string name="key_descr_superscript">Augšraksts</string>
     <string name="key_descr_subscript">Apakšraksts</string>
-    <string name="key_descr_page_up">Augšupšķirt</string>
-    <string name="key_descr_page_down">Lejupšķirt</string>
-    <string name="key_descr_home">Sākums</string>
-    <string name="key_descr_end">Beigas</string>
     <string name="key_descr_clipboard">Starpliktuves pārvaldnieks</string>
     <string name="key_descr_combining">Apvienojoša diakritiska zīme</string>
     <string name="key_descr_dead_key">Klusais taustiņš</string>

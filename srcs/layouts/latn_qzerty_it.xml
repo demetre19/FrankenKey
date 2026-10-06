@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <keyboard name="QZERTY (Italiano)" script="latin">
   <row>
-    <key c="q" ne="1" se="loc esc"/>
+    <key c="q" ne="1" se="hide esc"/>
     <key c="z" nw="loc €" ne="2" sw="&amp;"/>
     <key c="e" nw="é" ne="3" sw="è" se="ē"/>
     <key c="r" nw="&quot;" ne="4" sw="'"/>
@@ -13,7 +13,7 @@
     <key c="p" ne="0"/>
   </row>
   <row>
-    <key c="a" nw="loc tab" ne="à" se="ā"/>
+    <key c="a" nw="hide tab" ne="à" se="ā"/>
     <key c="s"/>
     <key c="d"/>
     <key c="f"/>

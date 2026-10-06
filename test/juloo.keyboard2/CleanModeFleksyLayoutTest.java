@@ -142,10 +142,10 @@ public class CleanModeFleksyLayoutTest
       throws Exception
   {
     Element row = parseLayout(BOTTOM_ROW).getDocumentElement();
-    Element numericSwitch = keyWithAttribute(row, "key4", "switch_numeric");
+    Element numericSwitch = key(row, "switch_numeric");
 
-    assertEquals("FrankenKey bottom row must retain a 123 numeric-layer switch while clean mode is optional.",
-        "ctrl", numericSwitch.getAttribute("key0"));
+    assertNotNull("FrankenKey bottom row must retain a 123 numeric-layer switch while clean mode is optional.",
+        numericSwitch);
     KeyValue switchNumeric = KeyValue.getSpecialKeyByName("switch_numeric");
     assertNotNull("switch_numeric must resolve to the visible 123 key value.",
         switchNumeric);
@@ -176,11 +176,11 @@ public class CleanModeFleksyLayoutTest
       throws Exception
   {
     Element row = parseLayout(BOTTOM_ROW).getDocumentElement();
-    Element ctrl = key(row, "ctrl");
+    Element numericSwitch = key(row, "switch_numeric");
     Element space = key(row, "space");
 
-    assertEquals("FrankenKey Ctrl/123 key must offer the configured numeric-only field layout on upward swipe while preserving 123 on lower-right.",
-        "switch_number_entry", ctrl.getAttribute("key7"));
+    assertEquals("FrankenKey 123 key must offer the configured numeric-only field layout on upward swipe.",
+        "switch_number_entry", numericSwitch.getAttribute("key7"));
     assertEquals("FrankenKey spacebar top-right swipe must toggle back to the Fleksy layout.",
         "toggle_clean_mode", space.getAttribute("key2"));
     assertNotNull("switch_number_entry must resolve to a visible event key.",
@@ -256,8 +256,10 @@ public class CleanModeFleksyLayoutTest
     assertEquals("Clean/Fleksy spacebar must preserve FrankenKey's GIF corner.",
         frankenSpace.getAttribute("key4"), cleanSpace.getAttribute("key4"));
 
-    assertEquals("Clean/Fleksy Enter key must stay in the same bottom-row slot as FrankenKey Enter.",
-        indexOfKey(frankenKeys, "enter"), indexOfKey(cleanKeys, "enter"));
+    assertEquals("Clean/Fleksy Enter key must stay the last bottom-row key like FrankenKey Enter.",
+        frankenKeys.size() - 1, indexOfKey(frankenKeys, "enter"));
+    assertEquals("Clean/Fleksy Enter key must stay the last bottom-row key like FrankenKey Enter.",
+        cleanKeys.size() - 1, indexOfKey(cleanKeys, "enter"));
     assertEquals("Clean/Fleksy Enter must expose voice typing from the same top-left corner.",
         frankenEnter.getAttribute("key1"), cleanEnter.getAttribute("key1"));
     assertEquals("Clean/Fleksy Enter must preserve the same Go/Done action corner as FrankenKey Enter.",

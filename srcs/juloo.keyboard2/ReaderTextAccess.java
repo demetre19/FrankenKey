@@ -90,6 +90,15 @@ final class ReaderTextAccess
     return Result.failure(Failure.UNAVAILABLE);
   }
 
+  /** Clipboard first, then the accessibility-captured foreground page text. */
+  static Result readClipboardOrPage(Context context)
+  {
+    Result clipboard = readClipboard(context);
+    if (clipboard.isSuccess())
+      return clipboard;
+    return Result.text(ReaderPageCaptureService.latestText());
+  }
+
   static Result readSelection(Context context, EditorInfo editor,
       InputConnection connection)
   {
@@ -149,7 +158,7 @@ final class ReaderTextAccess
   static boolean isReadableEditor(EditorInfo editor)
   {
     if (editor == null || EditorConfig.is_termux_raw_editor(editor) ||
-        EditorConfig.is_cmux_terminal_editor(editor))
+        EditorConfig.is_herdr_terminal_editor(editor))
       return false;
     if ((editor.inputType & InputType.TYPE_MASK_CLASS) !=
         InputType.TYPE_CLASS_TEXT)

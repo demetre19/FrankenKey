@@ -44,6 +44,7 @@ public final class Config
   public boolean number_row_symbols;
   public boolean clean_mode;
   public boolean show_period_key;
+  public boolean show_speak_key;
   public boolean double_space_period;
   public float swipe_dist_px;
   public float slide_step_px;
@@ -51,6 +52,8 @@ public final class Config
   public boolean grammar_corrections_enabled;
   public boolean multimodal_voice_typing_enabled;
   public boolean reader_keyboard_controls_enabled;
+
+  public boolean reader_ai_button_ai_right;
   // Let the system handle vibration when false.
   public boolean vibrate_custom;
   // Control the vibration if [vibrate_custom] is true.
@@ -154,6 +157,7 @@ public final class Config
     number_row_symbols = number_row.equals("symbols");
     clean_mode = _prefs.getBoolean("clean_mode", true);
     show_period_key = _prefs.getBoolean("show_period_key", true);
+    show_speak_key = _prefs.getBoolean("frankenkey_show_speak_key", true);
     double_space_period = _prefs.getBoolean("double_space_period", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
     grammar_corrections_enabled =
@@ -162,6 +166,9 @@ public final class Config
       _prefs.getBoolean("multimodal_voice_typing", false);
     reader_keyboard_controls_enabled =
       _prefs.getBoolean("reader_keyboard_controls", false);
+
+    reader_ai_button_ai_right =
+      _prefs.getBoolean("reader_ai_button_ai_right", true);
     // The baseline for the swipe distance correspond to approximately the
     // width of a key in portrait mode, as most layouts have 10 columns.
     // Multipled by the DPI ratio because most swipes are made in the diagonals.
@@ -368,6 +375,32 @@ public final class Config
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(Decoder.RequestKey key, String text);
     public void suggestion_swiped_up(Decoder.RequestKey key, String text);
+    /** Single acceptance dispatch for every strip candidate. The default
+        reproduces the pre-seam routing; [KeyEventHandler] overrides it with a
+        [SuggestionAcceptor] role map that extension lanes can register into. */
+    public default void candidate_accepted(Decoder.RequestKey ticket,
+        juloo.keyboard2.suggestions.CandidateRole role, String text)
+    {
+      juloo.keyboard2.suggestions.SuggestionAcceptor.default_dispatch(
+          this, ticket, role, text);
+    }
+    /** Long press (>=450 ms within the tap slop) on a candidate. Default is a
+        no-op; a lane installs behavior by overriding or via the acceptor. */
+    public default void candidate_long_pressed(Decoder.RequestKey ticket,
+        juloo.keyboard2.suggestions.CandidateRole role, String text) {}
+    /** Ordered space-bar swipe hooks consulted by [Pointers] with the raw
+        16-way direction before corner snapping. Default empty. */
+    public default java.util.List<Pointers.SpaceGestureHook>
+        space_gesture_hooks()
+    {
+      return java.util.Collections.emptyList();
+    }
+    /** Latest editor context captured on the main thread for the current
+        input session; default [EditorContext.EMPTY]. */
+    public default juloo.keyboard2.suggestions.EditorContext editor_context()
+    {
+      return juloo.keyboard2.suggestions.EditorContext.EMPTY;
+    }
     public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();

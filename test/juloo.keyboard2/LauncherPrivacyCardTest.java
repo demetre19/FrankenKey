@@ -78,6 +78,14 @@ public class LauncherPrivacyCardTest
     assertTrue("The modal must document four exact corrections.",
         ((TextView)dialog.findViewById(R.id.launcher_shortcuts_learning))
           .getText().toString().contains("four times"));
+    String readerAi = ((TextView)dialog.findViewById(
+        R.id.launcher_shortcuts_reader_ai)).getText().toString();
+    assertTrue("The modal must document the AI button tap.",
+        readerAi.contains("AI tap"));
+    assertTrue("The modal must document the AI button swipe sectors.",
+        readerAi.contains("AI swipe"));
+    assertTrue("The modal must point at the AI button settings editor.",
+        readerAi.contains("AI button"));
   }
 
   private static TextView findText(View view, String text)

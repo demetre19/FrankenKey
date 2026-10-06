@@ -74,7 +74,7 @@
 	-->
 	<row>
 		<!--left side-->
-		<key key0="j" se="…" n="loc esc"/>
+		<key key0="j" se="…" n="hide esc"/>
 		<key key0="d" se="_"/>
 		<key key0="u" se="["/>
 		<key key0="a" se="]"/>
@@ -94,7 +94,7 @@
 	-->
 	<row>
 		<!--left side-->
-		<key key0="c" se="\\" ne="loc tab"/>
+		<key key0="c" se="\\" ne="hide tab"/>
 		<key key0="t" se="/"/>
 		<key key0="i" se="{"/>
 		<key key0="e" se="}"/>

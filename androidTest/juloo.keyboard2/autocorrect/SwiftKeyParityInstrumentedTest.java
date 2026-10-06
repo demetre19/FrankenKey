@@ -573,7 +573,7 @@ public final class SwiftKeyParityInstrumentedTest
     }
 
     for (String protectedText : new String[] {
-        "tEh", "hELllo", "STM", "GLM", "API", "AI", "OMP", "CMUX"
+        "tEh", "hELllo", "STM", "GLM", "API", "AI", "OMP", "Herdr"
       })
     {
       Decoder.Result result = decode(generation++, protectedText);
@@ -639,7 +639,7 @@ public final class SwiftKeyParityInstrumentedTest
       .getTargetContext();
     LanguagePackManager manager = new LanguagePackManager(target);
     String[] sharedLexicon = new String[] {
-      "gboard", "omp", "cmux", "npm", "pnpm", "adb", "localhost", "lol",
+      "gboard", "omp", "herdr", "npm", "pnpm", "adb", "localhost", "lol",
       "lmao", "brb", "idk", "tbh", "omg"
     };
     for (String id : new String[] { "en_AU", "en_GB", "en_US" })
@@ -661,7 +661,7 @@ public final class SwiftKeyParityInstrumentedTest
     }
     String[] tokens = new String[] {
       "Demetre", "Samsung", "Gboard", "FrankenKey", "OpenAI", "GitHub",
-      "YouTube", "macOS", "iPhone", "Android", "Termux", "CMUX", "OMP",
+      "YouTube", "macOS", "iPhone", "Android", "Termux", "Herdr", "OMP",
       "SEO", "API", "JWT", "JSON", "Kotlin", "JavaScript", "TypeScript",
       "PostgreSQL", "gonna", "wanna", "kinda", "sorta", "yep", "nope",
       "okay", "ok", "lol", "lmao", "brb", "btw", "idk", "imo", "tbh",
@@ -827,7 +827,7 @@ public final class SwiftKeyParityInstrumentedTest
       { "hellp", "hello" },
       { "od", "od" },
       { "STM", "stm" },
-      { "CMUX", "cmux" }
+      { "Herdr", "herdr" }
     };
     StringBuilder failures = new StringBuilder();
     for (int i = 0; i < cases.length; i++)

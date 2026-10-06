@@ -104,10 +104,6 @@
     <string name="key_descr_º">ক্রমিক সূচক</string>
     <string name="key_descr_superscript">সুপারস্ক্রিপ্ট</string>
     <string name="key_descr_subscript">সাবস্ক্রিপ্ট</string>
-    <string name="key_descr_page_up">পৃষ্ঠা উপরে</string>
-    <string name="key_descr_page_down">পৃষ্ঠা নিচে</string>
-    <string name="key_descr_home">হোম</string>
-    <string name="key_descr_end">শেষ</string>
     <string name="key_descr_clipboard">ক্লিপবোর্ড ম্যানেজার</string>
     <string name="key_descr_combining">ডায়াক্রিটিক একত্রিত করা</string>
     <string name="key_descr_dead_key">ডেড কী</string>

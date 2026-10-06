@@ -177,7 +177,7 @@ public class ReaderTextAccessTest
     assertFalse(ReaderTextAccess.isReadableEditor(editor(
         InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE |
           InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
-        "dev.cmux.connector.shell",
+        "dev.orca.connector.shell",
         EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN)));
     assertFalse(ReaderTextAccess.isReadableEditor(editor(
         InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI,
