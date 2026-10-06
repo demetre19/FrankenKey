@@ -4,12 +4,11 @@ Durable findings stream — written by `crew report append` (R12); never held in
 
 ## Verdict
 
-Static review of the merged seam (e061034 → c06eac9, 47 files, +3508/−21):
-grammar engine + AI Fix-grammar flow land coherently on top of release
-2.0.106. Two minor defects found (below). Build/smoke could not be
-executed: this is a bound worker — gradle, suites, and emulator runs are
-fence-denied, and write scope is this report only. Execution verdicts
-stay deferred to the coordinator's gates.
+VERDICT: NO-GO — `testDebugUnitTest` red on the merged tip (594 tests,
+8 failures, 3 classes); `assembleDebug` green. See "Executed gates"
+for receipts and failing test ids. The static seam review below still
+stands; the defects section adds the suite reds, which are lane
+defects, not park events.
 
 ## Verified (static)
 
@@ -107,15 +106,50 @@ stay deferred to the coordinator's gates.
 Minor non-blocking note: `GrammarDiffView.diffOps` (public static)
 appears unreferenced — thin wrapper over `diffWords`.
 
+## Executed gates
+
+Environment: `ANDROID_HOME=/Users/apple/Library/Android/sdk`,
+`JAVA_HOME=/opt/homebrew/opt/openjdk@17`, merged tip `9d042cc`
+(branch `lane/2IC/fk-typing-s1-20261006-061255/ver-s1`).
+
+1. `./gradlew --no-daemon --no-configuration-cache testDebugUnitTest`
+   — exit 1, BUILD FAILED in 59s. 594 tests, 8 failures:
+   - `KeyEventHandlerAutocorrectContractTest` (6): all at
+     `awaitCounts` line 1574, personalization counts stayed 0/0:
+     `changed_candidate_and_autocorrect_backspace_accepts_correction`
+     (the←teh), `accepted_thys_to_thus_then_manual_this_uses_corrected_source`
+     (thus←thys), `literal_boundary_records_once_after_empty_word_key_rollover`
+     (cazoo), `pending_replacement_never_blindly_undoes_after_cursor_or_suffix_change`
+     (the←teh), `changed_candidate_and_autocorrect_commit_once_on_next_action_or_finish`
+     (the←teh), `secondary_replacement_backspace_accepts_new_target`.
+     Common signature: personalization counts never recorded —
+     the personalization/learned-word sink never observed a commit.
+   - `LanguagePackManagerTest.bundledEnglishPacksLoadDictionaryAndContextResources`:
+     "en_AU must preserve the decisive observed context prior."
+   - `ReleaseUpdaterResourcesTest.release_metadata_is_2_0_79_version_code_130`:
+     "The release must be versionName 2.0.79." — version pin stale
+     vs current 2.0.106 (pre-existing pin, unlikely a merge
+     regression).
+   Receipts: `build/test-results/testDebugUnitTest/TEST-*.xml`.
+2. `./gradlew --no-daemon --no-configuration-cache assembleDebug`
+   — exit 0, BUILD SUCCESSFUL in 42s. APK packaged.
+3. Device/emulator smoke (strip prompt, Fix-grammar disclosure →
+   diff → replace → undo) not executed — no device attached; the
+   settings-render and wiring equivalents are covered in the static
+   section above.
+
+## Verdict (final)
+
+VERDICT: NO-GO. assembleDebug green but the unit suite is red on the
+merged tip: 6 personalization-count failures in
+`KeyEventHandlerAutocorrectContractTest` plus 2 stale-pin/data
+failures. Lane defects to fix, not park events.
+
 ## Deferred to coordinator gates
 
-- `./gradlew testDebugUnitTest` (incl. `GrammarRulesTest`,
-  `GrammarCoordinatorTest`, `SettingsUiContractsTest`,
-  `ReaderActivityTest`) — suite runs are worker-denied.
-- `assembleDebug/Release` — builds worker-denied.
 - Real-device smoke: strip prompt on "your welcome" boundary, Fix
   grammar disclosure → diff view → replace → undo — requires a
-  running emulator/device session.
+  running emulator/device session (not run; no device attached).
 
 ## Evidence
 
