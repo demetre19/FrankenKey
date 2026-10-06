@@ -166,6 +166,19 @@
           android:scaleType="centerInside"
           android:src="@drawable/ic_keyboard_gallery"
           android:tint="?attr/colorLabel"/>
+      <Button
+          android:id="@+id/reader_transport_fix_grammar"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="4dp"
+          android:layout_marginEnd="4dp"
+          android:minHeight="36dp"
+          android:maxLines="1"
+          android:paddingVertical="4dp"
+          android:paddingHorizontal="16dp"
+          android:background="@drawable/reader_keyboard_action_button"
+          android:textColor="?attr/colorLabel"
+          android:text="@string/reader_ai_action_fix_grammar"/>
       <ImageButton
           android:id="@+id/reader_transport_voice"
           android:layout_width="36dp"

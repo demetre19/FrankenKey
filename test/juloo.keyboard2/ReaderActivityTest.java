@@ -404,6 +404,8 @@ public class ReaderActivityTest
     View attachImage = transport.findViewById(
         R.id.reader_transport_attach_image);
     View voice = transport.findViewById(R.id.reader_transport_voice);
+    View fixGrammar = transport.findViewById(
+        R.id.reader_transport_fix_grammar);
     int compactHeight = Math.round(36f *
         context.getResources().getDisplayMetrics().density);
     int verticalPadding = Math.round(4f *
@@ -495,7 +497,7 @@ public class ReaderActivityTest
         horizontalPadding, library.getPaddingRight());
     int halfGap = actionGap / 2;
     for (View action : new View[] {
-        settings, clipboard, library, attachImage, voice
+        settings, clipboard, library, attachImage, fixGrammar, voice
     })
     {
       ViewGroup.MarginLayoutParams margins =
@@ -519,7 +521,9 @@ public class ReaderActivityTest
         actions.indexOfChild(library));
     assertEquals("Attach Image stays in the right-side quick actions.", 3,
         actions.indexOfChild(attachImage));
-    assertEquals("Voice stays last in the right-side quick actions.", 4,
+    assertEquals("Fix grammar follows Attach Image.", 4,
+        actions.indexOfChild(fixGrammar));
+    assertEquals("Voice stays last in the right-side quick actions.", 5,
         actions.indexOfChild(voice));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
