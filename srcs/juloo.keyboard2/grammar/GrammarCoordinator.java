@@ -27,7 +27,7 @@ public final class GrammarCoordinator
     void disableRule(String ruleId);
   }
 
-  private final GrammarData _data;
+  private GrammarData _data;
   private final Presenter _presenter;
   private final Set<String> _sessionIgnores = new HashSet<>();
   private final Set<String> _disabledRules = new HashSet<>();
@@ -52,6 +52,8 @@ public final class GrammarCoordinator
     _data = data;
     _presenter = presenter;
   }
+  public void setData(GrammarData data) { _data = data; }
+
 
   public void setEnabled(boolean enabled)
   {
@@ -158,6 +160,17 @@ public final class GrammarCoordinator
   }
 
   public GrammarIssue showing() { return _showing; }
+  /** Re-present the queue head after external UI (undo banner) cleared. */
+  public void presentCurrent()
+  {
+    if (_showing == null && !_queue.isEmpty())
+      _showing = _queue.poll();
+    _presenter.present(_showing);
+  }
+
+  /** Persistable view of per-rule disables; callers may add ids. */
+  public Set<String> disabledRules() { return _disabledRules; }
+
   public GrammarIssue undoCandidate() { return _undoing; }
   public int queueSize() { return _queue.size(); }
 

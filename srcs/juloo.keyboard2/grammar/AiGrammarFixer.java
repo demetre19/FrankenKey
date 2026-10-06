@@ -16,18 +16,64 @@ public final class AiGrammarFixer
   public static final int MAX_INPUT_LENGTH = 4000;
   public static final double MIN_RATIO = 0.5;
   public static final double MAX_RATIO = 1.5;
-  public static final String DISCLOSURE_KEY = "disclosure_accepted_v4";
+  /** Editor classification for the eligibility matrix (overview §7.4). */
+  public enum EditorClass
+  {
+    PROSE, EMAIL, URI, PASSWORD, NUMERIC, PHONE, TERMINAL, UNREADABLE
+  }
+
+  /** Classify an editor's inputType for eligibility checks. */
+  public static EditorClass classify(android.view.inputmethod.EditorInfo info)
+  {
+    if (info == null)
+      return EditorClass.UNREADABLE;
+    int type = info.inputType
+      & android.text.InputType.TYPE_MASK_CLASS;
+    int variation = info.inputType
+      & android.text.InputType.TYPE_MASK_VARIATION;
+    switch (type)
+    {
+      case android.text.InputType.TYPE_CLASS_TEXT:
+        if (variation == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            || variation == android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            || variation == android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD)
+          return EditorClass.PASSWORD;
+        if (variation == android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            || variation == android.text.InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS)
+          return EditorClass.EMAIL;
+        if (variation == android.text.InputType.TYPE_TEXT_VARIATION_URI)
+          return EditorClass.URI;
+        return EditorClass.PROSE;
+      case android.text.InputType.TYPE_CLASS_NUMBER:
+      case android.text.InputType.TYPE_CLASS_DATETIME:
+        if (variation == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD)
+          return EditorClass.PASSWORD;
+        return EditorClass.NUMERIC;
+      case android.text.InputType.TYPE_CLASS_PHONE:
+        return EditorClass.PHONE;
+      case android.text.InputType.TYPE_NULL:
+        return EditorClass.UNREADABLE;
+      default:
+        return EditorClass.UNREADABLE;
+    }
+  }
+
+  /** Distinguishes "nothing to fix" from a malformed model answer. */
+  public enum Verdict { OK, NO_CHANGE, BAD }
+
+  public static Verdict verdict(String response, String input)
+  {
+    String out = response == null ? null : response.trim();
+    if (out == null || out.isEmpty() || out.equals(input))
+      return Verdict.NO_CHANGE;
+    return sanitizeResponse(response, input) == null
+      ? Verdict.BAD : Verdict.OK;
+  }
 
   public enum Refusal
   {
     NONE, PASSWORD, NUMERIC, PHONE, EMAIL, URI, TERMINAL, UNREADABLE,
     NO_KEY, TOO_LONG, SELECTION_REQUIRED
-  }
-
-  /** Editor classification for the eligibility matrix (overview §7.4). */
-  public enum EditorClass
-  {
-    PROSE, EMAIL, URI, PASSWORD, NUMERIC, PHONE, TERMINAL, UNREADABLE
   }
 
   public static final class Snapshot
