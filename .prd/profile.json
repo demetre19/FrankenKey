@@ -15,7 +15,7 @@
     ]
   },
   "module_map": {
-    ".": 30,
+    ".": 31,
     "androidTest": 9,
     "assets": 31,
     "bin": 505,
@@ -23,6 +23,7 @@
     "fastlane": 206,
     "gradle": 2,
     "lessons": 1,
+    "plans": 3,
     "res": 226,
     "scripts": 2,
     "srcs": 368,
