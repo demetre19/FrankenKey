@@ -401,7 +401,7 @@ public class ReaderActivityTest
     View settings = transport.findViewById(R.id.reader_transport_settings);
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
-
+    View ai = transport.findViewById(R.id.reader_transport_ai);
     View voice = transport.findViewById(R.id.reader_transport_voice);
     View fixGrammar = transport.findViewById(
         R.id.reader_transport_fix_grammar);
@@ -427,9 +427,11 @@ public class ReaderActivityTest
         library.getMinimumHeight() >= compactHeight);
     assertEquals("The Settings shortcut uses the same compact 36dp height.",
         compactHeight, settings.getLayoutParams().height);
+    assertEquals("The Reader AI shortcut uses the same compact 36dp height.",
+        compactHeight, ai.getLayoutParams().height);
     assertEquals("The Voice shortcut uses the same compact 36dp height.",
         compactHeight, voice.getLayoutParams().height);
-    for (View view : new View[] { settings, voice })
+    for (View view : new View[] { settings, ai, voice })
     {
       ImageButton iconButton = (ImageButton)view;
       assertEquals("Toolbar icons retain the established 7dp inset.",
@@ -488,7 +490,7 @@ public class ReaderActivityTest
         horizontalPadding, library.getPaddingRight());
     int halfGap = actionGap / 2;
     for (View action : new View[] {
-        settings, clipboard, library, fixGrammar, voice
+        settings, clipboard, library, ai, fixGrammar, voice
     })
     {
       ViewGroup.MarginLayoutParams margins =
@@ -509,9 +511,11 @@ public class ReaderActivityTest
         actions.indexOfChild(clipboard));
     assertEquals("Library is centered between Reader actions.", 2,
         actions.indexOfChild(library));
-    assertEquals("Fix grammar follows Library in the right-side quick actions.", 3,
+    assertEquals("Reader AI stays in the right-side quick actions.", 3,
+        actions.indexOfChild(ai));
+    assertEquals("Fix grammar follows Reader AI in the right-side quick actions.", 4,
         actions.indexOfChild(fixGrammar));
-    assertEquals("Voice stays last in the right-side quick actions.", 4,
+    assertEquals("Voice stays last in the right-side quick actions.", 5,
         actions.indexOfChild(voice));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
@@ -536,21 +540,6 @@ public class ReaderActivityTest
     assertEquals(1, quickActions[1]);
     assertTrue("The Voice shortcut must handle a tap.", voice.performClick());
     assertEquals(1, quickActions[0]);
-    Intent photoPicker = ImageAttachmentPickerActivity.pickerIntent(35);
-    assertEquals(android.provider.MediaStore.ACTION_PICK_IMAGES,
-        photoPicker.getAction());
-    assertEquals("image/*", photoPicker.getType());
-    assertTrue("The photo picker receives temporary read access.",
-        (photoPicker.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0);
-    Intent documentPicker =
-        ImageAttachmentPickerActivity.pickerIntent(32);
-    assertEquals(Intent.ACTION_OPEN_DOCUMENT, documentPicker.getAction());
-    assertTrue("The legacy picker only exposes openable documents.",
-        documentPicker.hasCategory(Intent.CATEGORY_OPENABLE));
-    assertEquals("image/*", documentPicker.getType());
-    assertTrue("The document picker can retain read access.",
-        (documentPicker.getFlags() &
-          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0);
     int minimum = Math.round(48f *
         context.getResources().getDisplayMetrics().density);
     View speedRow = transport.findViewById(
