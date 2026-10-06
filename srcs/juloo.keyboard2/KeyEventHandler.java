@@ -298,7 +298,11 @@ public final class KeyEventHandler
 
   void update_editor_context()
   {
-    _decoder.update_editor_context(capture_editor_context());
+    InputConnection conn = _recv.getCurrentInputConnection();
+    EditorWord current = editor_word(conn);
+    _decoder.update_editor_context(capture_editor_context(),
+        conn == null ? -1 : System.identityHashCode(conn),
+        current == null ? -1 : current.boundaryStart);
   }
 
   /** Run the ordered backspace hooks; true when one consumed the press. */
@@ -684,22 +688,98 @@ public final class KeyEventHandler
   @Override
   public void suggestion_entered(Decoder.RequestKey key, String text)
   {
+    if (key instanceof Decoder.CandidateTicket)
+    {
+      suggestion_ticket_entered((Decoder.CandidateTicket)key);
+      return;
+    }
     cancel_pending_backspace_fallback();
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    suggestion_commit(key, null, snapshot, text);
+  }
+
+  /**
+   * Content-validated ticket acceptance (A-F2). Validation runs before any
+   * editor mutation: the ticket's epochs and connection must still describe
+   * the live decoder/editor state, no selection may be active, and the cursor
+   * must still sit inside the ticket's word slot. Request generation, word
+   * revision, and personalization epoch are not part of acceptance. When the
+   * slot matches, the candidate replaces the *current* word in that slot
+   * (intent wins): more letters typed after the strip rendered do not reject
+   * the tap. The pending replacement of the previous word commits only after
+   * validation, and validation is then re-run against the current word slot —
+   * a change in the previous word must not reject the tap. A rejected ticket
+   * inserts nothing; the reject hook lets the strip render the cue instead of
+   * returning silently.
+   */
+  void suggestion_ticket_entered(Decoder.CandidateTicket ticket)
+  {
+    cancel_pending_backspace_fallback();
+    if (!validate_ticket_slot(ticket))
+    {
+      ticket_rejected(ticket);
+      return;
+    }
+    commit_pending_replacement();
+    // Re-validate only the current word slot after the previous word settled.
+    if (!ticket.same_word_slot(_typedword.snapshot(), current_word_start()))
+    {
+      ticket_rejected(ticket);
+      return;
+    }
+    suggestion_commit(ticket.sourceRequestKey, ticket, _typedword.snapshot(),
+        ticket.candidate);
+  }
+
+  private boolean validate_ticket_slot(Decoder.CandidateTicket ticket)
+  {
+    if (!_decoder.ticket_epochs_current(ticket))
+      return false;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null
+        || ticket.connectionId != System.identityHashCode(conn))
+      return false;
+    CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    return ticket.same_word_slot(snapshot, current_word_start());
+  }
+
+  private long current_word_start()
+  {
+    EditorWord current = editor_word(_recv.getCurrentInputConnection());
+    return current == null ? -1 : current.boundaryStart;
+  }
+
+  /** Surface for the A2 reject cue: a rejected ticket inserts nothing and is
+      never dropped silently. */
+  void ticket_rejected(Decoder.CandidateTicket ticket)
+  {
+    _recv.candidate_ticket_rejected(ticket);
+  }
+
+  private void suggestion_commit(Decoder.RequestKey key,
+      Decoder.CandidateTicket ticket, CurrentlyTypedWord.Snapshot snapshot,
+      String text)
+  {
     String corrected_from = manual_selected_correction_source(snapshot, text);
     boolean should_record = should_use_personalization();
     SharedDecoder.CommitToken token = should_record
-      ? corrected_from == null
-        ? _decoder.prepare_commit(_decoder_session, key, text, null)
-        : _decoder.prepare_selected_correction(
-            _decoder_session, key, text, corrected_from)
+      ? ticket != null
+        ? _decoder.prepare_commit_for_ticket(_decoder_session, ticket,
+            text, corrected_from)
+        : corrected_from == null
+          ? _decoder.prepare_commit(_decoder_session, key, text, null)
+          : _decoder.prepare_selected_correction(
+              _decoder_session, key, text, corrected_from)
       : null;
     SharedDecoder.CommitToken undo_token =
       should_record && !text.equals(snapshot.word)
-      ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
+      ? ticket != null
+        ? _decoder.prepare_commit_for_ticket(_decoder_session, ticket,
+            snapshot.word, null)
+        : _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
     if (!commit_correction(text, " ", false))
       return;
@@ -2854,6 +2934,10 @@ public final class KeyEventHandler
         String source, String target) { return false; }
     public default void review_unknown_word(String word,
         Runnable learn_action, Runnable best_match_action) {}
+    /** A content-validated candidate ticket failed acceptance; the strip
+        should render the reject cue. Default no-op. */
+    public default void candidate_ticket_rejected(
+        Decoder.CandidateTicket ticket) {}
     public InputConnection getCurrentInputConnection();
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();
