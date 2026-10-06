@@ -1,5 +1,5 @@
 {"tasks": [
   {"content": "Tick loop: poll s1/s2/s3 lane statuses, stream findings to reports/AUD-fk-watch-2026-10-06.md + fk-watch-log-2026-10-06.jsonl", "status": "completed"},
   {"content": "Forward actionable items to boss inbox (e-grammar relaunch denial, gate-decision mismatch)", "status": "completed"},
-  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "in_progress"}
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}
 ]}
