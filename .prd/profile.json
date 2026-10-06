@@ -15,7 +15,7 @@
     ]
   },
   "module_map": {
-    ".": 28,
+    ".": 29,
     "androidTest": 9,
     "assets": 31,
     "audit": 2,
@@ -24,14 +24,15 @@
     "fastlane": 207,
     "forensics": 2,
     "gradle": 2,
-    "lessons": 1,
+    "lessons": 2,
     "plans": 4,
     "reports": 2,
     "res": 233,
     "research": 1,
     "scripts": 2,
     "srcs": 374,
-    "test": 82
+    "test": 82,
+    "tests": 1
   },
   "hot_files": [],
   "land_target": "sprint",
