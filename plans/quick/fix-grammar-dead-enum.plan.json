@@ -1,0 +1,46 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "--no-daemon",
+        "compileDebugJavaWithJavac"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/ReaderAiAction.java",
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "test/juloo.keyboard2/ReaderActivityTest.java"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "VER-S1 defect 1: srcs/juloo.keyboard2/ReaderAiAction.java FIX_GRAMMAR enum is dead code \u2014 nothing references the enum; the strip button wires fix_grammar_action directly. Either wire it through the omnibutton action system or delete the file. On autobuild tip 9229020 (branch autobuild/frankenkey-autocorrect-suggestions). When done: crew learn and cite."
+      ],
+      "depends_on": [],
+      "id": "fix-grammar-dead-enum",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "VER-S1 defect 1: srcs/juloo.keyboard2/ReaderAiAction.java FIX_GRAMMAR enum is dead code \u2014 nothing references the enum; the strip button wires fix_grammar_action directly. Either wire it through the om",
+      "write_paths": [
+        "srcs/juloo.keyboard2/ReaderAiAction.java",
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "test/juloo.keyboard2/ReaderActivityTest.java"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}
