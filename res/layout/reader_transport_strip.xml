@@ -152,6 +152,20 @@
           android:background="@drawable/reader_keyboard_action_button"
           android:textColor="?attr/colorLabel"
           android:text="@string/reader_open_library"/>
+      <ImageButton
+          android:id="@+id/reader_transport_ai"
+          android:layout_width="36dp"
+          android:layout_height="36dp"
+          android:layout_marginStart="4dp"
+          android:layout_marginEnd="4dp"
+          android:background="@drawable/reader_keyboard_action_button"
+          android:contentDescription="@string/reader_open_ai_chat"
+          android:minWidth="0dp"
+          android:minHeight="0dp"
+          android:padding="7dp"
+          android:scaleType="centerInside"
+          android:src="@drawable/ic_reader_ai"
+          android:tint="?attr/colorLabel"/>
       <Button
           android:id="@+id/reader_transport_fix_grammar"
           android:layout_width="wrap_content"
