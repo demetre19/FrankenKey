@@ -2227,9 +2227,13 @@ public final class Decoder
         CurrentlyTypedWord.Snapshot snapshot, long absoluteWordStart_,
         String candidate_, CandidateRole role_, long createdAt_)
     {
-      super(source.sessionEpoch, source.requestGeneration,
-          source.wordRevision, source.resourceEpoch, source.layoutEpoch,
-          source.configEpoch, source.personalizationEpoch);
+      super(source == null ? 0L : source.sessionEpoch,
+          source == null ? 0L : source.requestGeneration,
+          source == null ? 0L : source.wordRevision,
+          source == null ? 0L : source.resourceEpoch,
+          source == null ? 0L : source.layoutEpoch,
+          source == null ? 0L : source.configEpoch,
+          source == null ? 0L : source.personalizationEpoch);
       if (source == null || snapshot == null || candidate_ == null
           || role_ == null)
         throw new IllegalArgumentException("ticket fields must not be null");
