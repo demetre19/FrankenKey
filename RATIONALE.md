@@ -28,3 +28,8 @@ S2-FEATURES consolidated lane (boss replan 2026-10-07): implement the full atomi
 ## 2026-10-07 — s3-close-prereqs plan.json
 
 Commit the load-bearing untracked files blocking run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224 close: (1) plans/quick/s2-features.plan.json, (2) plans/quick/aticket-attempt8-forensics.plan.json, (3) tests/quarantine.jsonl — the latter is a machinery-generated quarantine record (inspect first; it is one JSONL row nightly-sweep red record — commit it). Do NOT touch .github/workflows/docs.yml (push would fail on OAuth workflow scope — it stays untracked by operator ruling). One commit, conventional message. Closing contract: crew learn then land-manual --review pass.
+
+
+## 2026-10-07 — fix-unclassified plan.json
+
+Recurring incident db8352fc2ead4588 (unclassified): UncommittedWorkPreserved: relaunch attempt 4 found uncommitted tracked changes from attempt 3; preserved to /Users/apple/.prd-herdr/runs/FrankenKey-
