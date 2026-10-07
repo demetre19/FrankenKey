@@ -1043,4 +1043,23 @@ public class ReaderActivityTest
       out.append(value);
     return out.toString();
   }
+
+  @Test
+  public void fix_grammar_is_an_assignable_omnibutton_action()
+  {
+    assertEquals("The fix_grammar id resolves to the FIX_GRAMMAR action.",
+        ReaderAiAction.FIX_GRAMMAR, ReaderAiAction.ofId("fix_grammar"));
+    Application application = RuntimeEnvironment.getApplication();
+    assertEquals("Fix grammar has a labelled omnibutton action.",
+        "Fix grammar",
+        application.getString(ReaderAiAction.FIX_GRAMMAR.labelRes));
+    android.content.SharedPreferences prefs =
+      android.preference.PreferenceManager.getDefaultSharedPreferences(
+          application);
+    ReaderAiAction.Sector sector = ReaderAiAction.Sector.TAP;
+    ReaderAiAction.setAction(prefs, sector, ReaderAiAction.FIX_GRAMMAR);
+    assertEquals("Fix grammar stays assignable to an omnibutton sector.",
+        ReaderAiAction.FIX_GRAMMAR,
+        ReaderAiAction.actionFor(prefs, sector));
+  }
 }
