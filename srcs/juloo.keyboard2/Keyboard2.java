@@ -837,7 +837,30 @@ public class Keyboard2 extends InputMethodService
   /** Dismiss offers ignore-once or a persisted per-rule disable. */
   private void show_grammar_issue_options()
   {
-    _grammar_coordinator.ignoreShowing();
+    GrammarIssue showing = _grammar_coordinator.showing();
+    if (showing == null || _assistant_strip == null)
+      return;
+    IBinder token = _assistant_strip.getWindowToken();
+    if (token == null)
+      return;
+    String[] labels = {
+        getString(R.string.grammar_issue_ignore_once),
+        getString(R.string.grammar_issue_disable_rule, showing.ruleId)
+      };
+    AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(
+          this, _config.theme))
+      .setTitle(showing.message())
+      .setItems(labels, (_dialog, which) ->
+        {
+          if (which == 0)
+            _grammar_coordinator.ignoreShowing();
+          else
+            _grammar_coordinator.disableShowingRule();
+        })
+      .setNegativeButton(android.R.string.cancel, null)
+      .create();
+    dialog.setCanceledOnTouchOutside(true);
+    Utils.show_dialog_on_ime(dialog, token);
   }
 
   private void apply_offline_grammar_fix(GrammarIssue issue)
