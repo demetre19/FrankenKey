@@ -242,7 +242,7 @@ public class ReaderAiButtonTest
     SharedPreferences prefs =
       context.getSharedPreferences("test", Context.MODE_PRIVATE);
     prefs.edit().putBoolean("reader_ai_button_ai_right", false).commit();
-    Config.initGlobalConfig(prefs, context.getResources(), null, null);
+    Config.initGlobalConfig(prefs, context.getResources(), false, null);
     assertFalse(Config.globalConfig().reader_ai_button_ai_right);
   }
 }
