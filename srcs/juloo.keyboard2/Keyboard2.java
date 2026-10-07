@@ -1445,6 +1445,9 @@ public class Keyboard2 extends InputMethodService
         startActivity(new Intent(this, ReaderAiLibraryActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         return;
+      case FIX_GRAMMAR:
+        fix_grammar_action();
+        return;
       case SHARE:
         share_reader_clipboard();
         return;

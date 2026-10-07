@@ -20,7 +20,8 @@ public enum ReaderAiAction
   SPEED_READ("speed_read", R.string.reader_ai_action_speed_read),
   AI_SETTINGS("ai_settings", R.string.reader_ai_action_ai_settings),
   LOAD_CLIPBOARD("load_clipboard", R.string.reader_ai_action_load_clipboard),
-  READ_CLIPBOARD("read_clipboard", R.string.reader_ai_action_read_clipboard);
+  READ_CLIPBOARD("read_clipboard", R.string.reader_ai_action_read_clipboard),
+  FIX_GRAMMAR("fix_grammar", R.string.reader_ai_action_fix_grammar);
 
   public final String id;
   public final int labelRes;
