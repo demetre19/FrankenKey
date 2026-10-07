@@ -1,0 +1,28 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [],
+  "lanes": [
+    {
+      "acceptance": [
+        "Recurring incident db8352fc2ead4588 (unclassified): UncommittedWorkPreserved: relaunch attempt 4 found uncommitted tracked changes from attempt 3; preserved to /Users/apple/.prd-herdr/runs/FrankenKey-"
+      ],
+      "depends_on": [],
+      "id": "fix-unclassified",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Recurring incident db8352fc2ead4588 (unclassified): UncommittedWorkPreserved: relaunch attempt 4 found uncommitted tracked changes from attempt 3; preserved to /Users/apple/.prd-herdr/runs/FrankenKey-",
+      "write_paths": [
+        "src/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}
