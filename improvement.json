@@ -1,0 +1,276 @@
+{
+  "schema_version": "improvement/v1",
+  "run_id": "prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211",
+  "report_verdict": { "mechanical": "fail", "process": "fail" },
+  "product_assessment": {
+    "meets_stated_goal": false,
+    "gaps": [
+      "Integration status is partial: 14 of 21 planned lanes were cancelled without user-authorized scope drops (crew-error:32), so most of PRD sections A/C/D and the retry-feedback/gestures/replay work never shipped.",
+      "g1-unit-suite still shows 6 baseline-drift failures outside lane write_paths at lane close time (observations #4,#12,#15,#21); a-haptic repaired several but the gate receipt for a-stability remains FAIL.",
+      "810 foreign writes recorded by the run report; writer attribution never reconciled — sequencing/integrity audit owed."
+    ],
+    "risk": "high"
+  },
+  "defects_observed": [
+    {
+      "id": "D1",
+      "level": 2,
+      "symptom": "Launch preflight refused 4 lane launches (s2-features, ver-s2, IMPROVER, SUMMARY) because local.properties/sdk.dir was absent in freshly minted worktrees; each refusal burned a crew-answer round-trip and a relaunch before the lane could start.",
+      "evidence": "crew-error:30, crew-error:37, crew-error:38 (log.jsonl); observations #22, #23, and this lane's own preflight ask; lanes/*/preflight.json",
+      "already_closed_in_canon": false,
+      "gap": "context"
+    },
+    {
+      "id": "D2",
+      "level": 2,
+      "symptom": "g1-unit-suite red on 6 tests outside lane write_paths (baseline autobuild drift). Lane done refused a FAIL receipt even after three separate boss rulings accepted the baseline-failing gate (ask-eb49f98cc3, ask-ff8b514242, ask-85608f8e72, ask-9b81197e3c) — the waiver had no mechanical path into the gate ledger and had to be re-litigated per lane.",
+      "evidence": "observations #4, #12, #15, #21; a-ticket result.json notes ('waiver ask-85608f8e72 granted'); a-stability lane gates g1-unit-suite pass=false",
+      "already_closed_in_canon": false,
+      "gap": "context"
+    },
+    {
+      "id": "D3",
+      "level": 2,
+      "symptom": "a-ticket spun through 9 attempts / 8 repairs: StallLadderExhausted, BudgetExhausted (max_attempts 5 exceeded), ReplanRequired, NoProgressRelaunch — every stall class reported 'unmapped class' to autonomy and required a human GRANT/REPLAN decision; identical-brief relaunches repeated the same failure because the lane's true blocker (out-of-scope gate failure) was never recorded into the relaunch decision.",
+      "evidence": "crew-error:4, crew-error:6, crew-error:11 (recurrence_count 3), crew-error:7/14/18/22 ReplanRequired, crew-error:13/21 NoProgressRelaunch; incidents.jsonl; observations #3, #6, #9",
+      "already_closed_in_canon": false,
+      "gap": "judgment"
+    },
+    {
+      "id": "D4",
+      "level": 2,
+      "symptom": "DriveError storm: launch verbs exiting 2 for host-saturation (kernel pressure level 2), stale relaunch attempt numbers, and relaunch of cancelled lanes; drive loop hit 'step cap 50 reached mid-chain' twice. Dispatch was retried verbatim instead of backing off on pressure, resolving the current attempt, or routing cancelled lanes to a scope-drop decision.",
+      "evidence": "crew-error:9, crew-error:26, crew-error:27 (recurrence 3), crew-error:28, crew-error:34, crew-error:35, crew-error:36",
+      "already_closed_in_canon": false,
+      "gap": "judgment"
+    },
+    {
+      "id": "D5",
+      "level": 2,
+      "symptom": "Lease/preflight wedge: a-ticket blocked three separate times at 'no lease at …/a-ticket/lease' (observations #10, #14, #18) and IMPROVER launch refused on a live-lease check (crew-error:36) — lease state and session liveness diverged and recovery needed manual repair each time.",
+      "evidence": "observations #10, #14, #18; crew-error:36; lanes/a-ticket/lease-check.json",
+      "already_closed_in_canon": false,
+      "gap": "context"
+    },
+    {
+      "id": "D6",
+      "level": 2,
+      "symptom": "810 foreign writes recorded (writers.foreign_write_seqs); verdict.process=fail cites them, yet no reconciliation pass distinguishes coordinator bookkeeping from actual fence violations — the signal is too noisy to act on.",
+      "evidence": "run-report.json writers.foreign_writes=810, foreign_write_seqs; verdict.reasons",
+      "already_closed_in_canon": false,
+      "gap": "context"
+    }
+  ],
+  "defect_classes": [
+    {
+      "id": "C1",
+      "name": "preflight-env-no-repair",
+      "root_cause": "Worktree provisioning does not materialize declared env prerequisites (local.properties sdk.dir) and launch preflight has no auto-repair verb — a known, deterministic fix waits on a human decision round-trip per lane.",
+      "members": ["D1", "D5"]
+    },
+    {
+      "id": "C2",
+      "name": "baseline-gate-wedge",
+      "root_cause": "A required gate failing on out-of-write_paths baseline drift has no recorded waiver path: crew-answer decisions are advisory chat text, not gate-ledger receipts, so every downstream lane re-asks the same question and done keeps refusing.",
+      "members": ["D2", "D3"]
+    },
+    {
+      "id": "C3",
+      "name": "unmapped-stall-loop",
+      "root_cause": "Stall/budget/replan error classes surface to the boss as 'unmapped class' with retry/drop/replan alternates that don't incorporate the lane's own diagnostic (which gate failed, why) — same-brief relaunches repeat the identical failure until attempt budget is exhausted.",
+      "members": ["D3"]
+    },
+    {
+      "id": "C4",
+      "name": "dispatch-retry-no-backoff",
+      "root_cause": "The drive loop retries launch verbs verbatim across saturation, stale-attempt, and terminal-cancel refusals instead of classifying the refusal (capacity → backoff-and-requeue; stale attempt → resolve current attempt; cancelled → scope-drop route).",
+      "members": ["D4"]
+    },
+    {
+      "id": "C5",
+      "name": "foreign-write-attribution",
+      "root_cause": "Foreign-write counter records raw seqs without classifying writer role vs declared write_paths, producing an 810-entry noise blob that flips process verdict to fail with no actionable membership.",
+      "members": ["D6"]
+    }
+  ],
+  "solution_classes": [
+    {
+      "id": "S1",
+      "name": "preflight-materialize-repair",
+      "retires": ["C1"],
+      "mechanism": "Extend launch preflight with a `repairs` step for declared env prerequisites: when a gate profile names `local.properties:sdk.dir`, copy/derive it from the host's canonical Android config (or the lease-holder checkout) into the lane worktree before refusing, and record the repair in preflight.json — refusal only when no source exists."
+    },
+    {
+      "id": "S2",
+      "name": "gate-waiver-receipt",
+      "retires": ["C2", "C3"],
+      "mechanism": "A granted crew-answer that accepts a failing gate writes a `waiver` row into the lane's gate ledger (gate_id, FAIL receipt ref, out-of-scope test list, decision id). `done` accepts FAIL+waiver; relaunch/replan decisions read the ledger instead of re-asking, and identical-signature stalls auto-map to 'replan-required' when the same gate fails twice on out-of-scope tests."
+    },
+    {
+      "id": "S3",
+      "name": "refusal-classified-dispatch",
+      "retires": ["C4"],
+      "mechanism": "Classify launch-verb stderr into refusal classes (saturation, stale-attempt, cancelled-lane, env-missing) in the drive loop: saturation enqueues with backoff; stale-attempt re-reads lane.attempts and retries once; cancelled routes to scope-drop decision instead of relaunch. Cap verbatim retries at 1."
+    },
+    {
+      "id": "S4",
+      "name": "foreign-write-triage",
+      "retires": ["C5"],
+      "mechanism": "Attribute each foreign-write seq to actor role + path vs lane write_paths at record time; report verdict counts only true out-of-scope source writes, with bookkeeping/coordinator writes folded into a separate non-failing counter."
+    }
+  ],
+  "proposals": [
+    {
+      "id": "P1",
+      "title": "Preflight env materialization: auto-repair declared prerequisites (local.properties sdk.dir) in lane worktrees",
+      "level": 2,
+      "kind": "code",
+      "why": "Four lanes (s2-features, ver-s2, IMPROVER, SUMMARY) were refused at launch preflight on the same missing file; each cost a boss decision + relaunch. The fix is deterministic — preflight.json already names the missing prerequisite, and the host checkout carries a known-good local.properties.",
+      "change": "In crew launch preflight (src/crew/, the launch-preflight/v1 checker), add a `repairs` hook: for each declared env prerequisite that has a deterministic source (sdk.dir from the bound checkout's local.properties or $ANDROID_HOME), write it into the lane worktree and record `repaired` in the preflight row. Refuse only when no source resolves. Skip for read-only lanes (IMPROVER/SUMMARY shouldn't need it — or mark those lanes' gate profiles env-free).",
+      "acceptance": [
+        "launch-preflight/v1 row shows repaired='local.properties:sdk.dir' instead of ok=false when the file is absent but a source exists",
+        "a fresh lane worktree launches without a crew-answer round-trip for missing sdk.dir",
+        "read-only lanes (improver/summary class) pass preflight without materializing sdk.dir"
+      ],
+      "lane_plan": {
+        "lanes": [
+          {
+            "id": "preflight-env-repair",
+            "write_paths": ["src/crew/", "test/"],
+            "judge": false,
+            "acceptance": ["new unit test: preflight repairs missing sdk.dir from bound checkout; refusal preserved when no source exists"]
+          }
+        ]
+      },
+      "est_lines": 150,
+      "priority": 1,
+      "severity": "high",
+      "difficulty": "easy",
+      "gap": "context",
+      "route": "factory",
+      "blocking": true
+    },
+    {
+      "id": "P2",
+      "title": "Gate waiver receipt: turn granted baseline-drift decisions into durable gate-ledger entries",
+      "level": 2,
+      "kind": "code",
+      "why": "The same 6 upstream-drift test failures were litigated four separate times (ask-eb49f98cc3, ask-ff8b514242, ask-85608f8e72, ask-9b81197e3c) across two lanes because the waiver lives in chat, not the gate ledger. a-ticket's 9-attempt spiral traces directly to done refusing a gate whose failure was already ruled acceptable.",
+      "change": "Add a `waiver` artifact under lanes/<id>/receipts/ written when a crew-answer grants a gate waiver: {gate_id, receipt_ref, out_of_scope_tests[], decision_id, expires_on_head_change}. Teach `done`/stamp-result to accept a FAIL receipt paired with a valid waiver for tests outside write_paths, and teach the relaunch/stall mapper to read waivers so identical-signature stalls stop re-escalating.",
+      "acceptance": [
+        "a lane with a FAIL g1-unit-suite receipt limited to out-of-write_paths tests stamps done when a waiver row exists",
+        "a second stall on the same gate signature auto-maps to the recorded waiver, not a fresh boss ask",
+        "waiver invalidated (re-ask required) when the lane head changes under it"
+      ],
+      "lane_plan": {
+        "lanes": [
+          {
+            "id": "gate-waiver-ledger",
+            "write_paths": ["src/crew/", "test/"],
+            "judge": false,
+            "acceptance": ["done accepts FAIL+waiver for out-of-scope failures; waiver reuse on identical stall signature"]
+          }
+        ]
+      },
+      "est_lines": 200,
+      "priority": 2,
+      "severity": "high",
+      "difficulty": "medium",
+      "gap": "context",
+      "route": "factory"
+    },
+    {
+      "id": "P3",
+      "title": "Classified dispatch refusals: backoff on saturation, resolve stale attempts, route cancelled lanes to scope-drop",
+      "level": 2,
+      "kind": "code",
+      "why": "crew-error:26/27/28/35/36 show the drive loop re-issuing identical launch verbs against terminal refusals — three verbatim retries on stale-attempt, relaunch of a cancelled lane, and a step-cap burn. Each refusal class already carries a parseable reason in the CrewError message.",
+      "change": "In the drive/launch wrapper, parse CrewError refusal reasons into classes: `saturation` → mark lane blocked-by-capacity and requeue on next sweep; `stale-attempt` → refresh attempts and retry once; `cancelled` → never relaunch, emit a scope-drop decision row; `env-missing` → handled by P1. Cap identical retries at 1 per sweep.",
+      "acceptance": [
+        "host-pressure refusal parks the lane rather than erroring the drive chain",
+        "stale-attempt launch re-reads attempt count before retrying (no triple-repeat)",
+        "cancelled-lane launch produces a scope-drop decision, not a LaunchError"
+      ],
+      "lane_plan": {
+        "lanes": [
+          {
+            "id": "dispatch-refusal-classes",
+            "write_paths": ["src/crew/", "test/"],
+            "judge": false,
+            "acceptance": ["unit test per refusal class asserting the mapped recovery action"]
+          }
+        ]
+      },
+      "est_lines": 180,
+      "priority": 3,
+      "severity": "medium",
+      "difficulty": "medium",
+      "gap": "judgment",
+      "route": "factory"
+    },
+    {
+      "id": "P4",
+      "title": "Foreign-write attribution: classify writers at record time so process verdict counts only real fence violations",
+      "level": 2,
+      "kind": "code",
+      "why": "810 foreign_write_seqs flipped verdict.process to fail with no actionable list — most seqs are coordinator/engine bookkeeping writes, not lane fence violations. A run-ending 'fail' that mostly measures bookkeeping is noise that hides real violations.",
+      "change": "Record actor role and target path with each foreign-write seq; at report time split into `bookkeeping` (coordinator/run-state writes — non-failing) and `violations` (lane writes outside write_paths — failing). Verdict counts only violations; report lists violation paths per lane.",
+      "acceptance": [
+        "run-report writers block separates bookkeeping vs violation counts",
+        "a run with only coordinator bookkeeping writes does not fail the process verdict",
+        "a true out-of-write_paths lane write still fails process and names lane+path"
+      ],
+      "lane_plan": {
+        "lanes": [
+          {
+            "id": "foreign-write-triage",
+            "write_paths": ["src/crew/", "test/"],
+            "judge": false,
+            "acceptance": ["verdict regression test: bookkeeping-only foreign writes → process pass"]
+          }
+        ]
+      },
+      "est_lines": 160,
+      "priority": 4,
+      "severity": "medium",
+      "difficulty": "medium",
+      "gap": "context",
+      "route": "factory"
+    },
+    {
+      "id": "P5",
+      "title": "Lease-liveness reconciliation at lane launch and done",
+      "level": 2,
+      "kind": "code",
+      "why": "a-ticket hit 'no lease' blocks three times (observations #10/#14/#18) and IMPROVER's own launch refused on a live-lease check (crew-error:36) — lease presence and pane liveness diverge on crash/salvage paths, and each wedge costs a manual repair cycle.",
+      "change": "At lane launch and at done, reconcile the lease file against the pane's live session: missing lease + live session → re-mint and log; stale lease + dead session → clear and log. Fold the check into the existing lease-check.json artifact so refusals name the divergent field.",
+      "acceptance": [
+        "launch proceeds when lease is absent but the owning session is alive (lease re-minted, logged)",
+        "launch proceeds when lease names a dead pid/session (stale lease cleared, logged)",
+        "a genuine second live writer still refuses"
+      ],
+      "lane_plan": {
+        "lanes": [
+          {
+            "id": "lease-reconcile",
+            "write_paths": ["src/crew/", "test/"],
+            "judge": false,
+            "acceptance": ["unit tests for re-mint, stale-clear, and live-writer refusal paths"]
+          }
+        ]
+      },
+      "est_lines": 140,
+      "priority": 5,
+      "severity": "medium",
+      "difficulty": "medium",
+      "gap": "context",
+      "route": "factory"
+    }
+  ],
+  "release_decision": {
+    "remove_rc_label": false,
+    "reason": "Integration status is partial — 14/21 lanes cancelled without authorized scope drops and g1-unit-suite holds a recorded FAIL receipt; not release-ready."
+  },
+  "self_note": "Dominated by process defects, not product ones: the landed product diff (CandidateTicket validation, stability slot handling, haptic gate fixes, grammar corpus) looks coherent at 5848 LOC, but the machinery burned ~9 a-ticket attempts and 4 boss waiver round-trips on two uninstrumented failure modes (missing env prereqs, out-of-scope baseline gate reds) plus verbatim-retry dispatch. No gap-ledger or overwatch summary existed for this run (overwatch/ and evidence/ dirs absent) — observations.jsonl was the richest defect source. a-stability landed with a FAIL gate receipt; the a-haptic commit e61452f appears to have repaired the same 6 upstream-drift tests on the integration tip, so those failures are closed in canon at 5e1d5ec.",
+  "observations_consumed": 23
+}
