@@ -73,9 +73,8 @@ public final class EmailAddressValidator
     String[] labels = domain.split("\\.");
     if (labels.length < 2)
       return "domain_label_count";
-    String tld = labels[labels.length - 1].toLowerCase();
-    if (tld.length() < 2 || !tld.equals(labels[labels.length - 1])
-        || !allLetters(tld))
+    String tld = labels[labels.length - 1];
+    if (tld.length() < 2 || !allLetters(tld))
       return "domain_tld";
     for (String label : labels)
     {
