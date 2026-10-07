@@ -3,5 +3,6 @@
   {"content": "Write EmailToken.java per B-F1 spec (backward scan, mid-token, hasAt, offsets)", "status": "completed"},
   {"content": "Write EmailTokenTest.java; ensure >=60 parser/validator cases total", "status": "completed"},
   {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "in_progress"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "pending"},
   {"content": "prd_step done", "status": "pending"}
 ]}
