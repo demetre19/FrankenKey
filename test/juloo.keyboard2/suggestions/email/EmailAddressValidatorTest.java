@@ -19,6 +19,8 @@ public class EmailAddressValidatorTest
       "first.last@company.co.uk",
       "user@sub.example.com",
       "user@xn--example-9ua.com",
+      "user@Example.COM",
+      "user@example.COM",
     };
     for (String a : ok)
       assertTrue("expected valid: " + a, EmailAddressValidator.isValid(a));
