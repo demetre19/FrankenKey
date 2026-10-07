@@ -4,6 +4,8 @@ import android.content.Context;
 import android.os.Build.VERSION;
 import android.text.InputType;
 import android.util.AttributeSet;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,6 +28,23 @@ public class CandidatesView extends LinearLayout
   static final int LONG_CANDIDATE_LENGTH = 10;
   static final float LONG_CANDIDATE_TEXT_SCALE = 0.78f;
   static final long PAGE_ANIMATION_MS = 180L;
+  static final long PENDING_DIM_MS = 150L;
+  static final float PENDING_DIM_ALPHA = 0.70f;
+  /** Identity of the READY presentation whose items are currently rendered;
+      used to decide whether a PENDING may keep them visible. */
+  long _rendered_session_epoch = -1;
+  int _rendered_connection_id = -1;
+  long _rendered_word_start = -2;
+  /** Posts the pending-dim cue on the main looper; an explicit handler keeps
+      the cue working while the view is detached (tests, pre-attach). */
+  final Handler _ui = new Handler(Looper.getMainLooper());
+  /** Dims the strip once a PENDING outlives [PENDING_DIM_MS]. */
+  final Runnable _dim_pending = new Runnable()
+  {
+    @Override
+    public void run() { setAlpha(PENDING_DIM_ALPHA); }
+  };
+
   float _candidate_text_size_px = 0f;
 
 
@@ -38,9 +57,15 @@ public class CandidatesView extends LinearLayout
   String[][] _page_items = new String[WORD_PAGES][WORDS_PER_PAGE];
   CandidateRole[][] _page_roles =
     new CandidateRole[WORD_PAGES][WORDS_PER_PAGE];
+  /** One [Decoder.CandidateTicket] per visible candidate, captured when a
+      READY presentation renders and bound to a finger at ACTION_DOWN. */
+  Decoder.CandidateTicket[][] _page_tickets =
+    new Decoder.CandidateTicket[WORD_PAGES][WORDS_PER_PAGE];
+  Decoder.CandidateTicket _emoji_ticket = null;
+  /** Ticket captured at ACTION_DOWN for the slot under the finger. */
+  Decoder.CandidateTicket _down_ticket = null;
   int _page = 0;
   Decoder.RequestKey _request_key = null;
-
 
   /** Text views showing the candidates in [_items]. Text views visibility is
       set to [GONE] when there are less than [NUM_CANDIDATES] suggestions. */
@@ -70,6 +95,19 @@ public class CandidatesView extends LinearLayout
 
   public void set_decoder_state(SharedDecoder.Presentation state)
   {
+    // A PENDING for the same session/connection/word slot keeps the prior
+    // READY items visible and tappable; the dim cue marks them as refresh in
+    // progress. Any other state, or a PENDING for a different slot, clears.
+    if (state != null
+        && state.state == SharedDecoder.Presentation.State.PENDING
+        && keeps_rendered_items(state))
+    {
+      _ui.removeCallbacks(_dim_pending);
+      _ui.postDelayed(_dim_pending, PENDING_DIM_MS);
+      return;
+    }
+    _ui.removeCallbacks(_dim_pending);
+    setAlpha(1f);
     clear_candidates();
     if (state == null || state.state != SharedDecoder.Presentation.State.READY
         || state.result == null || state.key == null)
@@ -88,6 +126,8 @@ public class CandidatesView extends LinearLayout
           pinned.surface;
         _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
           pinned.role;
+        _page_tickets[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+          make_ticket(state, pinned.surface, pinned.role);
         count++;
       }
     for (int i = 0; i < words.length && count < WORDS_PER_PAGE * WORD_PAGES;
@@ -97,17 +137,39 @@ public class CandidatesView extends LinearLayout
         words[i].surface;
       _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
         display_role(words[i].role);
+      _page_tickets[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE] =
+        make_ticket(state, words[i].surface, _page_roles[count / WORDS_PER_PAGE][count % WORDS_PER_PAGE]);
       count++;
     }
     expose_learn_action(words);
     expose_learn_feedback(state);
+    for (int slot = count; slot < WORDS_PER_PAGE * WORD_PAGES; slot++)
+      _page_tickets[slot / WORDS_PER_PAGE][slot % WORDS_PER_PAGE] = null;
+    _page_tickets[0][2] = _page_items[0][2] == null ? null
+      : make_ticket(state, _page_items[0][2], _page_roles[0][2]);
     _items[3] = state.result.emoji;
     _roles[3] = state.result.emoji == null
       ? CandidateRole.NONE : CandidateRole.EMOJI;
+    _emoji_ticket = _items[3] == null ? null
+      : make_ticket(state, _items[3], _roles[3]);
     _request_key = state.key;
+    _rendered_session_epoch = state.sessionEpoch;
+    _rendered_connection_id = state.connectionId;
+    _rendered_word_start = state.absoluteWordStart;
     render_page(0, false);
     if (count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
+  }
+
+  /** Whether a PENDING still describes the word slot whose items are on
+      screen. When slot identity was never reported both sides carry the
+      sentinel and the items are kept. */
+  boolean keeps_rendered_items(SharedDecoder.Presentation pending)
+  {
+    return _request_key != null
+      && pending.sessionEpoch == _rendered_session_epoch
+      && pending.connectionId == _rendered_connection_id
+      && pending.absoluteWordStart == _rendered_word_start;
   }
 
   static CandidateRole display_role(Decoder.Role role)
@@ -132,9 +194,31 @@ public class CandidatesView extends LinearLayout
       separator.setVisibility(visible ? View.VISIBLE : View.GONE);
   }
 
+  /** Immutable acceptance ticket for one rendered candidate. Returns null
+      when the presentation carries no word snapshot (legacy READY) so the
+      dispatch can fall back to the bare request key. */
+  static Decoder.CandidateTicket make_ticket(
+      SharedDecoder.Presentation state, String surface, CandidateRole role)
+  {
+    return state.word == null ? null
+      : new Decoder.CandidateTicket(state.key, state.connectionId,
+          state.word, state.absoluteWordStart, surface, role,
+          android.os.SystemClock.uptimeMillis());
+  }
+
+  /** The live ticket for an item index on the current page. */
+  Decoder.CandidateTicket ticket_for(int item_index)
+  {
+    if (item_index == 3)
+      return _emoji_ticket;
+    return _page_tickets[_page][item_index];
+  }
+
+
 
   void clear_candidates()
   {
+    _emoji_ticket = null;
     _request_key = null;
     _page = 0;
     for (int page = 0; page < WORD_PAGES; page++)
@@ -142,6 +226,7 @@ public class CandidatesView extends LinearLayout
       {
         _page_items[page][slot] = null;
         _page_roles[page][slot] = CandidateRole.NONE;
+        _page_tickets[page][slot] = null;
       }
     for (int i = 0; i < _item_views.length; i++)
     {
@@ -212,6 +297,8 @@ public class CandidatesView extends LinearLayout
 
   public void refresh_config(Config config, boolean dictionary_available)
   {
+    _ui.removeCallbacks(_dim_pending);
+    setAlpha(1f);
     clear_candidates();
     if (!dictionary_available)
       inflate_status_no_dict(config);
@@ -366,9 +453,28 @@ public class CandidatesView extends LinearLayout
     update_separator(index, false);
   }
 
-  /** Route every strip gesture through the single candidate dispatch seam. */
+  /** Route every strip gesture through the single candidate dispatch seam.
+      The accepted ticket is the one captured at ACTION_DOWN for this slot,
+      falling back to the slot's live ticket for events without a down record
+      (accessibility clicks, direct dispatch). The ticket carries the word the
+      user saw at press time even if the strip re-rendered mid-press, and
+      [Decoder.CandidateTicket.consume] makes a repeated dispatch a no-op, so
+      onTouch+onClick, double taps, and two-finger taps insert exactly once.
+      Presentations without ticket data dispatch the bare request key, the
+      pre-ticket behavior. */
   void dispatch_accept(int item_index, CandidateRole role)
   {
+    Decoder.CandidateTicket ticket = _down_ticket != null
+      ? _down_ticket : ticket_for(item_index);
+    _down_ticket = null;
+    if (ticket != null)
+    {
+      if (role == null || role == CandidateRole.NONE || !ticket.consume())
+        return;
+      Config.globalConfig().handler.candidate_accepted(ticket, role,
+          ticket.candidate);
+      return;
+    }
     String it = _items[item_index];
     Decoder.RequestKey key = _request_key;
     if (it == null || key == null || role == null
@@ -398,9 +504,17 @@ public class CandidatesView extends LinearLayout
             // Seam for role-specific long-press behavior. Not consumed: the
             // release still performs the default accept so a plain long tap
             // keeps its pre-seam outcome unless a lane registers a handler.
+            Decoder.CandidateTicket ticket = _down_ticket != null
+              ? _down_ticket : ticket_for(item_index);
+            CandidateRole role = _roles[item_index];
+            if (ticket != null)
+            {
+              Config.globalConfig().handler.candidate_long_pressed(
+                  ticket, role, ticket.candidate);
+              return false;
+            }
             String it = _items[item_index];
             Decoder.RequestKey key = _request_key;
-            CandidateRole role = _roles[item_index];
             if (it == null || key == null || role == CandidateRole.NONE)
               return false;
             Config.globalConfig().handler.candidate_long_pressed(
@@ -424,6 +538,7 @@ public class CandidatesView extends LinearLayout
               case MotionEvent.ACTION_DOWN:
                 _down_x = event.getX();
                 _down_y = event.getY();
+                _down_ticket = ticket_for(item_index);
                 return false;
               case MotionEvent.ACTION_UP:
                 float dx = event.getX() - _down_x;
@@ -443,6 +558,9 @@ public class CandidatesView extends LinearLayout
                   ? CandidateRole.LEARN_ACTION : role;
                 dispatch_accept(item_index, dispatch);
                 return true;
+              case MotionEvent.ACTION_CANCEL:
+                _down_ticket = null;
+                return false;
               default:
                 return false;
             }

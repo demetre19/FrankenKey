@@ -1,8 +1,1 @@
-{"tasks": [
-  {"content": "Extract EmailAddressValidator.java + test from manual/b-email B1 into worktree", "status": "completed"},
-  {"content": "Write EmailToken.java per B-F1 spec (backward scan, mid-token, hasAt, offsets)", "status": "completed"},
-  {"content": "Write EmailTokenTest.java; ensure >=60 parser/validator cases total", "status": "completed"},
-  {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "completed"},
-  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
-  {"content": "prd_step done", "status": "completed"}
-]}
+{"tasks": [{"content": "Stamp PENDING presentations with word/connection/slot identity in SharedDecoder", "status": "completed"}, {"content": "CandidatesView: keep READY items across same-slot PENDING, clear on slot change, 150ms/70% alpha dim, restore on READY", "status": "completed"}, {"content": "Update/add section-7 regression tests in test/juloo.keyboard2/suggestions/", "status": "completed"}, {"content": "Run g1-unit-suite gate; triage unrelated reds via discover/ask if they persist", "status": "completed"}, {"content": "prd_step done", "status": "pending"}, {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}]}

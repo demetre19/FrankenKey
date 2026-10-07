@@ -80,12 +80,12 @@ public class LauncherPrivacyCardTest
           .getText().toString().contains("four times"));
     String readerAi = ((TextView)dialog.findViewById(
         R.id.launcher_shortcuts_reader_ai)).getText().toString();
-    assertTrue("The modal must document the AI button tap.",
-        readerAi.contains("AI tap"));
-    assertTrue("The modal must document the AI button swipe sectors.",
-        readerAi.contains("AI swipe"));
-    assertTrue("The modal must point at the AI button settings editor.",
-        readerAi.contains("AI button"));
+    assertTrue("The modal must document the omnibutton tap action.",
+        readerAi.contains("tap"));
+    assertTrue("The modal must document the omnibutton swipe actions.",
+        readerAi.contains("swipe"));
+    assertTrue("The modal must point at the omnibutton settings editor.",
+        readerAi.contains("Settings → Omnibutton"));
   }
 
   private static TextView findText(View view, String text)

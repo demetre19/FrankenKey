@@ -59,6 +59,12 @@ public final class SharedDecoder implements AutoCloseable
     public final Decoder.Result result;
     public final Feedback feedback;
     public final String feedbackWord;
+    /** Word snapshot the request was decoded from; set on READY only. */
+    public final CurrentlyTypedWord.Snapshot word;
+    /** Connection identity and absolute word start reported by the handler
+        alongside [update_editor_context]; negative when never reported. */
+    public final int connectionId;
+    public final long absoluteWordStart;
     /** Pinned candidates merged ahead of the ranked words for this READY
         state, or null when no [CandidateSource] was consulted. */
     public final CandidateSource.Candidate[] pinned;
@@ -70,7 +76,8 @@ public final class SharedDecoder implements AutoCloseable
     private Presentation(State state_, long sessionEpoch_,
         Decoder.RequestKey key_, Decoder.Result result_, Feedback feedback_,
         String feedbackWord_, CandidateSource.Candidate[] pinned_,
-        Decoder.Candidate[] ranked_)
+        Decoder.Candidate[] ranked_, CurrentlyTypedWord.Snapshot word_,
+        int connectionId_, long absoluteWordStart_)
     {
       state = state_;
       sessionEpoch = sessionEpoch_;
@@ -78,35 +85,50 @@ public final class SharedDecoder implements AutoCloseable
       result = result_;
       feedback = feedback_;
       feedbackWord = feedbackWord_;
+      word = word_;
+      connectionId = connectionId_;
+      absoluteWordStart = absoluteWordStart_;
       pinned = pinned_;
       ranked = ranked_;
     }
 
-    static Presentation pending(long sessionEpoch, Decoder.RequestKey key)
+    /** PENDING carries the request's word snapshot plus connection/slot
+        identity so the strip can keep the prior READY items only while they
+        still describe the same word slot. */
+    static Presentation pending(long sessionEpoch, Decoder.RequestKey key,
+        CurrentlyTypedWord.Snapshot word, int connectionId,
+        long absoluteWordStart)
     {
       return new Presentation(State.PENDING, sessionEpoch, key, null,
-          Feedback.NONE, null, null, null);
-    }
-
-    static Presentation ready(long sessionEpoch, Decoder.Result result,
-        Feedback feedback, String feedbackWord)
-    {
-      return new Presentation(State.READY, sessionEpoch, result.key, result,
-          feedback, feedbackWord, null, null);
+          Feedback.NONE, null, null, null, word, connectionId,
+          absoluteWordStart);
     }
 
     static Presentation ready(long sessionEpoch, Decoder.Result result,
         Feedback feedback, String feedbackWord,
-        CandidateSource.Candidate[] pinned, Decoder.Candidate[] ranked)
+        CurrentlyTypedWord.Snapshot word, int connectionId,
+        long absoluteWordStart)
     {
       return new Presentation(State.READY, sessionEpoch, result.key, result,
-          feedback, feedbackWord, pinned, ranked);
+          feedback, feedbackWord, null, null, word, connectionId,
+          absoluteWordStart);
+    }
+
+    static Presentation ready(long sessionEpoch, Decoder.Result result,
+        Feedback feedback, String feedbackWord,
+        CandidateSource.Candidate[] pinned, Decoder.Candidate[] ranked,
+        CurrentlyTypedWord.Snapshot word, int connectionId,
+        long absoluteWordStart)
+    {
+      return new Presentation(State.READY, sessionEpoch, result.key, result,
+          feedback, feedbackWord, pinned, ranked, word, connectionId,
+          absoluteWordStart);
     }
 
     static Presentation empty(long sessionEpoch, Decoder.RequestKey key)
     {
       return new Presentation(State.EMPTY, sessionEpoch, key, null,
-          Feedback.NONE, null, null, null);
+          Feedback.NONE, null, null, null, null, -1, -1);
     }
   }
 
@@ -337,6 +359,7 @@ public final class SharedDecoder implements AutoCloseable
       _pending = null;
       _retained.clear();
       _completed.clear();
+      _recentResults.clear();
       _unknownCommitCounts.clear();
       _presentation = Presentation.empty(_sessionEpoch, null);
       post_presentation_locked(_presentation);
@@ -369,6 +392,7 @@ public final class SharedDecoder implements AutoCloseable
         && !config.useTypingAssistance;
       _config = config;
       _configEpoch++;
+      _recentResults.clear();
       if (resetContext)
       {
         _personalizationEpoch++;
@@ -392,6 +416,7 @@ public final class SharedDecoder implements AutoCloseable
         return;
       _resources = resources;
       _resourceEpoch++;
+      _recentResults.clear();
       resubmit_latest_locked();
       ensure_drain_locked();
     }
@@ -407,6 +432,7 @@ public final class SharedDecoder implements AutoCloseable
         return;
       _geometry = geometry;
       _layoutEpoch++;
+      _recentResults.clear();
       resubmit_latest_locked();
       ensure_drain_locked();
     }
@@ -429,6 +455,7 @@ public final class SharedDecoder implements AutoCloseable
       if (changedDomain)
         _personalizationDomainEpoch++;
       _personalizationEpoch++;
+      _recentResults.clear();
       resubmit_latest_locked();
       ensure_drain_locked();
     }
@@ -460,7 +487,7 @@ public final class SharedDecoder implements AutoCloseable
         _pending = envelope;
         if (should_publish_candidates_locked())
           _presentation = Presentation.pending(_sessionEpoch,
-              envelope.request.key);
+              envelope.request.key, word, _connectionId, _absoluteWordStart);
         else
           _presentation = Presentation.empty(_sessionEpoch,
               envelope.request.key);
@@ -485,6 +512,28 @@ public final class SharedDecoder implements AutoCloseable
     synchronized (_lock)
     {
       _latestEditorContext = ctx == null ? EditorContext.EMPTY : ctx;
+    }
+  }
+
+  /**
+   * Same as [update_editor_context] plus the live editor identity captured on
+   * the main thread: the current input connection's identity token and the
+   * absolute start of the tracked word, or a negative value when the slot
+   * position is unreadable. Subsequent requests stamp both into their READY
+   * presentations so strip tickets can re-validate slot and connection.
+   * Changing the connection drops the retained-result ring: a ticket rendered
+   * under another connection can never match its results.
+   */
+  public void update_editor_context(EditorContext ctx, int connectionId,
+      long absoluteWordStart)
+  {
+    synchronized (_lock)
+    {
+      _latestEditorContext = ctx == null ? EditorContext.EMPTY : ctx;
+      if (_connectionId != connectionId)
+        _recentResults.clear();
+      _connectionId = connectionId;
+      _absoluteWordStart = absoluteWordStart;
     }
   }
 
@@ -606,6 +655,99 @@ public final class SharedDecoder implements AutoCloseable
   {
     return prepare_commit(sessionEpoch, source, committedWord, correctedFrom,
         true);
+  }
+
+  /**
+   * Whether a [Decoder.CandidateTicket]'s epochs still describe the live
+   * decoder state: active session and identical resource, layout, and config
+   * epochs. Request generation, word revision, and the personalization epoch
+   * are deliberately not compared; acceptance belongs to the ticket's content
+   * validation (slot/connection/selection), not to request recency.
+   */
+  public boolean ticket_epochs_current(Decoder.CandidateTicket ticket)
+  {
+    if (ticket == null)
+      return false;
+    synchronized (_lock)
+    {
+      return is_active_session_locked(ticket.sessionEpoch)
+        && ticket.resourceEpoch == _resourceEpoch
+        && ticket.layoutEpoch == _layoutEpoch
+        && ticket.configEpoch == _configEpoch;
+    }
+  }
+
+  /**
+   * Prepare a learning token for an accepted [Decoder.CandidateTicket]. The
+   * token binds the retained result the ticket was rendered from — first the
+   * ticket's own request key, then any recent READY result with an identical
+   * queried-word fingerprint — even when a newer request has made that result
+   * stale. When the current editor word differs from the ticket word (the
+   * intent-wins case), the token records a manual selected correction from
+   * the current word to the committed word. A null return suppresses learning
+   * only; it never authorizes or rejects the caller's editor operation.
+   */
+  public CommitToken prepare_commit_for_ticket(long sessionEpoch,
+      Decoder.CandidateTicket ticket, String committedWord,
+      String correctedFrom)
+  {
+    if (ticket == null || committedWord == null)
+      return null;
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch)
+          || !ticket_epochs_current_locked(ticket)
+          || !_config.useTypingAssistance
+          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled))
+        return null;
+      CompletedDecode retained = retained_for_ticket_locked(ticket);
+      if (retained == null)
+        return null;
+      PendingDecode sourceEnvelope = retained.envelope;
+      Boolean recognized = recognized_from_result_locked(
+          retained.result.key, committedWord, sourceEnvelope);
+      boolean selectedCorrection = correctedFrom != null
+        && !correctedFrom.equals(ticket.word);
+      String acceptedCorrection = selectedCorrection
+        ? accepted_correction_source_locked(retained.result.key,
+            sourceEnvelope, committedWord, correctedFrom)
+        : null;
+      if (selectedCorrection && acceptedCorrection == null)
+        return null;
+      return new CommitToken(this, sessionEpoch,
+          _personalizationDomainEpoch, sourceEnvelope, committedWord,
+          acceptedCorrection, selectedCorrection, recognized);
+    }
+  }
+
+  private boolean ticket_epochs_current_locked(
+      Decoder.CandidateTicket ticket)
+  {
+    return is_active_session_locked(ticket.sessionEpoch)
+      && ticket.resourceEpoch == _resourceEpoch
+      && ticket.layoutEpoch == _layoutEpoch
+      && ticket.configEpoch == _configEpoch;
+  }
+
+  /** The ticket's retained result: its own request key first — verified
+      against the ticket's word fingerprint, so a forged or mismatched ticket
+      cannot bind an unrelated result — then any recent READY result with the
+      same queried-word fingerprint. */
+  private CompletedDecode retained_for_ticket_locked(
+      Decoder.CandidateTicket ticket)
+  {
+    for (CompletedDecode completed : _recentResults)
+    {
+      if (completed.result.key.equals(ticket.sourceRequestKey)
+          && completed.result.queriedWord.equals(ticket.word))
+        return completed;
+    }
+    for (CompletedDecode completed : _recentResults)
+    {
+      if (completed.result.queriedWord.equals(ticket.word))
+        return completed;
+    }
+    return null;
   }
 
   private CommitToken prepare_commit(long sessionEpoch,
@@ -859,6 +1001,7 @@ public final class SharedDecoder implements AutoCloseable
       _pending = null;
       _retained.clear();
       _completed.clear();
+      _recentResults.clear();
       _latestWord = null;
       _latestKey = null;
       _acceptedResult = null;
@@ -881,6 +1024,7 @@ public final class SharedDecoder implements AutoCloseable
     _pending = null;
     _retained.clear();
     _completed.clear();
+    _recentResults.clear();
     _latestWord = null;
     _latestKey = null;
     _acceptedResult = null;
@@ -898,7 +1042,8 @@ public final class SharedDecoder implements AutoCloseable
         _configEpoch, _personalizationEpoch);
     Decoder.Request request = new Decoder.Request(key, word, _geometry, _config);
     return new PendingDecode(request, _resources, _personalizationSpecEpoch,
-        _personalization, _latestEditorContext);
+        _personalization, _latestEditorContext, word, _connectionId,
+        _absoluteWordStart);
   }
 
   /** Return the resubmitted key, or null when there is no current word. */
@@ -930,7 +1075,8 @@ public final class SharedDecoder implements AutoCloseable
       _pending = envelope;
       if (should_publish_candidates_locked())
         _presentation = Presentation.pending(_sessionEpoch,
-            envelope.request.key);
+            envelope.request.key, _latestWord, _connectionId,
+            _absoluteWordStart);
       else
         _presentation = Presentation.empty(_sessionEpoch,
             envelope.request.key);
@@ -968,6 +1114,7 @@ public final class SharedDecoder implements AutoCloseable
     _lastCompletedResult = null;
     _retained.clear();
     _completed.clear();
+    _recentResults.clear();
     _latestWord = null;
     _latestKey = null;
     _acceptedResult = null;
@@ -1530,6 +1677,10 @@ public final class SharedDecoder implements AutoCloseable
       if (!latest)
         return;
 
+      _recentResults.addLast(new CompletedDecode(envelope, result));
+      while (_recentResults.size() > 2)
+        _recentResults.removeFirst();
+
       _acceptedResult = result;
       _acceptedEnvelope = envelope;
       FeedbackRecord feedback = _feedback;
@@ -1543,12 +1694,15 @@ public final class SharedDecoder implements AutoCloseable
           ? Presentation.ready(_sessionEpoch, result,
               feedback == null
                 ? Presentation.Feedback.NONE : feedback.feedback,
-              feedback == null ? null : feedback.word)
+              feedback == null ? null : feedback.word,
+              envelope.word, envelope.connectionId,
+              envelope.absoluteWordStart)
           : Presentation.ready(_sessionEpoch, result,
               feedback == null
                 ? Presentation.Feedback.NONE : feedback.feedback,
               feedback == null ? null : feedback.word,
-              merged.pinned, merged.ranked);
+              merged.pinned, merged.ranked, envelope.word,
+              envelope.connectionId, envelope.absoluteWordStart);
       }
       else
         presentation = Presentation.empty(_sessionEpoch, result.key);
@@ -1828,6 +1982,11 @@ public final class SharedDecoder implements AutoCloseable
   private PersonalizationSpec _personalization;
   private CurrentlyTypedWord.Snapshot _latestWord;
   private EditorContext _latestEditorContext = EditorContext.EMPTY;
+  private int _connectionId = -1;
+  private long _absoluteWordStart = -1;
+  /** The last two READY results, matched by tickets by word fingerprint. */
+  private final ArrayDeque<CompletedDecode> _recentResults =
+    new ArrayDeque<CompletedDecode>();
   private Decoder.RequestKey _latestKey;
   private PendingDecode _pending;
   private final ArrayDeque<PendingDecode> _retained =
@@ -1873,18 +2032,25 @@ public final class SharedDecoder implements AutoCloseable
     final long personalizationSpecEpoch;
     final PersonalizationSpec personalization;
     final EditorContext editorContext;
+    final CurrentlyTypedWord.Snapshot word;
+    final int connectionId;
+    final long absoluteWordStart;
     volatile boolean boundary;
     boolean boundaryPreviewed;
 
     PendingDecode(Decoder.Request request_, ResourceSpec resources_,
         long personalizationSpecEpoch_, PersonalizationSpec personalization_,
-        EditorContext editorContext_)
+        EditorContext editorContext_, CurrentlyTypedWord.Snapshot word_,
+        int connectionId_, long absoluteWordStart_)
     {
       request = request_;
       resources = resources_;
       personalizationSpecEpoch = personalizationSpecEpoch_;
       personalization = personalization_;
       editorContext = editorContext_;
+      word = word_;
+      connectionId = connectionId_;
+      absoluteWordStart = absoluteWordStart_;
     }
   }
 

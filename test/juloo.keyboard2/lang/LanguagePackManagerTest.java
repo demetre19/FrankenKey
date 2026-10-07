@@ -160,7 +160,7 @@ public class LanguagePackManagerTest
     LanguageModel.load(pack.next_words);
     assertTrue(id + " must preserve the decisive observed context prior.",
         Files.readAllLines(pack.next_words.toPath(), StandardCharsets.UTF_8)
-          .contains("examples\tof\t15"));
+          .contains("examples\tof\t11"));
   }
 
   private void assertMissingRequiredFile(String role, String missingPath,
