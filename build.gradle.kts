@@ -140,7 +140,9 @@ val buildKeyboardFont by tasks.registering(Exec::class) {
 }
 
 // Python may live outside the minimal PATH used by CI/gate executors.
-val pythonExe: String = listOfNotNull(
+// Resolved lazily at task execution: probing with ProcessBuilder during
+// configuration breaks the configuration cache.
+fun resolvePythonExe(): String = listOfNotNull(
   System.getenv("PYTHON"),
   "${System.getProperty("user.home")}/.local/bin/python",
   "python",
@@ -150,6 +152,8 @@ val pythonExe: String = listOfNotNull(
     ProcessBuilder(candidates, "--version").start().waitFor() == 0
   } catch (e: Exception) { false }
 } ?: "python3"
+
+val pythonExe: Provider<String> = providers.provider { resolvePythonExe() }
 
 val genEmojis by tasks.registering(Exec::class) {
   doFirst { println("\nGenerating res/raw/emojis.txt") }
