@@ -1,0 +1,42 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "/bin/test",
+        "-f",
+        "forensics/A-TICKET-ATTEMPT8-FORENSICS-2026-10-07.md"
+      ],
+      "covered_paths": [
+        "forensics/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "FORENSIC REPORT \u2014 read-only investigation, no code changes. Subject: why is lane a-ticket in run prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 on attempt 8? Evidence surfaces: run dir /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 (run.json attempt_history+incidents+denials, lanes/a-ticket/*.json, decisions/answered/*, scratch/salvage-*, log.jsonl, observations/), lane worktree /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/a-ticket (git reflog + status + lease file), fleet journal /Users/apple/.prd-herdr/boss/observations.jsonl seqs 579-659, notify-log.jsonl, boss-inbox rows. Trace EVERY attempt 1-8: what spawned it, what killed it (dead session? lease flap? commit refusal? gate env?), what evidence each attempt left. Known threads to verify not assume: (a) attempt-1 pane died without stamp leaving salvage file; (b) worktree got reaped by triage-worktrees --discard-stale mid-run destroying lease+agent state; (c) audit/INDEX.md tracked-but-generated commit refusal; (d) sdk.dir absent until boss provisioned; (e) waiver answers do not persist (ask re-pends: e0198914fc, ff8b514242, 85608f8e72 same question 3x); (f) grant gate counts charged attempt_history not lane.attempts; (g) REPLAN decisions re-raised per drive. Classify root causes: machinery defects vs environment vs plan defect vs operator actions. Write the report to reports/A-TICKET-ATTEMPT8-FORENSICS-2026-10-07.md in the worktree: timeline table (attempt, spawn cause, death cause, evidence), root-cause classes, per-class fix pointer to machinery lane names (L16/L17/L18/L20/L27/L30 where known), and an avoidance section (what would have prevented each death). Commit + push the report, stamp done."
+      ],
+      "depends_on": [],
+      "id": "aticket-attempt8-forensics",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "FORENSIC REPORT \u2014 read-only investigation, no code changes. Subject: why is lane a-ticket in run prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 on attempt 8? Evidence surfaces: run d",
+      "write_paths": [
+        "forensics/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

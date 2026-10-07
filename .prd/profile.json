@@ -1,28 +1,38 @@
 {
   "schema": "profile/v1",
   "argv": {
-    "build": ["./gradlew", "assembleDebug"],
-    "lint": ["./gradlew", "lintDebug"],
-    "test": ["./gradlew", "testDebugUnitTest"]
+    "build": [
+      "./gradlew",
+      "assembleDebug"
+    ],
+    "lint": [
+      "./gradlew",
+      "lintDebug"
+    ],
+    "test": [
+      "./gradlew",
+      "testDebugUnitTest"
+    ]
   },
   "module_map": {
     ".": 29,
     "androidTest": 9,
     "assets": 31,
-    "audit": 1,
-    "bin": 505,
+    "audit": 2,
+    "bin": 504,
     "doc": 3,
     "fastlane": 207,
-    "forensics": 1,
+    "forensics": 2,
     "gradle": 2,
-    "lessons": 1,
-    "plans": 1,
+    "lessons": 2,
+    "plans": 4,
     "reports": 2,
     "res": 233,
     "research": 1,
     "scripts": 2,
     "srcs": 374,
-    "test": 82
+    "test": 82,
+    "tests": 1
   },
   "hot_files": [],
   "land_target": "sprint",

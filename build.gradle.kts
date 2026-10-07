@@ -158,7 +158,8 @@ val pythonExe: Provider<String> = providers.provider { resolvePythonExe() }
 val genEmojis by tasks.registering(Exec::class) {
   doFirst { println("\nGenerating res/raw/emojis.txt") }
   workingDir = projectDir
-  commandLine(pythonExe, "gen_emoji.py")
+  doFirst { executable = pythonExe.get() }
+  args("gen_emoji.py")
 }
 
 val genLayoutsList by tasks.registering(Exec::class) {
@@ -166,7 +167,8 @@ val genLayoutsList by tasks.registering(Exec::class) {
   outputs.file(projectDir.resolve("res/values/layouts.xml"))
   doFirst { println("\nGenerating res/values/layouts.xml") }
   workingDir = projectDir
-  commandLine(pythonExe, "gen_layouts.py")
+  doFirst { executable = pythonExe.get() }
+  args("gen_layouts.py")
 }
 
 val genMethodXml by tasks.registering(Exec::class) {
@@ -177,7 +179,8 @@ val genMethodXml by tasks.registering(Exec::class) {
   doFirst { println("\nGenerating res/xml/method.xml") }
   doFirst { standardOutput = FileOutputStream(out) }
   workingDir = projectDir
-  commandLine(pythonExe, "gen_method_xml.py")
+  doFirst { executable = pythonExe.get() }
+  args("gen_method_xml.py")
 }
 
 val checkKeyboardLayouts by tasks.registering(Exec::class) {
@@ -186,7 +189,8 @@ val checkKeyboardLayouts by tasks.registering(Exec::class) {
   outputs.file(projectDir.resolve("check_layout.output"))
   doFirst { println("\nChecking layouts") }
   workingDir = projectDir
-  commandLine(pythonExe, "check_layout.py")
+  doFirst { executable = pythonExe.get() }
+  args("check_layout.py")
 }
 
 val compileComposeSequences by tasks.registering(Exec::class) {
@@ -199,7 +203,8 @@ val compileComposeSequences by tasks.registering(Exec::class) {
     !it.name.endsWith(".py") && !it.name.endsWith(".md")
   }!!.map { it.absolutePath }.toTypedArray()
   workingDir = projectDir
-  commandLine(pythonExe, `in`.resolve("compile.py").absolutePath, *sequences)
+  doFirst { executable = pythonExe.get() }
+  args(`in`.resolve("compile.py").absolutePath, *sequences)
   doFirst { standardOutput = FileOutputStream(out) }
 }
 
