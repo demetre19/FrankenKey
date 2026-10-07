@@ -1,11 +1,45 @@
-{"tasks": [
-  {"content": "New seam types: CandidateRole, EditorContext, CandidateSource, SuggestionAcceptor", "status": "in_progress"},
-  {"content": "SharedDecoder: register_source, pinned merge ahead of ranked (NFC dedupe, ≤6), editor context plumbing", "status": "pending"},
-  {"content": "Config.IKeyEventHandler + KeyEventHandler: candidate_accepted/candidate_long_pressed dispatch, BackspaceHook list, EditorContext capture", "status": "pending"},
-  {"content": "CandidatesView: CandidateRole migration, merged pinned+ranked render, single candidate_accepted dispatch, long-press seam", "status": "pending"},
-  {"content": "Pointers: SpaceGestureHook consulted with raw 16-way direction before getNearestKeyAtDirection", "status": "pending"},
-  {"content": "LearnedWordsActivity → class-registered tab host; learned_words layout split", "status": "pending"},
-  {"content": "settings.xml ti_smart_typing PreferenceScreen + 5 hidden categories; strings.xml", "status": "pending"},
-  {"content": "AGENTS.md updates (suggestions/ + juloo.keyboard2/)", "status": "pending"},
-  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
-]}
+{
+ "tasks": [
+  {
+   "content": "New seam types: CandidateRole, EditorContext, CandidateSource, SuggestionAcceptor",
+   "status": "in_progress"
+  },
+  {
+   "content": "SharedDecoder: register_source, pinned merge ahead of ranked (NFC dedupe, \u22646), editor context plumbing",
+   "status": "pending"
+  },
+  {
+   "content": "Config.IKeyEventHandler + KeyEventHandler: candidate_accepted/candidate_long_pressed dispatch, BackspaceHook list, EditorContext capture",
+   "status": "pending"
+  },
+  {
+   "content": "CandidatesView: CandidateRole migration, merged pinned+ranked render, single candidate_accepted dispatch, long-press seam",
+   "status": "pending"
+  },
+  {
+   "content": "Pointers: SpaceGestureHook consulted with raw 16-way direction before getNearestKeyAtDirection",
+   "status": "pending"
+  },
+  {
+   "content": "LearnedWordsActivity \u2192 class-registered tab host; learned_words layout split",
+   "status": "pending"
+  },
+  {
+   "content": "settings.xml ti_smart_typing PreferenceScreen + 5 hidden categories; strings.xml",
+   "status": "pending"
+  },
+  {
+   "content": "AGENTS.md updates (suggestions/ + juloo.keyboard2/)",
+   "status": "pending"
+  },
+  {
+   "content": "Gate g1-unit-suite via prd_step, then done",
+   "status": "pending"
+  },
+  {
+   "content": "self-review \u2014 adversarial pass over the diff vs the acceptance list",
+   "kind": "self-review",
+   "status": "completed"
+  }
+ ]
+}
