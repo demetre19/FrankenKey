@@ -1,0 +1,458 @@
+{
+  "extracted_at": "2026-10-07T04:35:28Z",
+  "pane": "w2Y:pT",
+  "schema": "crew-transcript/v1",
+  "session": "01a11468-9e9c-7721-b08e-47396bb387e7",
+  "session_cwd": "/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER",
+  "session_file": "/Users/apple/.omp/profiles/prd-lane/agent/sessions/-.prd-herdr-wt-FrankenKey-autobuild-autocorrect-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211-IMPROVER/2026-10-07T03-29-23-100Z_01a11468-9e9c-7721-b08e-47396bb387e7.jsonl",
+  "signals": [
+    {
+      "detail": "prd-herdr.activation: {\"at\": \"2026-10-07T03:29:23.346Z\", \"via\": \"launch-env\"}",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 4,
+      "tool": "",
+      "ts": "2026-10-07T03:29:23.346Z"
+    },
+    {
+      "detail": "prd-step: [harness] Checklist empty \u2014 run the required gates, then `prd_step done`. Charter: Your role: worker (improver brief) for run `prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211`. [progress] lane IMPROVER [event] recovery: fresh",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 6,
+      "tool": "",
+      "ts": "2026-10-07T03:29:25.034Z"
+    },
+    {
+      "detail": "user: [inbox answer #1 from crew-answer] Decision preflight-IMPROVER: repair the named prerequisite and relaunch \u2014 lane IMPROVER refused at launch preflight \u2014 env: local.properties absent (android) in /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER \u2014 the lane's gates cannot pass without them (record: /Users/apple/.prd-\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 7,
+      "tool": "",
+      "ts": "1791343763630"
+    },
+    {
+      "detail": "Backgrounded early to handle an incoming message; the command keeps running. Backgrounded as job bg_1 (killed once it has run 300s in total; `timeout: 0` disables the deadline); its output is injected into the conversation as a follow-up the moment it finishes. Do NOT poll for it (no `sleep`, `ps`, `pgrep`, `top`, `pidwait`, log tailing): every poll is a wasted turn. Do other work, or end your rep\u2026",
+      "details": {
+        "async": {
+          "jobId": "bg_1",
+          "state": "running",
+          "type": "bash"
+        },
+        "timeoutSeconds": 300
+      },
+      "input": {
+        "command": "ls; cat local.properties 2>/dev/null; ls .. | head; cat /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/IMPROVER/preflight.json 2>/dev/null",
+        "i": "Inspecting lane worktree and preflight record"
+      },
+      "kind": "tool",
+      "line": 10,
+      "tool": "bash",
+      "ts": "1791343771778"
+    },
+    {
+      "detail": "user: <file name=\"/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/IMPROVER/brief.md\"> Your role: worker (improver brief) for run `prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211`. # Improver \u2014 prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 ## Target You are the prd-improver lane for ru\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 11,
+      "tool": "",
+      "ts": "1791343764961"
+    },
+    {
+      "detail": "prd-step: [harness] Checklist empty \u2014 run the required gates, then `prd_step done`. Charter: Your role: worker (improver brief) for run `prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211`. [progress] lane IMPROVER [event] recovery: fresh",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 12,
+      "tool": "",
+      "ts": "2026-10-07T03:29:31.866Z"
+    },
+    {
+      "detail": "prd-docs-map: [docs map] index missing \u2014 run `crew docs build`",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 13,
+      "tool": "",
+      "ts": "2026-10-07T03:29:25.060Z"
+    },
+    {
+      "detail": "async-result: <system-notice> Background job bg_1 has completed. Resume your work using the result below. AGENTS.md AndroidManifest.xml CHANGELOG-learned-suggestions-unlearn-2026-07-07.md CONTRIBUTING.md DESIGN.md FrankenKey-installable-release.apk FrankenKey-installable-release.apk.zip LICENSE PRODUCT.md RATIONALE.md README.md S1-REQUIREMENTS-AUDIT.md androidTest assets audit bin build.gradle.kts check_layout.\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 14,
+      "tool": "",
+      "ts": "2026-10-07T03:29:31.866Z"
+    },
+    {
+      "detail": "artifacts.json autonomy-policy.json context decisions error-resolutions.json forensics gates history incidents.jsonl integration.json lanes log.jsonl observations orchestrator.pane recipe_runs.jsonl run-control-activities run-control.json run-control.json.lock run-report.json run.json stale-worktrees.json supporting-evidence supporting-evidence.json IMPROVER SUMMARY a-gestures a-haptic a-replay a-\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 3.4192499999990105
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211; ls $R; ls $R/lanes; cat $R/run-report.json | head -200",
+        "i": "Reading run report and lane list"
+      },
+      "kind": "tool",
+      "line": 17,
+      "tool": "bash",
+      "ts": "1791343782135"
+    },
+    {
+      "detail": "['acceptance', 'autonomy', 'canon_delta', 'cost_estimate', 'engine', 'events', 'finished_at', 'first_pass', 'forks', 'integration', 'lanes', 'limitations', 'operator_overrides', 'repo', 'run_id', 'schema_version', 'started_at', 'target_branch', 'target_sha', 'verdict', 'wall_seconds', 'writers'] == lanes [ { \"attempts\": 9, \"brief\": \"r5\", \"conflict\": false, \"first_pass_land\": false, \"fork_index\": n\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 64.80395800000042
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211; python3 -c \"\nimport json\nr=json.load(open('$R/run-report.json'))\nprint(list(r.keys()))\nfor k in ['lanes','verdicts','writers','errors','level2','defects']:\n    if k in r: print('==',k); print(json.dumps(r[k],indent=1)[:6000])\n\"",
+        "i": "Dumping run-report lanes and verdicts"
+      },
+      "kind": "tool",
+      "line": 20,
+      "tool": "bash",
+      "ts": "1791343788302"
+    },
+    {
+      "detail": "verdict: {\"mechanical\": \"fail\", \"process\": \"fail\", \"reasons\": [\"integration status is partial, want full\", \"810 foreign writes (seqs [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,\u2026",
+      "details": {
+        "meta": {
+          "limits": {
+            "columnTruncated": {
+              "artifactId": "3",
+              "maxColumn": 768,
+              "unit": "bytes"
+            }
+          }
+        },
+        "timeoutSeconds": 300,
+        "wallTimeMs": 71.5967079999973
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211; python3 -c \"\nimport json\nr=json.load(open('$R/run-report.json'))\nprint('verdict:',json.dumps(r['verdict']))\nprint('first_pass:',json.dumps(r['first_pass']))\nprint('engine:',json.dumps(r['engine'])[:2000])\nprint('limitations:',json.dumps(r['limitations'])[:2000])\nprint('integration:',json.dumps(r['integration'])[:2000])\nfor l in r['lanes']:\n    print(l['lane_id'], l['status'], 'attempts',l['attempts'],'repairs',l.get('repairs'),'gates',[(g['gate_id'],g['pass']) for g in l['gates']])\n\"",
+        "i": "Summarizing verdicts and lane statuses"
+      },
+      "kind": "tool",
+      "line": 23,
+      "tool": "bash",
+      "ts": "1791343795830"
+    },
+    {
+      "detail": "39 /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/incidents.jsonl 1604 /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/log.jsonl 1643 total {\"at\": \"2026-10-06T09:56:14.861083+00:00\", \"class\": \"unclassified\", \"evidence\": \"TerminalStampNeedsBo\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 81.45912500000122
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211; wc -l $R/incidents.jsonl $R/log.jsonl; python3 -c \"\nimport json\nfor ln in open('$R/incidents.jsonl'):\n    d=json.loads(ln)\n    print(json.dumps(d)[:400])\n\" | head -50",
+        "i": "Reading incident backlog"
+      },
+      "kind": "tool",
+      "line": 26,
+      "tool": "bash",
+      "ts": "1791343801916"
+    },
+    {
+      "detail": "{ \"crew-error:1\": { \"commit\": \"\", \"disposition\": \"excluded\", \"evidence\": \"supporting-evidence/af420ae6d2bd99af69e2279197f7b55539219002583b48aba739d3eb0bf9e35e/salvage-attempt1-20261006T09561476571.md\", \"incident_sha256\": \"45775992aafcbcf8af15ddaac6811b4eb6c10fc25d8a5934fb5f3749108a1742\", \"reason\": \"agent killed by 09:52 daemon restart, not a lane defect \\u2014 salvage has no notes; relaunching lan\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 309.3430840000001
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\nls $R/overwatch 2>/dev/null; ls $R/evidence 2>/dev/null; cat $R/error-resolutions.json 2>/dev/null | head -80\npython3 -c \"\nimport json\nkinds={}\nfor ln in open('$R/log.jsonl'):\n    d=json.loads(ln); kinds[d.get('kind')]=kinds.get(d.get('kind'),0)+1\nprint(kinds)\nfor ln in open('$R/log.jsonl'):\n    d=json.loads(ln)\n    if d.get('kind') in ('error','assess'):\n        print(json.dumps(d)[:300])\n\" | head -60",
+        "i": "Reading overwatch, ledger, error rows"
+      },
+      "kind": "tool",
+      "line": 29,
+      "tool": "bash",
+      "ts": "1791343809428"
+    },
+    {
+      "detail": "? boss-note-routed crew-error:1 TerminalStampNeedsBoss crew-error:2 TerminalStampNeedsBoss crew-error:3 lane-preflight-warning crew-error:4 StallLadderExhausted crew-error:5 lane-preflight-warning crew-error:6 StallLadderExhausted crew-error:7 ReplanRequired crew-error:8 OperatorReplanWaiver crew-error:9 DriveError crew-error:10 lane-preflight-warning crew-error:11 {\"error_id\": \"crew-error:11\", \"s\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 174.04670800000167
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\npython3 -c \"\nimport json\nseen={}\nfor ln in open('$R/log.jsonl'):\n    d=json.loads(ln)\n    if d.get('kind')=='error':\n        data=d['data']; eid=data.get('error_id','?')\n        msg=data.get('cause') or data.get('error') or data.get('signature') or json.dumps(data)[:200]\n        if eid not in seen: seen[eid]=msg\n        print(eid, str(msg)[:220])\n\"\nls $R/overwatch $R/evidence $R/evidence/lanes 2>/dev/null\ncat $R/overwatch/summary.md 2>/dev/null | head -80\ncat $R/evidence/gap-ledger.json 2>/dev/null | head -100",
+        "i": "Mapping error ids to causes"
+      },
+      "kind": "tool",
+      "line": 32,
+      "tool": "bash",
+      "ts": "1791343821824"
+    },
+    {
+      "detail": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/.runtime-stale/schemas/improvement.schema.json /Users/apple/Developer/prd-herdr/.test-tmp/tmphve81dtj/nm/deployments/96ff85360ad7d9a081c9ddbd469d900b2b8a2956f25493816a1f3a1435e43512/schemas/improvement.schema.json /Users/apple/Developer/prd-herdr/.test-tmp/tmpbm0kgt7y/nm/d\u2026",
+      "details": {
+        "meta": {
+          "limits": {
+            "columnTruncated": {
+              "artifactId": "7",
+              "maxColumn": 768,
+              "unit": "bytes"
+            }
+          }
+        },
+        "timeoutSeconds": 300,
+        "wallTimeMs": 213.12537500000326
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\nfind $R -name \"summary.md\" -o -name \"gap-ledger.json\" -o -name \"improvement.schema.json\" 2>/dev/null\nfind /Users/apple/Developer/prd-herdr -name \"improvement.schema.json\" 2>/dev/null | head -3\npython3 -c \"\nimport json\nfor ln in open('$R/log.jsonl'):\n    d=json.loads(ln)\n    if d.get('kind')=='error' and 'DriveError' in json.dumps(d['data']):\n        print(json.dumps(d['data'])[:800]); print('---')\n\" | head -60",
+        "i": "Finding schema and DriveError details"
+      },
+      "kind": "tool",
+      "line": 35,
+      "tool": "bash",
+      "ts": "1791343830272"
+    },
+    {
+      "detail": "{ \"$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"$id\": \"improvement/v1\", \"title\": \"improvement.json v1 (prd-improver bounded proposal, PRD 4.3)\", \"type\": \"object\", \"required\": [\"schema_version\", \"run_id\", \"report_verdict\", \"product_assessment\", \"defects_observed\", \"defect_classes\", \"solution_classes\", \"proposals\", \"release_decision\", \"self_note\"], \"additionalProperties\": false, \"prope\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 2.3392499999899883
+      },
+      "input": {
+        "command": "cat /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/.runtime-stale/schemas/improvement.schema.json",
+        "i": "Reading improvement schema"
+      },
+      "kind": "tool",
+      "line": 38,
+      "tool": "bash",
+      "ts": "1791343854474"
+    },
+    {
+      "detail": "HAS IMPROVER HAS SUMMARY HAS a-haptic HAS a-stability HAS a-ticket HAS ver-s2 Wall time: 0.00 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 4.58116699999664
+      },
+      "input": {
+        "command": "W=/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211; for d in $W/*/; do [ -f \"$d/local.properties\" ] && echo \"HAS  $(basename $d)\" || echo \"MISS $(basename $d)\"; done",
+        "i": "Checking local.properties across lane worktrees"
+      },
+      "kind": "tool",
+      "line": 41,
+      "tool": "bash",
+      "ts": "1791343879207"
+    },
+    {
+      "detail": "srcs/juloo.keyboard2/suggestions/Decoder.java | 87 ++- .../juloo.keyboard2/suggestions/SharedDecoder.java | 194 ++++++- tasks.json | 12 +- test/juloo.keyboard2/GrammarCoordinatorTest.java | 145 +++++ test/juloo.keyboard2/GrammarRulesTest.java | 244 +++++++++ test/juloo.keyboard2/LauncherPrivacyCardTest.java | 12 +- test/juloo.keyboard2/ReaderActivityTest.java | 140 +++-- test/juloo.keyboard2/Reade\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 279.0454999999929
+      },
+      "input": {
+        "command": "cd /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER && git diff --stat 30e072c0c8e52a39aa3192145d08d8b3da65fa7f..5e1d5ec972c8c9538f26d69e6287f4478261ea94 | tail -30 && git log --oneline 30e072c0..5e1d5ec | head -20",
+        "i": "Reading integration diff stat"
+      },
+      "kind": "tool",
+      "line": 44,
+      "tool": "bash",
+      "ts": "1791343889581"
+    },
+    {
+      "detail": "--- --- --- --- --- --- --- --- --- --- --- --- --- { \"attempt\": 1, \"closing\": \"nothing-further\", \"commits\": [ \"5dbe240d83b55edb48ddb8d2e7b57013622c4a0c\" ], \"lane_id\": \"ver-s2\", \"notes\": \"\", \"status\": \"done\" } {'attempt': None, 'lanes': [{'id': 'a-ticket', 'title': 'A1 \u2014 CandidateTicket capture + validation, intent-wins slot replace, retained-result match, exactly-once', 'branch': 'lane/2IC/prd-fr\u2026",
+      "details": {
+        "meta": {
+          "limits": {
+            "columnTruncated": {
+              "artifactId": "11",
+              "maxColumn": 768,
+              "unit": "bytes"
+            }
+          }
+        },
+        "timeoutSeconds": 300,
+        "wallTimeMs": 216.23949999999604
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\npython3 -c \"\nimport json\nfor ln in open('$R/log.jsonl'):\n    d=json.loads(ln)\n    if d.get('kind')=='assess':\n        dd=d['data']; v=dd.get('verdict') or dd.get('assessment') or '?'\n        print(json.dumps(dd)[:280]); print('---')\n\" | grep -iE \"wrong|question|---\" | head -30\ncat $R/lanes/ver-s2/result.json 2>/dev/null | head -30; cat $R/run.json | python3 -c \"import json,sys; r=json.load(sys.stdin); print({k:r.get(k) for k in ('attempt','lanes','status')})\" 2>/dev/null | head -5",
+        "i": "Checking assess verdicts and attempt numbers"
+      },
+      "kind": "tool",
+      "line": 47,
+      "tool": "bash",
+      "ts": "1791343899430"
+    },
+    {
+      "detail": "{ \"id\": \"IMPROVER\", \"title\": \"Improver for prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\", \"branch\": \"crew/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER\", \"worktree\": \"/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER\", \"write_paths\": [ \"improvement.json\", \"IMPROVEMENT\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 45.2879580000008
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\npython3 -c \"\nimport json\nr=json.load(open('$R/run.json'))\nfor l in r['lanes']:\n    if l['id']=='IMPROVER' or l['id']=='SUMMARY': print(json.dumps(l,indent=1)[:1500])\n\"",
+        "i": "Checking IMPROVER lane attempt"
+      },
+      "kind": "tool",
+      "line": 50,
+      "tool": "bash",
+      "ts": "1791343903924"
+    },
+    {
+      "detail": "== a-ticket { \"attempt\": 9, \"closing\": \"handed-off\", \"closing_target\": \"integration\", \"commits\": [ \"dda58cf2759be82064c03fb7d55551900aa64156\" ], \"lane_id\": \"a-ticket\", \"notes\": \"A1 complete at HEAD dda58cf; g1-unit-suite FAIL receipt recorded (6 upstream-autobuild-drift reds outside write_paths); waiver ask-85608f8e72 granted\", \"status\": \"done\" } == a-stability == a-haptic { \"attempt\": 1, \"closing\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 8.113374999986263
+      },
+      "input": {
+        "command": "R=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\nfor l in a-ticket a-stability a-haptic ver-s2; do echo \"== $l\"; cat $R/lanes/$l/judgment.json 2>/dev/null | head -20; cat $R/lanes/$l/result.json 2>/dev/null | head -15; done\nls $R/lanes/a-ticket/ $R/lanes/a-stability/",
+        "i": "Reading lane results and judgments"
+      },
+      "kind": "tool",
+      "line": 53,
+      "tool": "bash",
+      "ts": "1791343917925"
+    },
+    {
+      "detail": "[improvement.json#A615] Successfully wrote 17184 bytes to improvement.json docs: machinery index missing \u2014 `crew docs build` generates it",
+      "details": {
+        "resolvedPath": "/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER/improvement.json"
+      },
+      "input": {
+        "content": "{\n  \"schema_version\": \"improvement/v1\",\n  \"run_id\": \"prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\",\n  \"report_verdict\": { \"mechanical\": \"fail\", \"process\": \"fail\" },\n  \"product_assessment\": {\n    \"meets_stated_goal\": false,\n    \"gaps\": [\n      \"Integration status is partial: 14 of 21 planned lanes were cancelled without user-authorized scope drops (crew-error:32), so most of PRD sections A/C/D and the retry-feedback/gestures/replay work never shipped.\",\n      \"g1-unit-suite still shows 6 baseline-drift failures outside lane write_paths at lane close time (observations #4,#12,#15,#21); a-haptic repaired several but the gate receipt for a-stability remains FAIL.\",\n      \"810 foreign writes recorded by the run report; writer attribution never reconciled \u2014 sequencing/integrity audit owed.\"\n    ],\n    \"risk\": \"high\"\n  },\n  \"defects_observed\": [\n    {\n      \"id\": \"D1\",\n      \"level\": 2,\n      \"symptom\": \"Launch preflight refused 4 lane launches (s2-features, ver-s2, IMPROVER, SUMMARY) because local.properties/sdk.dir was absent in freshly minted worktrees; each refusal burned a crew-answer round-trip and a relaunch before the lane could start.\",\n      \"evidence\": \"crew-error:30, crew-error:37, crew-error:38 (log.jsonl); observations #22, #23, and this lane's own preflight ask; lanes/*/preflight.json\",\n      \"already_closed_in_canon\": false,\n      \"gap\": \"context\"\n    },\n    {\n      \"id\": \"D2\",\n      \"level\": 2,\n      \"symptom\": \"g1-unit-suite red on 6 tests outside lane write_paths (baseline autobuild drift). Lane done refused a FAIL receipt even after three separate boss rulings accepted the baseline-failing gate (ask-eb49f98cc3, ask-ff8b514242, ask-85608f8e72, ask-9b81197e3c) \u2014 the waiver had no mechanical path into the gate ledger and had to be re-litigated per lane.\",\n      \"evidence\": \"observations #4, #12, #15, #21; a-ticket result.json notes ('waiver ask-85608f8e72 granted'); a-stability lane gates g1-unit-suite pass=false\",\n      \"already_closed\u2026[truncated]",
+        "i": "Writing improvement.json proposals",
+        "path": "improvement.json"
+      },
+      "kind": "tool",
+      "line": 56,
+      "tool": "write",
+      "ts": "1791344024758"
+    },
+    {
+      "detail": "[IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md#DDCF] Successfully wrote 2524 bytes to IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md",
+      "details": {
+        "resolvedPath": "/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/IMPROVER/IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md"
+      },
+      "input": {
+        "content": "# IMPROVEMENT \u2014 prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211\n\nVerdict: mechanical=fail, process=fail. Integration head 5e1d5ec is a *partial* merge: 3 landed lanes (a-ticket, a-stability, a-haptic) + ver-s2; 14 planned lanes cancelled without authorized scope drops; 810 unclassified foreign writes. The product diff (+5848/-297, CandidateTicket, stability slots, grammar corpus, gate fixes) is coherent \u2014 the failures were machinery failures.\n\n## Defect classes (root causes)\n\n- **C1 preflight-env-no-repair** \u2014 4 launches refused on absent `local.properties`/sdk.dir (crew-error:30,37,38; obs #22,#23); deterministic fix waited on human round-trips.\n- **C2 baseline-gate-wedge** \u2014 6 out-of-write_paths test reds re-litigated 4\u00d7 (ask-eb49f98cc3, ask-ff8b514242, ask-85608f8e72, ask-9b81197e3c); waivers live in chat, not the gate ledger.\n- **C3 unmapped-stall-loop** \u2014 a-ticket: 9 attempts, StallLadderExhausted + BudgetExhausted + ReplanRequired + NoProgressRelaunch all \"unmapped class\"; same-brief relaunches repeated the same gate failure.\n- **C4 dispatch-retry-no-backoff** \u2014 DriveError storm: verbatim retries against saturation, stale-attempt, cancelled-lane refusals; step cap 50 hit twice (crew-error:9,26,27,28,35,36).\n- **C5 foreign-write-attribution** \u2014 810 seqs flip process=fail but mix bookkeeping with real violations; no actionable list.\n- (Lease/preflight wedge D5 folds into C1/C5 mechanics: 3 no-lease blocks + 1 live-lease refusal.)\n\n## Solution classes\n\n- **S1** preflight materializes declared env prerequisites with a repair step (retires C1).\n- **S2** durable gate-waiver receipts consumed by `done` and the stall mapper (retires C2, C3).\n- **S3** classified dispatch refusals: backoff / attempt-resolve / scope-drop routing (retires C4).\n- **S4** foreign-write attribution: bookkeeping vs violation at record time (retires C5).\n\n## Proposals\n\n| P | Title | Sev | Diff | Route |\n|---|-------|-----|------|-------|\n| P1 | Preflight env materialization (sd\u2026[truncated]",
+        "i": "Writing IMPROVEMENT markdown",
+        "path": "IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md"
+      },
+      "kind": "tool",
+      "line": 59,
+      "tool": "write",
+      "ts": "1791344043351"
+    },
+    {
+      "detail": "Traceback (most recent call last): File \"<string>\", line 2, in <module> ModuleNotFoundError: No module named 'jsonschema' {\"ok\": false, \"error\": \"result.json closing must be one of blocked-on, canceled, denied, escalated, handed-off, nothing-further\", \"error_class\": \"CrewError\", \"site\": \"/Users/apple/Developer/prd-herdr/src/crew/runops/plan.py:363\"} Traceback (most recent call last): File \"/Users/\u2026",
+      "details": {
+        "exitCode": 2,
+        "timeoutSeconds": 300,
+        "wallTimeMs": 433.0313749999623
+      },
+      "input": {
+        "command": "python3 -c \"\nimport json, jsonschema\ns=json.load(open('/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/.runtime-stale/schemas/improvement.schema.json'))\nd=json.load(open('improvement.json'))\njsonschema.validate(d,s); print('schema OK')\n\" 2>&1 | tail -3\npython3 /Users/apple/Developer/prd-herdr/src/crew/cli.py stamp-result /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 IMPROVER --status done --notes \"improvement.json + IMPROVEMENT md written; 5 proposals (P1 blocking), 5 defect classes, 23 observations consumed; no source changes\" --closing proposals-submitted",
+        "i": "Validating schema and stamping result"
+      },
+      "kind": "error",
+      "line": 62,
+      "tool": "bash",
+      "ts": "1791344052267"
+    },
+    {
+      "detail": "required fields OK {\"ok\": false, \"error\": \"result.json closing_target must name the target when closing is handed-off\", \"error_class\": \"CrewError\", \"site\": \"/Users/apple/Developer/prd-herdr/src/crew/runops/plan.py:369\"} Traceback (most recent call last): File \"/Users/apple/Developer/prd-herdr/src/crew/cli.py\", line 1020, in main code = dispatch(args) ^^^^^^^^^^^^^^ File \"/Users/apple/Developer/prd\u2026",
+      "details": {
+        "exitCode": 2,
+        "timeoutSeconds": 300,
+        "wallTimeMs": 403.6677919999929
+      },
+      "input": {
+        "command": "python3 - <<'EOF'\nimport json\ns=json.load(open('/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/.runtime-stale/schemas/improvement.schema.json'))\nd=json.load(open('improvement.json'))\ndef req(obj,spec,path=''):\n    for k in spec.get('required',[]):\n        assert k in obj, f'missing {path}.{k}'\n    for k,v in spec.get('properties',{}).items():\n        if k in obj:\n            if v.get('type')=='object': req(obj[k],v,path+'.'+k)\n            if v.get('type')=='array' and 'items' in v:\n                for i,it in enumerate(obj[k]):\n                    if isinstance(it,dict): req(it,v['items'],f'{path}.{k}[{i}]')\nreq(d,s)\nprint('required fields OK')\nEOF\npython3 /Users/apple/Developer/prd-herdr/src/crew/cli.py stamp-result /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 IMPROVER --status done --notes \"improvement.json + IMPROVEMENT md written; 5 proposals (P1 blocking), 5 defect classes, 23 observations consumed; no source changes\" --closing handed-off",
+        "i": "Manual schema check and stamping result"
+      },
+      "kind": "error",
+      "line": 65,
+      "tool": "bash",
+      "ts": "1791344062767"
+    },
+    {
+      "detail": "{\"ok\": false, \"error\": \"stamp-result refused: lane IMPROVER done claim unverifiable \\u2014 acceptance not evidenced by the diff: no committed change inside the lane's implementation write_paths (improvement.json, IMPROVEMENT-*.md, findings.json); uncommitted in-scope work exists (IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md, improvement.json) \\u2014 commit it; th\u2026",
+      "details": {
+        "exitCode": 2,
+        "meta": {
+          "limits": {
+            "columnTruncated": {
+              "artifactId": "16",
+              "maxColumn": 768,
+              "unit": "bytes"
+            }
+          }
+        },
+        "timeoutSeconds": 300,
+        "wallTimeMs": 3590.206999999995
+      },
+      "input": {
+        "command": "python3 /Users/apple/Developer/prd-herdr/src/crew/cli.py stamp-result /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 IMPROVER --status done --notes \"improvement.json + IMPROVEMENT md written; 5 proposals (P1 blocking), 5 defect classes, 23 observations consumed; no source changes\" --closing nothing-further",
+        "i": "Stamping IMPROVER result done"
+      },
+      "kind": "error",
+      "line": 68,
+      "tool": "bash",
+      "ts": "1791344070043"
+    },
+    {
+      "detail": "85e43d4 IMPROVER: improvement.json + IMPROVEMENT md \u2014 5 proposals, 5 defect classes 5e1d5ec forensics(ver-s2): session observation artifact { \"links\": { \"result\": \"[result](/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/IMPROVER/result.json)\" }, \"ok\": true, \"result\": \"/Users/apple/.prd-herdr/runs/FrankenKey-autob\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 813.3851659999928
+      },
+      "input": {
+        "command": "git add improvement.json IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md && git commit -q -m \"IMPROVER: improvement.json + IMPROVEMENT md \u2014 5 proposals, 5 defect classes\" && git log --oneline -2 && python3 /Users/apple/Developer/prd-herdr/src/crew/cli.py stamp-result /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 IMPROVER --status done --notes \"improvement.json + IMPROVEMENT md written; 5 proposals (P1 blocking), 5 defect classes, 23 observations consumed; no source changes\" --closing nothing-further",
+        "i": "Committing artifacts and stamping done"
+      },
+      "kind": "tool",
+      "line": 71,
+      "tool": "bash",
+      "ts": "1791344078466"
+    },
+    {
+      "detail": "autonomy: [autonomy] extension enforcement layer changed (deploy b52d402c7297); this session keeps its loaded fences until restart \u2014 flagged stale_for_restart",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 73,
+      "tool": "",
+      "ts": "2026-10-07T03:34:45.758Z"
+    },
+    {
+      "detail": "user: [inbox answer #2 from crew-answer] Decision stamp-scope-IMPROVER: fix-and-restamp \u2014 lane IMPROVER done claim unverifiable \u2014 acceptance not evidenced by the diff: no committed change inside the lane's implementation write_paths (improvement.json, IMPROVEMENT-*.md, findings.json); uncommitted in-scope work exists (IMPROVEMENT-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211.md, impro\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 74,
+      "tool": "",
+      "ts": "1791344704208"
+    },
+    {
+      "detail": "{ \"attempt\": 1, \"closing\": \"nothing-further\", \"commits\": [ \"85e43d40f05d631aee424b0ca92229c9c84829ac\" ], \"lane_id\": \"IMPROVER\", \"notes\": \"improvement.json + IMPROVEMENT md written; 5 proposals (P1 blocking), 5 defect classes, 23 observations consumed; no source changes\", \"status\": \"done\" } 85e43d4 IMPROVER: improvement.json + IMPROVEMENT md \u2014 5 proposals, 5 defect classes M audit/INDEX.md M lesson\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 97.52941700001247
+      },
+      "input": {
+        "command": "cat /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/IMPROVER/result.json; git log --oneline -1; git status --porcelain | head",
+        "i": "Verifying stamped result is current"
+      },
+      "kind": "tool",
+      "line": 77,
+      "tool": "bash",
+      "ts": "1791344710093"
+    }
+  ],
+  "summary": {
+    "errors": 3,
+    "gate_events": 0,
+    "stalls": 0,
+    "tool_calls": 18,
+    "warnings": 9
+  },
+  "tab": "w2Y:tT",
+  "workspace": "w2Y"
+}
