@@ -2,6 +2,7 @@
   {"content": "Extract EmailAddressValidator.java + test from manual/b-email B1 into worktree", "status": "completed"},
   {"content": "Write EmailToken.java per B-F1 spec (backward scan, mid-token, hasAt, offsets)", "status": "completed"},
   {"content": "Write EmailTokenTest.java; ensure >=60 parser/validator cases total", "status": "completed"},
-  {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "in_progress"},
-  {"content": "prd_step done", "status": "pending"}
+  {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
+  {"content": "prd_step done", "status": "completed"}
 ]}
