@@ -1,50 +1,7 @@
-{
- "tasks": [
-  {
-   "content": "New seam types: CandidateRole, EditorContext, CandidateSource, SuggestionAcceptor",
-   "status": "in_progress"
-  },
-  {
-   "content": "SharedDecoder: register_source, pinned merge ahead of ranked (NFC dedupe, \u22646), editor context plumbing",
-   "status": "pending"
-  },
-  {
-   "content": "Config.IKeyEventHandler + KeyEventHandler: candidate_accepted/candidate_long_pressed dispatch, BackspaceHook list, EditorContext capture",
-   "status": "pending"
-  },
-  {
-   "content": "CandidatesView: CandidateRole migration, merged pinned+ranked render, single candidate_accepted dispatch, long-press seam",
-   "status": "pending"
-  },
-  {
-   "content": "Pointers: SpaceGestureHook consulted with raw 16-way direction before getNearestKeyAtDirection",
-   "status": "pending"
-  },
-  {
-   "content": "LearnedWordsActivity \u2192 class-registered tab host; learned_words layout split",
-   "status": "pending"
-  },
-  {
-   "content": "settings.xml ti_smart_typing PreferenceScreen + 5 hidden categories; strings.xml",
-   "status": "pending"
-  },
-  {
-   "content": "AGENTS.md updates (suggestions/ + juloo.keyboard2/)",
-   "status": "pending"
-  },
-  {
-   "content": "Gate g1-unit-suite via prd_step, then done",
-   "status": "pending"
-  },
-  {
-   "content": "self-review \u2014 adversarial pass over the diff vs the acceptance list",
-   "kind": "self-review",
-   "status": "completed"
-  },
-  {
-   "content": "self-review — adversarial pass over the diff vs the acceptance list",
-   "kind": "self-review",
-   "status": "completed"
-  }
- ]
-}
+{"tasks": [
+  {"content": "Extract EmailAddressValidator.java + test from manual/b-email B1 into worktree", "status": "completed"},
+  {"content": "Write EmailToken.java per B-F1 spec (backward scan, mid-token, hasAt, offsets)", "status": "completed"},
+  {"content": "Write EmailTokenTest.java; ensure >=60 parser/validator cases total", "status": "completed"},
+  {"content": "Run g1-unit-suite gate; escalate pre-existing unrelated reds", "status": "in_progress"},
+  {"content": "prd_step done", "status": "pending"}
+]}
