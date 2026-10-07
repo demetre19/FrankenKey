@@ -4,7 +4,7 @@ The canonical lesson store. Write path: `crew learn <domain> <slug> '<lesson>'` 
 
 ## Domains
 
-- *(no domains yet)*
+- [machinery](machinery/INDEX.md) — domain lessons
 
 ## Legacy stores (pre-index — consult on a miss)
 
