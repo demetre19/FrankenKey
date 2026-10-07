@@ -63,6 +63,7 @@
 - `ReaderAiService.java` / `ReaderAiDialog.java` / `ReaderAiOpenRouter.java` — native Book AI generation, grounded result modes/actions, bounded concurrency, retry/repair, and cancellation transport.
 - `ReaderPdfImporter.java` — bounded PDF parsing.
 - `ReaderImportPipeline.java` — confirmation/persistence/handoff.
+- `grammar/AGENTS.md` — offline grammar rules, coordinator, AI Fix grammar, diff view.
 - `suggestions/AGENTS.md` — decoder/ranking/personalization.
 - `autocorrect/AGENTS.md` — Hunspell JNI.
 - `snippets/AGENTS.md` — snippets.

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "a_an": {
+    "an_exceptions": [
+      "heir", "heiress", "heirloom", "herb", "honest", "honestly",
+      "honesty", "honor", "honorable", "honorarium", "honorific",
+      "honour", "honourable", "hour", "hourly"
+    ],
+    "a_exceptions": [
+      "eucalyptus", "eugenic", "eulogy", "euphemism", "euphoria",
+      "european", "euro", "euros", "euthanasia", "one", "once",
+      "oneself", "ouija", "ubiquitous", "unicorn", "unicycle",
+      "unified", "uniform", "uniformed", "unilateral", "union",
+      "unique", "unison", "unit", "unite", "united", "unity",
+      "universal", "universe", "university", "uranium", "urethra",
+      "urinal", "urologist", "use", "useful", "useless", "user",
+      "usual", "usually", "usurp", "utensil", "uterus", "utility",
+      "utopia", "uvula", "ufo"
+    ]
+  },
+  "your_youre": {
+    "followers": {
+      "welcome": "noun",
+      "going": "any",
+      "not": "any",
+      "being": "any",
+      "the": "any",
+      "a": "any",
+      "an": "any",
+      "right": "noun",
+      "wrong": "noun",
+      "so": "any",
+      "very": "any",
+      "too": "any",
+      "almost": "any",
+      "already": "any",
+      "still": "any",
+      "really": "any",
+      "all": "any",
+      "both": "any",
+      "ready": "any",
+      "here": "any",
+      "great": "any",
+      "sure": "noun"
+    }
+  },
+  "its_its": {
+    "its_to_contraction": ["a", "an", "the", "been", "going", "gonna", "not", "ok", "okay"],
+    "contraction_to_its": ["own"]
+  },
+  "their_there": {
+    "followers": ["is", "are", "was", "were"]
+  },
+  "then_than": {
+    "always": ["rather", "other", "no", "none", "nothing", "nowhere", "or", "sooner", "later"],
+    "comparatives": ["more", "less", "fewer", "greater", "larger", "smaller", "bigger", "better", "worse", "earlier", "faster", "slower", "higher", "lower", "longer", "shorter", "easier", "harder", "older", "younger", "stronger", "weaker"],
+    "comparative_followers": ["a", "an", "the", "ever", "before", "usual", "expected", "me", "you", "him", "her", "us", "them", "it", "that", "this", "those", "these", "any", "anyone", "yesterday", "today", "tomorrow", "last", "next"]
+  }
+}

@@ -40,6 +40,11 @@
    "content": "self-review \u2014 adversarial pass over the diff vs the acceptance list",
    "kind": "self-review",
    "status": "completed"
+  },
+  {
+   "content": "self-review — adversarial pass over the diff vs the acceptance list",
+   "kind": "self-review",
+   "status": "completed"
   }
  ]
 }
