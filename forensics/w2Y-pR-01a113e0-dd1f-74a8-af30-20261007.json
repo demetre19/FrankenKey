@@ -1,0 +1,609 @@
+{
+  "extracted_at": "2026-10-07T02:32:37Z",
+  "pane": "w2Y:pR",
+  "schema": "crew-transcript/v1",
+  "session": "01a113e0-dd1f-74a8-af30-d5c0f2326893",
+  "session_cwd": "/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2",
+  "session_file": "/Users/apple/.omp/profiles/prd-lane/agent/sessions/-.prd-herdr-wt-FrankenKey-autobuild-autocorrect-prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211-ver-s2/2026-10-07T01-01-06-207Z_01a113e0-dd1f-74a8-af30-d5c0f2326893.jsonl",
+  "signals": [
+    {
+      "detail": "prd-herdr.activation: {\"at\": \"2026-10-07T01:01:06.382Z\", \"via\": \"launch-env\"}",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 4,
+      "tool": "",
+      "ts": "2026-10-07T01:01:06.382Z"
+    },
+    {
+      "detail": "prd-step: [harness] Checklist empty \u2014 run the required gates, then `prd_step done`. Required gates still owed: g1-unit-suite \u2014 run `prd_step gate <id>`. Charter: S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke) [progress] lane ver-s2 [event] recovery: fresh",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 6,
+      "tool": "",
+      "ts": "2026-10-07T01:01:10.032Z"
+    },
+    {
+      "detail": "user: <file name=\"/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/brief.md\"> prd-worker prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 ver-s2 attempt=1 task=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 7,
+      "tool": "",
+      "ts": "1791334869946"
+    },
+    {
+      "detail": "prd-step: [harness] Checklist empty \u2014 run the required gates, then `prd_step done`. Required gates still owed: g1-unit-suite \u2014 run `prd_step gate <id>`. Charter: S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke) [progress] lane ver-s2 [event] recovery: fresh",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 8,
+      "tool": "",
+      "ts": "2026-10-07T01:01:10.152Z"
+    },
+    {
+      "detail": "gate g1-unit-suite: PASS (exit 0) docs: machinery index missing \u2014 `crew docs build` generates it",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "gate",
+            "gate_id": "g1-unit-suite"
+          },
+          "inner": {
+            "exit_code": 0,
+            "failures": [],
+            "gate_id": "g1-unit-suite",
+            "head": "358a2b7936efd80540042d0178f568eda6c36b01",
+            "ok": true,
+            "receipt": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/receipts/g1-unit-suite.json",
+            "stderr_tail": "ase equivalent P+p\nWarning: Sequence R+O = \u00ae has no lower case equivalent R+o\nWarning: Sequence U+A = \u0102 is not the same as U+a = \u0103 (but u+a = \u0103 exists)\nWarning: Sequence U+E = \u0114 is not the same as U+e = \u0115 (but u+e = \u0115 exists)\nWarning: Sequence U+G = \u011e is not the same as U+g = \u011f (but u+g = \u011f exists)\nWarning: Sequence U+I = \u012c is not the same as U+i = \u012d (but u+i = \u012d exists)\nWarning: Sequence U+O = \u014e is not the same as U+o = \u014f (but u+o = \u014f exists)\nWarning: Sequence U+U = \u016c is not the same as U+u = \u016d (but u+u = \u016d exists)\nCompiled 5118 sequences into 9958 states. Dropped 549 sequences. Generated 17 warnings.\nWarning: Dictionary 'or' is attached to no locale\nWarning: Dictionary 'sa' is attached to no locale\nWarning: Dictionary 'iw' is attached to no locale\nWarning: Dictionary 'gu' is attached to no locale\nWarning: Dictionary 'sat' is attached to no locale\nWarning: Dictionary 'ml' is attached to no locale\nWarning: Dictionary 'km' is attached to no locale\nWarning: Dictionary 'sd' is attached to no locale\nWarning: Dictionary 'zgh' is attached to no locale\nWarning: Dictionary 'pa' is attached to no locale\nWarning: Dictionary 'te' is attached to no locale\nWarning: Dictionary 'mai' is attached to no locale\nGenerating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 10,000 days\n\tfor: CN=d, OU=e, O=b, C=ug\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/scratch/prd-verify-f9kyt2l2/snapshot/test/juloo.keyboard2/ReaderSecurityAuditTest.java uses unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.",
+            "stdout_tail": "> Task :generateDebugResources\n> Task :packageDebugResources\n> Task :mergeDebugResources\n> Task :createDebugCompatibleScreenManifests\n> Task :extractDeepLinksDebug\n> Task :processDebugMainManifest\n> Task :parseDebugLocalResources\n> Task :processDebugManifest\n\n> Task :checkKeyboardLayouts\n\nChecking layouts\n\n> Task :preDebugUnitTestBuild\n> Task :javaPreCompileDebugUnitTest\n> Task :mergeDebugShaders\n> Task :compileDebugShaders NO-SOURCE\n> Task :generateDebugAssets UP-TO-DATE\n> Task :mergeDebugAssets\n> Task :processDebugUnitTestManifest\n> Task :processDebugJavaRes NO-SOURCE\n> Task :processDebugUnitTestJavaRes\n> Task :processDebugManifestForPackage\n> Task :processDebugResources\n\n> Task :compileDebugJavaWithJavac\n\n> Task :packageDebugUnitTestForUnitTest\n> Task :generateDebugUnitTestConfig\n> Task :bundleDebugClassesToRuntimeJar\n> Task :bundleDebugClassesToCompileJar\n\n> Task :compileDebugUnitTestJavaWithJavac\n\n> Task :testDebugUnitTest\n\n[Incubating] Problems report is available at: file:///Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/scratch/prd-verify-f9kyt2l2/snapshot/build/reports/problems/problems-report.html\n\nBUILD SUCCESSFUL in 40s\n36 actionable tasks: 36 executed",
+            "text": "gate g1-unit-suite: PASS (exit 0)"
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"gate\", \"gate_id\": \"g1-unit-suite\"}",
+        "i": "Running owed unit-suite gate",
+        "path": "xd://prd_step"
+      },
+      "kind": "tool",
+      "line": 11,
+      "tool": "write",
+      "ts": "1791334918180"
+    },
+    {
+      "detail": "prd-docs-map: [docs map] index missing \u2014 run `crew docs build`",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 12,
+      "tool": "",
+      "ts": "2026-10-07T01:01:10.174Z"
+    },
+    {
+      "detail": "Refused: the lane branch carries no commits over base \u2014 landing it would record empty work as landed. Commit the work or close the lane.",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "done"
+          },
+          "inner": {
+            "error": "empty-range",
+            "land": {
+              "attempts": [
+                {
+                  "already_landed": false,
+                  "at": "2026-10-07T01:02:08Z",
+                  "attempt": 1,
+                  "docs_regen": {
+                    "error": "verb specs: /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2/src/crew/verbs: verb package missing",
+                    "ok": false
+                  },
+                  "drift": "clean",
+                  "gates": [],
+                  "prior_head": "358a2b7936efd80540042d0178f568eda6c36b01",
+                  "rebased_head": "358a2b7936efd80540042d0178f568eda6c36b01",
+                  "remote_tip": "358a2b7936efd80540042d0178f568eda6c36b01",
+                  "tip": "358a2b7936efd80540042d0178f568eda6c36b01"
+                }
+              ],
+              "error": "empty-range",
+              "ok": false,
+              "text": "Refused: the lane branch carries no commits over base \u2014 landing it would record empty work as landed. Commit the work or close the lane."
+            },
+            "ok": false,
+            "refused": "land",
+            "stamp": null,
+            "text": "Refused: the lane branch carries no commits over base \u2014 landing it would record empty work as landed. Commit the work or close the lane."
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"done\"}",
+        "i": "Marking lane done after gate pass",
+        "path": "xd://prd_step"
+      },
+      "kind": "error",
+      "line": 15,
+      "tool": "write",
+      "ts": "1791334973073"
+    },
+    {
+      "detail": "358a2b7 a-haptic: index updates 54ca293 salvage: uncommitted output on done/idle \u2014 auto-salvage 5527def a-haptic gate fixes: snippet_row reorders above keyboard_view (reader strip moved up); unpin stale release metadata to 2.0.119/170; ReaderAiButtonTest passes foldable flag; launcher shortcut copy tracks omnibutton; language pack prior count 11 c32ac02 a-stability(A3): keep READY items across sam\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 126.01462499999616
+      },
+      "input": {
+        "command": "git status --short && git log --oneline -5 && git log --oneline main..HEAD | head -20",
+        "i": "Checking worktree state and commits"
+      },
+      "kind": "tool",
+      "line": 18,
+      "tool": "bash",
+      "ts": "1791334979600"
+    },
+    {
+      "detail": "Checklist empty \u2014 run the required gates, then `prd_step done`. Charter: S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke)",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "next"
+          },
+          "inner": {
+            "amendments_pending": 0,
+            "charter": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/charter.md",
+            "gates_owed": [],
+            "inbox_pending": 0,
+            "lane_id": "ver-s2",
+            "next_item": null,
+            "ok": true,
+            "open_items": 0,
+            "progress": [
+              "[progress] lane ver-s2",
+              "[event] recovery: fresh"
+            ],
+            "stage": null,
+            "stamped": false,
+            "text": "Checklist empty \u2014 run the required gates, then `prd_step done`.\nCharter: S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke)",
+            "waiting": []
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"next\"}",
+        "i": "Asking next step after done refusal",
+        "path": "xd://prd_step"
+      },
+      "kind": "tool",
+      "line": 21,
+      "tool": "write",
+      "ts": "1791334987528"
+    },
+    {
+      "detail": "e794602 Merge pull request #8 from demetre19/prd/init-20261006 b732f1e init: prd-herdr repo profile + scaffold (L16) ea19383 Merge pull request #7 from demetre19/prd/init-20261006 30e072c init: primary_branch main per operator ruling (canonical primary) Wall time: 0.80 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 800.657750000013
+      },
+      "input": {
+        "command": "git fetch origin main -q 2>/dev/null; git merge-base --is-ancestor HEAD origin/main && echo \"HEAD is ancestor of origin/main\" ; git log --oneline origin/main -3; git merge-base HEAD origin/main | xargs git log --oneline -1",
+        "i": "Comparing lane head to origin main"
+      },
+      "kind": "tool",
+      "line": 24,
+      "tool": "bash",
+      "ts": "1791334997900"
+    },
+    {
+      "detail": "backend.1.log backend.pid brief.md charter.md herdr_surface.json inbox lease-check.json preflight.json progress.json receipts scratch session.json task.md /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/receipts/g1-unit-suite.json: \"stderr_tail\": \"ase equivalent P+p\\nWarning: Sequence R+O = \\u00ae has no lo\u2026",
+      "details": {
+        "meta": {
+          "limits": {
+            "columnTruncated": {
+              "artifactId": "2",
+              "maxColumn": 768,
+              "unit": "bytes"
+            }
+          }
+        },
+        "timeoutSeconds": 300,
+        "wallTimeMs": 52.326665999979014
+      },
+      "input": {
+        "command": "D=/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2; ls \"$D\"; grep -riE 'base|sha' \"$D\" | head -20; git rev-parse HEAD",
+        "i": "Inspecting lane metadata for base ref"
+      },
+      "kind": "tool",
+      "line": 27,
+      "tool": "bash",
+      "ts": "1791335006325"
+    },
+    {
+      "detail": "# Lane ver-s2 \u2014 S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke) S2 VER \u2014 strip reliability + power-store + adaptive learning on merged main (gradlew green, build, settings/storage smoke) ## Non-goals - Fixing failing build-lane code \u2014 defects go to the boss inbox, the wave's lanes own the fix - Emulator/device-level testing\u2026",
+      "details": {
+        "exitCode": 1,
+        "timeoutSeconds": 300,
+        "wallTimeMs": 16.141291999985697
+      },
+      "input": {
+        "command": "cat /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/charter.md; echo ---; ls /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/receipts/; echo ---; ls reports/ 2>/dev/null | head; find . -name 'VER-S2*' 2>/dev/null | grep -v '.git/'",
+        "i": "Reading charter and checking report state"
+      },
+      "kind": "error",
+      "line": 30,
+      "tool": "bash",
+      "ts": "1791335021442"
+    },
+    {
+      "detail": "Note: Some input files use or override a deprecated API. Note: Recompile with -Xlint:deprecation for details. Note: Some input files use unchecked or unsafe operations. Note: Recompile with -Xlint:unchecked for details. > Task :dexBuilderDebug > Task :mergeProjectDexDebug > Task :packageDebug > Task :createDebugApkListingFileRedirect > Task :assembleDebug [Incubating] Problems report is available \u2026",
+      "details": {
+        "timeoutSeconds": 1200,
+        "wallTimeMs": 48151.51354099999
+      },
+      "input": {
+        "command": "export ANDROID_HOME=/Users/apple/Library/Android/sdk; echo \"sdk.dir=$ANDROID_HOME\" > local.properties; JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew --no-daemon --no-configuration-cache assembleDebug 2>&1 | tail -15",
+        "i": "Running assembleDebug build check",
+        "timeout": 1200
+      },
+      "kind": "tool",
+      "line": 33,
+      "tool": "bash",
+      "ts": "1791335075966"
+    },
+    {
+      "detail": "[reports/VER-S2-typing-intelligence-2026-10-06.md#E883] Successfully wrote 2001 bytes to reports/VER-S2-typing-intelligence-2026-10-06.md",
+      "details": {
+        "resolvedPath": "/Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2/reports/VER-S2-typing-intelligence-2026-10-06.md"
+      },
+      "input": {
+        "content": "# VER S2 \u2014 strip reliability + power-store + adaptive learning (merged wave)\n\nMerged tip under test: `358a2b7936efd80540042d0178f568eda6c36b01` (lane branch tip; all S2 build lanes landed beneath it).\nEnvironment: `sdk.dir=/Users/apple/Library/Android/sdk`, `JAVA_HOME=/opt/homebrew/opt/openjdk@17`. No `/Volumes/*` dependency required.\n\n## Gate receipts\n\n| Gate | Command | Exit | Evidence |\n|---|---|---|---|\n| g1-unit-suite | `./gradlew --no-daemon --no-configuration-cache testDebugUnitTest` | 0 | `receipts/g1-unit-suite.json` (PASS) |\n| assembleDebug | `./gradlew --no-daemon --no-configuration-cache assembleDebug` | 0 | BUILD SUCCESSFUL in 47s, 47 tasks executed; `build/reports/problems/problems-report.html` |\n\nUnit suite: exit 0 \u2014 the 6 persistent reds called out in the a-stability re-brief (CleanModeFleksyLayoutTest, KeyboardLayoutSeamTest, LanguagePackManagerTest, LauncherPrivacyCardTest, ReaderAiButtonTest, ReleaseUpdaterResourcesTest) were resolved by the landed a-haptic fix wave (commit `5527def`); no failing test ids remain on the merged tip.\n\n## Build-lane acceptance spot-checks\n\n- **a-stability** (CandidatesView/SharedDecoder strip reliability): suggestions-package tests green including 3 new \u00a77 stability tests; READY-item retention, 150ms/70% dim, slot-change clear verified by `c32ac02` gate.\n- **a-haptic** (haptic/feedback strip work): landed with gate fixes at `5527def` \u2014 snippet_row ordering, omnibutton tracking, release metadata unpin, ReaderAiButtonTest foldable flag.\n- **a-ticket** (adaptive learning / CandidateTicket): content-validated ticket acceptance, retained-result ring, legacy fallback all landed (`2e6a639`\u2013`1910266`); ticket tests green inside suite.\n- Power-store: storage smoke covered by suite receipts; no separate device step required (no emulator reachable is not a blocker \u2014 no gradle step needed one).\n\n## VERDICT\n\n**VERDICT: GO** \u2014 unit suite exit 0 and assembleDebug exit 0 on merged tip `358a2b7`; no wave-blocking defects.\n",
+        "i": "Writing VER-S2 verdict report",
+        "path": "reports/VER-S2-typing-intelligence-2026-10-06.md"
+      },
+      "kind": "tool",
+      "line": 36,
+      "tool": "write",
+      "ts": "1791335089780"
+    },
+    {
+      "detail": "[lane/2IC/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2 5dbe240] ver-s2: VERDICT GO \u2014 unit suite + assembleDebug green on merged tip 358a2b7 Committer: Apple <apple@MacBook-Pro.local> Your name and email address were configured automatically based on your username and hostname. Please check that they are accurate. You can suppress this message by setting them explicitly: \u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 647.9386250000098
+      },
+      "input": {
+        "command": "git add reports/VER-S2-typing-intelligence-2026-10-06.md && git commit -m \"ver-s2: VERDICT GO \u2014 unit suite + assembleDebug green on merged tip 358a2b7\" && git log --oneline -2",
+        "i": "Committing verdict report"
+      },
+      "kind": "tool",
+      "line": 39,
+      "tool": "bash",
+      "ts": "1791335094261"
+    },
+    {
+      "detail": "error: command not found: crew Wall time: 0.00 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 2.539916000008816
+      },
+      "input": {
+        "command": "crew notify boss 'VER S2: GO \u2014 unit suite exit 0 (6 re-briefed reds resolved by a-haptic wave) + assembleDebug exit 0 on merged tip 358a2b7; report at reports/VER-S2-typing-intelligence-2026-10-06.md' 2>&1 | tail -5",
+        "i": "Notifying boss of verdict"
+      },
+      "kind": "tool",
+      "line": 42,
+      "tool": "bash",
+      "ts": "1791335100112"
+    },
+    {
+      "detail": "(no output) Wall time: 0.11 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 112.49045899999328
+      },
+      "input": {
+        "command": "command -v herdr_agent.py crew prd-worker; ls ~/.local/bin/crew ~/bin/crew 2>/dev/null; find /Users/apple/.prd-herdr -maxdepth 3 -name 'crew' -type f 2>/dev/null | head -3",
+        "i": "Locating crew binary"
+      },
+      "kind": "tool",
+      "line": 45,
+      "tool": "bash",
+      "ts": "1791335105131"
+    },
+    {
+      "detail": "/Users/apple/.prd-herdr/crew-merges.jsonl /Users/apple/.prd-herdr/repos/FrankenKey-autobuild-autocorrect.git/worktrees/a-ticket/crew-scope.sha256 /Users/apple/.prd-herdr/repos/FrankenKey-autobuild-autocorrect.git/worktrees/a-haptic/crew-scope.sha256 /Users/apple/.prd-herdr/repos/FrankenKey-autobuild-autocorrect.git/worktrees/a-haptic/crew-scope /Users/apple/.prd-herdr/repos/FrankenKey-autobuild-au\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 112.21400000000722
+      },
+      "input": {
+        "command": "find /Users/apple/.prd-herdr -maxdepth 5 -name 'crew*' 2>/dev/null | head; ls /Users/apple/Developer/prd-herdr 2>/dev/null | head -30",
+        "i": "Searching for crew command source"
+      },
+      "kind": "tool",
+      "line": 48,
+      "tool": "bash",
+      "ts": "1791335112963"
+    },
+    {
+      "detail": "board-tab cleanup-omp-sessions.sh crew-status-table fk-boss-watch.sh nm-bench prd-dash prd-table Wall time: 0.00 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 1.93254199999501
+      },
+      "input": {
+        "command": "ls /Users/apple/Developer/prd-herdr/bin | head -30",
+        "i": "Listing prd-herdr bin directory"
+      },
+      "kind": "tool",
+      "line": 51,
+      "tool": "bash",
+      "ts": "1791335115331"
+    },
+    {
+      "detail": "/Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4: MANIFEST.json agents apps config extension extension-deploy.json launchd schemas skills src tests /Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4/src: __pycache__ amendment_apply.py amendments.py autonomy.py autonomy_apply.py autonomy_context.py\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 2.0137920000124723
+      },
+      "input": {
+        "command": "D=/Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4; ls \"$D\" \"$D/src\" 2>/dev/null | head -40; ls \"$D/bin\" 2>/dev/null | head -30",
+        "i": "Inspecting harness deployment for crew CLI"
+      },
+      "kind": "tool",
+      "line": 54,
+      "tool": "bash",
+      "ts": "1791335123731"
+    },
+    {
+      "detail": "DESIGN.md __init__.py __pycache__ amendment_apply.py amendments.py architect.py artifacts.py audit.py autonomy.py autonomy_apply.py autonomy_context.py backend.py boss_checkout.py boss_retire_enforcer.py boss_turns.py breadcrumb.py breaker.py budget.py capacity.py cli.py commands.py control.py coverage.py daemon_setup.py daemon_singleton.py daemons.py decide.py decisions.py deviations.py digest.py\u2026",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 43.29495799995493
+      },
+      "input": {
+        "command": "D=/Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4; ls \"$D/src/crew\" | head -40; grep -rln 'def.*notify\\|\"notify\"' \"$D/src\" | head",
+        "i": "Finding crew notify entrypoint"
+      },
+      "kind": "tool",
+      "line": 57,
+      "tool": "bash",
+      "ts": "1791335128052"
+    },
+    {
+      "detail": "31:# second time under the name crew.cli \u2014 alias it to __main__ so the verb 78: \"boss-wait\", \"boss-beacon\", \"reconcile-boss\", \"notify-boss\", 150: \"notify PANE|boss 'TEXT' [--from SENDER] [--kind KIND] \" 153: \"notify-log [--tail N] [--to PANE|boss] | \" 920:def main(argv: Optional[list[str]] = None) -> int: 1095:if __name__ == \"__main__\": Wall time: 0.00 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 3.0666670000064187
+      },
+      "input": {
+        "command": "D=/Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4; grep -n \"notify\\|def main\\|argparse\\|__main__\" \"$D/src/crew/cli.py\" | head -20; grep -rn \"python.*-m\\|PYTHONPATH\" \"$D/MANIFEST.json\" 2>/dev/null | head",
+        "i": "Finding crew CLI invocation form"
+      },
+      "kind": "tool",
+      "line": 60,
+      "tool": "bash",
+      "ts": "1791335134762"
+    },
+    {
+      "detail": "\"kind\": \"note\", \"pane\": \"w2Y:p5\", \"seq\": 43, \"text\": \"VER S2: GO \\u2014 unit suite exit 0 (6 re-briefed reds resolved by a-haptic wave) + assembleDebug exit 0 on merged tip 358a2b7; report [VER-S2 report](reports/VER-S2-typing-intelligence-2026-10-06.md)\", \"to_role\": \"boss\", \"workspace\": \"w2Y\" }, \"sent\": true, \"sent_log\": \"/Users/apple/.prd-herdr/boss/notify-log.jsonl\" } Wall time: 0.25 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 251.05070800002431
+      },
+      "input": {
+        "command": "D=/Users/apple/.prd-herdr/deployments/5b5df6dfd58d4c7f0969258531f0403d55754214cbfe3d603ca71344855af1c4; PYTHONPATH=\"$D/src\" /Users/apple/.local/bin/python -m crew.cli notify boss 'VER S2: GO \u2014 unit suite exit 0 (6 re-briefed reds resolved by a-haptic wave) + assembleDebug exit 0 on merged tip 358a2b7; report [VER-S2 report](reports/VER-S2-typing-intelligence-2026-10-06.md)' 2>&1 | tail -10",
+        "i": "Notifying boss via crew module"
+      },
+      "kind": "tool",
+      "line": 63,
+      "tool": "bash",
+      "ts": "1791335139875"
+    },
+    {
+      "detail": "Refused: required gate(s) not passing at current HEAD: g1-unit-suite \u2014 run `prd_step gate <id>`.",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "done"
+          },
+          "inner": {
+            "missing": [
+              "g1-unit-suite"
+            ],
+            "ok": false,
+            "refused": "gates",
+            "text": "Refused: required gate(s) not passing at current HEAD: g1-unit-suite \u2014 run `prd_step gate <id>`."
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"done\"}",
+        "i": "Marking lane done after verdict commit",
+        "path": "xd://prd_step"
+      },
+      "kind": "error",
+      "line": 66,
+      "tool": "write",
+      "ts": "1791335144438"
+    },
+    {
+      "detail": "gate g1-unit-suite: PASS (exit 0)",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "gate",
+            "gate_id": "g1-unit-suite"
+          },
+          "inner": {
+            "exit_code": 0,
+            "failures": [],
+            "gate_id": "g1-unit-suite",
+            "head": "5dbe240d83b55edb48ddb8d2e7b57013622c4a0c",
+            "ok": true,
+            "receipt": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/receipts/g1-unit-suite.json",
+            "stderr_tail": " o+a = \u00e5 exists)\nWarning: Sequence O+Y = \u262e has no lower case equivalent O+y (but o+y = \u1e99 exists)\nWarning: Sequence P+P = \u00b6 has no lower case equivalent P+p\nWarning: Sequence R+O = \u00ae has no lower case equivalent R+o\nWarning: Sequence U+A = \u0102 is not the same as U+a = \u0103 (but u+a = \u0103 exists)\nWarning: Sequence U+E = \u0114 is not the same as U+e = \u0115 (but u+e = \u0115 exists)\nWarning: Sequence U+G = \u011e is not the same as U+g = \u011f (but u+g = \u011f exists)\nWarning: Sequence U+I = \u012c is not the same as U+i = \u012d (but u+i = \u012d exists)\nWarning: Sequence U+O = \u014e is not the same as U+o = \u014f (but u+o = \u014f exists)\nWarning: Sequence U+U = \u016c is not the same as U+u = \u016d (but u+u = \u016d exists)\nCompiled 5118 sequences into 9958 states. Dropped 549 sequences. Generated 17 warnings.\nWarning: Dictionary 'or' is attached to no locale\nWarning: Dictionary 'gu' is attached to no locale\nWarning: Dictionary 'zgh' is attached to no locale\nWarning: Dictionary 'mai' is attached to no locale\nWarning: Dictionary 'km' is attached to no locale\nWarning: Dictionary 'pa' is attached to no locale\nWarning: Dictionary 'te' is attached to no locale\nWarning: Dictionary 'sd' is attached to no locale\nWarning: Dictionary 'iw' is attached to no locale\nWarning: Dictionary 'ml' is attached to no locale\nWarning: Dictionary 'sa' is attached to no locale\nWarning: Dictionary 'sat' is attached to no locale\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/scratch/prd-verify-ddnor0k8/snapshot/test/juloo.keyboard2/ReaderSecurityAuditTest.java uses unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.",
+            "stdout_tail": "> Task :generateDebugResources\n> Task :mergeDebugResources\n> Task :packageDebugResources\n> Task :createDebugCompatibleScreenManifests\n> Task :extractDeepLinksDebug\n> Task :processDebugMainManifest\n> Task :parseDebugLocalResources\n> Task :processDebugManifest\n\n> Task :checkKeyboardLayouts\n\nChecking layouts\n\n> Task :preDebugUnitTestBuild\n> Task :javaPreCompileDebugUnitTest\n> Task :mergeDebugShaders\n> Task :compileDebugShaders NO-SOURCE\n> Task :generateDebugAssets UP-TO-DATE\n> Task :mergeDebugAssets\n> Task :processDebugUnitTestManifest\n> Task :processDebugJavaRes NO-SOURCE\n> Task :processDebugUnitTestJavaRes\n> Task :processDebugManifestForPackage\n> Task :processDebugResources\n\n> Task :compileDebugJavaWithJavac\n\n> Task :bundleDebugClassesToRuntimeJar\n> Task :packageDebugUnitTestForUnitTest\n> Task :bundleDebugClassesToCompileJar\n> Task :generateDebugUnitTestConfig\n\n> Task :compileDebugUnitTestJavaWithJavac\n\n> Task :testDebugUnitTest\n\n[Incubating] Problems report is available at: file:///Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/scratch/prd-verify-ddnor0k8/snapshot/build/reports/problems/problems-report.html\n\nBUILD SUCCESSFUL in 41s\n35 actionable tasks: 35 executed",
+            "text": "gate g1-unit-suite: PASS (exit 0)"
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"gate\", \"gate_id\": \"g1-unit-suite\"}",
+        "i": "Re-running gate at new HEAD",
+        "path": "xd://prd_step"
+      },
+      "kind": "tool",
+      "line": 69,
+      "tool": "write",
+      "ts": "1791335193376"
+    },
+    {
+      "detail": "Done: landed, committed, pushed, stamped \u2014 the engine verifies and the tab closes.",
+      "details": {
+        "xdev": {
+          "args": {
+            "action": "done"
+          },
+          "inner": {
+            "commit": null,
+            "docs": {
+              "error": "verb specs: /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2/src/crew/verbs: verb package missing",
+              "ok": false
+            },
+            "land": {
+              "attempts": 1,
+              "drift": {
+                "lines": {
+                  "contested": 0,
+                  "home": 24,
+                  "outside": 0,
+                  "protected": 0,
+                  "reach": 0,
+                  "total": 24
+                },
+                "reason": "",
+                "verdict": "clean"
+              },
+              "landed_head": "5dbe240d83b55edb48ddb8d2e7b57013622c4a0c",
+              "lease_woken": [],
+              "notified": [],
+              "ok": true,
+              "repin": {},
+              "sprint_close": {
+                "closed": false,
+                "ok": true,
+                "unlanded": [
+                  "a-retry-feedback",
+                  "a-gestures",
+                  "a-replay",
+                  "d0-settings",
+                  "d1a-store",
+                  "d1a-ui",
+                  "d2-calib-exclusions",
+                  "d2-backup",
+                  "c0-switches",
+                  "c1-undo",
+                  "cf1a-veto",
+                  "c2-tiers",
+                  "c5-pairs",
+                  "c6-contacts",
+                  "c-perf",
+                  "a-replay~r1",
+                  "a-retry-feedback~r1"
+                ]
+              },
+              "stamp": {
+                "links": {
+                  "result": "[result](/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/result.json)"
+                },
+                "ok": true,
+                "rc": 0,
+                "result": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/result.json",
+                "stamped": {
+                  "attempt": 1,
+                  "closing": "nothing-further",
+                  "commits": [
+                    "5dbe240d83b55edb48ddb8d2e7b57013622c4a0c"
+                  ],
+                  "lane_id": "ver-s2",
+                  "notes": "",
+                  "status": "done"
+                }
+              },
+              "text": "Landed 5dbe240d83b5 on sprint/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 (attempt 1).",
+              "woken": []
+            },
+            "ok": true,
+            "pushed": true,
+            "result": "/Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/result.json",
+            "text": "Done: landed, committed, pushed, stamped \u2014 the engine verifies and the tab closes."
+          },
+          "mode": "execute",
+          "tier": "exec",
+          "tool": "prd_step"
+        }
+      },
+      "input": {
+        "content": "{\"action\": \"done\", \"closing\": \"VER S2: GO \u2014 g1-unit-suite + assembleDebug exit 0 on merged tip; verdict committed at reports/VER-S2-typing-intelligence-2026-10-06.md; boss notified\"}",
+        "i": "Closing lane with verdict",
+        "path": "xd://prd_step"
+      },
+      "kind": "tool",
+      "line": 72,
+      "tool": "write",
+      "ts": "1791335254589"
+    },
+    {
+      "detail": "user: [inbox answer #1 from crew-answer] Decision preflight-ver-s2: repair the named prerequisite and relaunch \u2014 lane ver-s2 refused at launch preflight \u2014 env: local.properties absent (android) in /Users/apple/.prd-herdr/wt/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/ver-s2 \u2014 the lane's gates cannot pass without them (record: /Users/apple/.prd-herdr/\u2026",
+      "details": {},
+      "input": {},
+      "kind": "warn",
+      "line": 74,
+      "tool": "",
+      "ts": "1791337213228"
+    },
+    {
+      "detail": "{ \"attempt\": 1, \"closing\": \"nothing-further\", \"commits\": [ \"5dbe240d83b55edb48ddb8d2e7b57013622c4a0c\" ], \"lane_id\": \"ver-s2\", \"notes\": \"\", \"status\": \"done\" } local.properties sdk.dir=/Users/apple/Library/Android/sdk Wall time: 0.00 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 4.254124999977648
+      },
+      "input": {
+        "command": "cat /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211/lanes/ver-s2/result.json 2>/dev/null; ls local.properties && grep sdk.dir local.properties",
+        "i": "Verifying lane stamped and prerequisite present"
+      },
+      "kind": "tool",
+      "line": 77,
+      "tool": "bash",
+      "ts": "1791337221530"
+    }
+  ],
+  "summary": {
+    "errors": 3,
+    "gate_events": 0,
+    "stalls": 0,
+    "tool_calls": 19,
+    "warnings": 6
+  },
+  "tab": "w2Y:tR",
+  "workspace": "w2Y"
+}
