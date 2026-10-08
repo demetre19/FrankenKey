@@ -1,6 +1,7 @@
 {"tasks": [
   {"content": "Implement EmailMemoryStore.java (email_memory credential-protected prefs, JSON v:1, 200-entry frecency eviction, corrupt-safe, lazy load, 2s debounced apply, pre-unlock unavailable)", "status": "completed"},
   {"content": "Add EmailMemoryStoreTest.java (round-trip, frecency ordering, eviction, corrupt JSON rewrite, debounce, pre-unlock no-throw then works after unlock, NAMED_PREFS exclusion)", "status": "completed"},
-  {"content": "Run gate g1-unit-suite", "status": "in_progress"},
-  {"content": "Commit + prd_step done", "status": "pending"}
+  {"content": "Run gate g1-unit-suite", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
+  {"content": "Commit + prd_step done", "status": "in_progress"}
 ]}
