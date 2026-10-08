@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import juloo.keyboard2.suggestions.CandidateRole;
 import juloo.keyboard2.suggestions.Decoder;
+import juloo.keyboard2.suggestions.DomainSuggestions;
 import juloo.keyboard2.suggestions.EditorContext;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.SharedDecoder;
@@ -229,7 +230,17 @@ public final class KeyEventHandler
         }
       };
     _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
+    _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
     _suggestion_acceptor.register(CandidateRole.UNLEARN_ACTION, learn);
+    SuggestionAcceptor.Action domain = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          domain_suggestion_entered(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.EMAIL_DOMAIN, domain);
   }
 
   /**
@@ -708,6 +719,53 @@ public final class KeyEventHandler
     else
       stage_pending_replacement(token, undo_token, snapshot.word, text, " ",
           false);
+  }
+
+  /**
+   * Commit a [DomainSuggestions] domain candidate: replace the whole
+   * "@" plus partial-suffix span with the chosen domain and a separator, in
+   * one editor transaction. The typed-word model ends at "@" and "." so the
+   * suffix span is re-derived from the editor text — never from
+   * [_typedword] — which keeps "bob@gmail.c" -> "bob@gmail.com" instead of
+   * appending after the last label. No personalization tokens are prepared:
+   * a provider domain must never enter the learned-words store.
+   */
+  void domain_suggestion_entered(Decoder.RequestKey key, String text)
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    if (!_decoder.is_current(key))
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(
+        DomainSuggestions.MAX_SCAN + 1, 0);
+    int span_start = DomainSuggestions.domain_span_start(before);
+    if (span_start < 0)
+      return;
+    int remove = before.length() - span_start;
+    String replacement = text + " ";
+    boolean termux_raw_events = uses_termux_raw_events();
+    if (!termux_raw_events
+        && _typedword.snapshot().completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return;
+    if (!termux_raw_events && tracked_word_mismatches_editor(_typedword.get()))
+    {
+      _typedword.refresh_current_word();
+      return;
+    }
+    boolean replaced = termux_raw_events
+      ? _typedword.cursor_relative() == 0
+        && replace_termux_suffix(
+            before.subSequence(span_start, before.length()).toString(),
+            replacement)
+      : replace_surrounding_text(conn, remove, 0, replacement);
+    if (!replaced)
+      return;
+    _autocap.text_replaced(remove, replacement);
+    _typedword.typed(" ");
   }
 
   @Override

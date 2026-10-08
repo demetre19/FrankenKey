@@ -46,6 +46,7 @@ import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
 import juloo.keyboard2.suggestions.Decoder;
 import juloo.keyboard2.suggestions.PersonalizationStore;
+import juloo.keyboard2.suggestions.DomainSuggestions;
 import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
 
@@ -309,6 +310,7 @@ public class Keyboard2 extends InputMethodService
     _config = Config.globalConfig();
     Receiver recvr = this.new Receiver();
     _decoder = new SharedDecoder(_handler, recvr);
+    _decoder.register_source(new DomainSuggestions());
     _keyeventhandler = new KeyEventHandler(recvr, _decoder);
     KeyValue.Stateful._handler = recvr;
     _config.handler = _keyeventhandler;
