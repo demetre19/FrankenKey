@@ -1,6 +1,7 @@
 {"tasks": [
   {"content": "Write failing KeyEventHandlerEmailSuppressionTest", "status": "completed"},
-  {"content": "Implement email-token autocorrect suppression in KeyEventHandler", "status": "in_progress"},
-  {"content": "Verify single-file test passes", "status": "pending"},
-  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "pending"}
+  {"content": "Implement email-token autocorrect suppression in KeyEventHandler", "status": "completed"},
+  {"content": "Verify single-file test passes", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "in_progress"}
 ]}
