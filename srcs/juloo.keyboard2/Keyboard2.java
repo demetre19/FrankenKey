@@ -752,7 +752,7 @@ public class Keyboard2 extends InputMethodService
 
   private boolean ai_grammar_eligible()
   {
-    if (!_ai_settings.isAutoGrammarEnabled()
+    if (!_prefs.getBoolean("ai_auto_grammar", true)
         || !_config.editor_config.should_use_sentence_assistance)
       return false;
     return AiGrammarFixer.eligibility(
