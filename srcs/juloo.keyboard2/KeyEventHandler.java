@@ -108,11 +108,23 @@ public final class KeyEventHandler
     final int cursor;
     final int correctionOffset;
     final boolean mayLearnSourceOnUndo;
+    final boolean suppressCorrection;
 
     PendingAutocorrectBoundary(long session_epoch_, Decoder.RequestKey key_,
         SharedDecoder.CommitToken literal_token_, String source_,
         String separator_, InputConnection connection_, int cursor_,
         int correction_offset_, boolean may_learn_source_on_undo_)
+    {
+      this(session_epoch_, key_, literal_token_, source_, separator_,
+          connection_, cursor_, correction_offset_, may_learn_source_on_undo_,
+          false);
+    }
+
+    PendingAutocorrectBoundary(long session_epoch_, Decoder.RequestKey key_,
+        SharedDecoder.CommitToken literal_token_, String source_,
+        String separator_, InputConnection connection_, int cursor_,
+        int correction_offset_, boolean may_learn_source_on_undo_,
+        boolean suppress_correction_)
     {
       sessionEpoch = session_epoch_;
       key = key_;
@@ -123,6 +135,7 @@ public final class KeyEventHandler
       cursor = cursor_;
       correctionOffset = correction_offset_;
       mayLearnSourceOnUndo = may_learn_source_on_undo_;
+      suppressCorrection = suppress_correction_;
     }
   }
 
@@ -1294,7 +1307,8 @@ public final class KeyEventHandler
       return;
     PendingAutocorrectBoundary pending = latent.pending;
     Decoder.Candidate correction = result.autocorrection;
-    if (correction == null || correction.surface.equals(pending.source)
+    if (correction == null || pending.suppressCorrection
+        || correction.surface.equals(pending.source)
         || should_preserve_short_all_caps_source(pending.source, correction))
     {
       commit_prepared(pending.literalToken);
@@ -1403,6 +1417,15 @@ public final class KeyEventHandler
       SharedDecoder.CommitToken literal_token, String separator,
       boolean may_learn_source_on_undo)
   {
+    return stage_pending_autocorrect_boundary(snapshot, key, literal_token,
+        separator, may_learn_source_on_undo, false);
+  }
+
+  private boolean stage_pending_autocorrect_boundary(
+      CurrentlyTypedWord.Snapshot snapshot, Decoder.RequestKey key,
+      SharedDecoder.CommitToken literal_token, String separator,
+      boolean may_learn_source_on_undo, boolean suppress_correction)
+  {
     if (snapshot == null || snapshot.word.length() == 0 || key == null
         || uses_termux_raw_events() || !_decoder.is_current(key))
       return false;
@@ -1430,7 +1453,8 @@ public final class KeyEventHandler
       ? after.selectionStart : -1;
     _pending_autocorrect_boundary = new PendingAutocorrectBoundary(
         _decoder_session, key, literal_token, snapshot.word, separator, conn,
-        cursor, correction_offset, may_learn_source_on_undo);
+        cursor, correction_offset, may_learn_source_on_undo,
+        suppress_correction);
     if (cursor < 0)
       commit_pending_autocorrect_boundary();
     return true;
@@ -1463,7 +1487,8 @@ public final class KeyEventHandler
     boolean editor_matches = (empty_boundary
         && pending_autocorrect_boundary_matches_editor(pending))
       || following_boundary;
-    if (correction == null || correction.surface.equals(pending.source)
+    if (correction == null || pending.suppressCorrection
+        || correction.surface.equals(pending.source)
         || should_preserve_short_all_caps_source(pending.source, correction))
     {
       advance_past_pending_autocorrect_request(pending);
@@ -1687,7 +1712,8 @@ public final class KeyEventHandler
       _pending_autocorrect_boundary = new PendingAutocorrectBoundary(
           pending.sessionEpoch, pending.key, pending.literalToken,
           pending.source, " ", pending.connection, pending.cursor,
-          pending.correctionOffset, pending.mayLearnSourceOnUndo);
+          pending.correctionOffset, pending.mayLearnSourceOnUndo,
+          pending.suppressCorrection);
     _autocap.text_replaced(dotted.length(), left + " " + right);
   }
 
@@ -1724,6 +1750,23 @@ public final class KeyEventHandler
     String prefix = text.subSequence(token_start, label_start).toString();
     return prefix.indexOf('@') >= 0 || prefix.indexOf("://") >= 0;
   }
+
+  /** The whitespace-delimited token ending at the cursor contains '@' —
+      an email address or URI-like token. '@' splits the tracked word, so
+      this must read the editor text rather than [snapshot.word]. */
+  private boolean editor_token_contains_at(InputConnection conn)
+  {
+    CharSequence before = conn.getTextBeforeCursor(512, 0);
+    if (before == null || before.length() == 0)
+      return false;
+    int token_start = before.length();
+    while (token_start > 0
+        && !Character.isWhitespace(before.charAt(token_start - 1)))
+      --token_start;
+    return before.subSequence(token_start, before.length())
+        .toString().indexOf('@') >= 0;
+  }
+
 
   private boolean recent_sentence_has_uppercase(CharSequence before, int end)
   {
@@ -2578,7 +2621,14 @@ public final class KeyEventHandler
     }
     Decoder.RequestKey key = _current_request_key;
     Decoder.Result result = key == null ? null : _decoder.current_result(key);
-    Decoder.Candidate correction = should_try_autocorrect() && result != null
+    boolean suppress_correction = false;
+    if (should_try_autocorrect())
+    {
+      InputConnection conn = _recv.getCurrentInputConnection();
+      suppress_correction = conn != null && editor_token_contains_at(conn);
+    }
+    Decoder.Candidate correction = should_try_autocorrect()
+        && !suppress_correction && result != null
       ? result.autocorrection : null;
     if (should_preserve_short_all_caps_source(snapshot.word, correction))
       correction = null;
@@ -2639,7 +2689,8 @@ public final class KeyEventHandler
     else if (should_try_autocorrect()
         && !_autocap.has_manual_case_override_for_word()
         && stage_pending_autocorrect_boundary(
-          snapshot, key, literal_token, separator, false))
+          snapshot, key, literal_token, separator, false,
+          suppress_correction))
     {
       // The literal separator is already visible; READY may safely refine it.
     }
