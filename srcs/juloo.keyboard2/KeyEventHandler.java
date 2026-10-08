@@ -108,6 +108,8 @@ public final class KeyEventHandler
     final int cursor;
     final int correctionOffset;
     final boolean mayLearnSourceOnUndo;
+    /** When set, the pending boundary commits the typed literal even if
+        a correction arrives — email/URI tokens read from the editor. */
     final boolean suppressCorrection;
 
     PendingAutocorrectBoundary(long session_epoch_, Decoder.RequestKey key_,
