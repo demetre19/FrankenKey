@@ -11,10 +11,12 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.annotation.Config;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public class EmailMemoryStoreTest
 {
   private SharedPreferences prefs()
@@ -89,14 +91,17 @@ public class EmailMemoryStoreTest
     EmailMemoryStore store = store();
     for (int i = 0; i < 200; i++)
       store.record_use(String.format("old%03d@x.io", i), 1,
-          EmailMemoryStore.SOURCE_PROSE, dayMs(1000));
+          EmailMemoryStore.SOURCE_PROSE, dayMs(1000 + i));
+    /* Equal counts: old000 (oldest lastUsedDay) must be evicted first. */
     store.record_use("new@x.io", 1, EmailMemoryStore.SOURCE_PROSE,
-        dayMs(1000));
-    assertEquals(200, store.entries(dayMs(1000)).size());
-    for (EmailMemoryStore.Entry e : store.entries(dayMs(1000)))
+        dayMs(1200));
+    List<EmailMemoryStore.Entry> kept = store.entries(dayMs(1200));
+    assertEquals(200, kept.size());
+    for (EmailMemoryStore.Entry e : kept)
       assertNotEquals(
           "the oldest, lowest-frecency entry must be evicted",
           "old000@x.io", e.address);
+    assertEquals("new@x.io", kept.get(0).address);
   }
 
   @Test
