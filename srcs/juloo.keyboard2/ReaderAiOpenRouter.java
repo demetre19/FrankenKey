@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /** Bounded OpenRouter text-model client shared by Reader AI surfaces. */
-public final class ReaderAiOpenRouter
+final class ReaderAiOpenRouter
 {
   static final String PREFERRED_MODEL_ID = "inception/mercury-2.5";
   private static final String MODELS_URL = "https://openrouter.ai/api/v1/models";
@@ -95,12 +95,12 @@ public final class ReaderAiOpenRouter
     }
   }
 
-  public static final class Message
+  static final class Message
   {
-    public final String role;
-    public final String content;
+    final String role;
+    final String content;
 
-    public Message(String role, String content)
+    Message(String role, String content)
     {
       this.role = role;
       this.content = content;
@@ -136,47 +136,34 @@ public final class ReaderAiOpenRouter
     if (messages == null || messages.isEmpty())
       throw new IOException("OpenRouter request has no messages");
 
-    JSONObject body = buildRequest(modelId, messages);
-    HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
-        120_000);
-    activeConnections.add(connection);
-    try
-    {
-      byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
-      connection.setFixedLengthStreamingMode(payload.length);
-      connection.getOutputStream().write(payload);
-      return parseCompletion(readJsonResponse(connection).toString());
-    }
-    finally
-    {
-      connection.disconnect();
-      activeConnections.remove(connection);
-    }
-  }
-  /**
-   * Completion with explicit request parameters and timeout — used by the
-   * Fix grammar action, which posts a prebuilt temperature-0 body.
-   */
-  String generate(String apiKey, JSONObject body, int timeoutMs)
-      throws IOException, JSONException
-  {
-    HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
-        timeoutMs);
-    activeConnections.add(connection);
-    try
-    {
-      byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
-      connection.setFixedLengthStreamingMode(payload.length);
-      connection.getOutputStream().write(payload);
-      return parseCompletion(readJsonResponse(connection).toString());
-    }
-    finally
-    {
-      connection.disconnect();
-      activeConnections.remove(connection);
-    }
+    return generate(apiKey, buildRequest(modelId, messages), 120_000);
   }
 
+  /** Sends a pre-built request body (custom max_tokens/temperature). */
+  String generate(String apiKey, JSONObject body, int readTimeout)
+      throws IOException, JSONException
+  {
+    if (apiKey == null || apiKey.trim().isEmpty())
+      throw new IOException("Add an OpenRouter API key in Reader AI settings");
+    if (body == null)
+      throw new IOException("OpenRouter request has no body");
+
+    HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
+        readTimeout);
+    activeConnections.add(connection);
+    try
+    {
+      byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
+      connection.setFixedLengthStreamingMode(payload.length);
+      connection.getOutputStream().write(payload);
+      return parseCompletion(readJsonResponse(connection).toString());
+    }
+    finally
+    {
+      connection.disconnect();
+      activeConnections.remove(connection);
+    }
+  }
 
   void cancel()
   {
@@ -189,20 +176,18 @@ public final class ReaderAiOpenRouter
       connection.disconnect();
   }
 
-  public static JSONObject buildRequest(String modelId,
-      List<Message> messages)
+  static JSONObject buildRequest(String modelId, List<Message> messages)
       throws JSONException
   {
     return buildRequest(modelId, messages, 4096, 0.7);
   }
 
-  public static JSONObject buildRequest(String modelId,
-      List<Message> messages, int maxTokens, double temperature)
-      throws JSONException
+  static JSONObject buildRequest(String modelId, List<Message> messages,
+      int maxTokens, double temperature) throws JSONException
   {
     JSONObject body = new JSONObject();
     body.put("model", modelId.trim());
-    body.put("max_tokens", maxTokens);
+    body.put("max_tokens", Math.max(1, maxTokens));
     body.put("temperature", temperature);
     JSONArray payloadMessages = new JSONArray();
     for (Message message : messages)
@@ -236,7 +221,7 @@ public final class ReaderAiOpenRouter
     return models;
   }
 
-  public static String parseCompletion(String json) throws JSONException, IOException
+  static String parseCompletion(String json) throws JSONException, IOException
   {
     JSONArray choices = new JSONObject(json).optJSONArray("choices");
     JSONObject choice = choices == null || choices.length() == 0

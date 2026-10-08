@@ -22,16 +22,42 @@ final class ReaderAiSettings
   static final String PREFERENCES = "reader_ai_settings";
   static final String SECRET_PREFERENCES = "reader_ai_secret";
   private static final String KEY_ALIAS = "frankenkey_reader_openrouter_key";
+  private static final String CF_KEY_ALIAS = "frankenkey_reader_cloudflare_key";
   private static final String API_KEY_CIPHERTEXT = "openrouter_key_ciphertext";
   private static final String API_KEY_IV = "openrouter_key_iv";
   private static final String MODEL_ID = "openrouter_model_id";
-  private static final String WRITING_MODEL_ID = "ti_ai_writing_model";
   private static final String SUMMARY_ONE = "summary_one_prompt";
   private static final String SUMMARY_TWO = "summary_two_prompt";
   private static final String QUIZ = "quiz_prompt";
   private static final String DISCLOSURE_ACCEPTED = "disclosure_accepted_v3";
-  private static final String DISCLOSURE_ACCEPTED_V4 =
-    "disclosure_accepted_v4";
+  private static final String PROVIDER = "ai_provider";
+  private static final String CF_ACCOUNT_ID = "cloudflare_account_id";
+  private static final String CF_TOKEN_CIPHERTEXT =
+    "cloudflare_token_ciphertext";
+  private static final String CF_TOKEN_IV = "cloudflare_token_iv";
+  private static final String CF_MODEL_ID = "cloudflare_model_id";
+  private static final String AUTO_GRAMMAR = "ai_auto_grammar";
+
+  /** Selectable AI backends; Cloudflare is the default provider. */
+  static final class Provider
+  {
+    static final String CLOUDFLARE = "cloudflare";
+    static final String OPENROUTER = "openrouter";
+
+    private Provider() {}
+
+    static String normalize(String value)
+    {
+      return OPENROUTER.equals(value) ? OPENROUTER : CLOUDFLARE;
+    }
+
+    static String label(String value)
+    {
+      return OPENROUTER.equals(normalize(value))
+        ? "OpenRouter" : "Cloudflare Workers AI";
+    }
+  }
+
   private static final int MAX_PROMPT_LENGTH = 20_000;
 
   private final SharedPreferences preferences;
@@ -46,40 +72,121 @@ final class ReaderAiSettings
 
   synchronized String getApiKey() throws GeneralSecurityException
   {
+    return getSecret(KEY_ALIAS, API_KEY_CIPHERTEXT, API_KEY_IV);
+  }
+
+  synchronized void setApiKey(String apiKey) throws GeneralSecurityException
+  {
+    setSecret(KEY_ALIAS, API_KEY_CIPHERTEXT, API_KEY_IV, apiKey,
+        "OpenRouter API key");
+  }
+
+  String getProvider()
+  {
+    return Provider.normalize(preferences.getString(PROVIDER,
+        Provider.CLOUDFLARE));
+  }
+
+  void setProvider(String provider)
+  {
+    preferences.edit().putString(PROVIDER,
+        Provider.normalize(provider)).apply();
+  }
+
+  String getCloudflareAccountId()
+  {
+    String value = preferences.getString(CF_ACCOUNT_ID, "");
+    return value == null ? "" : value.trim();
+  }
+
+  void setCloudflareAccountId(String accountId)
+  {
+    preferences.edit().putString(CF_ACCOUNT_ID,
+        accountId == null ? "" : accountId.trim()).apply();
+  }
+
+  synchronized String getCloudflareApiToken() throws GeneralSecurityException
+  {
+    return getSecret(CF_KEY_ALIAS, CF_TOKEN_CIPHERTEXT, CF_TOKEN_IV);
+  }
+
+  synchronized void setCloudflareApiToken(String apiToken)
+      throws GeneralSecurityException
+  {
+    setSecret(CF_KEY_ALIAS, CF_TOKEN_CIPHERTEXT, CF_TOKEN_IV, apiToken,
+        "Cloudflare API token");
+  }
+
+  String getCloudflareModelId()
+  {
+    String value = preferences.getString(CF_MODEL_ID,
+        ReaderAiCloudflare.PREFERRED_MODEL_ID);
+    return value == null || value.trim().isEmpty()
+      ? ReaderAiCloudflare.PREFERRED_MODEL_ID : value.trim();
+  }
+
+  void setCloudflareModelId(String modelId)
+  {
+    preferences.edit().putString(CF_MODEL_ID,
+        modelId == null ? "" : modelId.trim()).apply();
+  }
+
+  /** Model id used by the selected provider. */
+  String getActiveModelId()
+  {
+    return Provider.OPENROUTER.equals(getProvider())
+      ? getModelId() : getCloudflareModelId();
+  }
+
+  boolean isAutoGrammarEnabled()
+  {
+    return preferences.getBoolean(AUTO_GRAMMAR, true);
+  }
+
+  void setAutoGrammarEnabled(boolean enabled)
+  {
+    preferences.edit().putBoolean(AUTO_GRAMMAR, enabled).apply();
+  }
+
+  private synchronized String getSecret(String alias, String ciphertextKey,
+      String ivKey) throws GeneralSecurityException
+  {
     requireSecureKeystore();
-    String ciphertext = secrets.getString(API_KEY_CIPHERTEXT, "");
-    String encodedIv = secrets.getString(API_KEY_IV, "");
+    String ciphertext = secrets.getString(ciphertextKey, "");
+    String encodedIv = secrets.getString(ivKey, "");
     if (ciphertext == null || ciphertext.isEmpty()
         || encodedIv == null || encodedIv.isEmpty())
       return "";
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
     byte[] iv = Base64.decode(encodedIv, Base64.NO_WRAP);
-    cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(),
+    cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(alias),
         new GCMParameterSpec(128, iv));
     byte[] plaintext = cipher.doFinal(Base64.decode(ciphertext, Base64.NO_WRAP));
     return new String(plaintext, StandardCharsets.UTF_8);
   }
 
-  synchronized void setApiKey(String apiKey) throws GeneralSecurityException
+  private synchronized void setSecret(String alias, String ciphertextKey,
+      String ivKey, String value, String label)
+      throws GeneralSecurityException
   {
     requireSecureKeystore();
-    String normalized = apiKey == null ? "" : apiKey.trim();
+    String normalized = value == null ? "" : value.trim();
     if (normalized.isEmpty())
     {
-      secrets.edit().remove(API_KEY_CIPHERTEXT).remove(API_KEY_IV).commit();
+      secrets.edit().remove(ciphertextKey).remove(ivKey).commit();
       return;
     }
     if (normalized.length() > 1000)
-      throw new GeneralSecurityException("OpenRouter API key is too long");
+      throw new GeneralSecurityException(label + " is too long");
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey());
+    cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey(alias));
     byte[] ciphertext = cipher.doFinal(
         normalized.getBytes(StandardCharsets.UTF_8));
-    if (!secrets.edit().putString(API_KEY_CIPHERTEXT,
+    if (!secrets.edit().putString(ciphertextKey,
           Base64.encodeToString(ciphertext, Base64.NO_WRAP))
-        .putString(API_KEY_IV,
+        .putString(ivKey,
           Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)).commit())
-      throw new GeneralSecurityException("Could not save OpenRouter API key");
+      throw new GeneralSecurityException("Could not save " + label);
   }
 
   String getModelId()
@@ -135,30 +242,6 @@ final class ReaderAiSettings
     preferences.edit().putBoolean(DISCLOSURE_ACCEPTED, accepted).apply();
   }
 
-  /** Fix grammar uses its own model or falls back to the Reader AI model. */
-  String getWritingModelId()
-  {
-    String value = preferences.getString(WRITING_MODEL_ID, "");
-    return value == null || value.trim().isEmpty()
-      ? getModelId() : value.trim();
-  }
-
-  void setWritingModelId(String modelId)
-  {
-    preferences.edit().putString(WRITING_MODEL_ID,
-        modelId == null ? "" : modelId.trim()).apply();
-  }
-
-  boolean isDisclosureAcceptedV4()
-  {
-    return preferences.getBoolean(DISCLOSURE_ACCEPTED_V4, false);
-  }
-
-  void setDisclosureAcceptedV4(boolean accepted)
-  {
-    preferences.edit().putBoolean(DISCLOSURE_ACCEPTED_V4, accepted).apply();
-  }
-
   private String prompt(String key, String fallback)
   {
     String value = preferences.getString(key, "");
@@ -182,7 +265,8 @@ final class ReaderAiSettings
           "Reader AI requires Android 6 or newer for secure key storage");
   }
 
-  private SecretKey getOrCreateSecretKey() throws GeneralSecurityException
+  private SecretKey getOrCreateSecretKey(String alias)
+      throws GeneralSecurityException
   {
     KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
     try
@@ -193,13 +277,13 @@ final class ReaderAiSettings
     {
       throw new GeneralSecurityException("Could not load Android Keystore", error);
     }
-    KeyStore.Entry existing = keyStore.getEntry(KEY_ALIAS, null);
+    KeyStore.Entry existing = keyStore.getEntry(alias, null);
     if (existing instanceof KeyStore.SecretKeyEntry)
       return ((KeyStore.SecretKeyEntry)existing).getSecretKey();
 
     KeyGenerator generator = KeyGenerator.getInstance(
         KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
-    generator.init(new KeyGenParameterSpec.Builder(KEY_ALIAS,
+    generator.init(new KeyGenParameterSpec.Builder(alias,
           KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
         .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
         .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)

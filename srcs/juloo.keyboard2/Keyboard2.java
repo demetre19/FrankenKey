@@ -49,11 +49,6 @@ import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.DomainSuggestions;
 import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
-import juloo.keyboard2.grammar.AiGrammarFixer;
-import juloo.keyboard2.grammar.GrammarCoordinator;
-import juloo.keyboard2.grammar.GrammarData;
-import juloo.keyboard2.grammar.GrammarDiffView;
-import juloo.keyboard2.grammar.GrammarIssue;
 
 public class Keyboard2 extends InputMethodService
   implements SharedPreferences.OnSharedPreferenceChangeListener,
@@ -71,16 +66,14 @@ public class Keyboard2 extends InputMethodService
   private ExtraKeysPanelView _extra_keys_panel;
   private SystemGrammarChecker _grammar_checker;
   private SystemGrammarChecker.Correction _grammar_correction;
-  private GrammarCoordinator _grammar_coordinator;
-  private GrammarData _grammar_data;
-  private GrammarDiffView _grammar_diff_view;
-  private GrammarIssue _grammar_undo_issue;
-  private String _grammar_fix_original;
-  private int _grammar_fix_base = -1;
-  private AiGrammarFixer.Snapshot _grammar_fix_snapshot;
-  private String _grammar_diff_corrected;
-  private Runnable _grammar_undo_clear;
-  private long _grammar_last_pump = -1;
+  private java.util.concurrent.ExecutorService _ai_grammar_executor;
+  private ReaderAiProvider _ai_provider;
+  private ReaderAiSettings _ai_settings;
+  private volatile int _ai_grammar_generation;
+  private volatile boolean _ai_grammar_busy;
+  private String _ai_grammar_original;
+  private int _ai_grammar_base = -1;
+  private Runnable _ai_grammar_undo_clear;
   private MultimodalVoiceInput _voice_input;
   private AlertDialog _learning_review_dialog;
   private int _selection_start = -1;
@@ -299,57 +292,10 @@ public class Keyboard2 extends InputMethodService
     _handler = new Handler(getMainLooper());
     _grammar_checker = new SystemGrammarChecker(this, _handler,
         correction -> grammar_correction_changed(correction));
-    _grammar_coordinator = new GrammarCoordinator(null,
-        new GrammarCoordinator.Presenter()
-        {
-          @Override public void present(GrammarIssue issue)
-          {
-            grammar_issue_presented(issue);
-          }
-
-          @Override public void apply(GrammarIssue issue)
-          {
-            apply_offline_grammar_fix(issue);
-          }
-
-          @Override public void undo(GrammarIssue issue)
-          {
-            undo_offline_grammar_fix(issue);
-          }
-
-          @Override public void disableRule(String ruleId)
-          {
-            java.util.Set<String> off = new java.util.HashSet<>(
-                _prefs.getStringSet("ti_grammar_rules_off",
-                  java.util.Collections.<String>emptySet()));
-            off.add(ruleId);
-            _prefs.edit().putStringSet("ti_grammar_rules_off", off)
-              .apply();
-            Toast.makeText(Keyboard2.this,
-                R.string.grammar_rule_off_toast, Toast.LENGTH_SHORT).show();
-          }
-        });
-    for (String ruleId : _prefs.getStringSet("ti_grammar_rules_off",
-        java.util.Collections.<String>emptySet()))
-      _grammar_coordinator.disabledRules().add(ruleId);
-    new Thread(() ->
-      {
-        try
-        {
-          GrammarData data = GrammarData.load(
-              getAssets().open("grammar/en.json"));
-          _handler.post(() ->
-            {
-              _grammar_data = data;
-              _grammar_coordinator.setData(data);
-            });
-        }
-        catch (java.io.IOException error)
-        {
-          android.util.Log.w("Keyboard2", "Grammar word data missing",
-              error);
-        }
-      }).start();
+    _ai_settings = new ReaderAiSettings(this);
+    _ai_provider = new ReaderAiProvider(_ai_settings);
+    _ai_grammar_executor = java.util.concurrent.Executors
+      .newSingleThreadExecutor();
     _voice_input = new MultimodalVoiceInput(this, _handler,
         new MultimodalVoiceInput.Callback()
         {
@@ -408,6 +354,8 @@ public class Keyboard2 extends InputMethodService
     _foldStateTracker.close();
     _grammar_checker.close();
     _voice_input.close();
+    if (_ai_grammar_executor != null)
+      _ai_grammar_executor.shutdownNow();
     super.onDestroy();
   }
 
@@ -422,14 +370,6 @@ public class Keyboard2 extends InputMethodService
     _extra_keys_panel = (ExtraKeysPanelView)_keyboard_container_view
       .findViewById(R.id.extra_keys_panel);
     _extra_keys_panel.bind(_keyboard_layout_view, _keyeventhandler);
-    _grammar_diff_view = (GrammarDiffView)inflate_view(
-        R.layout.grammar_diff_view);
-    _keyboard_container_view.addView(_grammar_diff_view);
-    _grammar_diff_view.setListener(new GrammarDiffView.Listener()
-      {
-        @Override public void onReplace() { grammar_diff_replace(); }
-        @Override public void onCancel() { grammar_diff_cancel(); }
-      });
     wire_reader_button(_keyboard_container_view);
   }
 
@@ -564,9 +504,6 @@ public class Keyboard2 extends InputMethodService
       SystemGrammarChecker.Correction correction)
   {
     _grammar_correction = correction;
-    if (correction != null && _grammar_coordinator != null)
-      _grammar_coordinator.onSystemCorrection(correction.offset,
-          correction.length, correction.replacement);
     if (_voice_input.is_active())
       return;
     show_grammar_correction();
@@ -784,99 +721,135 @@ public class Keyboard2 extends InputMethodService
     boolean enabled = _config.grammar_corrections_enabled
       && _config.editor_config.should_use_sentence_assistance;
     _grammar_checker.start(current_locale(), enabled);
-    if (_grammar_coordinator != null)
-      _grammar_coordinator.setEnabled(offline_grammar_enabled());
     if (enabled)
       _grammar_checker.request(getCurrentInputConnection(),
           _selection_start, _selection_end);
   }
 
-  /* --- Offline grammar rules (E2): strip prompt, fix, undo. --- */
+  /* --- AI grammar fix (provider-routed; automatic + explicit). --- */
 
-  private boolean offline_grammar_enabled()
+  private String grammar_prompt()
   {
-    return _prefs.getBoolean("ti_grammar_offline_rules", true)
-      && _config.editor_config.should_use_sentence_assistance;
-  }
-
-  /** Pump the offline rules when the cursor sits after a word boundary. */
-  private void pump_offline_grammar(InputConnection connection)
-  {
-    if (connection == null || _grammar_coordinator == null)
-      return;
-    CharSequence before = connection.getTextBeforeCursor(512, 0);
-    if (before == null || before.length() == 0)
-      return;
-    char last = before.charAt(before.length() - 1);
-    if (Character.isLetterOrDigit(last) || last == '\''
-        || last == '’')
-      return;
-    long stamp = System.nanoTime();
-    if (stamp - _grammar_last_pump < 150_000_000L)
-      return;
-    _grammar_last_pump = stamp;
-    _grammar_coordinator.onBoundary(before.toString());
-  }
-
-  private void grammar_issue_presented(GrammarIssue issue)
-  {
-    if (_assistant_strip == null)
-      return;
-    if (issue == null)
+    try (java.io.InputStream in =
+        getAssets().open("grammar/ai_prompt.txt"))
     {
-      /* Keep a system-correction strip; otherwise clear. */
-      if (_grammar_undo_issue == null && _grammar_correction == null)
-        _assistant_strip.clear();
-      return;
+      java.io.ByteArrayOutputStream bytes =
+        new java.io.ByteArrayOutputStream();
+      byte[] buf = new byte[4096];
+      int n;
+      while ((n = in.read(buf)) >= 0)
+        bytes.write(buf, 0, n);
+      return new String(bytes.toByteArray(),
+          java.nio.charset.StandardCharsets.UTF_8);
     }
-    _assistant_strip.show(
-        getString(R.string.assistant_grammar_message, issue.message()),
-        getString(R.string.assistant_apply),
-        () -> _grammar_coordinator.fixShowing(),
-        () -> show_grammar_issue_options());
+    catch (java.io.IOException error)
+    {
+      return "Correct spelling, grammar, and punctuation. Keep the "
+        + "meaning, tone, language, formatting, and names unchanged. "
+        + "Return only the corrected text.";
+    }
   }
 
-  /** Dismiss offers ignore-once or a persisted per-rule disable. */
-  private void show_grammar_issue_options()
+  private boolean ai_grammar_eligible()
   {
-    GrammarIssue showing = _grammar_coordinator.showing();
-    if (showing == null || _assistant_strip == null)
-      return;
-    IBinder token = _assistant_strip.getWindowToken();
-    if (token == null)
-      return;
-    String[] labels = {
-        getString(R.string.grammar_issue_ignore_once),
-        getString(R.string.grammar_issue_disable_rule, showing.ruleId)
-      };
-    AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(
-          this, _config.theme))
-      .setTitle(showing.message())
-      .setItems(labels, (_dialog, which) ->
-        {
-          if (which == 0)
-            _grammar_coordinator.ignoreShowing();
-          else
-            _grammar_coordinator.disableShowingRule();
-        })
-      .setNegativeButton(android.R.string.cancel, null)
-      .create();
-    dialog.setCanceledOnTouchOutside(true);
-    Utils.show_dialog_on_ime(dialog, token);
+    if (!_ai_settings.isAutoGrammarEnabled()
+        || !_config.editor_config.should_use_sentence_assistance)
+      return false;
+    return AiGrammarFixer.eligibility(
+        AiGrammarFixer.classify(getCurrentInputEditorInfo()))
+      == AiGrammarFixer.Refusal.NONE;
   }
 
-  private void apply_offline_grammar_fix(GrammarIssue issue)
+  /**
+   * Automatic pass: when a sentence terminator lands and the cursor moves
+   * on, ask the provider to fix the just-finished sentence and apply a
+   * conservative correction in place. No strip prompt — the fix is the
+   * behavior; a short Undo banner stays available.
+   */
+  private void pump_ai_grammar(InputConnection connection,
+      int oldSelStart, int newSelStart, int newSelEnd)
+  {
+    if (connection == null || _ai_grammar_executor == null
+        || _ai_grammar_busy || newSelStart != newSelEnd
+        || newSelStart <= oldSelStart)
+      return;
+    if (!ai_grammar_eligible())
+      return;
+    CharSequence before = connection.getTextBeforeCursor(
+        AiGrammarFixer.MAX_INPUT_LENGTH + 4, 0);
+    if (before == null)
+      return;
+    /* Boundary: a space (or more) was committed after the terminator. */
+    int end = before.length();
+    while (end > 0 && Character.isWhitespace(before.charAt(end - 1)))
+      --end;
+    if (end == before.length() || end == 0)
+      return;
+    char term = before.charAt(end - 1);
+    if (term != '.' && term != '?' && term != '!')
+      return;
+    AiGrammarFixer.Sentence sentence =
+      AiGrammarFixer.sentenceEndingAt(before, end);
+    if (sentence == null)
+      return;
+    final int generation = ++_ai_grammar_generation;
+    final String input = sentence.text;
+    final int base = sentence.start;
+    _ai_grammar_busy = true;
+    _ai_grammar_executor.execute(() -> {
+      String corrected = null;
+      try
+      {
+        String response = _ai_provider.fixGrammar(grammar_prompt(), input);
+        if (AiGrammarFixer.verdict(response, input)
+            == AiGrammarFixer.Verdict.OK)
+        {
+          String candidate =
+            AiGrammarFixer.sanitizeResponse(response, input);
+          if (AiGrammarFixer.conservative(input, candidate))
+            corrected = candidate;
+        }
+      }
+      catch (Exception ignored)
+      {
+        /* Automatic pass fails silently; the explicit button reports. */
+      }
+      final String fix = corrected;
+      _handler.post(() -> {
+        _ai_grammar_busy = false;
+        if (fix != null && generation == _ai_grammar_generation)
+          apply_ai_grammar_fix(input, fix, base);
+      });
+    });
+  }
+
+  /** Replace the sentence in place after revalidating editor state. */
+  private void apply_ai_grammar_fix(String original, String corrected,
+      int base)
   {
     InputConnection connection = getCurrentInputConnection();
     if (connection == null)
       return;
+    CharSequence current = connection.getTextBeforeCursor(
+        original.length() + 64, 0);
+    if (current == null)
+      return;
+    /* The sentence must still sit right before the cursor. */
+    int trimmed = current.length();
+    while (trimmed > 0
+        && Character.isWhitespace(current.charAt(trimmed - 1)))
+      --trimmed;
+    if (trimmed < original.length()
+        || !current.subSequence(trimmed - original.length(), trimmed)
+            .toString().equals(original))
+      return;
+    int baseInField = trimmed - original.length();
     connection.beginBatchEdit();
     boolean applied;
     try
     {
-      applied = connection.setSelection(issue.offset,
-          issue.offset + issue.length)
-        && connection.commitText(issue.replacement, 1);
+      applied = connection.setSelection(baseInField, trimmed)
+        && connection.commitText(corrected, 1);
     }
     finally
     {
@@ -884,283 +857,129 @@ public class Keyboard2 extends InputMethodService
     }
     if (!applied)
       return;
-    _grammar_undo_issue = issue;
-    final GrammarIssue undoIssue = issue;
+    _ai_grammar_original = original;
+    _ai_grammar_base = baseInField;
+    show_ai_grammar_undo(original, corrected);
+  }
+
+  /** 5 s undo banner after an automatic grammar fix. */
+  private void show_ai_grammar_undo(final String original,
+      final String corrected)
+  {
+    if (_assistant_strip == null)
+      return;
     _assistant_strip.show(
         getString(R.string.grammar_fix_applied),
         getString(R.string.grammar_undo_label),
-        () -> _grammar_coordinator.undoShowing(),
-        null);
-    if (_grammar_undo_clear != null)
-      _handler.removeCallbacks(_grammar_undo_clear);
-    _grammar_undo_clear = () ->
-      {
-        if (_grammar_undo_issue == undoIssue)
-        {
-          _grammar_undo_issue = null;
-          _grammar_coordinator.presentCurrent();
-        }
-        _grammar_undo_clear = null;
-      };
-    _handler.postDelayed(_grammar_undo_clear, 5000);
+        () -> {
+          InputConnection connection = getCurrentInputConnection();
+          if (connection == null)
+            return;
+          connection.beginBatchEdit();
+          try
+          {
+            if (connection.setSelection(_ai_grammar_base,
+                _ai_grammar_base + corrected.length()))
+              connection.commitText(original, 1);
+          }
+          finally
+          {
+            connection.endBatchEdit();
+          }
+          dismiss_ai_grammar_undo();
+        },
+        this::dismiss_ai_grammar_undo);
+    if (_ai_grammar_undo_clear != null)
+      _handler.removeCallbacks(_ai_grammar_undo_clear);
+    _ai_grammar_undo_clear = () -> {
+      _ai_grammar_undo_clear = null;
+      _assistant_strip.clear();
+      refresh_candidates_view();
+    };
+    _handler.postDelayed(_ai_grammar_undo_clear, 5000);
   }
 
-  private void undo_offline_grammar_fix(GrammarIssue issue)
+  private void dismiss_ai_grammar_undo()
   {
-    InputConnection connection = getCurrentInputConnection();
-    if (connection != null)
+    if (_ai_grammar_undo_clear != null)
     {
-      connection.beginBatchEdit();
-      try
-      {
-        if (connection.setSelection(issue.offset,
-            issue.offset + issue.replacement.length()))
-          connection.commitText(issue.matched, 1);
-      }
-      finally
-      {
-        connection.endBatchEdit();
-      }
+      _handler.removeCallbacks(_ai_grammar_undo_clear);
+      _ai_grammar_undo_clear = null;
     }
-    _grammar_undo_issue = null;
-    if (_grammar_undo_clear != null)
-    {
-      _handler.removeCallbacks(_grammar_undo_clear);
-      _grammar_undo_clear = null;
-    }
-    _grammar_coordinator.presentCurrent();
+    if (_assistant_strip != null)
+      _assistant_strip.clear();
+    refresh_candidates_view();
   }
 
-  /* --- AI "Fix grammar" action (E3/E4). --- */
-
+  /** Explicit Fix button: correct the sentence just before the cursor. */
   private void fix_grammar_action()
   {
-    AiGrammarFixer.EditorClass editorClass =
-      AiGrammarFixer.classify(getCurrentInputEditorInfo());
-    AiGrammarFixer.Refusal refusal = AiGrammarFixer.eligibility(editorClass);
-    if (refusal != AiGrammarFixer.Refusal.NONE)
+    if (AiGrammarFixer.eligibility(
+          AiGrammarFixer.classify(getCurrentInputEditorInfo()))
+        != AiGrammarFixer.Refusal.NONE)
     {
-      grammar_fix_toast(refusal);
-      return;
-    }
-    final ReaderAiSettings settings = new ReaderAiSettings(this);
-    String apiKey;
-    try
-    {
-      apiKey = settings.getApiKey();
-    }
-    catch (java.security.GeneralSecurityException error)
-    {
-      apiKey = "";
-    }
-    if (apiKey == null || apiKey.isEmpty())
-    {
-      Toast.makeText(this, R.string.grammar_fix_no_key,
+      Toast.makeText(this, R.string.grammar_fix_ineligible,
           Toast.LENGTH_SHORT).show();
-      return;
-    }
-    if (!settings.isDisclosureAcceptedV4())
-    {
-      new AlertDialog.Builder(this)
-        .setMessage(R.string.reader_ai_disclosure_v4)
-        .setPositiveButton(R.string.assistant_apply,
-          (dialog, which) ->
-            {
-              settings.setDisclosureAcceptedV4(true);
-              fix_grammar_action();
-            })
-        .setNegativeButton(R.string.grammar_diff_cancel, null)
-        .show();
       return;
     }
     InputConnection connection = getCurrentInputConnection();
-    if (connection == null)
+    if (connection == null || _ai_grammar_executor == null)
       return;
-    android.view.inputmethod.ExtractedTextRequest request =
-      new android.view.inputmethod.ExtractedTextRequest();
-    final android.view.inputmethod.ExtractedText extracted =
-      connection.getExtractedText(request, 0);
-    CharSequence selected = connection.getSelectedText(0);
-    AiGrammarFixer.Outcome outcome = AiGrammarFixer.capture(
-        extracted == null ? null : new AiGrammarFixer.ExtractedTextView()
-        {
-          public CharSequence text() { return extracted.text; }
-          public int startOffset() { return extracted.startOffset; }
-          public int partialStartOffset()
-            { return extracted.partialStartOffset; }
-          public int partialEndOffset()
-            { return extracted.partialEndOffset; }
-        },
-        selected, _selection_start, _selection_end);
-    if (outcome.refusal != AiGrammarFixer.Refusal.NONE)
-    {
-      grammar_fix_toast(outcome.refusal);
+    CharSequence before = connection.getTextBeforeCursor(
+        AiGrammarFixer.MAX_INPUT_LENGTH + 4, 0);
+    if (before == null)
       return;
-    }
-    _grammar_fix_snapshot = outcome.snapshot;
-    final String apiKeyFinal = apiKey;
-    final AiGrammarFixer.Snapshot snapshot = outcome.snapshot;
-    new Thread(() ->
-      {
-        try
-        {
-          String prompt;
-          try (java.io.InputStream in =
-              getAssets().open("grammar/ai_prompt.txt"))
-          {
-            java.io.ByteArrayOutputStream bytes =
-              new java.io.ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            int n;
-            while ((n = in.read(buf)) >= 0)
-              bytes.write(buf, 0, n);
-            prompt = new String(bytes.toByteArray(),
-                java.nio.charset.StandardCharsets.UTF_8);
-          }
-          org.json.JSONObject body = AiGrammarFixer.buildRequest(
-              settings.getWritingModelId(), prompt, snapshot.text,
-              AiGrammarFixer.maxTokensFor(snapshot.text));
-          ReaderAiOpenRouter client = new ReaderAiOpenRouter();
-          String response = client.generate(apiKeyFinal, body, 20_000);
-          client.cancel();
-          final String corrected =
-            AiGrammarFixer.sanitizeResponse(response, snapshot.text);
-          final AiGrammarFixer.Verdict verdict =
-            AiGrammarFixer.verdict(response, snapshot.text);
-          _handler.post(() -> grammar_fix_response(verdict, corrected));
-        }
-        catch (Exception error)
-        {
-          _handler.post(() -> grammar_fix_response(
-              AiGrammarFixer.Verdict.BAD, null));
-        }
-      }).start();
-  }
-
-  private void grammar_fix_response(AiGrammarFixer.Verdict verdict,
-      String corrected)
-  {
-    AiGrammarFixer.Snapshot snapshot = _grammar_fix_snapshot;
-    if (snapshot == null || _grammar_diff_view == null)
-      return;
-    switch (verdict)
+    int end = before.length();
+    while (end > 0 && Character.isWhitespace(before.charAt(end - 1)))
+      --end;
+    AiGrammarFixer.Sentence sentence =
+      AiGrammarFixer.sentenceEndingAt(before, end);
+    if (sentence == null)
     {
-      case OK:
-        boolean privateField = (getCurrentInputEditorInfo().imeOptions
-            & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0;
-        _grammar_fix_original = snapshot.text;
-        _grammar_fix_base = snapshot.selectionStart;
-        _grammar_diff_corrected = corrected;
-        _grammar_diff_view.show(snapshot.text, corrected, privateField);
-        break;
-      case NO_CHANGE:
-        _grammar_fix_snapshot = null;
-        Toast.makeText(this, R.string.grammar_fix_no_changes,
-            Toast.LENGTH_SHORT).show();
-        break;
-      default:
-        _grammar_fix_snapshot = null;
-        Toast.makeText(this, R.string.grammar_fix_bad_response,
-            Toast.LENGTH_SHORT).show();
-        break;
-    }
-  }
-
-  private void grammar_diff_replace()
-  {
-    AiGrammarFixer.Snapshot snapshot = _grammar_fix_snapshot;
-    InputConnection connection = getCurrentInputConnection();
-    if (snapshot == null || connection == null || _grammar_diff_view == null)
-      return;
-    /* Revalidate: the editor text must still match what the model saw. */
-    CharSequence current;
-    if (snapshot.selectionStart < snapshot.selectionEnd)
-      current = connection.getTextBeforeCursor(
-          snapshot.text.length(), 0);
-    else
-    {
-      android.view.inputmethod.ExtractedText extracted =
-        connection.getExtractedText(
-            new android.view.inputmethod.ExtractedTextRequest(), 0);
-      current = extracted == null ? null : extracted.text;
-    }
-    if (current == null
-        || !AiGrammarFixer.sha256(current.toString())
-            .equals(snapshot.sha256))
-    {
-      _grammar_diff_view.hide();
-      _grammar_fix_snapshot = null;
-      Toast.makeText(this, R.string.grammar_fix_changed,
+      Toast.makeText(this, R.string.grammar_fix_no_changes,
           Toast.LENGTH_SHORT).show();
       return;
     }
-    int base = _grammar_fix_base;
-    if (GrammarDiffView.applyCorrection(connection, _grammar_fix_original,
-        _grammar_diff_corrected, base))
-      show_grammar_undo_banner();
-    else
-    {
-      _grammar_diff_view.hide();
-      Toast.makeText(this, R.string.grammar_fix_changed,
-          Toast.LENGTH_SHORT).show();
-    }
-    _grammar_fix_snapshot = null;
-  }
-
-  private void grammar_diff_cancel()
-  {
-    _grammar_fix_snapshot = null;
-    if (_grammar_diff_view != null)
-      _grammar_diff_view.hide();
-  }
-
-  /** After an AI replace, offer the same 5 s undo as offline fixes. */
-  private void show_grammar_undo_banner()
-  {
-    _grammar_diff_view.hide();
-    final String original = _grammar_fix_original;
-    final int base = _grammar_fix_base;
-    final String corrected = _grammar_diff_corrected;
-    _assistant_strip.show(
-        getString(R.string.grammar_fix_applied),
-        getString(R.string.grammar_undo_label),
-        () ->
-          {
-            InputConnection connection = getCurrentInputConnection();
-            if (connection != null)
-              GrammarDiffView.applyCorrection(connection, corrected,
-                  original, base);
-          },
-        null);
-    if (_grammar_undo_clear != null)
-      _handler.removeCallbacks(_grammar_undo_clear);
-    _grammar_undo_clear = () ->
+    final String input = sentence.text;
+    final int base = sentence.start;
+    final int generation = ++_ai_grammar_generation;
+    _ai_grammar_busy = true;
+    Toast.makeText(this, R.string.grammar_fix_working,
+        Toast.LENGTH_SHORT).show();
+    _ai_grammar_executor.execute(() -> {
+      int toastRes;
+      String corrected = null;
+      try
       {
-        _grammar_undo_clear = null;
-        _assistant_strip.clear();
-        _grammar_coordinator.presentCurrent();
-      };
-    _handler.postDelayed(_grammar_undo_clear, 5000);
-  }
-
-  private void grammar_fix_toast(AiGrammarFixer.Refusal refusal)
-  {
-    int res;
-    switch (refusal)
-    {
-      case PASSWORD: res = R.string.grammar_fix_unavailable_password; break;
-      case NUMERIC: res = R.string.grammar_fix_unavailable_numeric; break;
-      case PHONE: res = R.string.grammar_fix_unavailable_phone; break;
-      case EMAIL: res = R.string.grammar_fix_unavailable_email; break;
-      case URI: res = R.string.grammar_fix_unavailable_uri; break;
-      case TERMINAL: res = R.string.grammar_fix_unavailable_terminal; break;
-      case NO_KEY: res = R.string.grammar_fix_no_key; break;
-      case TOO_LONG: res = R.string.grammar_fix_too_long; break;
-      case SELECTION_REQUIRED:
-        res = R.string.grammar_fix_selection_required; break;
-      default: res = R.string.grammar_fix_unavailable_unreadable; break;
-    }
-    Toast.makeText(this, res, Toast.LENGTH_SHORT).show();
+        String response = _ai_provider.fixGrammar(grammar_prompt(), input);
+        AiGrammarFixer.Verdict v = AiGrammarFixer.verdict(response, input);
+        if (v == AiGrammarFixer.Verdict.OK)
+        {
+          String candidate =
+            AiGrammarFixer.sanitizeResponse(response, input);
+          corrected = AiGrammarFixer.conservative(input, candidate)
+            ? candidate : null;
+          toastRes = corrected != null ? 0 : R.string.grammar_fix_no_changes;
+        }
+        else
+          toastRes = v == AiGrammarFixer.Verdict.NO_CHANGE
+            ? R.string.grammar_fix_no_changes
+            : R.string.grammar_fix_failed;
+      }
+      catch (Exception error)
+      {
+        toastRes = R.string.grammar_fix_unavailable;
+      }
+      final int res = toastRes;
+      final String fix = corrected;
+      _handler.post(() -> {
+        _ai_grammar_busy = false;
+        if (fix != null && generation == _ai_grammar_generation)
+          apply_ai_grammar_fix(input, fix, base);
+        else if (res != 0)
+          Toast.makeText(Keyboard2.this, res, Toast.LENGTH_SHORT).show();
+      });
+    });
   }
 
   private Locale current_locale()
@@ -1338,8 +1157,9 @@ public class Keyboard2 extends InputMethodService
     wire_reader_settings_shortcut(context, root);
     root.findViewById(R.id.reader_transport_voice).setOnClickListener(
         _view -> voiceAction.run());
-    root.findViewById(R.id.reader_transport_fix_grammar).setOnClickListener(
-        _view -> fixGrammarAction.run());
+    View fix = root.findViewById(R.id.reader_transport_fix_grammar);
+    if (fix != null)
+      fix.setOnClickListener(_view -> fixGrammarAction.run());
   }
 
   static void wire_reader_quick_shortcuts(Context context, View root,
@@ -1347,7 +1167,6 @@ public class Keyboard2 extends InputMethodService
   {
     wire_reader_quick_shortcuts(context, root, voiceAction, () -> {});
   }
-
 
   private void read_reader_clipboard()
   {
@@ -1446,9 +1265,6 @@ public class Keyboard2 extends InputMethodService
       case SAVED:
         startActivity(new Intent(this, ReaderAiLibraryActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        return;
-      case FIX_GRAMMAR:
-        fix_grammar_action();
         return;
       case SHARE:
         share_reader_clipboard();
@@ -1941,8 +1757,7 @@ public class Keyboard2 extends InputMethodService
     update_reader_entry();
     InputConnection connection = getCurrentInputConnection();
     _grammar_checker.request(connection, newSelStart, newSelEnd);
-    if (newSelStart == newSelEnd && newSelStart > oldSelStart)
-      pump_offline_grammar(connection);
+    pump_ai_grammar(connection, oldSelStart, newSelStart, newSelEnd);
   }
 
   private void finish_input_session()
@@ -1957,17 +1772,13 @@ public class Keyboard2 extends InputMethodService
     _voice_input.stop();
     _grammar_checker.start(null, false);
     _grammar_correction = null;
-    if (_grammar_coordinator != null)
-      _grammar_coordinator.resetSession();
-    _grammar_undo_issue = null;
-    _grammar_fix_snapshot = null;
-    if (_grammar_undo_clear != null)
+    _ai_grammar_generation++;
+    _ai_grammar_busy = false;
+    if (_ai_grammar_undo_clear != null)
     {
-      _handler.removeCallbacks(_grammar_undo_clear);
-      _grammar_undo_clear = null;
+      _handler.removeCallbacks(_ai_grammar_undo_clear);
+      _ai_grammar_undo_clear = null;
     }
-    if (_grammar_diff_view != null)
-      _grammar_diff_view.hide();
     if (_assistant_strip != null)
       _assistant_strip.clear();
   }
