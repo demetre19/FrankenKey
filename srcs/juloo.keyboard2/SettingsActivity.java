@@ -337,6 +337,12 @@ public class SettingsActivity extends PreferenceActivity
             getPreferenceManager().getSharedPreferences());
         return true;
       });
+    Preference aiSettings = findPreference("reader_ai_settings");
+    if (aiSettings != null)
+      aiSettings.setOnPreferenceClickListener(preference -> {
+        ReaderAiSettingsDialog.show(this, null);
+        return true;
+      });
     Preference pageCapture = findPreference("reader_page_capture");
     if (pageCapture != null)
       pageCapture.setOnPreferenceClickListener(preference -> {

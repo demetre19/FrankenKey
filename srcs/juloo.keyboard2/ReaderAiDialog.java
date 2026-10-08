@@ -104,7 +104,7 @@ final class ReaderAiDialog
     settings = new ReaderAiSettings(activity);
     cache = new ReaderAiCache(activity);
     store = new ReaderAiStore(activity);
-    service = new ReaderAiService(client, cache, store);
+    service = new ReaderAiService(settings, cache, store);
     service.setProgressListener(this::showProgress);
   }
 
@@ -336,7 +336,7 @@ final class ReaderAiDialog
         new AlertDialog.Builder(activity)
           .setTitle("Long " + sourceLower())
           .setMessage("This " + sourceLower()
-              + " needs multiple billable OpenRouter calls. Continue?")
+              + " needs multiple AI calls. Continue?")
           .setNegativeButton("Cancel", null)
           .setPositiveButton("Continue", (dialog, which) ->
               executeSummary(model, label, prompt, first))
@@ -428,7 +428,7 @@ final class ReaderAiDialog
             .setTitle("Generate Book Quiz?")
             .setMessage(counts[which] + " questions will be generated for "
                 + "each of " + chapters + " chapters. This can require "
-                + "multiple billable OpenRouter calls. Completed evidence is "
+                + "multiple AI calls. Completed evidence is "
                 + "kept for safe resume and reuse.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Generate", (notice, ignored) ->
@@ -660,7 +660,7 @@ final class ReaderAiDialog
     new AlertDialog.Builder(activity).setTitle("Reader AI privacy")
       .setMessage("When you request AI, FrankenKey sends "
           + sourceDescription
-          + " and your questions to OpenRouter and the model you select. "
+          + " and your questions to the AI provider and model you select. "
           + "Nothing is sent merely by opening Reader AI.")
       .setNegativeButton("Cancel", null)
       .setPositiveButton("Continue", (dialog, which) -> {
@@ -671,50 +671,78 @@ final class ReaderAiDialog
 
   private void withModel(ModelAction action)
   {
-    if (selectedModel != null && selectedModel.id.equals(settings.getModelId()))
+    if (selectedModel != null
+        && selectedModel.id.equals(settings.getActiveModelId()))
     {
       action.run(selectedModel);
       return;
     }
     if (busy)
       return;
-    begin("Loading OpenRouter model…");
+    begin("Loading AI model…");
     executor.execute(() -> {
-      ReaderAiOpenRouter.Model resolved = null;
       try
       {
-        List<ReaderAiOpenRouter.Model> models = client.fetchModels(
-            settings.getApiKey());
-        String selected = settings.getModelId();
-        for (ReaderAiOpenRouter.Model model : models)
-          if (model.id.equals(selected))
-            resolved = model;
-        if (resolved == null && selected.isEmpty())
-          for (ReaderAiOpenRouter.Model model : models)
-            if (ReaderAiOpenRouter.PREFERRED_MODEL_ID.equals(model.id))
-              resolved = model;
-      }
-      catch (Exception ignored)
-      {
-        // Generation can still succeed if catalog retrieval is temporarily unavailable.
-      }
-      if (resolved == null)
-      {
-        String id = settings.getModelId();
-        if (id.isEmpty())
+        ReaderAiProvider provider = new ReaderAiProvider(settings);
+        String active = provider.activeProvider();
+        if (ReaderAiSettings.Provider.CLOUDFLARE.equals(active))
         {
-          fail(new IllegalStateException("Choose an OpenRouter model in Settings"));
+          if (settings.getCloudflareAccountId().isEmpty()
+              || settings.getCloudflareApiToken().isEmpty())
+            fail(new IllegalStateException(
+                "Add your Cloudflare Account ID and API token in Settings"));
+          else
+          {
+            ReaderAiOpenRouter.Model model = provider.selectedModel();
+            post(() -> {
+              selectedModel = model;
+              finish("Ready | " + model.id);
+              action.run(model);
+            });
+          }
           return;
         }
-        resolved = new ReaderAiOpenRouter.Model(id, id, 0, Double.NaN,
-            Double.NaN);
+        ReaderAiOpenRouter.Model resolved = null;
+        try
+        {
+          List<ReaderAiOpenRouter.Model> models = client.fetchModels(
+              settings.getApiKey());
+          String selected = settings.getModelId();
+          for (ReaderAiOpenRouter.Model model : models)
+            if (model.id.equals(selected))
+              resolved = model;
+          if (resolved == null && selected.isEmpty())
+            for (ReaderAiOpenRouter.Model model : models)
+              if (ReaderAiOpenRouter.PREFERRED_MODEL_ID.equals(model.id))
+                resolved = model;
+        }
+        catch (Exception ignored)
+        {
+          // Generation can still succeed if catalog retrieval is temporarily unavailable.
+        }
+        if (resolved == null)
+        {
+          String id = settings.getModelId();
+          if (id.isEmpty())
+          {
+            fail(new IllegalStateException(
+                "Choose an OpenRouter model in Settings"));
+            return;
+          }
+          resolved = new ReaderAiOpenRouter.Model(id, id, 0, Double.NaN,
+              Double.NaN);
+        }
+        ReaderAiOpenRouter.Model finalModel = resolved;
+        post(() -> {
+          selectedModel = finalModel;
+          finish("Ready | " + finalModel.id);
+          action.run(finalModel);
+        });
       }
-      ReaderAiOpenRouter.Model finalModel = resolved;
-      post(() -> {
-        selectedModel = finalModel;
-        finish("Ready | " + finalModel.id);
-        action.run(finalModel);
-      });
+      catch (Exception error)
+      {
+        fail(error);
+      }
     });
   }
 
@@ -933,7 +961,8 @@ final class ReaderAiDialog
 
   private String modelId()
   {
-    return selectedModel == null ? settings.getModelId() : selectedModel.id;
+    return selectedModel == null ? settings.getActiveModelId()
+        : selectedModel.id;
   }
 
   private String promptIdentity()

@@ -41,13 +41,18 @@ final class ReaderAiSettingsDialog
     new android.os.Handler(android.os.Looper.getMainLooper());
   private final Runnable autosavePrompts = this::savePrompts;
   private final Runnable autosaveKey = this::saveKey;
+  private final Runnable autosaveCfToken = this::saveCfToken;
   private EditText key;
+  private EditText cfAccount;
+  private EditText cfToken;
   private Button model;
+  private Button cfModel;
   private EditText summaryOne;
   private EditText summaryTwo;
   private EditText quiz;
   private TextView status;
   private String selectedModelId;
+  private String selectedCfModelId;
   private List<ReaderAiOpenRouter.Model> models = new ArrayList<>();
 
   static void show(Activity activity, Runnable onSaved)
@@ -99,6 +104,70 @@ final class ReaderAiSettingsDialog
     savedResultsParams.bottomMargin = ui.dp(8);
     content.addView(savedRow, savedResultsParams);
 
+    content.addView(label("AI provider"));
+    final LinearLayout providerRow = ui.row();
+    final Button providerButton = ui.button(
+        ReaderAiSettings.Provider.label(settings.getProvider()));
+    providerButton.setOnClickListener(ignored -> {
+      String current = settings.getProvider();
+      String next = ReaderAiSettings.Provider.OPENROUTER.equals(current)
+        ? ReaderAiSettings.Provider.CLOUDFLARE
+        : ReaderAiSettings.Provider.OPENROUTER;
+      settings.setProvider(next);
+      providerButton.setText(ReaderAiSettings.Provider.label(next));
+      notifySaved();
+    });
+    ui.addWeighted(providerRow, providerButton, 1f, 0);
+    content.addView(providerRow, matchWrap());
+
+    content.addView(label("Cloudflare Account ID"));
+    cfAccount = input("Dashboard overview Account ID", true, 100);
+    cfAccount.setText(settings.getCloudflareAccountId());
+    cfAccount.addTextChangedListener(new SimpleTextWatcher(() -> {
+      settings.setCloudflareAccountId(cfAccount.getText().toString());
+      notifySaved();
+    }));
+    content.addView(cfAccount, matchWrap());
+
+    content.addView(label("Cloudflare API token"));
+    cfToken = input("Account/Workers AI/Edit custom token", true, 1000);
+    cfToken.setTransformationMethod(PasswordTransformationMethod.getInstance());
+    try
+    {
+      cfToken.setText(settings.getCloudflareApiToken());
+    }
+    catch (GeneralSecurityException error)
+    {
+      status.setText(error.getMessage());
+    }
+    cfToken.addTextChangedListener(new SimpleTextWatcher(
+          () -> schedule(autosaveCfToken)));
+    content.addView(cfToken, matchWrap());
+
+    CheckBox cfReveal = new CheckBox(activity);
+    cfReveal.setText("Show API token");
+    cfReveal.setTextColor(ui.text);
+    cfReveal.setMinHeight(ui.dp(48));
+    cfReveal.setOnCheckedChangeListener((button, checked) -> {
+      int selection = cfToken.getSelectionStart();
+      cfToken.setTransformationMethod(checked ? null
+          : PasswordTransformationMethod.getInstance());
+      cfToken.setSelection(Math.max(0, Math.min(selection, cfToken.length())));
+    });
+    content.addView(cfReveal);
+
+    TextView cfGuide = ui.text(
+        "Cloudflare dashboard → My Profile → API Tokens → Create Token → "
+        + "Custom Token → Account/Workers AI/Edit; Account ID on dashboard "
+        + "overview.", 12, ui.muted);
+    cfGuide.setPadding(0, ui.dp(4), 0, ui.dp(8));
+    content.addView(cfGuide);
+
+    content.addView(label("Cloudflare model"));
+    selectedCfModelId = settings.getCloudflareModelId();
+    cfModel = ui.button(selectedCfModelId);
+    cfModel.setOnClickListener(ignored -> showCloudflareModelPicker());
+    content.addView(cfModel, matchWrap());
     content.addView(label("OpenRouter API key"));
     key = input("sk-or-...", false, 1000);
     key.setTransformationMethod(PasswordTransformationMethod.getInstance());
@@ -113,6 +182,7 @@ final class ReaderAiSettingsDialog
     key.addTextChangedListener(new SimpleTextWatcher(
           () -> schedule(autosaveKey)));
     content.addView(key, matchWrap());
+
 
     CheckBox reveal = new CheckBox(activity);
     reveal.setText("Show API key");
@@ -203,8 +273,10 @@ final class ReaderAiSettingsDialog
   private void flushAutosave()
   {
     autosaveHandler.removeCallbacks(autosaveKey);
+    autosaveHandler.removeCallbacks(autosaveCfToken);
     autosaveHandler.removeCallbacks(autosavePrompts);
     saveKey();
+    saveCfToken();
     savePrompts();
   }
 
@@ -213,6 +285,19 @@ final class ReaderAiSettingsDialog
     try
     {
       settings.setApiKey(key.getText().toString());
+      notifySaved();
+    }
+    catch (GeneralSecurityException | IllegalArgumentException error)
+    {
+      status.setText(error.getMessage());
+    }
+  }
+
+  private void saveCfToken()
+  {
+    try
+    {
+      settings.setCloudflareApiToken(cfToken.getText().toString());
       notifySaved();
     }
     catch (GeneralSecurityException | IllegalArgumentException error)
@@ -352,6 +437,26 @@ final class ReaderAiSettingsDialog
       if (candidate.id.equals(id))
         return candidate;
     return null;
+  }
+
+  /** Static Cloudflare catalog picker — no network call. */
+  private void showCloudflareModelPicker()
+  {
+    List<ReaderAiOpenRouter.Model> catalog = ReaderAiCloudflare.catalog();
+    String[] names = new String[catalog.size()];
+    for (int i = 0; i < catalog.size(); i++)
+      names[i] = catalog.get(i).name + "\n" + catalog.get(i).id;
+    new AlertDialog.Builder(activity)
+      .setTitle("Choose Cloudflare model")
+      .setItems(names, (dialog, which) -> {
+        selectedCfModelId = catalog.get(which).id;
+        settings.setCloudflareModelId(selectedCfModelId);
+        cfModel.setText(selectedCfModelId);
+        status.setText("Cloudflare model saved: " + selectedCfModelId);
+        notifySaved();
+      })
+      .setNegativeButton("Close", null)
+      .show();
   }
 
   private String modelLabel()
