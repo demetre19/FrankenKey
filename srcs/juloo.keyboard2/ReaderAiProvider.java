@@ -29,17 +29,6 @@ final class ReaderAiProvider
     }
   }
 
-  /** Resolved model for the selected provider; catalog-only, no request. */
-  static final class ModelRef
-  {
-    final ReaderAiOpenRouter.Model model;
-
-    ModelRef(ReaderAiOpenRouter.Model model_)
-    {
-      model = model_;
-    }
-  }
-
   private final ReaderAiSettings settings;
   private final ReaderAiOpenRouter openRouter = new ReaderAiOpenRouter();
   private final ReaderAiCloudflare cloudflare = new ReaderAiCloudflare();
