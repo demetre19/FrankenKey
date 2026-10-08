@@ -1,1 +1,8 @@
-{"tasks": [{"content": "Stamp PENDING presentations with word/connection/slot identity in SharedDecoder", "status": "completed"}, {"content": "CandidatesView: keep READY items across same-slot PENDING, clear on slot change, 150ms/70% alpha dim, restore on READY", "status": "completed"}, {"content": "Update/add section-7 regression tests in test/juloo.keyboard2/suggestions/", "status": "completed"}, {"content": "Run g1-unit-suite gate; triage unrelated reds via discover/ask if they persist", "status": "completed"}, {"content": "prd_step done", "status": "pending"}, {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"}]}
+{"tasks": [
+  {"content": "Read b-store store + learning API surface already on the branch", "status": "completed"},
+  {"content": "Implement EmailLearningObserver.java + editor guards (FIELD +2, PROSE +1, SELECTED +2; no password/numeric/phone/unknown/terminal or NO_PERSONALIZED_LEARNING; skip pre-filled unchanged)", "status": "completed"},
+  {"content": "Wire observer into KeyEventHandler (finish input, separator completion, candidate selection, IReceiver.getContext)", "status": "completed"},
+  {"content": "EmailLearningObserverTest.java covering the event table and guards", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
+  {"content": "Gate g1-unit-suite via prd_step, then done", "status": "in_progress"}
+]}
