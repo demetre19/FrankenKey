@@ -4,6 +4,8 @@ The canonical lesson store. Write path: `crew learn <domain> <slug> '<lesson>'` 
 
 ## Domains
 
+- [android](android/INDEX.md) — domain lessons
+- [frankenkey-autobuild-autocorrect](frankenkey-autobuild-autocorrect/INDEX.md) — domain lessons
 - [machinery](machinery/INDEX.md) — domain lessons
 
 ## Legacy stores (pre-index — consult on a miss)
