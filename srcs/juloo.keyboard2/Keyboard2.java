@@ -1130,17 +1130,41 @@ public class Keyboard2 extends InputMethodService
        keyboard surface never bounces when the two swap visibility. */
     int rowHeight = (int)(_config.keyboard_rows_height_pixels
         * (1 - _config.key_vertical_margin));
+    /* The swap slot holds candidates OR the strip at exactly the candidate
+       row height — whichever child is visible, the row never moves. */
+    View slot = root.findViewById(R.id.suggestion_slot);
+    if (slot != null)
+    {
+      ViewGroup.LayoutParams slp = slot.getLayoutParams();
+      if (slp != null)
+      {
+        slp.height = visible
+            ? ViewGroup.LayoutParams.WRAP_CONTENT : rowHeight;
+        slot.setLayoutParams(slp);
+      }
+      slot.setMinimumHeight(rowHeight);
+    }
     transport.setMinimumHeight(rowHeight);
     ViewGroup.LayoutParams tlp = transport.getLayoutParams();
     if (tlp != null)
     {
       tlp.height = visible
-          ? ViewGroup.LayoutParams.WRAP_CONTENT : rowHeight;
+          ? ViewGroup.LayoutParams.WRAP_CONTENT
+          : actionsVisible ? rowHeight
+          : 0;
       transport.setLayoutParams(tlp);
     }
     View actionsRow = root.findViewById(R.id.reader_transport_actions_scroll);
     if (actionsRow != null)
+    {
+      ViewGroup.LayoutParams alp = actionsRow.getLayoutParams();
+      if (alp != null)
+      {
+        alp.height = rowHeight;
+        actionsRow.setLayoutParams(alp);
+      }
       actionsRow.setMinimumHeight(rowHeight);
+    }
     transport.setVisibility(
         visible || actionsVisible ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.reader_transport_actions)
