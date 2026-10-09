@@ -116,7 +116,6 @@
     <string name="grammar_fix_no_key">Add an OpenRouter API key in Reader AI settings.</string>
     <string name="grammar_fix_too_long">Select up to 4,000 characters to fix.</string>
     <string name="grammar_fix_selection_required">Select the text to fix.</string>
-    <string name="grammar_fix_no_changes">No changes suggested.</string>
     <string name="grammar_fix_bad_response">The model’s answer didn’t look like a correction.</string>
     <string name="grammar_fix_changed">The text changed. Run Fix grammar again.</string>
     <string name="grammar_diff_private_header">This app asked for private typing.</string>
