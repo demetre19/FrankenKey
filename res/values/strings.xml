@@ -90,8 +90,6 @@
     <string name="pref_ai_auto_grammar_title">Automatic AI grammar fixes</string>
     <string name="pref_ai_auto_grammar_summary">Automatically fix grammar when you finish a sentence. Requires configured AI credentials; text is sent to the selected provider.</string>
     <string name="grammar_fix_label">Fix</string>
-    <string name="grammar_fix_applied">Grammar fixed</string>
-    <string name="grammar_undo_label">Undo</string>
     <string name="grammar_fix_no_changes">No grammar changes needed</string>
     <string name="grammar_fix_failed">Grammar fix unavailable</string>
     <string name="grammar_fix_unavailable">Grammar fix needs configured AI credentials</string>
