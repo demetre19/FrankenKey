@@ -4,7 +4,9 @@ The canonical lesson store. Write path: `crew learn <domain> <slug> '<lesson>'` 
 
 ## Domains
 
+
 - [frankenkey](frankenkey/INDEX.md) — domain lessons
+- [frankenkey-autobuild-autocorrect](frankenkey-autobuild-autocorrect/INDEX.md) — domain lessons
 - [machinery](machinery/INDEX.md) — domain lessons
 - [runops](runops/INDEX.md) — domain lessons
 
