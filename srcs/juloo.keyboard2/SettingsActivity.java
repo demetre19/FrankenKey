@@ -349,6 +349,12 @@ public class SettingsActivity extends PreferenceActivity
               android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
         return true;
       });
+    Preference ttsOptions = findPreference("reader_tts_options");
+    if (ttsOptions != null)
+      ttsOptions.setOnPreferenceClickListener(preference -> {
+        startActivity(new Intent(this, ReaderActivity.class));
+        return true;
+      });
   }
 
   private void setupVoiceTypingPreference()
