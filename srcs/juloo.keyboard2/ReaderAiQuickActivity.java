@@ -73,8 +73,38 @@ public final class ReaderAiQuickActivity extends Activity
 
   private void openDialog(ReaderAiAction autoAction)
   {
-    ReaderAiDialog.show(this, clipboardArticle(), autoAction,
-        this::clipboardArticle, this::finish);
+    ReaderAiService.Article article = articleFor(autoAction);
+    ReaderAiDialog.show(this, article, autoAction,
+        () -> articleFor(autoAction), this::finish);
+  }
+
+  /**
+   * Page actions (summaries, quiz, open chat) read the foreground page
+   * first and fall back to the clipboard; explicit clipboard actions
+   * keep clipboard-first ordering.
+   */
+  static boolean prefersPage(ReaderAiAction action)
+  {
+    switch (action)
+    {
+      case OPEN_CHAT:
+      case SUMMARY_ONE:
+      case SUMMARY_TWO:
+      case QUIZ:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private ReaderAiService.Article articleFor(ReaderAiAction action)
+  {
+    ReaderAiService.Article article = prefersPage(action)
+      ? pageThenClipboardArticle() : clipboardArticle();
+    if (article.text.trim().isEmpty())
+      Toast.makeText(this, R.string.reader_ai_clipboard_empty,
+          Toast.LENGTH_SHORT).show();
+    return article;
   }
 
   private ReaderAiService.Article clipboardArticle()
@@ -84,6 +114,19 @@ public final class ReaderAiQuickActivity extends Activity
       return new ReaderAiService.Article(null,
           getString(R.string.reader_title_clipboard), "", "", "",
           ReaderAiRequest.contentHash(result.text), result.text);
+    return pageArticle();
+  }
+
+  private ReaderAiService.Article pageThenClipboardArticle()
+  {
+    ReaderAiService.Article page = pageArticle();
+    if (!page.text.trim().isEmpty())
+      return page;
+    return clipboardArticle();
+  }
+
+  private ReaderAiService.Article pageArticle()
+  {
     String page = ReaderPageCaptureService.captureNow();
     if (!page.trim().isEmpty())
     {

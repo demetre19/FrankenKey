@@ -70,7 +70,7 @@ public class Keyboard2 extends InputMethodService
   private ReaderAiProvider _ai_provider;
   private ReaderAiSettings _ai_settings;
   private volatile int _ai_grammar_generation;
-  private volatile boolean _ai_grammar_busy;
+  private AiGrammarFixer.Runner _ai_grammar_runner;
   private String _ai_grammar_original;
   private int _ai_grammar_base = -1;
   private Runnable _ai_grammar_undo_clear;
@@ -296,6 +296,8 @@ public class Keyboard2 extends InputMethodService
     _ai_provider = new ReaderAiProvider(_ai_settings);
     _ai_grammar_executor = java.util.concurrent.Executors
       .newSingleThreadExecutor();
+    _ai_grammar_runner = new AiGrammarFixer.Runner(
+        _ai_grammar_executor, _handler);
     _voice_input = new MultimodalVoiceInput(this, _handler,
         new MultimodalVoiceInput.Callback()
         {
@@ -762,15 +764,17 @@ public class Keyboard2 extends InputMethodService
 
   /**
    * Automatic pass: when a sentence terminator lands and the cursor moves
-   * on, ask the provider to fix the just-finished sentence and apply a
-   * conservative correction in place. No strip prompt — the fix is the
-   * behavior; a short Undo banner stays available.
+   * on, ask the provider to fix the just-finished sentence. The fix is
+   * never auto-committed — it arrives on the assistant strip and applies
+   * only when the user taps Apply while the text before the cursor is
+   * still that same sentence, so an in-place rewrite can never overwrite
+   * characters typed after the request fired.
    */
   private void pump_ai_grammar(InputConnection connection,
       int oldSelStart, int newSelStart, int newSelEnd)
   {
     if (connection == null || _ai_grammar_executor == null
-        || _ai_grammar_busy || newSelStart != newSelEnd
+        || _ai_grammar_runner.busy || newSelStart != newSelEnd
         || newSelStart <= oldSelStart)
       return;
     if (!ai_grammar_eligible())
@@ -794,38 +798,46 @@ public class Keyboard2 extends InputMethodService
       return;
     final int generation = ++_ai_grammar_generation;
     final String input = sentence.text;
-    final int base = sentence.start;
-    _ai_grammar_busy = true;
-    _ai_grammar_executor.execute(() -> {
-      String corrected = null;
-      try
+    _ai_grammar_runner.submit(() ->
       {
         String response = _ai_provider.fixGrammar(grammar_prompt(), input);
         if (AiGrammarFixer.verdict(response, input)
-            == AiGrammarFixer.Verdict.OK)
-        {
-          String candidate =
-            AiGrammarFixer.sanitizeResponse(response, input);
-          if (AiGrammarFixer.conservative(input, candidate))
-            corrected = candidate;
-        }
-      }
-      catch (Exception ignored)
+            != AiGrammarFixer.Verdict.OK)
+          return new AiGrammarFixer.Outcome(null, 0);
+        String candidate =
+          AiGrammarFixer.sanitizeResponse(response, input);
+        return new AiGrammarFixer.Outcome(
+            AiGrammarFixer.conservative(input, candidate)
+              ? candidate : null, 0);
+      },
+      outcome ->
       {
-        /* Automatic pass fails silently; the explicit button reports. */
-      }
-      final String fix = corrected;
-      _handler.post(() -> {
-        _ai_grammar_busy = false;
-        if (fix != null && generation == _ai_grammar_generation)
-          apply_ai_grammar_fix(input, fix, base);
+        if (outcome.corrected != null
+            && generation == _ai_grammar_generation)
+          offer_ai_grammar_fix(input, outcome.corrected);
       });
-    });
+  }
+
+  /**
+   * Offer the automatic fix on the assistant strip. Applying revalidates
+   * that the sentence still ends the field (whitespace-only tail) so a
+   * stale offer can never rewrite text behind an actively-typing cursor.
+   */
+  private void offer_ai_grammar_fix(final String original,
+      final String corrected)
+  {
+    if (_assistant_strip == null)
+      return;
+    _assistant_strip.show(
+        getString(R.string.assistant_grammar_message, corrected),
+        getString(R.string.assistant_apply),
+        () -> apply_ai_grammar_fix(original, corrected),
+        () -> _assistant_strip.clear());
+    refresh_candidates_view();
   }
 
   /** Replace the sentence in place after revalidating editor state. */
-  private void apply_ai_grammar_fix(String original, String corrected,
-      int base)
+  private void apply_ai_grammar_fix(String original, String corrected)
   {
     InputConnection connection = getCurrentInputConnection();
     if (connection == null)
@@ -834,17 +846,14 @@ public class Keyboard2 extends InputMethodService
         original.length() + 64, 0);
     if (current == null)
       return;
-    /* The sentence must still sit right before the cursor. */
-    int trimmed = current.length();
-    while (trimmed > 0
-        && Character.isWhitespace(current.charAt(trimmed - 1)))
-      --trimmed;
-    if (trimmed < original.length()
-        || !current.subSequence(trimmed - original.length(), trimmed)
-            .toString().equals(original))
+    /* The sentence must still sit right before the cursor, with only
+       whitespace after it. Anything else means the user kept typing. */
+    int baseInField = AiGrammarFixer.matchSentenceTail(current, original);
+    if (baseInField < 0)
       return;
-    int baseInField = trimmed - original.length();
+    int trimmed = baseInField + original.length();
     connection.beginBatchEdit();
+
     boolean applied;
     try
     {
@@ -941,15 +950,10 @@ public class Keyboard2 extends InputMethodService
       return;
     }
     final String input = sentence.text;
-    final int base = sentence.start;
     final int generation = ++_ai_grammar_generation;
-    _ai_grammar_busy = true;
     Toast.makeText(this, R.string.grammar_fix_working,
         Toast.LENGTH_SHORT).show();
-    _ai_grammar_executor.execute(() -> {
-      int toastRes;
-      String corrected = null;
-      try
+    _ai_grammar_runner.submit(() ->
       {
         String response = _ai_provider.fixGrammar(grammar_prompt(), input);
         AiGrammarFixer.Verdict v = AiGrammarFixer.verdict(response, input);
@@ -957,29 +961,25 @@ public class Keyboard2 extends InputMethodService
         {
           String candidate =
             AiGrammarFixer.sanitizeResponse(response, input);
-          corrected = AiGrammarFixer.conservative(input, candidate)
+          String corrected = AiGrammarFixer.conservative(input, candidate)
             ? candidate : null;
-          toastRes = corrected != null ? 0 : R.string.grammar_fix_no_changes;
+          return new AiGrammarFixer.Outcome(corrected,
+              corrected != null ? 0 : R.string.grammar_fix_no_changes);
         }
-        else
-          toastRes = v == AiGrammarFixer.Verdict.NO_CHANGE
-            ? R.string.grammar_fix_no_changes
-            : R.string.grammar_fix_failed;
-      }
-      catch (Exception error)
+        return new AiGrammarFixer.Outcome(null,
+            v == AiGrammarFixer.Verdict.NO_CHANGE
+              ? R.string.grammar_fix_no_changes
+              : R.string.grammar_fix_failed);
+      },
+      outcome ->
       {
-        toastRes = R.string.grammar_fix_unavailable;
-      }
-      final int res = toastRes;
-      final String fix = corrected;
-      _handler.post(() -> {
-        _ai_grammar_busy = false;
-        if (fix != null && generation == _ai_grammar_generation)
-          apply_ai_grammar_fix(input, fix, base);
-        else if (res != 0)
-          Toast.makeText(Keyboard2.this, res, Toast.LENGTH_SHORT).show();
+        if (outcome.corrected != null
+            && generation == _ai_grammar_generation)
+          apply_ai_grammar_fix(input, outcome.corrected);
+        else if (outcome.toastRes != 0)
+          Toast.makeText(Keyboard2.this, outcome.toastRes,
+              Toast.LENGTH_SHORT).show();
       });
-    });
   }
 
   private Locale current_locale()
@@ -1461,12 +1461,18 @@ public class Keyboard2 extends InputMethodService
     });
   }
 
+  /**
+   * The reader/omnibutton action row is available at all times until the
+   * user starts typing: composing text or live candidates take
+   * precedence, and expanded playback controls replace it. Editor
+   * readability or emptiness never hide it — page actions do not need a
+   * readable editor.
+   */
   static boolean reader_entry_visible(boolean readerEnabled,
-      boolean readableEditor, boolean editorEmpty, boolean composing,
-      boolean hasCandidates, boolean transportVisible)
+      boolean composing, boolean hasCandidates, boolean transportVisible)
   {
-    return readerEnabled && readableEditor && editorEmpty && !composing &&
-      !hasCandidates && !transportVisible;
+    return readerEnabled && !composing && !hasCandidates
+      && !transportVisible;
   }
 
   private void update_reader_entry()
@@ -1482,7 +1488,6 @@ public class Keyboard2 extends InputMethodService
       return !transportVisible;
     if (root != _keyboard_container_view)
       return false;
-    EditorInfo editor = getCurrentInputEditorInfo();
     SharedDecoder.Presentation presentation =
       _decoder == null ? null : _decoder.current_presentation();
     boolean hasCandidates = presentation != null &&
@@ -1493,30 +1498,9 @@ public class Keyboard2 extends InputMethodService
         presentation.result.emoji != null));
     return reader_entry_visible(
         _config.reader_keyboard_controls_enabled,
-        ReaderTextAccess.isReadableEditor(editor), editor_is_empty(),
         _reader_composing, hasCandidates, transportVisible);
   }
 
-  private boolean editor_is_empty()
-  {
-    InputConnection connection = getCurrentInputConnection();
-    if (connection == null)
-      return false;
-    if (_selection_start >= 0 && _selection_end >= 0 &&
-        _selection_start != _selection_end)
-      return false;
-    try
-    {
-      CharSequence before = connection.getTextBeforeCursor(1, 0);
-      CharSequence after = connection.getTextAfterCursor(1, 0);
-      return before != null && after != null &&
-        before.length() == 0 && after.length() == 0;
-    }
-    catch (RuntimeException error)
-    {
-      return false;
-    }
-  }
 
   private int reader_error_message(ReaderTextAccess.Failure failure)
   {
@@ -1773,7 +1757,7 @@ public class Keyboard2 extends InputMethodService
     _grammar_checker.start(null, false);
     _grammar_correction = null;
     _ai_grammar_generation++;
-    _ai_grammar_busy = false;
+    _ai_grammar_runner.busy = false;
     if (_ai_grammar_undo_clear != null)
     {
       _handler.removeCallbacks(_ai_grammar_undo_clear);

@@ -144,6 +144,101 @@ final class AiGrammarFixer
     return new Sentence(base, i + 1, text);
   }
 
+  /**
+   * Revalidation guard for a pending sentence fix: returns the index where
+   * [expected] starts in [beforeCursor] when the sentence still ends the
+   * user's input, or -1 when anything else sits between the sentence and
+   * the cursor. Only whitespace may trail the sentence — any non-whitespace
+   * character means the user kept typing after the request fired and the
+   * fix must be dropped so it can never overwrite new characters.
+   */
+  static int matchSentenceTail(CharSequence beforeCursor, String expected)
+  {
+    if (beforeCursor == null || expected == null)
+      return -1;
+    int end = beforeCursor.length();
+    while (end > 0
+        && Character.isWhitespace(beforeCursor.charAt(end - 1)))
+      --end;
+    if (end < expected.length()
+        || !beforeCursor.subSequence(end - expected.length(), end)
+            .toString().equals(expected))
+      return -1;
+    return end - expected.length();
+  }
+
+  /** Result of a grammar request: a fix plus an optional toast message. */
+  static final class Outcome
+  {
+    final String corrected;
+    final int toastRes;
+
+    Outcome(String corrected_, int toastRes_)
+    {
+      corrected = corrected_;
+      toastRes = toastRes_;
+    }
+  }
+
+  /**
+   * One-at-a-time executor for automatic and manual grammar requests.
+   * [busy] is volatile and resets on every exit path — a rejected
+   * submission, a failing job, or a refused handler post can never leave
+   * the keyboard permanently locked out of grammar fixing.
+   */
+  static final class Runner
+  {
+    interface Job
+    {
+      Outcome run() throws Exception;
+    }
+
+    interface Sink
+    {
+      void accept(Outcome outcome);
+    }
+
+    private final java.util.concurrent.Executor executor;
+    private final android.os.Handler handler;
+    volatile boolean busy;
+
+    Runner(java.util.concurrent.Executor executor_, android.os.Handler handler_)
+    {
+      executor = executor_;
+      handler = handler_;
+    }
+
+    void submit(final Job job, final Sink sink)
+    {
+      busy = true;
+      try
+      {
+        executor.execute(() ->
+          {
+            final Outcome outcome;
+            try
+            {
+              outcome = job.run();
+            }
+            catch (Exception error)
+            {
+              busy = false;
+              return;
+            }
+            if (!handler.post(() -> {
+                busy = false;
+                sink.accept(outcome);
+              }))
+              busy = false;
+          });
+      }
+      catch (RuntimeException rejected)
+      {
+        busy = false;
+      }
+    }
+  }
+
   private static boolean isSentenceTerminator(char c)
   {
     return c == '.' || c == '?' || c == '!';

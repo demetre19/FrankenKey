@@ -589,32 +589,34 @@ public class ReaderActivityTest
   }
 
   @Test
-  public void keyboard_reader_actions_appear_only_for_an_empty_readable_editor()
+  public void keyboard_reader_actions_stay_visible_until_typing_starts()
   {
-    assertTrue("An enabled Reader exposes actions in an empty readable editor.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
+    assertTrue("An enabled Reader exposes actions on an idle editor.",
+        Keyboard2.reader_entry_visible(true, false, false, false));
     assertFalse("Reader actions stay absent until the user enables them.",
-        Keyboard2.reader_entry_visible(
-          false, true, true, false, false, false));
-    assertFalse("The first editor text immediately hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, false, false, false, false));
-    assertFalse("Composing text hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, true, false, false));
+        Keyboard2.reader_entry_visible(false, false, false, false));
+    assertFalse("Composing text hides the Reader actions.",
+        Keyboard2.reader_entry_visible(true, true, false, false));
     assertFalse("Visible candidates take precedence over Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, true, false));
-    assertTrue("Collapsed playback leaves the empty-editor actions available.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
+        Keyboard2.reader_entry_visible(true, false, true, false));
     assertFalse("Expanded playback controls replace the compact action row.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, true));
-    assertFalse("Private or unsupported editors never expose Reader text access.",
-        Keyboard2.reader_entry_visible(
-          true, false, true, false, false, false));
+        Keyboard2.reader_entry_visible(true, false, false, true));
+  }
+
+  @Test
+  public void keyboard_reader_actions_ignore_editor_type_and_content()
+  {
+    /* URI omniboxes, unreadable and non-empty editors still expose the
+       row — page actions work on the foreground window, not the field. */
+    assertTrue(Keyboard2.reader_entry_visible(true, false, false, false));
+  }
+
+  @Test
+  public void keyboard_reader_actions_return_when_candidates_clear()
+  {
+    assertFalse(Keyboard2.reader_entry_visible(true, false, true, false));
+    assertTrue("Clearing candidates must reveal the row again.",
+        Keyboard2.reader_entry_visible(true, false, false, false));
   }
 
   @Test

@@ -1,7 +1,8 @@
 {"tasks": [
-  {"content": "Implement EmailMemoryStore.java (email_memory credential-protected prefs, JSON v:1, 200-entry frecency eviction, corrupt-safe, lazy load, 2s debounced apply, pre-unlock unavailable)", "status": "completed"},
-  {"content": "Add EmailMemoryStoreTest.java (round-trip, frecency ordering, eviction, corrupt JSON rewrite, debounce, pre-unlock no-throw then works after unlock, NAMED_PREFS exclusion)", "status": "completed"},
-  {"content": "Run gate g1-unit-suite", "status": "completed"},
-  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "completed"},
-  {"content": "Commit + prd_step done", "status": "in_progress"}
+  {"content": "Rebase lane onto origin/main (buggy code only exists there)", "status": "completed"},
+  {"content": "Bug1: auto-grammar — offer fix via assistant strip instead of auto-commit; harden revalidation via AiGrammarFixer.matchSentenceTail; guarantee busy reset via AiGrammarFixer.Runner (rejection + job failure)", "status": "completed"},
+  {"content": "Bug2: ReaderAiQuickActivity — page-first article for SUMMARY_*/QUIZ/OPEN_CHAT, clipboard-first for LOAD_CLIPBOARD/READ_CLIPBOARD; empty-page toast", "status": "completed"},
+  {"content": "Bug3: reader_entry_visible — drop readableEditor/editorEmpty gates; row recomputed every refresh/onUpdateSelection", "status": "completed"},
+  {"content": "Tests: new AiGrammarAutoFixTest + ReaderActivityTest updates + action ordering test", "status": "completed"},
+  {"content": "self-review — adversarial pass over the diff vs the acceptance list", "kind": "self-review", "status": "in_progress"}
 ]}
