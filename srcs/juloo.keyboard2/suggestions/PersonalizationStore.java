@@ -931,6 +931,8 @@ public final class PersonalizationStore
   {
     if (word == null)
       return false;
+    if (is_email_token(word))
+      return word.codePointCount(0, word.length()) <= 64;
     int count = word.codePointCount(0, word.length());
     if (count < 2 || count > 32)
       return false;
@@ -951,6 +953,49 @@ public final class PersonalizationStore
         return false;
       apostrophe = true;
       offset = next;
+    }
+    return true;
+  }
+
+  /** Email addresses and bare domains are learnable so that typing their
+      prefix offers them in the candidate strip, like Gboard's email LM. */
+  public static boolean is_email_token(String word)
+  {
+    if (word == null)
+      return false;
+    int at = word.indexOf('@');
+    if (at >= 0)
+      return at > 0 && at == word.lastIndexOf('@')
+          && at < word.length() - 1
+          && is_email_local(word.substring(0, at))
+          && is_domainish(word.substring(at + 1));
+    return is_domainish(word);
+  }
+
+  static boolean is_email_local(String value)
+  {
+    if (value.length() == 0 || value.length() > 64)
+      return false;
+    for (int i = 0; i < value.length(); i++)
+    {
+      char c = value.charAt(i);
+      if (!Character.isLetterOrDigit(c) && c != '.' && c != '_' && c != '%'
+          && c != '+' && c != '-')
+        return false;
+    }
+    return true;
+  }
+
+  static boolean is_domainish(String value)
+  {
+    if (value.length() < 4 || value.length() > 253
+        || value.indexOf('.') < 0)
+      return false;
+    for (int i = 0; i < value.length(); i++)
+    {
+      char c = value.charAt(i);
+      if (!Character.isLetterOrDigit(c) && c != '.' && c != '-')
+        return false;
     }
     return true;
   }

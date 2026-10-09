@@ -39,6 +39,7 @@ public class CandidatesView extends LinearLayout
   DisplayRole[][] _page_roles = new DisplayRole[WORD_PAGES][WORDS_PER_PAGE];
   int _page = 0;
   Decoder.RequestKey _request_key = null;
+  boolean _email_mode = false;
 
 
   /** Text views showing the candidates in [_items]. Text views visibility is
@@ -105,6 +106,25 @@ public class CandidatesView extends LinearLayout
     if (count != 0 && _status_no_dict != null)
       _status_no_dict.setVisibility(View.GONE);
   }
+
+  /** Domain completions after '@'. When non-empty the pills own the strip
+      regardless of decoder state; taps commit directly via
+      email_suggestion_entered. */
+  public void set_email_completions(java.util.List<String> completions)
+  {
+    if (completions == null || completions.isEmpty())
+      return;
+    _email_mode = true;
+    int count = Math.min(completions.size(), WORDS_PER_PAGE * WORD_PAGES);
+    for (int i = 0; i < count; i++)
+    {
+      int page = i / WORDS_PER_PAGE;
+      int slot = i % WORDS_PER_PAGE;
+      _page_items[page][slot] = completions.get(i);
+      _page_roles[page][slot] = DisplayRole.WORD;
+    }
+    render_page(0, false);
+  }
   void update_separators()
   {
     update_separator(0, _items[2] != null && _items[0] != null);
@@ -122,6 +142,7 @@ public class CandidatesView extends LinearLayout
   void clear_candidates()
   {
     _request_key = null;
+    _email_mode = false;
     _page = 0;
     for (int page = 0; page < WORD_PAGES; page++)
       for (int slot = 0; slot < WORDS_PER_PAGE; slot++)
@@ -363,8 +384,15 @@ public class CandidatesView extends LinearLayout
           public void onClick(View _v)
           {
             String it = _items[item_index];
+            if (it == null)
+              return;
+            if (_email_mode)
+            {
+              Config.globalConfig().handler.email_suggestion_entered(it);
+              return;
+            }
             Decoder.RequestKey key = _request_key;
-            if (it == null || key == null)
+            if (key == null)
               return;
             if (_roles[item_index] == DisplayRole.LEARN_ACTION
                 || _roles[item_index] == DisplayRole.UNLEARN_ACTION)
@@ -383,7 +411,7 @@ public class CandidatesView extends LinearLayout
           public boolean onTouch(View _v, MotionEvent event)
           {
             Decoder.RequestKey key = _request_key;
-            if (key == null)
+            if (key == null && !_email_mode)
               return false;
             switch (event.getActionMasked())
             {
@@ -403,6 +431,12 @@ public class CandidatesView extends LinearLayout
                 if (_roles[item_index] == DisplayRole.LEARNED_FEEDBACK
                     || _roles[item_index] == DisplayRole.UNLEARNED_FEEDBACK)
                   return true;
+                if (_email_mode)
+                {
+                  if (dy >= 0)
+                    Config.globalConfig().handler.email_suggestion_entered(it);
+                  return true;
+                }
                 if (dy < 0 || _roles[item_index] == DisplayRole.LEARN_ACTION
                     || _roles[item_index] == DisplayRole.UNLEARN_ACTION)
                   Config.globalConfig().handler.suggestion_swiped_up(key, it);

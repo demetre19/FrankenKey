@@ -376,6 +376,7 @@ public final class Config
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(Decoder.RequestKey key, String text);
     public void suggestion_swiped_up(Decoder.RequestKey key, String text);
+    public void email_suggestion_entered(String text);
     public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();

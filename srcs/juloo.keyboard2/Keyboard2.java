@@ -73,6 +73,9 @@ public class Keyboard2 extends InputMethodService
   private SharedDecoder _decoder;
   private KeyEventHandler _keyeventhandler;
   private long _decoder_session = 0;
+  private juloo.keyboard2.suggestions.PersonalizationStore _email_store;
+  private long _email_store_loaded_at = 0;
+  private boolean _email_completions_active = false;
   private SharedDecoder.ResourceSpec _resource_spec =
     SharedDecoder.ResourceSpec.empty("none:0");
   private SharedDecoder.PersonalizationSpec _personalization_spec =
@@ -1244,7 +1247,7 @@ public class Keyboard2 extends InputMethodService
 
   private boolean reader_actions_visible(View root, boolean transportVisible)
   {
-    if (!_config.reader_keyboard_controls_enabled)
+    if (!_config.reader_keyboard_controls_enabled || _email_completions_active)
       return false;
     if (root == _clipboard_pane)
       return !transportVisible;
@@ -1909,7 +1912,8 @@ public class Keyboard2 extends InputMethodService
     @Override
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {
-      if (_candidates_view != null)
+      update_email_completions();
+      if (!_email_completions_active && _candidates_view != null)
         _candidates_view.set_decoder_state(_decoder.current_presentation());
       update_reader_entry();
     }
@@ -1952,6 +1956,45 @@ public class Keyboard2 extends InputMethodService
             ? "" : presentation.result.emoji;
       }
       return "";
+    }
+
+    /** Domain pills while composing "local@domain". Owns the candidate slot
+        whenever the editor text ends in an email being typed. */
+    private void update_email_completions()
+    {
+      java.util.List<String> completions = new java.util.ArrayList<String>();
+      InputConnection conn = getCurrentInputConnection();
+      if (conn != null && _config != null
+          && _config.suggestions_enabled
+          && _config.editor_config != null
+          && _config.editor_config.should_use_typing_assistance)
+      {
+        CharSequence before = conn.getTextBeforeCursor(80, 0);
+        completions = juloo.keyboard2.suggestions.EmailCompletions.suggest(
+            before, email_store_learned());
+      }
+      _email_completions_active = !completions.isEmpty();
+      if (_email_completions_active && _candidates_view != null)
+      {
+        _candidates_view.setVisibility(View.VISIBLE);
+        _candidates_view.set_decoder_state(_decoder.current_presentation());
+        _candidates_view.set_email_completions(completions);
+      }
+    }
+
+    private java.util.List<String> email_store_learned()
+    {
+      SharedPreferences prefs = credential_personalization_preferences();
+      if (prefs == null)
+        return null;
+      long now = android.os.SystemClock.uptimeMillis();
+      if (_email_store == null || now - _email_store_loaded_at > 5000)
+      {
+        _email_store =
+          new juloo.keyboard2.suggestions.PersonalizationStore(prefs);
+        _email_store_loaded_at = now;
+      }
+      return _email_store.learned_words();
     }
 
   }

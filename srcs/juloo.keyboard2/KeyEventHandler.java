@@ -570,6 +570,16 @@ public final class KeyEventHandler
           false);
   }
 
+  /** Domain pill tapped while composing an email address: append the domain
+      (or replace the partial domain after '@') — no decoder request needed. */
+  @Override
+  public void email_suggestion_entered(String text)
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    commit_correction(text, " ", false);
+  }
+
   @Override
   public void suggestion_swiped_up(Decoder.RequestKey key, String text)
   {
@@ -864,7 +874,30 @@ public final class KeyEventHandler
       _current_request_key = null;
       return;
     }
+    if (snapshot.word.length() == 0 && !snapshot.hasSelection
+        && _config.editor_config.should_use_personalization)
+      learn_email_before_cursor();
     _current_request_key = _decoder.request(_decoder_session, snapshot);
+  }
+
+  /** When the user finishes an email address (boundary after local@domain),
+      teach it and its domain to the personalization model so both appear as
+      suggestions later. */
+  private void learn_email_before_cursor()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(80, 0);
+    String email = juloo.keyboard2.suggestions.EmailCompletions
+        .trailing_email(before);
+    if (email == null)
+      return;
+    _decoder.learn_word(_decoder_session, email);
+    String domain = juloo.keyboard2.suggestions.EmailCompletions
+        .domain_of(email);
+    if (domain != null)
+      _decoder.learn_word(_decoder_session, domain);
   }
 
   @Override
