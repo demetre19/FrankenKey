@@ -13,6 +13,7 @@
     <Preference android:key="typing_assistance_status" android:title="@string/pref_typing_assistance_status_title" android:selectable="false"/>
     <Preference android:key="manage_learned_words" android:title="@string/pref_manage_learned_words_title" android:summary="@string/pref_manage_learned_words_summary"/>
     <Preference android:key="reader_tts_options" android:title="Reader voice &amp; TTS options" android:summary="Open the Reader controls: voice picker, preview, network voices, and speech speed." android:icon="@drawable/ic_reader_ai" android:iconSpaceReserved="true"/>
+    <SwitchPreference android:key="contact_email_suggestions" android:title="@string/contact_email_suggestions_title" android:summary="@string/contact_email_suggestions_summary" android:defaultValue="false"/>
     <Preference android:key="clear_typing_assistance_data" android:title="@string/pref_clear_typing_assistance_title" android:summary="@string/pref_clear_typing_assistance_summary"/>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_updates">

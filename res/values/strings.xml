@@ -112,6 +112,14 @@
     <string name="voice_typing_permission_continue">Continue</string>
     <string name="voice_typing_permission_denied">Microphone permission is required for multimodal voice typing</string>
     <string name="voice_typing_unavailable">On-keyboard speech recognition is not available on this device</string>
+    <string name="contact_email_suggestions_title">Suggest email addresses</string>
+    <string name="contact_email_suggestions_summary">Learn email addresses and domains from your contacts so they appear as suggestions while typing.</string>
+    <string name="contacts_permission_title">Use contacts for email suggestions?</string>
+    <string name="contacts_permission_message">FrankenKey reads your contacts’ email addresses and learns them on-device so they appear in the suggestion strip. Contacts are never uploaded.</string>
+    <string name="contacts_permission_continue">Continue</string>
+    <string name="contacts_permission_denied">Contacts permission was denied</string>
+    <string name="contacts_import_done">Learned %1$d email addresses from contacts</string>
+    <string name="contacts_import_empty">No contact emails found</string>
     <string name="pref_typing_assistance_status_title">Adaptive learning status</string>
     <string name="pref_typing_assistance_status_empty">Private adaptive accuracy stays on this device. No taught words, correction rules, correction patterns, or touch calibration are saved.</string>
     <string name="pref_typing_assistance_status_with_learning">Private adaptive accuracy: %1$d taught or correction-backed words, %2$d correction patterns and rules, %3$d touch calibration samples. All data stays on this device.</string>
