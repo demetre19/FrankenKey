@@ -215,19 +215,19 @@ final class AiGrammarFixer
       {
         executor.execute(() ->
           {
-            final Outcome outcome;
+            Outcome outcome = null;
             try
             {
               outcome = job.run();
             }
             catch (Exception error)
             {
-              busy = false;
-              return;
+              /* Reported through a null outcome below. */
             }
+            final Outcome delivered = outcome;
             if (!handler.post(() -> {
                 busy = false;
-                sink.accept(outcome);
+                sink.accept(delivered);
               }))
               busy = false;
           });

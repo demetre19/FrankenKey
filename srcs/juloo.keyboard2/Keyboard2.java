@@ -812,7 +812,7 @@ public class Keyboard2 extends InputMethodService
       },
       outcome ->
       {
-        if (outcome.corrected != null
+        if (outcome != null && outcome.corrected != null
             && generation == _ai_grammar_generation)
           offer_ai_grammar_fix(input, outcome.corrected);
       });
@@ -973,7 +973,10 @@ public class Keyboard2 extends InputMethodService
       },
       outcome ->
       {
-        if (outcome.corrected != null
+        if (outcome == null)
+          Toast.makeText(Keyboard2.this, R.string.grammar_fix_unavailable,
+              Toast.LENGTH_SHORT).show();
+        else if (outcome.corrected != null
             && generation == _ai_grammar_generation)
           apply_ai_grammar_fix(input, outcome.corrected);
         else if (outcome.toastRes != 0)

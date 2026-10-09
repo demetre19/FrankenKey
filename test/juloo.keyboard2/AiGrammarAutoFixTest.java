@@ -1,7 +1,6 @@
 package juloo.keyboard2;
 
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import android.os.Handler;
 import android.os.Looper;
@@ -45,11 +44,13 @@ public class AiGrammarAutoFixTest
     Handler handler = new Handler(Looper.getMainLooper());
     AiGrammarFixer.Runner runner = new AiGrammarFixer.Runner(
         Runnable::run, handler);
-    AtomicBoolean delivered = new AtomicBoolean(false);
+    AtomicReference<AiGrammarFixer.Outcome> seen = new AtomicReference<>();
     runner.submit(() -> { throw new java.io.IOException("offline"); },
-        outcome -> delivered.set(true));
+        seen::set);
+    Shadows.shadowOf(Looper.getMainLooper()).idle();
     assertFalse(runner.busy);
-    assertFalse(delivered.get());
+    assertNull("A failed job surfaces a null outcome so callers can toast.",
+        seen.get());
   }
 
   @Test
