@@ -470,14 +470,10 @@ public class ReaderActivityTest
         R.drawable.ic_reader_ai,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_ai, "src"));
-    assertEquals("Read Clipboard uses the clipboard icon.",
-        R.drawable.ic_clipboard_paste,
+    assertEquals("Fix grammar uses the pen-line icon.",
+        R.drawable.snippet_icon_pen_line,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_clipboard, "src"));
-    assertEquals("Library uses the file icon.",
-        R.drawable.snippet_icon_file_text,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_library, "src"));
+          R.id.reader_transport_fix_grammar, "src"));
     int halfGap = actionGap / 2;
     for (View action : stripActions)
     {
@@ -492,14 +488,14 @@ public class ReaderActivityTest
         actions.indexOfChild(voice));
     assertEquals("Settings follows Voice.", 1,
         actions.indexOfChild(settings));
-    assertEquals("AI stays centered between Reader actions.", 2,
-        actions.indexOfChild(ai));
-    assertEquals("Fix grammar is the compact icon between AI and Read.", 3,
+    assertEquals("Fix grammar is the compact icon after Settings.", 2,
         actions.indexOfChild(fixGrammar));
-    assertEquals("Read follows Fix grammar.", 4,
+    assertEquals("Read follows Fix grammar.", 3,
         actions.indexOfChild(clipboard));
-    assertEquals("Library stays last in the centered action group.", 5,
+    assertEquals("Library follows Read.", 4,
         actions.indexOfChild(library));
+    assertEquals("AI stays last on the right edge.", 5,
+        actions.indexOfChild(ai));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
     assertTrue("The action group fills normal screens so it can stay centered.",

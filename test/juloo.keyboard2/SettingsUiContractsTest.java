@@ -33,6 +33,8 @@ public class SettingsUiContractsTest
         "Show sentence-level fixes from Android’s selected grammar service. Text leaves FrankenKey only when you enable this." },
       { "ai_auto_grammar", "pref_ai_auto_grammar_summary",
         "Automatically fix grammar when you finish a sentence. Requires configured AI credentials; text is sent to the selected provider." },
+      { "ti_grammar_offline_rules", "pref_grammar_offline_summary",
+        "Checks each sentence on your phone for common mix-ups like your/you’re, could of, or a/an, and offers a one-tap fix. Nothing leaves your phone." },
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",
