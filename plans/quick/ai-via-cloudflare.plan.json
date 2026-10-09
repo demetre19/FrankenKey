@@ -1,0 +1,47 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "assembleDebug",
+        "testDebugUnitTest",
+        "--parallel",
+        "--max-workers=6",
+        "-x",
+        "lint"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Port SpeedyWatch's Cloudflare AI provider to FrankenKey. Contract (proven at SpeedyWatch v0.53+/v0.61, file app/src/main/java/com/speedywatch/app/AiEndpoint.java + SpeedyWatchSettings.java): POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions \u2014 OpenAI-shaped request/response; static @cf/* model catalog (default @cf/meta/llama-3.1-8b-instruct-fp8-fast); account ID (non-secret, in prefs) + API token (Keystore AES-GCM) as a selectable provider alongside OpenRouter (Cloudflare = default). Apply to: (1) AI Writing model setting \u2014 dropdown picker fed by the static CF catalog, replacing the empty EditText modal; (2) Fix grammar \u2014 AUTOMATIC real-time corrections as the user types (per user: NOT a button \u2014 continuous in typing flow); (3) Reader summaries/chat/quiz \u2014 same provider path. Credential storage pattern identical to SpeedyWatch (Keystore-encrypted token, plain account ID). User's creds exist and are verified working (account 0ca80ee3..., cfat token \u2014 do NOT hardcode them; read from settings at runtime). The empty 'AI writing model' modal currently shows nothing \u2014 fix the settings surface to a functioning model picker."
+      ],
+      "depends_on": [],
+      "goal": "Port SpeedyWatch's Cloudflare AI provider to FrankenKey: POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions (OpenAI-shaped), static @cf/* model catalog, Keystore-encrypted token + plain account ID, selectable provider alongside OpenRouter with Cloudflare as default \u2014 covering AI Writing model picker, automatic fix-grammar as-you-type, and reader summaries/chat/quiz.",
+      "id": "ai-via-cloudflare",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Port SpeedyWatch's Cloudflare AI provider to FrankenKey. Contract (proven at SpeedyWatch v0.53+/v0.61, file app/src/main/java/com/speedywatch/app/AiEndpoint.java + SpeedyWatchSettings.java): POST http",
+      "write_paths": [
+        "srcs/juloo.keyboard2/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

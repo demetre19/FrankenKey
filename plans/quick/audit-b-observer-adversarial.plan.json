@@ -1,0 +1,40 @@
+{
+  "goal": "Adversarial review of the just-merged b-observer lane in FK S3 — hunt for telemetry/observer code that duplicates or corrupts committed text, locks held across InputConnection commits or voice session boundaries. Report-only audit: findings under audit/, lessons under lessons/.",
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "git",
+        "log",
+        "--oneline",
+        "-1"
+      ],
+      "covered_paths": [
+        "audit/",
+        "lessons/"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Adversarial review of the just-merged b-observer lane in run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224. Operator-ordered quality bar: attack the merge before we ship the APK to the phone. Read the lane diff (b-observer branch vs its base), its brief.md and result.json under /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/lanes/b-observer/, and the current autobuild/frankenkey-autocorrect-suggestions integration tip. Hunt specifically for: (1) observer/telemetry code that runs on the input path and could duplicate or corrupt committed text; (2) anything that holds a lock/flag across InputConnection commits or voice session boundaries \u2014 user reports keyboard lockup after voice typing until send is pressed; (3) state that assumes the editor never changes under it; (4) swallowed exceptions leaving sticky flags. Write the verdict as audit/audit-b-observer-adversarial.md with REPRODUCES/REFUTES per finding and a final severity table. This is an audit \u2014 fix NOTHING in srcs/."
+      ],
+      "goal": "Adversarial review of the just-merged b-observer lane in run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224. Operator-ordered quality bar: attack the merge before we ship the APK to the phone. Read the lane diff (b-observer branch vs its base), its brief.md and result.json under /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/lanes/b-observer/, and the current autobuild/frankenkey-autocorrect-suggestions integration tip. Hunt specifically for: (1) observer/telemetry code that runs on the input path and could duplicate or corrupt committed text; (2) anything that holds a lock/flag across InputConnection commits or voice session boundaries \u2014 user reports keyboard lockup after voice typing until send is pressed; (3) state that assumes the editor never changes under it; (4) swallowed exceptions leaving sticky flags. Write the verdict as audit/audit-b-observer-adversarial.md with REPRODUCES/REFUTES per finding and a final severity table. This is an audit \u2014 fix NOTHING in srcs/.",
+      "depends_on": [],
+      "non_goals": ["modify source code — this is a read-only audit", "merge or land anything"],
+      "evidence": "lane diff vs base, brief.md + result.json under the run dir, integration tip on autobuild/frankenkey-autocorrect-suggestions",
+      "mode": "audit",
+      "weight": "medium",
+      "id": "audit-b-observer-adversarial",
+      "title": "Adversarial review of the just-merged b-observer lane in run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224. Operator-ordered quality bar: attack the merge before we ship the APK to ",
+      "write_paths": [
+        "audit/",
+        "lessons/"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

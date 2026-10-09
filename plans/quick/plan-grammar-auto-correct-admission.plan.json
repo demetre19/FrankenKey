@@ -1,0 +1,36 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "python3",
+        "/Users/apple/Developer/prd-herdr/src/crew/cli.py",
+        "plan",
+        "--check",
+        "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect/plans/quick/grammar-auto-correct.plan.json",
+        "--light"
+      ],
+      "covered_paths": [
+        "plans/quick/grammar-auto-correct.plan.json",
+        "plans/admission/"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Bring the queued plan plans/quick/grammar-auto-correct.plan.json through plan admission (currently refuses: no goal field, no gate-bound done-condition, triages medium needing TOP-DOG decomposition, no adversarial review stamp). Work: (1) decompose the operator's grammar-auto-correct directive (auto-apply mode for the GrammarRules engine behind ti_grammar_auto_apply pref default ON with 5s Undo affordance; restore always-visible assistant strip; manual Fix/Ignore remains for non-qualifying issues) into leaf lanes each with goal, mode, weight, and a concrete gate-bound done-condition; (2) stamp the decomposition admission on that plan file; (3) adversarial review then stamp the review admission with verdict pass (or fail with honest findings); (4) crew plan --check on the plan must exit 0 with zero violations. Do NOT implement the feature \u2014 plan admission only. When done: crew learn machinery plan-grammar-auto-correct-admission 'medium plan refused admission needs TOP-DOG decomposition plus adversarial review stamps' and cite the lesson path in your report; then land with crew land-manual --review pass"
+      ],
+      "goal": "Bring the queued plan plans/quick/grammar-auto-correct.plan.json through plan admission (currently refuses: no goal field, no gate-bound done-condition, triages medium needing TOP-DOG decomposition, no adversarial review stamp). Work: (1) decompose the operator's grammar-auto-correct directive (auto-apply mode for the GrammarRules engine behind ti_grammar_auto_apply pref default ON with 5s Undo affordance; restore always-visible assistant strip; manual Fix/Ignore remains for non-qualifying issues) into leaf lanes each with goal, mode, weight, and a concrete gate-bound done-condition; (2) stamp the decomposition admission on that plan file; (3) adversarial review then stamp the review admission with verdict pass (or fail with honest findings); (4) crew plan --check on the plan must exit 0 with zero violations. Do NOT implement the feature \u2014 plan admission only. When done: crew learn machinery plan-grammar-auto-correct-admission 'medium plan refused admission needs TOP-DOG decomposition plus adversarial review stamps' and cite the lesson path in your report; then land with crew land-manual --review pass",
+      "id": "plan-grammar-auto-correct-admission",
+      "title": "Bring the queued plan plans/quick/grammar-auto-correct.plan.json through plan admission (currently refuses: no goal field, no gate-bound done-condition, triages medium needing TOP-DOG decomposition, n",
+      "write_paths": [
+        "plans/quick/grammar-auto-correct.plan.json",
+        "plans/admission/"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

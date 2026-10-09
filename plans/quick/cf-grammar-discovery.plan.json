@@ -1,0 +1,42 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "true"
+      ],
+      "covered_paths": [
+        "reports/",
+        "audit/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "DISCOVERY (TOP-DOG, report-only, no code): design FrankenKey's AI grammar pipeline on Cloudflare, mirroring SpeedyWatch's proven setup. Research questions: (1) SpeedyWatch contract \u2014 read /Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV for the SpeedyWatch source (app/src/main/java/com/speedywatch/app/AiEndpoint.java + SpeedyWatchSettings.java) and document exactly: POST https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions, OpenAI-shaped body, auth header, static @cf/* model catalog, how account ID (non-secret pref) + API token (Keystore AES-GCM) are stored and entered in settings; (2) model choice \u2014 which @cf/* model is fastest for short-sentence grammar correction today (@cf/meta/llama-3.1-8b-instruct-fp8-fast vs llama-3.2-3b vs phi/qwen variants); latency budget for a 15-25-word sentence round-trip; (3) architecture \u2014 how sentence-level grammar correction should work end-to-end: trigger points (sentence completion vs word boundary), sliding window size (operator requires whole sentences, NOT 8-word windows), debounce/cancellation (latest-wins), auto-apply vs strip prompt, diff/preview, revalidation, Undo; how it composes with the existing offline GrammarRules engine and the E-Grammar acceptance in the run context dir (E-Grammar.md at /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/context/); (4) privacy/UX \u2014 default provider = Cloudflare (operator directive, replacing OpenRouter default); settings UX identical to SpeedyWatch (account ID + API token fields, model picker); disclosure text; credential storage via Android Keystore; (5) FrankenKey integration points \u2014 ReaderAiSettings/ReaderAiOpenRouter/AiGrammarFixer equivalents; whether the ai-via-cloudflare queued plan (plans/quick/ai-via-cloudflare.plan.json) already covers the provider port and how grammar rides it; (6) risks \u2014 free-tier 10k neurons/day account-wide cap, offline fallback, rate limits, network-down behavior. Credentials already on this machine: account ID 0ca80ee3755f22c20a644c1f9f479c75 + cfat Workers AI token (DEV-WORK/SECRETS/Cloud Flare/) \u2014 cite file paths, never the secrets. Deliverable: a durable report in the run's reports/ or audit/ dir plus a concrete implementation plan (lanes, files, acceptance) the boss can dispatch."
+      ],
+      "depends_on": [],
+      "id": "cf-grammar-discovery",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "DISCOVERY (TOP-DOG, report-only, no code): design FrankenKey's AI grammar pipeline on Cloudflare, mirroring SpeedyWatch's proven setup. Research questions: (1) SpeedyWatch contract \u2014 read /Users/apple",
+      "write_paths": [
+        "reports/",
+        "audit/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

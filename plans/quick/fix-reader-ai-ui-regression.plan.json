@@ -1,0 +1,46 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "git",
+        "log",
+        "--oneline",
+        "-1"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/ReaderAiAction.java",
+        "srcs/juloo.keyboard2/ReaderAiButtonController.java",
+        "srcs/juloo.keyboard2/ReaderAiDialog.java",
+        "srcs/juloo.keyboard2/ReaderAiSettingsDialog.java",
+        "res/values/strings.xml",
+        "test/",
+        "tasks.json",
+        "lessons/"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Operator reports the merged build restored old UI surface in the candidate/action row. Fix: (1) the FIX_GRAMMAR action button must be small/optional \u2014 it currently occupies a wide slot in the action strip; make it a compact icon or settings-toggled (ti_grammar_* pref already exists). (2) READ_CLIPBOARD label \u2014 change res/values/strings.xml reader_ai_action_read_clipboard to just \"Read\". (3) Remove the \"AI Writing model\" modal \u2014 ReaderAiDialog or ReaderAiSettingsDialog pops a model-selection field blocking typing; the operator says CF AI fixed this, the modal must not appear automatically (only via explicit settings). Match the row layout so all actions fit without scrolling. Target: autobuild/frankenkey-autocorrect-suggestions (merged tip f2f5d27)."
+      ],
+      "goal": "Operator reports the merged build restored old UI surface in the candidate/action row. Fix: (1) the FIX_GRAMMAR action button must be small/optional \u2014 it currently occupies a wide slot in the action strip; make it a compact icon or settings-toggled (ti_grammar_* pref already exists). (2) READ_CLIPBOARD label \u2014 change res/values/strings.xml reader_ai_action_read_clipboard to just \"Read\". (3) Remove the \"AI Writing model\" modal \u2014 ReaderAiDialog or ReaderAiSettingsDialog pops a model-selection field blocking typing; the operator says CF AI fixed this, the modal must not appear automatically (only via explicit settings). Match the row layout so all actions fit without scrolling. Target: autobuild/frankenkey-autocorrect-suggestions (merged tip f2f5d27).",
+      "id": "fix-reader-ai-ui-regression",
+      "title": "Operator reports the merged build restored old UI surface in the candidate/action row. Fix: (1) the FIX_GRAMMAR action button must be small/optional \u2014 it currently occupies a wide slot in the action s",
+      "write_paths": [
+        "srcs/juloo.keyboard2/ReaderAiAction.java",
+        "srcs/juloo.keyboard2/ReaderAiButtonController.java",
+        "srcs/juloo.keyboard2/ReaderAiDialog.java",
+        "srcs/juloo.keyboard2/ReaderAiSettingsDialog.java",
+        "res/values/strings.xml",
+        "test/",
+        "tasks.json",
+        "lessons/"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

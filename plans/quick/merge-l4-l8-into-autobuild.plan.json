@@ -1,0 +1,37 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "covered_paths": [
+        "srcs/",
+        "test/",
+        "tasks.json",
+        "lessons/"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Merge the two finished lane branches into autobuild/frankenkey-autocorrect-suggestions and push. Branches: origin/lane/2IC/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/b-observer (L4) and origin/lane/2IC/fix-omni-grammar-lockup-2-20261009-050545/fix-omni-grammar-lockup (L8). Work in a fresh worktree branched off origin/autobuild/frankenkey-autocorrect-suggestions. For each branch: git merge --no-ff, resolve conflicts. Rules: (1) protected files gradle.properties and build.gradle.kts \u2014 keep OURS (the target tip versions); do not carry lane versions. (2) EmailToken.java add/add \u2014 L4 version has public MAX_TOKEN_UNITS, take THEIRS. (3) INDEX.md files (lessons/, reports/, machinery) \u2014 union of both sides. (4) tasks.json \u2014 union, both lane entries marked complete. Run a build sanity check if feasible (assembleDebug or at least gradle tasks parse). Push result to origin autobuild/frankenkey-autocorrect-suggestions. Report the merged sha in your closing."
+      ],
+      "goal": "Merge the two finished lane branches into autobuild/frankenkey-autocorrect-suggestions and push. Branches: origin/lane/2IC/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/b-observer (L4) and origin/lane/2IC/fix-omni-grammar-lockup-2-20261009-050545/fix-omni-grammar-lockup (L8). Work in a fresh worktree branched off origin/autobuild/frankenkey-autocorrect-suggestions. For each branch: git merge --no-ff, resolve conflicts. Rules: (1) protected files gradle.properties and build.gradle.kts \u2014 keep OURS (the target tip versions); do not carry lane versions. (2) EmailToken.java add/add \u2014 L4 version has public MAX_TOKEN_UNITS, take THEIRS. (3) INDEX.md files (lessons/, reports/, machinery) \u2014 union of both sides. (4) tasks.json \u2014 union, both lane entries marked complete. Run a build sanity check if feasible (assembleDebug or at least gradle tasks parse). Push result to origin autobuild/frankenkey-autocorrect-suggestions. Report the merged sha in your closing.",
+      "id": "merge-l4-l8-into-autobuild",
+      "title": "Merge the two finished lane branches into autobuild/frankenkey-autocorrect-suggestions and push. Branches: origin/lane/2IC/prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224/b-observer (",
+      "write_paths": [
+        "srcs/",
+        "test/",
+        "tasks.json",
+        "lessons/"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}
