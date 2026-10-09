@@ -2334,6 +2334,11 @@ public class Keyboard2 extends InputMethodService
       return _handler;
     }
 
+    public android.content.Context getContext()
+    {
+      return Keyboard2.this;
+    }
+
     @Override
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {

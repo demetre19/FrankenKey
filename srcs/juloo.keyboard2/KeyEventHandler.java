@@ -70,6 +70,13 @@ public final class KeyEventHandler
       [space_gesture_hooks]; empty by default. */
   private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
     new ArrayList<Pointers.SpaceGestureHook>();
+  /** Email learning observer (B-F4); null when no Context is available. */
+  private juloo.keyboard2.suggestions.email.EmailLearningObserver
+    _email_learning = null;
+  /** Editor the FIELD learning check refers to; captured at [started]. */
+  private EditorInfo _email_field_info = null;
+  /** Field text at focus; FIELD learning skips unchanged pre-filled text. */
+  private String _email_field_start_text = null;
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
   /** Incremented to invalidate a posted delayed DEL fallback; see
       [schedule_backspace_fallback]. */
@@ -245,6 +252,23 @@ public final class KeyEventHandler
       };
     _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
     _suggestion_acceptor.register(CandidateRole.UNLEARN_ACTION, learn);
+    /* B-F4 SELECTED (+2): tapping an EMAIL_ADDRESS candidate learns it.
+       EMAIL_DOMAIN taps carry no learning event; the FIELD row at finish
+       records the completed address. */
+    SuggestionAcceptor.Action email_selected =
+      new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          if (_email_learning != null)
+            _email_learning.onAddressSelected(
+                _recv.getCurrentInputEditorInfo(), text);
+          suggestion_entered(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.EMAIL_ADDRESS,
+        email_selected);
   }
 
   /**
@@ -364,6 +388,73 @@ public final class KeyEventHandler
       conf.editor_config.should_move_cursor_force_fallback;
     _autocorrect_enabled = conf.autocorrect_enabled;
     _delete_selection = null;
+    /* Email learning (B-F4): snapshot eligible fields so finish can compare
+       against pre-filled text. */
+    if (_email_learning == null && _recv.getContext() != null)
+      _email_learning = juloo.keyboard2.suggestions.email
+        .EmailLearningObserver.create(_recv.getContext(),
+            Config.globalConfig() == null ? null : Config.globalPrefs());
+    EditorInfo info = _recv.getCurrentInputEditorInfo();
+    _email_field_info = null;
+    _email_field_start_text = null;
+    if (info != null
+        && juloo.keyboard2.suggestions.email.EmailLearningObserver
+            .is_email_field(info))
+    {
+      _email_field_info = info;
+      ExtractedText start = ic == null ? null : get_cursor_pos(ic);
+      _email_field_start_text =
+        start == null || start.text == null ? null : start.text.toString();
+    }
+  }
+
+  /** FIELD (+2): evaluate whole-field text at finish against the start
+      snapshot. Safe to call from [finished] and IME action send. */
+  private void learn_email_field_text()
+  {
+    EditorInfo info = _email_field_info;
+    _email_field_info = null;
+    String start_text = _email_field_start_text;
+    _email_field_start_text = null;
+    if (info == null || _email_learning == null)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    ExtractedTextRequest req = new ExtractedTextRequest();
+    req.hintMaxChars = 512;
+    ExtractedText finish = conn.getExtractedText(req, 0);
+    String finish_text =
+      finish == null || finish.text == null ? null : finish.text.toString();
+    _email_learning.onFieldFinished(info, start_text, finish_text);
+  }
+
+  /** PROSE (+1): when a separator completed a token, offer it to the email
+      observer. [strip_separator] is true when the separator was just
+      committed and still sits before the cursor. */
+  private void learn_prose_email_token(boolean strip_separator)
+  {
+    if (_email_learning == null)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(
+        juloo.keyboard2.suggestions.email.EmailToken.MAX_TOKEN_UNITS + 2, 0);
+    if (before == null)
+      return;
+    String text = before.toString();
+    if (strip_separator && !text.isEmpty()
+        && (text.charAt(text.length() - 1) == ' '
+            || text.charAt(text.length() - 1) == ','
+            || text.charAt(text.length() - 1) == ';'))
+      text = text.substring(0, text.length() - 1);
+    juloo.keyboard2.suggestions.email.EmailToken parsed =
+      juloo.keyboard2.suggestions.email.EmailToken.parse(text, "");
+    if (parsed == null || parsed.token.isEmpty())
+      return;
+    _email_learning.onProseSeparator(
+        _recv.getCurrentInputEditorInfo(), parsed.token);
   }
 
   public void finished()
@@ -374,6 +465,7 @@ public final class KeyEventHandler
     _manual_correction = null;
     _skip_next_word_learning = false;
     _delete_selection = null;
+    learn_email_field_text();
     _autocap.finished();
     _typedword.finished();
     if (_decoder_session != 0)
@@ -671,7 +763,13 @@ public final class KeyEventHandler
     if (!has_command_modifier(mods) && _config != null
         && _config.editor_config.has_editor_action && conn != null
         && conn.performEditorAction(_config.editor_config.actionId))
+    {
+      /* An IME action (Send/Next/Go/Done) finishes the field. */
+      learn_email_field_text();
       return;
+    }
+    /* Enter is a prose separator: it completes the token before it. */
+    learn_prose_email_token(false);
     send_key_down_up(KeyEvent.KEYCODE_ENTER);
   }
 
@@ -2686,6 +2784,7 @@ public final class KeyEventHandler
       if (_decoder_session != 0)
         _decoder.invalidate(_decoder_session);
       send_text(separator);
+      learn_prose_email_token(true);
       clear_manual_correction();
       _skip_next_word_learning = true;
       return;
@@ -2697,6 +2796,7 @@ public final class KeyEventHandler
       if (_decoder_session != 0)
         _decoder.invalidate(_decoder_session);
       send_text(separator);
+      learn_prose_email_token(true);
       clear_manual_correction();
       _skip_next_word_learning = true;
       return;
@@ -2787,6 +2887,7 @@ public final class KeyEventHandler
         && _decoder_session != 0)
       _decoder.invalidate(_decoder_session);
     clear_manual_correction();
+    learn_prose_email_token(true);
     _skip_next_word_learning = false;
   }
 
@@ -2994,6 +3095,8 @@ public final class KeyEventHandler
     public InputConnection getCurrentInputConnection();
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();
+    /** Service context for components that need one (email learning). */
+    public default android.content.Context getContext() { return null; }
   }
 
   class Autocapitalisation_callback implements Autocapitalisation.Callback

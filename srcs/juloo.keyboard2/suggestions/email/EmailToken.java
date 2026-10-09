@@ -48,7 +48,7 @@ public final class EmailToken
   }
 
   /** Maximum token length to scan, in UTF-16 units; also the address cap. */
-  static final int MAX_TOKEN_UNITS = 254;
+  public static final int MAX_TOKEN_UNITS = 254;
 
   /**
    * Parse the token ending at the cursor. Returns null when there is no email
