@@ -1916,8 +1916,6 @@ public class Keyboard2 extends InputMethodService
     public void decoder_state_changed(SharedDecoder.Presentation state)
     {
       update_email_completions();
-      if (!_email_completions_active && _candidates_view != null)
-        _candidates_view.set_decoder_state(_decoder.current_presentation());
       update_reader_entry();
     }
 
@@ -1977,10 +1975,11 @@ public class Keyboard2 extends InputMethodService
             before, email_store_learned());
       }
       _email_completions_active = !completions.isEmpty();
-      if (_email_completions_active && _candidates_view != null)
+      if (_candidates_view != null)
+        _candidates_view.set_decoder_state(_decoder.current_presentation());
+      if (_email_completions_active)
       {
         _candidates_view.setVisibility(View.VISIBLE);
-        _candidates_view.set_decoder_state(_decoder.current_presentation());
         _candidates_view.set_email_completions(completions);
       }
     }
