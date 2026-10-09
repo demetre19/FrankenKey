@@ -5,6 +5,10 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:visibility="gone"/>
+  <juloo.keyboard2.snippets.SnippetRowView android:id="@+id/snippet_row" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+  <!-- The candidate row and the reader action strip occupy the same slot
+       directly under the snippet row; only one is visible at a time, so
+       swapping them never shifts the rows above or below. -->
   <juloo.keyboard2.suggestions.CandidatesView android:id="@+id/candidates_view" style="@style/candidates_view">
     <TextView android:id="@+id/candidates_emoji" style="@style/candidates_emoji"/>
     <TextView android:id="@+id/candidates_left" style="@style/candidates_item"/>
@@ -14,7 +18,6 @@
     <TextView android:id="@+id/candidates_right" style="@style/candidates_item"/>
   </juloo.keyboard2.suggestions.CandidatesView>
   <include layout="@layout/assistant_strip"/>
-  <juloo.keyboard2.snippets.SnippetRowView android:id="@+id/snippet_row" android:layout_width="match_parent" android:layout_height="wrap_content"/>
   <include layout="@layout/reader_transport_strip"/>
   <juloo.keyboard2.Keyboard2View android:id="@+id/keyboard_view" android:layout_width="match_parent" android:layout_height="wrap_content"/>
 </LinearLayout>
