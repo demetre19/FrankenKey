@@ -429,9 +429,9 @@ public final class KeyEventHandler
     _email_learning.onFieldFinished(info, start_text, finish_text);
   }
 
-  /** PROSE (+1): when a separator completed a token, offer it to the email
-      observer. [strip_separator] is true when the separator was just
-      committed and still sits before the cursor. */
+  /** PROSE (+1): a space, comma, semicolon or Enter (B-F4) completed a
+      token; offer it to the email observer. [strip_separator] is true when
+      the separator was just committed and still sits before the cursor. */
   private void learn_prose_email_token(boolean strip_separator)
   {
     if (_email_learning == null)
@@ -444,14 +444,19 @@ public final class KeyEventHandler
     if (before == null)
       return;
     String text = before.toString();
-    if (strip_separator && !text.isEmpty()
-        && (text.charAt(text.length() - 1) == ' '
-            || text.charAt(text.length() - 1) == ','
-            || text.charAt(text.length() - 1) == ';'))
+    if (strip_separator)
+    {
+      if (text.isEmpty())
+        return;
+      char last = text.charAt(text.length() - 1);
+      if (last != ' ' && last != ',' && last != ';')
+        return;
       text = text.substring(0, text.length() - 1);
+    }
     juloo.keyboard2.suggestions.email.EmailToken parsed =
       juloo.keyboard2.suggestions.email.EmailToken.parse(text, "");
-    if (parsed == null || parsed.token.isEmpty())
+    if (parsed == null || parsed.token.isEmpty()
+        || parsed.token.indexOf('@') < 0)
       return;
     _email_learning.onProseSeparator(
         _recv.getCurrentInputEditorInfo(), parsed.token);
