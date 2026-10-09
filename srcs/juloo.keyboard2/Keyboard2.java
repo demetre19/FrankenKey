@@ -879,7 +879,7 @@ public class Keyboard2 extends InputMethodService
   static void wire_reader_settings_shortcut(Context context, View root)
   {
     root.findViewById(R.id.reader_transport_settings).setOnClickListener(
-        _view -> context.startActivity(new Intent(context, ReaderActivity.class)
+        _view -> context.startActivity(new Intent(context, SettingsActivity.class)
           .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
   }
 

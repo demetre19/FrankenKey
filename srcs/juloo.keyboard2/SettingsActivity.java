@@ -51,6 +51,7 @@ public class SettingsActivity extends PreferenceActivity
   private EditText _settingsSearch;
   private SettingsListAdapter _settingsAdapter;
   private boolean _adapterGuardInstalled;
+  private ListAdapter _styledListAdapter;
   private boolean _openExtraKeysBarWhenFocused;
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -563,8 +564,9 @@ public class SettingsActivity extends PreferenceActivity
             header.setPadding(headerPad, header.getPaddingTop(), headerPad,
                 header.getPaddingBottom());
         }
-        if (_settingsAdapter != null
-            && getListView().getAdapter() != _settingsAdapter)
+        ListAdapter current = getListView().getAdapter();
+        if (_styledListAdapter != null && current != null
+            && current != _styledListAdapter)
           getListView().post(this::styleSettingsList);
       });
     }
@@ -595,6 +597,7 @@ public class SettingsActivity extends PreferenceActivity
             + list.getHeaderViewsCount(), id);
     });
     list.setAdapter(_settingsAdapter);
+    _styledListAdapter = list.getAdapter();
   }
 
   private boolean isLightTheme()
