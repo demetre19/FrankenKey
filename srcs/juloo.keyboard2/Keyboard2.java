@@ -294,6 +294,7 @@ public class Keyboard2 extends InputMethodService
           @Override public void on_listening(String partialText)
           {
             show_voice_listening(partialText);
+            update_reader_entry();
           }
 
           @Override public void on_text(String text)
@@ -304,6 +305,7 @@ public class Keyboard2 extends InputMethodService
           @Override public void on_stopped(int errorCode)
           {
             voice_input_stopped(errorCode);
+            update_reader_entry();
           }
         });
     _foldStateTracker = new FoldStateTracker(this);
@@ -1247,7 +1249,8 @@ public class Keyboard2 extends InputMethodService
 
   private boolean reader_actions_visible(View root, boolean transportVisible)
   {
-    if (!_config.reader_keyboard_controls_enabled || _email_completions_active)
+    if (!_config.reader_keyboard_controls_enabled || _email_completions_active
+        || (_voice_input != null && _voice_input.is_active()))
       return false;
     if (root == _clipboard_pane)
       return !transportVisible;
