@@ -46,6 +46,7 @@ import juloo.keyboard2.prefs.LayoutsPreference;
 import juloo.keyboard2.suggestions.CandidatesView;
 import juloo.keyboard2.suggestions.Decoder;
 import juloo.keyboard2.suggestions.PersonalizationStore;
+
 import juloo.keyboard2.suggestions.SharedDecoder;
 import juloo.keyboard2.snippets.SnippetRowView;
 
@@ -283,6 +284,7 @@ public class Keyboard2 extends InputMethodService
     _handler = new Handler(getMainLooper());
     _grammar_checker = new SystemGrammarChecker(this, _handler,
         correction -> grammar_correction_changed(correction));
+
     _voice_input = new MultimodalVoiceInput(this, _handler,
         new MultimodalVoiceInput.Callback()
         {
@@ -309,6 +311,7 @@ public class Keyboard2 extends InputMethodService
     _config = Config.globalConfig();
     Receiver recvr = this.new Receiver();
     _decoder = new SharedDecoder(_handler, recvr);
+
     _keyeventhandler = new KeyEventHandler(recvr, _decoder);
     KeyValue.Stateful._handler = recvr;
     _config.handler = _keyeventhandler;
@@ -710,6 +713,7 @@ public class Keyboard2 extends InputMethodService
           _selection_start, _selection_end);
   }
 
+
   private Locale current_locale()
   {
     if (_config.device_locales != null
@@ -880,11 +884,17 @@ public class Keyboard2 extends InputMethodService
   }
 
   static void wire_reader_quick_shortcuts(Context context, View root,
-      Runnable voiceAction)
+      Runnable voiceAction, Runnable fixGrammarAction)
   {
     wire_reader_settings_shortcut(context, root);
     root.findViewById(R.id.reader_transport_voice).setOnClickListener(
         _view -> voiceAction.run());
+  }
+
+  static void wire_reader_quick_shortcuts(Context context, View root,
+      Runnable voiceAction)
+  {
+    wire_reader_quick_shortcuts(context, root, voiceAction, () -> {});
   }
 
   private void read_reader_clipboard()
@@ -1116,6 +1126,21 @@ public class Keyboard2 extends InputMethodService
       _candidates_view.setVisibility(candidate_strip_visible(
           candidates_view_enabled(), visible || actionsVisible)
         ? View.VISIBLE : View.GONE);
+    /* Pin the strip row to the same height as the suggestion row so the
+       keyboard surface never bounces when the two swap visibility. */
+    int rowHeight = (int)(_config.keyboard_rows_height_pixels
+        * (1 - _config.key_vertical_margin));
+    transport.setMinimumHeight(rowHeight);
+    ViewGroup.LayoutParams tlp = transport.getLayoutParams();
+    if (tlp != null)
+    {
+      tlp.height = visible
+          ? ViewGroup.LayoutParams.WRAP_CONTENT : rowHeight;
+      transport.setLayoutParams(tlp);
+    }
+    View actionsRow = root.findViewById(R.id.reader_transport_actions_scroll);
+    if (actionsRow != null)
+      actionsRow.setMinimumHeight(rowHeight);
     transport.setVisibility(
         visible || actionsVisible ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.reader_transport_actions)
@@ -1180,11 +1205,12 @@ public class Keyboard2 extends InputMethodService
   }
 
   static boolean reader_entry_visible(boolean readerEnabled,
-      boolean readableEditor, boolean editorEmpty, boolean composing,
-      boolean hasCandidates, boolean transportVisible)
+      boolean composing, boolean hasCandidates, boolean transportVisible)
   {
-    return readerEnabled && readableEditor && editorEmpty && !composing &&
-      !hasCandidates && !transportVisible;
+    /* The action strip is the resting row of the keyboard — always on
+       until typing produces candidates or playback takes over. */
+    return readerEnabled && !composing && !hasCandidates
+      && !transportVisible;
   }
 
   private void update_reader_entry()
@@ -1211,7 +1237,6 @@ public class Keyboard2 extends InputMethodService
         presentation.result.emoji != null));
     return reader_entry_visible(
         _config.reader_keyboard_controls_enabled,
-        ReaderTextAccess.isReadableEditor(editor), editor_is_empty(),
         _reader_composing, hasCandidates, transportVisible);
   }
 
@@ -1473,8 +1498,8 @@ public class Keyboard2 extends InputMethodService
     _selection_end = newSelEnd;
     _reader_composing = candidatesStart >= 0 && candidatesEnd > candidatesStart;
     update_reader_entry();
-    _grammar_checker.request(getCurrentInputConnection(),
-        newSelStart, newSelEnd);
+    InputConnection connection = getCurrentInputConnection();
+    _grammar_checker.request(connection, newSelStart, newSelEnd);
   }
 
   private void finish_input_session()

@@ -274,11 +274,9 @@ public final class KeyModifier
 
   private static String apply_fn_event(KeyValue.Event ev)
   {
-    switch (ev)
-    {
-      case SWITCH_NUMERIC: return "switch_greekmath";
-      default: return null;
-    }
+    /* The Greek/math pane is parked: fn+123 now falls through to the
+       normal numeric switch. */
+    return null;
   }
 
   private static String apply_fn_placeholder(KeyValue.Placeholder p)

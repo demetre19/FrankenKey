@@ -184,7 +184,6 @@
           android:scaleType="centerInside"
           android:src="@drawable/ic_reader_ai"
           android:tint="?attr/colorLabel"/>
-
     </LinearLayout>
   </HorizontalScrollView>
 </LinearLayout>

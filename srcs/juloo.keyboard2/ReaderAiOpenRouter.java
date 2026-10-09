@@ -136,9 +136,20 @@ final class ReaderAiOpenRouter
     if (messages == null || messages.isEmpty())
       throw new IOException("OpenRouter request has no messages");
 
-    JSONObject body = buildRequest(modelId, messages);
+    return generate(apiKey, buildRequest(modelId, messages), 120_000);
+  }
+
+  /** Sends a pre-built request body (custom max_tokens/temperature). */
+  String generate(String apiKey, JSONObject body, int readTimeout)
+      throws IOException, JSONException
+  {
+    if (apiKey == null || apiKey.trim().isEmpty())
+      throw new IOException("Add an OpenRouter API key in Reader AI settings");
+    if (body == null)
+      throw new IOException("OpenRouter request has no body");
+
     HttpURLConnection connection = openConnection(CHAT_URL, "POST", apiKey,
-        120_000);
+        readTimeout);
     activeConnections.add(connection);
     try
     {
@@ -168,10 +179,16 @@ final class ReaderAiOpenRouter
   static JSONObject buildRequest(String modelId, List<Message> messages)
       throws JSONException
   {
+    return buildRequest(modelId, messages, 4096, 0.7);
+  }
+
+  static JSONObject buildRequest(String modelId, List<Message> messages,
+      int maxTokens, double temperature) throws JSONException
+  {
     JSONObject body = new JSONObject();
     body.put("model", modelId.trim());
-    body.put("max_tokens", 4096);
-    body.put("temperature", 0.7);
+    body.put("max_tokens", Math.max(1, maxTokens));
+    body.put("temperature", temperature);
     JSONArray payloadMessages = new JSONArray();
     for (Message message : messages)
       payloadMessages.put(new JSONObject().put("role", message.role)

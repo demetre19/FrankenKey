@@ -160,8 +160,9 @@ public final class Config
     show_speak_key = _prefs.getBoolean("frankenkey_show_speak_key", true);
     double_space_period = _prefs.getBoolean("double_space_period", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
-    grammar_corrections_enabled =
-      _prefs.getBoolean("grammar_corrections", false);
+    /* Grammar features are parked until the rework — toggle hidden,
+       always off regardless of a stored value. */
+    grammar_corrections_enabled = false;
     multimodal_voice_typing_enabled =
       _prefs.getBoolean("multimodal_voice_typing", false);
     reader_keyboard_controls_enabled =

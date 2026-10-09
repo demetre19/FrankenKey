@@ -157,6 +157,13 @@ final class ReaderAiService
     this(client, cache, null);
   }
 
+  /** Provider-routed service: Cloudflare default, OpenRouter fallback. */
+  ReaderAiService(ReaderAiSettings settings, ReaderAiCache cache,
+      ReaderAiStore store)
+  {
+    this(new ReaderAiProvider(settings).generator(), cache, store);
+  }
+
   ReaderAiService(ReaderAiOpenRouter client, ReaderAiCache cache,
       ReaderAiStore store)
   {
