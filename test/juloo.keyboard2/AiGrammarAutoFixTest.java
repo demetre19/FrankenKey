@@ -17,6 +17,7 @@ import static org.junit.Assert.*;
  * resets — on executor rejection, job failure, and success alike.
  */
 @RunWith(RobolectricTestRunner.class)
+@org.robolectric.annotation.Config(sdk = 35)
 public class AiGrammarAutoFixTest
 {
   private static final String SENTENCE = "their going to the park.";
