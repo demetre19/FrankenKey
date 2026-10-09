@@ -83,7 +83,8 @@ public class ReaderAiButtonTest
         ReaderAiAction.actionFor(_prefs, ReaderAiAction.Sector.DOWN));
     assertEquals(ReaderAiAction.SPEED_READ,
         ReaderAiAction.actionFor(_prefs, ReaderAiAction.Sector.DOWN_LEFT));
-    assertEquals(ReaderAiAction.AI_SETTINGS,
+    assertEquals("AI settings is reachable only from Settings, never the "
+        + "keyboard surface.", ReaderAiAction.OPEN_CHAT,
         ReaderAiAction.actionFor(_prefs, ReaderAiAction.Sector.LEFT));
     assertEquals(ReaderAiAction.OPEN_CHAT,
         ReaderAiAction.actionFor(_prefs, ReaderAiAction.Sector.UP_LEFT));

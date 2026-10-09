@@ -1402,6 +1402,11 @@ public class Keyboard2 extends InputMethodService
         visible || actionsVisible ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.reader_transport_actions)
       .setVisibility(actionsVisible ? View.VISIBLE : View.GONE);
+    View fixGrammar = root.findViewById(R.id.reader_transport_fix_grammar);
+    if (fixGrammar != null)
+      fixGrammar.setVisibility(
+          _prefs.getBoolean("ti_grammar_offline_rules", true)
+            ? View.VISIBLE : View.GONE);
     apply_reader_action_order(root);
     TextView title = (TextView)root.findViewById(
         R.id.reader_transport_title);

@@ -104,6 +104,8 @@
     <string name="assistant_dismiss">Dismiss</string>
     <string name="assistant_grammar_message">Grammar: %1$s</string>
     <string name="assistant_apply">Apply</string>
+    <string name="pref_grammar_offline_title">Offline grammar fixes</string>
+    <string name="pref_grammar_offline_summary">Checks each sentence on your phone for common mix-ups like your/you’re, could of, or a/an, and offers a one-tap fix. Nothing leaves your phone.</string>
     <string name="assistant_voice_listening">Listening…</string>
     <string name="assistant_voice_partial">Listening: %1$s</string>
     <string name="assistant_voice_stop">Stop</string>
@@ -461,7 +463,7 @@
     <string name="reader_error_playback">Android text-to-speech could not read this item.</string>
     <string name="reader_source_button">Read</string>
     <string name="reader_source_menu_title">Read aloud</string>
-    <string name="reader_source_clipboard">Read Clipboard</string>
+    <string name="reader_source_clipboard">Read</string>
     <string name="reader_source_selection">Read Selected Text</string>
     <string name="reader_source_current_field">Read Current Field</string>
     <string name="reader_title_clipboard">Clipboard</string>
@@ -495,9 +497,8 @@
     <string name="reader_ai_action_share">Share</string>
     <string name="reader_ai_action_saved">Saved</string>
     <string name="reader_ai_action_speed_read">Speed Read</string>
-    <string name="reader_ai_action_ai_settings">AI Settings</string>
     <string name="reader_ai_action_load_clipboard">Load Clipboard</string>
-    <string name="reader_ai_action_read_clipboard">Read Clipboard</string>
+    <string name="reader_ai_action_read_clipboard">Read</string>
     <string name="reader_ai_load_clipboard">Load clipboard</string>
     <string name="reader_ai_need_source">Load clipboard, paste text, or enable Page capture in Settings first</string>
     <string name="reader_ai_clipboard_empty">Clipboard is empty and no page was captured</string>

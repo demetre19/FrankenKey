@@ -403,6 +403,8 @@ public class ReaderActivityTest
     View ai = transport.findViewById(R.id.reader_transport_ai);
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
+    View fixGrammar = transport.findViewById(
+        R.id.reader_transport_fix_grammar);
     int textButtonHeight = Math.round(40f *
         context.getResources().getDisplayMetrics().density);
     int actionGap = Math.round(8f *
@@ -411,7 +413,7 @@ public class ReaderActivityTest
         context.getResources().getDisplayMetrics().density);
     int iconSize = Math.round(24f *
         context.getResources().getDisplayMetrics().density);
-    View[] iconActions = { voice, settings, ai };
+    View[] iconActions = { voice, settings, ai, fixGrammar };
     for (View view : iconActions)
     {
       ImageButton iconButton = (ImageButton)view;
@@ -440,7 +442,8 @@ public class ReaderActivityTest
         textButtonHeight, libraryButton.getLayoutParams().height);
     assertEquals("Library is a text button, not another file icon.",
         "Library", libraryButton.getText().toString());
-    View[] stripActions = { voice, settings, ai, clipboard, library };
+    View[] stripActions = { voice, settings, ai, fixGrammar, clipboard,
+        library };
     for (View view : stripActions)
       assertFalse("Every strip action announces its purpose.",
           view.getContentDescription().toString().isEmpty());
@@ -491,9 +494,11 @@ public class ReaderActivityTest
         actions.indexOfChild(settings));
     assertEquals("AI stays centered between Reader actions.", 2,
         actions.indexOfChild(ai));
-    assertEquals("Read Clipboard follows AI.", 3,
+    assertEquals("Fix grammar is the compact icon between AI and Read.", 3,
+        actions.indexOfChild(fixGrammar));
+    assertEquals("Read follows Fix grammar.", 4,
         actions.indexOfChild(clipboard));
-    assertEquals("Library stays last in the centered action group.", 4,
+    assertEquals("Library stays last in the centered action group.", 5,
         actions.indexOfChild(library));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
