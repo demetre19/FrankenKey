@@ -1,177 +1,446 @@
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="FrankenKey logo" width="160" />
+<img width="512" height="512" alt="5e6e1c78-a129-483f-8a2e-66a8be1e4639" src="https://github.com/user-attachments/assets/23ff41a0-2f2b-4176-a2d0-8486fc2d0f55" />
 </p>
 
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  A keyboard that combines the everyday speed of Fleksy-style typing with the compact power-user controls of Unexpected Keyboard.
+  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, private TTS tools, and a <strong>free</strong> built-in AI provider in one Android app.
 </p>
 
 <p align="center">
-  <strong>Everyday mode:</strong> clean Fleksy-style typing.<br />
-  <strong>FrankenKey mode:</strong> dense coding, terminal, and SSH controls.
+  <strong>Private by design. Local learning. No ads. No tracking. Reader AI is free with a Cloudflare account.</strong>
+</p>
+
+<p align="center">
+  <a href="FrankenKey-installable-release.apk"><strong>Download the latest APK</strong></a>
+  ·
+  <a href="CHANGELOG.md"><strong>Recent changes</strong></a>
 </p>
 
 ---
 
-## What is FrankenKey?
+## Overview
 
-FrankenKey is an Android keyboard built from the best parts of two very different keyboard ideas:
+FrankenKey is a specialized Android application that functions as both a high-performance Input Method Editor (IME) and a sophisticated content-consumption platform. It is designed for users who require a seamless transition between everyday messaging, technical coding workflows, and focused reading sessions.
 
-- **Fleksy-style everyday typing**: a clean keyboard with large letter targets, a simple bottom row, fast access to symbols, and gesture-driven deletion.
-- **Unexpected Keyboard-style power use**: a compact keyboard where swipes and corner labels expose coding, shell, and navigation keys without needing a giant layout.
+The project is built on a foundation of privacy, capability, and minimalism, ensuring that user data remains local while providing powerful tools like adaptive learning, a 3D RSVP reader, and opt-in AI summarization.
 
-The goal is simple: use a clean keyboard most of the time, then switch to the dense FrankenKey layout when you are coding, using Termux, logging into servers over SSH, editing config files, or working on a computer remotely.
+## Core identity
 
-FrankenKey is not affiliated with Fleksy. Fleksy is credited here as the product that inspired the clean everyday typing mode. FrankenKey is based on and gives full credit to [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by Julow and its contributors.
+FrankenKey serves a dual purpose:
 
----
+- **Input Platform:** a dual-mode keyboard (Everyday and Coding) featuring gesture-based navigation, a deliberate-only adaptive learning model, and deep terminal/coding support.
+- **Consumption Platform:** a Reader subsystem that handles TTS (Text-to-Speech), EPUB management, and AI-powered content synthesis via the built-in Cloudflare Workers AI provider (free tier) or your own OpenRouter key.
 
-## The two keyboard modes
+## Design philosophy
 
-### 1. Everyday Fleksy-style mode
+The development of FrankenKey is governed by a strict set of product principles:
 
-This is the default mode.
+- **Content-Primary:** UI chrome is secondary to user content.
+- **Privacy by Design:** typing history, adaptive vocabulary, and touch calibration are stored locally; cloud features are strictly opt-in.
+- **Deliberate Learning:** the system only learns new vocabulary through explicit "Teach" gestures or corrected edits, never from passive typing.
 
-Use it when you are writing normal messages, searching, browsing, taking notes, or doing anything where a clean keyboard is faster than a dense programmer layout.
+## Private by design
 
-It includes:
+FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
-- A clean QWERTY layout with minimal visual noise.
-- A Fleksy-style bottom row:
-  - `123`
-  - `Fn`
-  - space
-  - punctuation
-  - enter
-- No default `Ctrl` key.
-- No default arrow-key cluster.
-- Hidden middle-row left-swipe word deletion.
-- Bottom-letter editing shortcuts:
-  - `z` for select all
-  - `x` for cut
-  - `c` for copy
-  - `v` for paste
-- Clean numeric and symbol pages with a large voice dictation key beside `ABC`.
-- Voice dictation in the top-left corner of the bottom-right action key, so Enter/Search/Done/Go layouts keep dictation available without adding clutter.
-- Clipboard and emoji/GIF controls on the bottom rows for fast access to paste history, emoji search, and GIF search.
-- Clipboard history for up to 50 recent clips; tap a saved clip to paste it, or pin important clips for reuse.
-- Snippet expansion for saved phrases, shortcuts, and reusable text blocks; the same snippet feature is available in both Everyday mode and FrankenKey mode.
+Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe public article, text you explicitly loaded with **Read Clipboard**, or selected excerpts from a safely parsed EPUB, and only after you request an AI action, to the provider you choose: **Cloudflare Workers AI** (free tier — see below) or **OpenRouter**. PDF content and passively observed clipboard or editor text are never eligible.
 
-This mode is for daily typing first. The advanced controls are still nearby, but they do not crowd the default view.
+## Adaptive learning
 
-### 2. FrankenKey mode
+FrankenKey learns how you type without uploading your typing history or silently turning repeated mistakes into vocabulary.
 
-This is the optional power-user layout.
+Vocabulary enters FrankenKey only when:
 
-Turn this on when you want the compact computer keyboard behavior inherited from Unexpected Keyboard.
+- You explicitly enter a word with **Teach** or choose **Keep word** from a keyboard review.
+- You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-It includes:
+Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session opens a review, but that bounded counter stays in memory and disappears when the editor session ends.
 
-- Dense corner and swipe labels for symbols.
-- Coding punctuation close to the home row.
-- `Ctrl`, `Fn`, `Alt`, `Meta`, and related modifier access.
-- Arrow keys and navigation controls.
-- Terminal-friendly keys such as Tab, Esc, and shell punctuation.
-- Compact access to brackets, braces, slashes, quotes, pipes, and operators.
-- A `123` button kept from the Fleksy-style layout for quick numeric access.
+You stay in control:
 
-This mode is for coding, remote desktop work, Termux, SSH, config editing, and situations where every key needs to do more than one thing.
+- Press Backspace immediately after a fresh autocorrection to restore the exact original text.
+- Swipe up on the keyboard to review the current word instead of saving it immediately; choose **Keep word**, **Use best**, **Replace…**, or dismiss without changing anything.
+- Use **Learned words > Corrections** to see, search, edit, or delete exact `source → replacement` rules and `source → Best suggestion` decisions.
+- Convert an accidentally taught word into a correction directly from its Taught words row.
+- Exact user-authored replacements take precedence even when the source and intended word are unrelated. Adaptive correction evidence still helps immediately; correcting the same typo to the same intended suggestion four times makes that learned pair the strongest recall, including supported corrections up to two textual edits.
+- Use **Clear adaptive accuracy** in Settings to remove taught words, correction patterns and rules, and touch calibration.
 
-### Shared headline feature: snippets
+Passwords, structured fields, terminals, and other unsafe editors are excluded from adaptive learning and replacement review.
 
-Both keyboard modes share FrankenKey's snippet feature, so saved phrases, shortcuts, and reusable text blocks are available whether you are using the clean Everyday layout or the dense FrankenKey power layout. That makes snippets a major feature instead of a mode-specific extra.
+## Suggestions and autocorrect
 
----
+Suggestions and autocorrect are separate controls, and both are enabled by default.
 
-## Screenshots
+- **Suggestions** help complete the word you are typing and surface likely next words.
+- Swipe left across the suggestion row to bring the next three ranked words in from the right; swipe right to return to the first three.
+- **Autocorrect** fixes high-confidence mistakes when you finish a word with Space, Shift+Enter, or supported punctuation.
+- Explicit teaching and deliberate correction choices improve local ranking without turning ordinary typing into vocabulary.
+- Immediate Backspace safely undoes a new autocorrection.
+- Automatic capitalisation handles sentence starts and standalone lowercase `i` where the text field allows it.
+- Short two- and three-letter corrections combine touch-aware evidence with compact conversational context.
+- Explicitly taught short commands keep their casing, and manually turning Shift off preserves lowercase at sentence starts.
+- Default-on Typing assistance turns two consecutive spaces in prose into a full stop and one space; structured fields and terminals keep literal spaces.
+- **Email completion:** while typing an email address, once you type `@` the suggestion row shows matching domain pills (gmail.com, outlook.com, yahoo.com, icloud.com, hotmail.com, proton.me, aol.com, live.com, plus domains you have taught). Tapping a pill replaces the partial domain. Full addresses you have typed before are learned on-device and suggested in any field, not just email inputs.
+- **Contact email suggestions (opt-in):** the **Suggest email addresses** switch in Settings can import email addresses from your contacts — with an explicit disclosure and Android's contacts permission — so friends' addresses appear as suggestions too. Contacts are read once and never uploaded.
 
-| Everyday setup | Typing | Symbols |
-| --- | --- | --- |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="FrankenKey screenshot 1" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="FrankenKey screenshot 2" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="FrankenKey screenshot 3" /> |
-| Power tools | Settings | Clipboard |
-| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="FrankenKey screenshot 4" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="FrankenKey screenshot 5" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" alt="FrankenKey screenshot 6" /> |
+You can turn Suggestions or Autocorrect off independently in Settings.
 
----
+## Two keyboard modes
 
-## Why combine these keyboards?
+FrankenKey combines two layouts:
 
-Most people need two different keyboards:
+- **Everyday mode** uses a clean layout for messages, notes, search, and normal phone typing.
+- **Coding mode** uses a dense layout for code, terminals, SSH, remote computers, and configuration files.
 
-1. A fast, clean one for normal typing.
-2. A compact power keyboard for coding and terminal work.
+Swipe northeast from the Spacebar to switch modes at any time.
 
-Fleksy showed how good a phone keyboard can feel when the layout gets out of the way. Unexpected Keyboard showed how much power can fit into a small Android keyboard when swipes and corner labels are used well.
+### Everyday mode
 
-FrankenKey keeps those ideas separate instead of forcing one layout to do everything at once:
+Everyday mode is the default. It includes:
 
-- Everyday mode stays clean.
-- FrankenKey mode stays dense.
-- You choose the mode that matches the job.
+- Clean QWERTY rows with minimal visual noise.
+- A simple bottom row with `123`, `Fn`, Space, punctuation, and Enter.
+- Fast edit gestures on `z`, `x`, `c`, and `v` for Select all, Cut, Copy, and Paste.
+- Clean numeric and symbol pages.
+- Voice typing on the bottom-right action key without crowding the Spacebar.
+- A Keyboard setting can hide the dedicated full-stop key beside the Spacebar and expand the Spacebar into the freed width.
+- Hidden power gestures that remain available without filling every key with labels.
 
----
+### Coding mode
+
+Coding mode keeps the typing surface clean and puts computer keys in the `…` Extra Keys strip:
+
+- `Ctrl`, `Alt`, `Shift`, and `Cmd` modifiers.
+- Arrow and navigation keys, Tab, Esc, Insert, Delete, and F1–F12.
+- Brackets, braces, pipes, slashes, quotes, operators, and shell punctuation on the symbol pages.
+- Hidden swipe gestures for Esc, Tab, Home, End, and Page Up/Page Down that keep working without visible labels.
+- A configurable Extra Keys strip with navigation, editing, modifier, shortcut, and function keys.
+
+### Extra Keys
+
+Tap `…` on the keyboard to open the Extra Keys strip. Tap it again to expand up to three horizontally scrollable rows.
+Build the strip like a compact desktop terminal command bar rather than accepting a fixed layout:
+
+- Use `+` to open **Extra Keys Bar** settings.
+- Show or hide every shortcut.
+- Drag shortcuts into your preferred order.
+- Add custom combinations using `Ctrl`, `Alt`, `Shift`, or `Cmd` with a supported key or keyboard command.
+
+## Spacebar shortcuts
+
+The four corners of the Spacebar open FrankenKey's most-used tools:
+
+- Swipe northwest for **Clipboard**.
+- Swipe northeast to switch **Everyday and Coding modes**.
+- Swipe southwest for **Emoji**.
+- Swipe southeast for **GIFs**.
+
+The welcome screen animates these exact gestures with the same icons shown on the live keyboard.
+
+## Keyboard shortcut map
+
+The same compact map is available from **Keyboard shortcut map** below the Spacebar guide on FrankenKey's first-launch screen.
+
+| Action | Shortcut or gesture |
+|---|---|
+| Send, search, go, or run the field action | **Enter** |
+| Insert a line break | **Shift + Enter** |
+| Voice typing | **Enter ↖** |
+| Move the cursor in any direction | **G + swipe** |
+| Select text; reverse the swipe to shrink | **Shift + G + swipe** |
+| Select all | **Z ↖** |
+| Cut / Copy / Paste | **X ↖ / C ↖ / V ↖** |
+| Delete the previous word | **Backspace ←** |
+| Preview and delete more words or sentences | Hold **Backspace**, drag left, reverse to shrink, then release |
+| Review / forget the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
+| Review one recurring unknown pattern | Type the same exact unknown literal three times in one editor session |
+| Make one exact adaptive typo correction the strongest recall | Correct the same typo to the same intended word and choose it **four times** |
+
+In terminal-style fields that do not advertise an editor action, bare Enter falls back to a raw Enter key event. `Ctrl`, `Alt`, or `Meta` combinations with Enter also remain raw key combinations.
+
+## Clipboard
+
+FrankenKey includes a keyboard-native clipboard panel for text and images.
+
+- Keeps up to 50 recent clipboard entries.
+- Supports text clips, image clips, and recent screenshots when permission is enabled.
+- Lets you pin important clips so they remain available.
+- Lets you remove individual clips.
+- Lets you open and edit clipboard text before pasting it.
+- Uses a configurable history duration.
+
+Clipboard data remains local to FrankenKey.
+
+## Voice
+
+When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, and Voice reachable even on narrow screens or with larger text. The suggestion candidates and the Reader/assistant strip share one fixed-height slot directly beneath the snippet row, so the keyboard surface never jumps or reflows when either appears.
+
+- **Voice** starts Android voice input, while Reader provides separate spoken playback with selectable installed voices. The Reader strip hides automatically while dictation is listening so the live transcript stays visible.
+
+## G-key mouse-like cursor control, selection and deletion
+
+The **G** key works like a miniature mouse/trackpad for the text cursor, marked by a very faint border when navigation is available:
+
+- Swipe left or right from G to move through text.
+- Swipe up or down from G to move between lines.
+- Continue farther from the starting key to move faster.
+- Reverse direction to move back precisely.
+- Tap without swiping to type the letter normally.
+
+To delete a selection:
+
+1. Tap **Shift**.
+2. Swipe from **G** to select text in any direction.
+3. Reverse the swipe to shrink the selection when needed.
+4. Tap **Delete**.
+
+For progressive deletion, you can still hold Delete to repeat letters, continue left to highlight words and sentences, reverse to shrink the highlight, and lift to delete it.
+
+## Reader and text-to-speech
+
+Reader is an optional, private reading and text-to-speech workspace that is disabled by default. Enable **Reader and text-to-speech controls** in Settings when you want it.
+
+### Text-to-speech Reader
+
+- Read ordinary clipboard text or prose from the current field without leaving the keyboard.
+- Import text, PDF, and EPUB documents, or save supported public articles to the searchable Library.
+- Pause, resume, seek, follow highlighted text, adjust reading speed from the full Reader or directly beneath the keyboard and clipboard playback controls, and choose available voices.
+- Keep playback progress and Reader preferences across sessions.
+- View retained article images in reading order. Large images fill the reading column and open in a full-screen viewer with pinch zoom, panning, and double-tap reset.
+
+### 2D and 3D RSVP speed reader
+
+Open the **RSVP speed reader** for rapid serial visual presentation, which displays one word or word group at a time at your chosen pace:
+
+- **2D mode** is a focused RSVP speed reader that shows one word or word group at a time.
+- **3D mode** pairs the same RSVP text in adjustable stereo positions while preserving the same document position. The paired view is inspired by the [SEO Time Machines 3D Speed Reader](https://seotimemachines.com/productivity-tools/speed-reader/).
+
+To find a comfortable 3D view:
+
+1. Pause playback, start at a low WPM, and choose a comfortable font size.
+2. Enable **3D** so the same word appears on the left and right.
+3. Relax your gaze and look gently through the screen until the two copies merge into one apparent word in the centre. Do not force your eyes.
+4. Adjust **stereo spacing** until the centre image is easy to hold, then start playback.
+5. Increase WPM gradually. Use fewer words per group or return to 2D whenever the image stops merging comfortably.
+
+If the effect causes eye strain, headache, or persistent double vision, stop, take a break, and use 2D mode. The stereo view is an optional reading technique, not medical treatment.
+
+[![Watch the 3D Speed Reader demonstration](https://img.youtube.com/vi/X-8emb9-vOw/hqdefault.jpg)](https://www.youtube.com/watch?v=X-8emb9-vOw)
+
+Reader controls also let you:
+
+- Preserve the same document position when switching between 2D and 3D.
+- Control WPM, words per group, adaptive short-word grouping, font, spacing, word and focus colours, focus position, pinned focus letters, guide lines, and crosshairs.
+- Tune punctuation, sentence-end, and long-word pauses.
+- Show customizable chapter cues and progress, save Reader bookmarks, and search saved places.
+- Choose dark or light themes, decorative backgrounds, background depth, a text vignette, and stereo spacing.
+- Use touch gestures for play/pause, font size, speed, word distance, sentence navigation, start/end jumps, and plain-text view.
+- Keep grouped, responsive settings usable on narrow phones.
+
+### Reader AI
+
+Reader AI is optional and available for:
+
+- Safe public articles saved or opened in Reader.
+- Non-empty text you explicitly load with **Read Clipboard**.
+- Safely parsed EPUB books opened from the Books Library in Classic or 3D Reader.
+
+Nothing is sent when you open Reader or a book. Reader AI runs only after you deliberately request a Summary, Quiz, or Chat response.
+
+#### Set up Reader AI — free with Cloudflare Workers AI
+
+**Reader AI is free.** FrankenKey's default provider is **Cloudflare Workers AI**, which includes a generous free daily allowance (10,000 neurons/day per Cloudflare account — more than enough for everyday summaries, quizzes, and chat). You pay nothing to FrankenKey or to Cloudflare for typical use; there is no subscription and no paid API key is required.
+
+You only need a free Cloudflare account and one API token:
+
+1. Create or sign in to a free [Cloudflare account](https://dash.cloudflare.com/sign-up) — no card required for the Workers AI free tier.
+2. In the Cloudflare dashboard, copy your **Account ID** (right-hand sidebar on any account page).
+3. Create an API token: **Profile → API Tokens → Create Token**, using the **Workers AI** template (or a custom token with *Account → Workers AI → Read* permission). Copy the token.
+4. In FrankenKey, open an eligible article, clipboard text, or EPUB book, tap **AI** in Classic Reader or **Book AI** in 3D Reader, and open **AI Settings**.
+5. Choose provider **Cloudflare Workers AI** (the default), paste your **Account ID** and **API token**, and pick a model — `@cf/meta/llama-3.1-8b-instruct-fp8-fast` is the fast default; `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `@cf/openai/gpt-oss-20b`, `@cf/openai/gpt-oss-120b`, and `@cf/mistralai/mistral-small-3.1-24b-instruct` are also offered.
+6. Review the first-use disclosure, then confirm before sending any source text.
+
+Prefer OpenRouter instead? Switch the provider to **OpenRouter**, enter your own OpenRouter API key, keep the default Mercury model or search the catalog (with Free and 100k+ context filters), then confirm as before.
+
+Both credentials are encrypted in Android's secure local storage and excluded from backups.
+
+#### Create summaries
+
+Reader AI provides exactly two summary choices. Each has its own editable prompt, so you can keep different formats—for example, a short practical brief and a detailed chapter-by-chapter explanation.
+
+1. Open the AI workspace and select **Summary 1** or **Summary 2**.
+2. Tap the selected summary action.
+3. Leave the workspace open to watch chapter and evidence progress.
+4. Copy, Save, Share, or **Read** the finished result. **Read** strips safe Markdown and opens the generated summary in the speed reader.
+
+For EPUB books, summaries cover every readable spine chapter in source order. FrankenKey reuses safe cached evidence but rejects obsolete partial whole-book outputs, so an older result that stopped early does not hide later chapters.
+
+#### Create a quiz
+
+1. Open the AI workspace and choose **Quiz**.
+2. Select 6, 10, 12, or 20 questions per readable book chapter. Articles use the selected whole-article question count.
+3. Run the quiz and follow chapter/question progress in the output area.
+4. Save, copy, or share the result when it is ready.
+
+Book quizzes continue to later chapters if one chapter returns an incomplete response. The partial chapter is shown and cached instead of discarding the whole run. Run **Quiz** again to reuse completed chapters and resume only the missing questions.
+
+#### Ask grounded questions
+
+Choose **Chat**, enter a question, and send it. Book answers are grounded in selected source passages plus reusable book evidence. If the source does not contain the answer, Reader AI is required to say so rather than inventing one.
+
+#### Find saved results
+
+Open AI Settings and choose the saved-results library. You can search, sort newest or oldest, group by date, mark favourites, and filter by Articles or Books and Summary, Quiz, or Chat. Saved entries retain source provenance and can reopen an available original book. Copy, Share, Favorite, and Delete remain local actions until you explicitly share something; eligible non-Quiz outputs can also open in Speed Read.
+
+Reader content, progress, bookmarks, retained files, and saved AI outputs stay private to FrankenKey. Selected eligible text is sent only for the explicit Cloudflare Workers AI or OpenRouter request you approve. Sensitive fields, unavailable sources, PDF content, and passive clipboard/editor text fail closed.
+
+## Snippets
+
+Save phrases as snippet buttons above the keyboard, then tap to insert them at the cursor.
+
+- Seven snippet slots per page.
+- Add more pages when needed.
+- Use short horizontal swipes to change pages; the page list loops continuously in both directions.
+- Available in both Everyday and Coding modes.
+- Stored locally and available on lock screens when configured.
+
+Snippets work well for addresses, replies, commands, code fragments, and text you type repeatedly.
+
+## Emoji and GIF search
+
+Emoji search is built in and local.
+
+GIF search includes built-in results and optional online GIPHY results:
+
+1. Open **Settings > GIF search**.
+2. Choose **Create a GIPHY API key**.
+3. In GIPHY, choose **API**, not SDK, and create a free beta API key.
+4. Paste the key into FrankenKey.
+5. Swipe southeast from Space to search GIFs.
+
+Online searches use `https://api.giphy.com/`. Search terms and your API key are therefore handled by GIPHY when this optional feature is enabled.
+
+## Download
+
+Install the signed APK from this repository:
+
+```text
+FrankenKey-installable-release.apk
+```
+
+Current signed repository APK:
+
+```text
+Package: dev.frankenkey.keyboard
+Version: 2.0.198
+Version code: 10198
+SHA-256: 152b2ca021da1f4f35b55b0d45c4879ab0e1cd2b728a9311cd84db4f1daabaca
+Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
+```
+
+Android may require one uninstall before installation if an older FrankenKey APK was signed with a different key. Builds signed with the current FrankenKey release key update normally after that.
+
+## Omnibutton and the floating button
+
+The **omnibutton** is FrankenKey's centered AI key. It appears in two places:
+
+- **On the keyboard Reader strip** — shown on empty text fields when Reader controls are on. Tap it, or swipe it in any of eight directions, to run a configurable Reader AI action (chat, two summaries, quiz, share, saved results, speed read, settings).
+- **As a floating bubble** — a draggable overlay that floats over *any* app, so you can open Reader AI even when the keyboard is hidden. Tap it for the tap action, or swipe it in a direction for that direction's action. It hides automatically while the keyboard is up or a password field is on screen.
+
+### Enable the floating omnibutton
+
+The floating button and page capture are powered by FrankenKey's accessibility service:
+
+1. Open **FrankenKey Settings > Typing assistance > Page capture for Reader AI** (or Android **Settings > Accessibility > Installed apps > FrankenKey**).
+2. Turn the service **on**.
+3. The floating bubble appears over other apps. Drag it to reposition (hold ~half a second, then move); the position is remembered.
+
+Because the APK is sideloaded, Android 13+ may mark the accessibility toggle as a **restricted setting**. To unlock it:
+
+1. Try to turn the service on once — Android shows a "Restricted setting" dialog.
+2. Go to **Settings > Apps > FrankenKey**, tap the **⋮ menu**, and choose **Allow restricted settings** (confirm with your PIN/biometric).
+3. Return to **Accessibility > Installed apps > FrankenKey** and turn it on.
+
+If "Allow restricted settings" does not appear, install the APK via `adb install` instead — adb-installed apps are not treated as sideloaded, so the toggle works immediately.
+
+### Configure the omnibutton
+
+Open **FrankenKey Settings > Typing assistance > Omnibutton** to:
+
+- Assign the **tap** and each **swipe direction** (↑ ↗ → ↘ ↓ ↙ ← ↖) to any Reader AI action or **No action**.
+- Place the omnibutton on the **right edge** (voice moves to the opposite end).
+- Style the **floating button**: enable/disable, **opacity** (with a live preview and percentage), **round or square**, and **button + icon colors** (swatches or a `#AARRGGBB` hex value).
+
+## Installing a test APK safely
+
+Android may block an APK that was downloaded outside Google Play. Do **not** permanently disable Android security or global app updates. Use only the official FrankenKey repository or release page, confirm the package and SHA-256 above, grant the smallest temporary permission needed, and restore it after installation.
+
+### Standard Android
+
+1. Download `FrankenKey-installable-release.apk` from this repository or the official GitHub Release.
+2. Open **Settings > Apps > Special app access > Install unknown apps**.
+3. Select the app that will open the APK, such as **Chrome**, **Files**, or **My Files**.
+4. Turn on **Allow from this source**.
+5. Open the APK and choose **Install** or **Update**.
+6. Return to **Install unknown apps** and turn **Allow from this source** off again.
+
+Android menu names vary slightly by manufacturer and version. See [Google's official unknown-app installation guidance](https://support.google.com/android/answer/9457058).
+
+### Samsung Galaxy and Auto Blocker
+
+On Galaxy phones running One UI 6 or newer, **Auto Blocker** can disable APK installation:
+
+1. Open **Settings > Security and privacy > Auto Blocker**.
+2. Turn **Auto Blocker** off temporarily.
+3. Grant **Allow from this source** only to the browser or file manager opening the APK.
+4. Install or update FrankenKey.
+5. Immediately turn **Auto Blocker** back on and remove the source permission.
+
+See [Samsung's official Auto Blocker guide](https://www.samsung.com/us/support/answer/ANS10003636/) and [Samsung's unknown-source troubleshooting](https://www.samsung.com/us/support/troubleshoot/TSG10001913/).
+
+### Google Play Protect
+
+Keep Play Protect enabled whenever possible. If it warns about a test APK, stop and confirm that the APK came from `demetre19/FrankenKey`, its package is `dev.frankenkey.keyboard`, and its SHA-256 matches the value published here. Never bypass a harmful-app warning for different or unverified bytes.
+
+If Play Protect still blocks the exact verified APK and you deliberately choose to proceed:
+
+1. Open **Google Play Store > profile picture > Play Protect > Settings**.
+2. Temporarily turn off **Scan apps with Play Protect**.
+3. Install the verified APK.
+4. Immediately return to the same screen and turn scanning back on.
+
+Google documents Play Protect and its controls in [Android Help](https://support.google.com/android/answer/2812853).
+
+### Keep a test build from being replaced
+
+FrankenKey never silently downloads or installs an update. It checks GitHub at most once daily and requires confirmation. To stop even those prompts while testing, open **FrankenKey Settings > Updates** and turn off **Automatically check for updates**. Do not disable Play Store auto-updates for every app; FrankenKey is not Play Store-managed, and unrelated security updates should continue normally. Google's [per-app auto-update instructions](https://support.google.com/googleplay/answer/113412/update-your-android-apps) are available if another test app specifically requires them.
+
+Updating a FrankenKey APK with the same package and release signer preserves app data. Uninstalling because of a signature mismatch removes Android app data, so back up anything important before uninstalling an older, differently signed build.
+
+## Updates
+
+Automatic update checks are enabled by default and run at most once every 24 hours when FrankenKey's app or Settings screen is opened. When a newer signed release is available, FrankenKey shows its changelog. Tap **Download and install** to continue, or **Not now** to suppress that release during automatic checks; a manual check can show it again.
+
+Settings offers verified in-app APK delivery or manual download from the official GitHub Release page. Android always asks for confirmation before installation. Because updates keep the same package and signing certificate, keyboard settings, snippets, learned words, clipboard preferences, and other app data remain in place.
 
 ## Credits
 
-FrankenKey stands on the work of others.
-
 ### Unexpected Keyboard
 
-FrankenKey is based on [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by [Julow](https://github.com/Julow) and maintained with contributions from the Unexpected Keyboard community.
+FrankenKey is based on [Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard), created by [Julow](https://github.com/Julow) with contributions from the Unexpected Keyboard community.
 
-Unexpected Keyboard provides the foundation for:
-
-- Android input method behavior.
-- Swipe and corner-key architecture.
-- Compact programmer-focused layout ideas.
-- Open source keyboard infrastructure.
-
-Please see the original project and its history for the upstream work that made FrankenKey possible.
+Unexpected Keyboard provides FrankenKey's open source Android keyboard foundation, compact corner-key model, and power-user layout architecture.
 
 ### Fleksy
 
-Fleksy is credited as the inspiration for FrankenKey's clean everyday mode:
+Fleksy inspired FrankenKey's clean everyday typing mode, including its simple rows, fast symbol access, and gesture-first approach.
 
-- Large, clear letter rows.
-- Simple bottom-row structure.
-- Fast symbol access.
-- Gesture-first typing behavior.
-
-FrankenKey is not affiliated with, endorsed by, or sponsored by Fleksy. The Fleksy references describe design inspiration only.
-
----
-
-## Privacy
-
-FrankenKey is open source and designed as a local keyboard. The keyboard does not need ads or tracking to work.
-
-Clipboard history is kept for practical typing use. Recent clipboard entries are capped at 50 items.
-
----
-
-## Build
-
-This repository is an Android project.
-
-Typical local build:
-
-```bash
-./gradlew assembleDebug
-```
-
-Release builds in this fork have been tested with:
-
-```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease
-```
-
-If Gradle needs `python`, provide a `python` shim to `python3` before running the build.
-
----
+FrankenKey is not affiliated with, endorsed by, or sponsored by Fleksy. Fleksy is credited for design inspiration only.
 
 ## License
 
 FrankenKey follows the license terms inherited from Unexpected Keyboard. See [LICENSE](LICENSE).
 
-Because this is a fork, keep upstream attribution intact when redistributing modified versions.
+Keep upstream credit intact when sharing modified builds.
