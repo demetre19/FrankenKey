@@ -50,6 +50,7 @@ public class SettingsActivity extends PreferenceActivity
   private ReleaseUpdater _releaseUpdater;
   private EditText _settingsSearch;
   private SettingsListAdapter _settingsAdapter;
+  private boolean _adapterGuardInstalled;
   private boolean _openExtraKeysBarWhenFocused;
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -546,6 +547,27 @@ public class SettingsActivity extends PreferenceActivity
   private void styleSettingsList()
   {
     ListView list = getListView();
+    // The framework re-binds the raw preference adapter whenever the window
+    // re-attaches (e.g. IME opening for the search field), wiping the styled
+    // wrapper. Restore it on the next layout if that happens.
+    if (!_adapterGuardInstalled)
+    {
+      _adapterGuardInstalled = true;
+      final int headerPad = dp(20);
+      list.addOnLayoutChangeListener((view, l, t, r, b, oldL, oldT, oldR,
+          oldB) -> {
+        if (_settingsSearch != null)
+        {
+          View header = (View)_settingsSearch.getParent();
+          if (header != null && header.getPaddingStart() < headerPad)
+            header.setPadding(headerPad, header.getPaddingTop(), headerPad,
+                header.getPaddingBottom());
+        }
+        if (_settingsAdapter != null
+            && getListView().getAdapter() != _settingsAdapter)
+          getListView().post(this::styleSettingsList);
+      });
+    }
     boolean lightTheme = isLightTheme();
     int horizontal = settingsSidePadding();
     list.setPadding(0, list.getPaddingTop(), 0,

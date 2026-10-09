@@ -1,0 +1,31 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "test",
+        "-s",
+        "/Users/apple/.android/frankenkey-release-signing/frankenkey-release.env"
+      ],
+      "covered_paths": [
+        "local-only"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Fetch the FrankenKey release signing env from the desktop (Mac-mini) to this laptop. The file lives on the mini at /Users/apple/.android/frankenkey-release-signing/frankenkey-release.env (or under /Volumes/TheHoneyBadger/AndroidTooling/state/home/.android/frankenkey-release-signing/frankenkey-release.env). Copy it via ssh/scp to /Users/apple/.android/frankenkey-release-signing/frankenkey-release.env on this host, chmod 600. Do not print the file contents to output. Verify RELEASE_KEYSTORE_RELEASE_KEYSTORE_PASSWORD/RELEASE_KEY_ALIAS/RELEASE_KEY_PASSWORD keys are present. If SSH auth to the mini is not set up, report exactly what auth surface exists."
+      ],
+      "goal": "Fetch the FrankenKey release signing env from the desktop (Mac-mini) to this laptop. The file lives on the mini at /Users/apple/.android/frankenkey-release-signing/frankenkey-release.env (or under /Volumes/TheHoneyBadger/AndroidTooling/state/home/.android/frankenkey-release-signing/frankenkey-release.env). Copy it via ssh/scp to /Users/apple/.android/frankenkey-release-signing/frankenkey-release.env on this host, chmod 600. Do not print the file contents to output. Verify RELEASE_KEYSTORE_RELEASE_KEYSTORE_PASSWORD/RELEASE_KEY_ALIAS/RELEASE_KEY_PASSWORD keys are present. If SSH auth to the mini is not set up, report exactly what auth surface exists.",
+      "id": "fetch-release-signing-env",
+      "title": "Fetch the FrankenKey release signing env from the desktop (Mac-mini) to this laptop. The file lives on the mini at /Users/apple/.android/frankenkey-release-signing/frankenkey-release.env (or under /Vo",
+      "write_paths": [
+        "local-only"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/DEV-WORK/FK-laptop-build"
+}
