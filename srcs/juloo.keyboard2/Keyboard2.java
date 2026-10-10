@@ -1826,6 +1826,19 @@ public class Keyboard2 extends InputMethodService
       return true;
     }
 
+    /** Teach a word the user just confirmed in the review dialog. The dialog
+        takes IME focus so the request key is no longer current; skip the
+        is_current guard and rely on the session epoch. */
+    public boolean confirm_teach_word(Decoder.RequestKey key, String word)
+    {
+      if (_personalization_spec == null
+          || _personalization_spec.preferences == null)
+        return false;
+      _decoder.explicitly_teach_word(_decoder_session, key,
+          _personalization_spec, word, false);
+      return true;
+    }
+
     public boolean explicitly_set_replacement(String source, String target)
     {
       if (_personalization_spec == null

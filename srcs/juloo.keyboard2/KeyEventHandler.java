@@ -636,22 +636,11 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
-    final long session = _decoder_session;
-    _recv.review_unknown_word(word, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key))
-              learn_word(key, word);
-          }
-        }, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key))
-              set_replacement(key, word, null);
-          }
-        });
+    // The swipe-up gesture is already an explicit learn intent — showing the
+    // review dialog here stole IME focus, hid the keyboard, and its button
+    // presses silently dropped (the request key is stale by click time).
+    // Learn directly; the candidates row shows the learned feedback pill.
+    learn_word_now(_decoder_session, key, word);
   }
 
   void review_repeated_unknown_word(final long session, final String word)
@@ -683,12 +672,35 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
-    if (should_use_personalization())
-      _decoder.learn_word(_decoder_session, word);
-    else
-      _recv.explicitly_teach_word(key, word);
+    learn_word_now(_decoder_session, key, word);
   }
 
+  /** Learn a word after the user confirmed in the review dialog. Unlike
+      learn_word() this does not require the request key to still be current:
+      the dialog takes focus, so by the time the user taps a button _latestKey
+      has usually moved on. The session epoch is the meaningful guard. */
+  void learn_word_now(long session, Decoder.RequestKey key, String word)
+  {
+    if (!can_explicitly_teach(word))
+      return;
+    if (should_use_personalization())
+      _decoder.learn_word(session, word);
+    else if (key != null)
+      _recv.confirm_teach_word(key, word);
+  }
+
+  /** Same contract as learn_word_now for the replacement ("best match")
+      button: session-scoped, no is_current requirement. */
+  void set_replacement_now(long session, Decoder.RequestKey key,
+      String source, String target)
+  {
+    if (!can_explicitly_teach(source))
+      return;
+    if (should_use_personalization())
+      _decoder.set_replacement(session, source, target);
+    else
+      _recv.explicitly_set_replacement(source, target);
+  }
   void set_replacement(Decoder.RequestKey key, String source, String target)
   {
     if (key == null || !_decoder.is_current(key)
@@ -704,17 +716,10 @@ public final class KeyEventHandler
   {
     if (key == null || !_decoder.is_current(key) || !can_change_learning(word))
       return;
-    final long session = _decoder_session;
-    _recv.confirm_unlearn_word(word, new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key)
-                && can_change_learning(word))
-              _decoder.unlearn_word(session, key, word);
-          }
-        });
+    // Same as learn: the confirm dialog kills IME focus and its button
+    // presses no-op because the request key is stale at click time.
+    // The swipe gesture is already explicit intent — apply directly.
+    _decoder.unlearn_word(_decoder_session, key, word);
   }
 
   void toggle_learned_word(Decoder.RequestKey key, String word)
@@ -2692,6 +2697,9 @@ public final class KeyEventHandler
         Runnable positive_action) {}
     public default boolean explicitly_teach_word(Decoder.RequestKey key,
         String word) { return false; }
+    /** Confirmed-in-dialog teach: skips the is_current key guard. */
+    public default boolean confirm_teach_word(Decoder.RequestKey key,
+        String word) { return explicitly_teach_word(key, word); }
     public default boolean explicitly_set_replacement(
         String source, String target) { return false; }
     public default void review_unknown_word(String word,

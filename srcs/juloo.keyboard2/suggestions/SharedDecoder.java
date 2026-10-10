@@ -641,14 +641,24 @@ public final class SharedDecoder implements AutoCloseable
       Decoder.RequestKey source, PersonalizationSpec personalization,
       String word)
   {
+    explicitly_teach_word(sessionEpoch, source, personalization, word, true);
+  }
+
+  /** [require_current] false is for post-dialog confirmation: the review
+      dialog takes focus, so the source key is no longer current by the time
+      the user taps Learn. The session epoch is the meaningful guard. */
+  public void explicitly_teach_word(long sessionEpoch,
+      Decoder.RequestKey source, PersonalizationSpec personalization,
+      String word, boolean require_current)
+  {
     if (personalization == null || personalization.preferences == null
         || !PersonalizationStore.is_learnable(word))
       return;
     synchronized (_lock)
     {
       if (!is_active_session_locked(sessionEpoch)
-          || !is_current_locked(source) || !_config.useTypingAssistance
-          || !_config.suggestionsEnabled)
+          || (require_current && !is_current_locked(source))
+          || !_config.useTypingAssistance || !_config.suggestionsEnabled)
         return;
       Decoder.RequestKey feedbackKey = resubmit_latest_locked();
       enqueue_control_locked(Control.explicitLearn(sessionEpoch,
