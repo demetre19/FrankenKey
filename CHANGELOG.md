@@ -3,6 +3,10 @@
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
 
+## 2.0.199 — version code 10199 — 2026-10-10
+
+- **Learning words actually works:** swipe up on an unknown suggestion and it's learned instantly — no dialog, no keyboard flicker. The review modal that used to pop up stole focus from the editor, which hid the keyboard and made its own Learn button a dead tap; the swipe gesture is now the confirmation. Swipe down on a learned word to unlearn the same way. The confirm dialog still appears for the automatic repeated-unknown-word review, and its buttons now work too.
+
 ## 2.0.198 — version code 10198 — 2026-10-10
 
 - **Reader AI now runs on Cloudflare Workers AI by default — completely free.** FrankenKey's built-in provider uses Cloudflare's free Workers AI tier (10,000 neurons/day per Cloudflare account, no card required). Paste a free Cloudflare Account ID plus one API token into AI Settings, pick a model — `@cf/meta/llama-3.1-8b-instruct-fp8-fast` default, or Llama 3.3 70B, gpt-oss-20b/120b, Mistral Small — and summaries, quizzes, and chat cost nothing. OpenRouter remains available as an alternative provider. Both credentials are stored encrypted and excluded from backups.

@@ -1,0 +1,1 @@
+2.0.199 — swipe up on a suggestion now learns it instantly (the old review dialog stole focus and its Learn button never worked). Swipe down unlearns the same way.
