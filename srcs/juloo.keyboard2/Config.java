@@ -90,6 +90,7 @@ public final class Config
   public boolean autocorrect_enabled;
   public boolean physical_keyboard_hide;
 
+  public boolean inline_predictions_enabled;
   // Dynamically set
   /** Configuration options implied by the connected editor. */
   public EditorConfig editor_config;
@@ -227,6 +228,7 @@ public final class Config
     clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "-1"));
     clipboard_save_screenshots = _prefs.getBoolean("clipboard_save_screenshots", true);
     autocorrect_enabled = _prefs.getBoolean("autocorrect", true);
+    inline_predictions_enabled = _prefs.getBoolean("inline_predictions", true);
     physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "show").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;

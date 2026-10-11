@@ -1929,6 +1929,32 @@ public class Keyboard2 extends InputMethodService
     {
       update_email_completions();
       update_reader_entry();
+      update_inline_prediction(state);
+    }
+
+    /** Gboard-style ghost text: when the decoder's READY state carries a
+        next-word prediction (only produced at an empty boundary), preview
+        the top one inside the editor. Any other state clears it. */
+    private void update_inline_prediction(
+        SharedDecoder.Presentation state)
+    {
+      String ghost = null;
+      if (state != null
+          && state.state == SharedDecoder.Presentation.State.READY
+          && state.result != null)
+      {
+        Decoder.Candidate[] words = state.ranked != null
+          ? state.ranked : state.result.words();
+        for (Decoder.Candidate word : words)
+          if (word != null && word.role == Decoder.Role.NEXT_WORD
+              && word.surface != null && word.surface.length() > 0)
+          {
+            ghost = word.surface;
+            break;
+          }
+      }
+      if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
+        _keyeventhandler.clear_inline_prediction(ghost == null);
     }
 
     @Override

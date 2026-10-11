@@ -29,6 +29,8 @@ public class SettingsUiContractsTest
         "Press space twice to insert a full stop followed by a space." },
       { "suggestions", "pref_suggestions_summary",
         "Show word suggestions while typing." },
+      { "inline_predictions", "pref_inline_predictions_summary",
+        "Show the predicted next word as grayed text inside the editor; accept it with space or right-swipe." },
       { "contact_email_suggestions", "contact_email_suggestions_summary",
         "Learn email addresses and domains from your contacts so they appear as suggestions while typing." },
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",

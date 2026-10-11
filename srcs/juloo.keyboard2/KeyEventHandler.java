@@ -15,6 +15,10 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -71,6 +75,13 @@ public final class KeyEventHandler
       [space_gesture_hooks]; empty by default. */
   private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
     new ArrayList<Pointers.SpaceGestureHook>();
+  /** Grayed next-word preview held in the editor's composing region.
+      [_inline_prediction] is the text currently displayed (null = none).
+      [_inline_prediction_editor_change] marks editor callbacks we caused
+      ourselves so [currently_typed_word] can skip them. */
+  private String _inline_prediction = null;
+  private boolean _inline_prediction_editor_change = false;
+  private static final int INLINE_PREDICTION_COLOR = 0x80808080;
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
   /** Incremented to invalidate a posted delayed DEL fallback; see
       [schedule_backspace_fallback]. */
@@ -315,6 +326,8 @@ public final class KeyEventHandler
   /** Run the ordered backspace hooks; true when one consumed the press. */
   boolean consult_backspace_hooks(boolean isRepeat)
   {
+    if (backspace_clears_inline_prediction(isRepeat))
+      return true;
     if (_backspace_hooks.isEmpty())
       return false;
     EditorContext ctx = capture_editor_context();
@@ -356,6 +369,67 @@ public final class KeyEventHandler
       conf.editor_config.should_move_cursor_force_fallback;
     _autocorrect_enabled = conf.autocorrect_enabled;
     _delete_selection = null;
+
+    _inline_prediction = null;
+    _inline_prediction_editor_change = false;
+  }
+  /** Show [word] as grayed uncommitted text inside the editor — Gboard
+      Smart Compose. The suggestion lives in the composing region, so any
+      commitText replaces it and it never enters the undo history. Returns
+      true when the ghost was installed. */
+  boolean show_inline_prediction(String word)
+  {
+    if (word == null || word.length() == 0 || _config == null
+        || !_config.inline_predictions_enabled
+        || !_config.editor_config.should_use_typing_assistance
+        || uses_termux_raw_events())
+      return false;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence selection = conn.getSelectedText(0);
+    if (selection != null && selection.length() > 0)
+      return false;
+    SpannableString ghost = new SpannableString(word);
+    ghost.setSpan(new ForegroundColorSpan(INLINE_PREDICTION_COLOR), 0,
+        word.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    _inline_prediction_editor_change = true;
+    if (!conn.setComposingText(ghost, 1))
+    {
+      _inline_prediction_editor_change = false;
+      return false;
+    }
+    _inline_prediction = word;
+    return true;
+  }
+
+  /** Clear the ghost. [editorChange] distinguishes "the editor/user removed
+      it" (just drop our reference) from "we must remove it" (clear the
+      composing region). */
+  void clear_inline_prediction(boolean editorChange)
+  {
+    String ghost = _inline_prediction;
+    _inline_prediction = null;
+    if (ghost == null || editorChange)
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    _inline_prediction_editor_change = true;
+    if (!conn.setComposingText("", 1))
+      _inline_prediction_editor_change = false;
+  }
+
+  /** Backspace hook: a ghost must be cleared before the press is honored so
+      DEL eats the preview rather than the preceding character. */
+  boolean backspace_clears_inline_prediction(boolean isRepeat)
+  {
+    if (_inline_prediction == null)
+      return false;
+    clear_inline_prediction(false);
+    /* Consume the press: the user sees the ghost disappear first, matching
+       Gboard's one-press-dismisses-preview behavior. */
+    return true;
   }
 
   public void finished()
@@ -366,6 +440,7 @@ public final class KeyEventHandler
     _manual_correction = null;
     _skip_next_word_learning = false;
     _delete_selection = null;
+    clear_inline_prediction(false);
     _autocap.finished();
     _typedword.finished();
     if (_decoder_session != 0)
@@ -1080,6 +1155,16 @@ public final class KeyEventHandler
   @Override
   public void currently_typed_word(CurrentlyTypedWord.Snapshot snapshot)
   {
+    /* Skip snapshots our own ghost install/clear produced. Editor changes
+       the user made replace the composing region — drop the reference and
+       proceed normally. */
+    if (_inline_prediction_editor_change)
+    {
+      _inline_prediction_editor_change = false;
+      return;
+    }
+    if (_inline_prediction != null)
+      _inline_prediction = null;
     boolean empty_boundary = snapshot.word.length() == 0
       && !snapshot.hasSelection && snapshot.cursorRelative == 0;
     boolean following_boundary =
@@ -1896,6 +1981,10 @@ public final class KeyEventHandler
   boolean send_text(String text, TouchTrace.Entry touch)
   {
     cancel_pending_backspace_fallback();
+    /* The commit below replaces any ghost in the composing region; drop our
+       reference before the editor callback arrives. */
+    _inline_prediction = null;
+    _inline_prediction_editor_change = false;
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
