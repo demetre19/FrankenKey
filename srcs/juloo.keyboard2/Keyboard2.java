@@ -1153,9 +1153,8 @@ public class Keyboard2 extends InputMethodService
     ViewGroup.LayoutParams tlp = transport.getLayoutParams();
     if (tlp != null)
     {
-      tlp.height = visible
+      tlp.height = visible || actionsVisible
           ? ViewGroup.LayoutParams.WRAP_CONTENT
-          : actionsVisible ? rowHeight
           : 0;
       transport.setLayoutParams(tlp);
     }
@@ -1165,7 +1164,10 @@ public class Keyboard2 extends InputMethodService
       ViewGroup.LayoutParams alp = actionsRow.getLayoutParams();
       if (alp != null)
       {
-        alp.height = rowHeight;
+        /* Buttons are 40dp + margins; a key-row clamp shorter than that
+           clips them, so let the row wrap its content and only keep
+           [rowHeight] as the floor. */
+        alp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
         actionsRow.setLayoutParams(alp);
       }
       actionsRow.setMinimumHeight(rowHeight);

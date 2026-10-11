@@ -34,7 +34,7 @@ public final class Pointers implements Handler.Callback
   private float _key_unit_width = 0.f;
 
   /** A keyboard-wide right swipe must travel this many key units. */
-  static final float RIGHT_ACCEPT_SWIPE_KEYS = 3.f;
+  static final float RIGHT_ACCEPT_SWIPE_KEYS = 2.f;
 
   public Pointers(IPointerEventHandler h, Config c)
   {
