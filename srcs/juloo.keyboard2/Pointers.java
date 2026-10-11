@@ -158,6 +158,7 @@ public final class Pointers implements Handler.Callback
        corner keys (G trackpad etc.) that captured the gesture into sliding
        mode cannot eat the accept. Pure trajectory test; spacebar excluded. */
     if (inline_prediction_visible() && !isSpaceBar(ptr.value)
+        && !ptr.hasFlagsAny(FLAG_P_SLIDING)
         && _key_unit_width > 0.f
         && ptr.lastDx >= 1.5f * _key_unit_width
         && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx)

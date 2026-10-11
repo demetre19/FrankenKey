@@ -84,6 +84,10 @@ public final class KeyEventHandler
   /** True when the ghost is a mid-word completion suffix ("te"→grayed
       "st"); accept commits suffix+space, never a leading space. */
   private boolean _inline_prediction_is_suffix = false;
+  /** The typed prefix under a suffix ghost ("te" of "te|st"); needed to
+      match snapshot.word (which sees the FULL merged word) in
+      [currently_typed_word]. */
+  private String _inline_prediction_prefix = null;
   /** Set when DEL dismissed a ghost: suppress re-showing the next-word
       preview until the user moves the context forward with real input,
       otherwise each dismissed ghost instantly re-predicts. */
@@ -409,10 +413,15 @@ public final class KeyEventHandler
       { glog("SHOW-DENY sup w=" + word); return false; }
     if (_inline_prediction_deleted_last)
       { glog("SHOW-DENY dlast w=" + word); return false; }
-    if (!_typed_this_context || word.equals(_inline_prediction)
+    if (!_typed_this_context
         || !_config.editor_config.should_use_typing_assistance
         || uses_termux_raw_events())
       return false;
+    /* Same word already on screen = success, not failure: the caller's
+       fail→clear path must never destroy a live identical ghost. */
+    if (word.equals(_inline_prediction)
+        && suffix == _inline_prediction_is_suffix)
+      return true;
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
@@ -422,8 +431,13 @@ public final class KeyEventHandler
     if (!suffix)
     {
       /* Boundary ghost previews only right after a plain space — never on
-         a second-space boundary and never when the prediction just echoes
-         the last word typed (the "a … a" echo). */
+         a second-space boundary, never mid-text (cursor inside existing
+         content), and never when the prediction just echoes the last word
+         typed (the "a … a" echo). */
+      CharSequence after = conn.getTextAfterCursor(1, 0);
+      if (after != null && after.length() > 0
+          && !Character.isWhitespace(after.charAt(0)))
+        return false;
       CharSequence before = conn.getTextBeforeCursor(64, 0);
       if (before == null || before.length() < 2
           || before.charAt(before.length() - 1) != ' ')
@@ -444,6 +458,8 @@ public final class KeyEventHandler
     }
     _inline_prediction = word;
     _inline_prediction_is_suffix = suffix;
+    _inline_prediction_prefix =
+      suffix ? _typedword.get() : null;
     glog("SHOW " + (suffix ? "sfx " : "bnd ") + word);
     return true;
   }
@@ -502,6 +518,7 @@ public final class KeyEventHandler
     String ghost = _inline_prediction;
     _inline_prediction = null;
     _inline_prediction_is_suffix = false;
+    _inline_prediction_prefix = null;
     glog("CLEAR edChg=" + editorChange + " had=" + ghost);
     if (ghost == null || editorChange)
       return;
@@ -1326,12 +1343,16 @@ public final class KeyEventHandler
          whatever triggered this event — keep the reference or DEL/swipe
          lose track of a ghost that's still on screen ("can't delete past
          it"). Only drop when the composing word actually changed. */
-      if (!snapshot.word.equals(_inline_prediction))
+      String expected = _inline_prediction_is_suffix
+          ? _inline_prediction_prefix + _inline_prediction
+          : _inline_prediction;
+      if (!snapshot.word.equals(expected))
       {
         glog("EVT-NULLS-GHOST word=" + snapshot.word
             + " ghost=" + _inline_prediction);
         _inline_prediction = null;
         _inline_prediction_is_suffix = false;
+        _inline_prediction_prefix = null;
       }
       else
         glog("EVT-KEEP-GHOST word=" + snapshot.word);
@@ -2156,15 +2177,17 @@ public final class KeyEventHandler
        read (getTextBeforeCursor, ExtractedText, typed-word snapshots).
        Space is DISMISS-only — accept is swipe-right — so clear it, then let
        commitText insert the literal text over an empty composing region. */
+    if (_inline_prediction != null || _inline_prediction_suppressed
+        || _inline_prediction_deleted_last)
+      glog("SEND-TEXT t=" + text.replace(" ", "\\s"));
     if (_inline_prediction != null)
       clear_inline_prediction(false);
     _inline_prediction_suppressed = false;
     _inline_prediction_deleted_last = false;
     _typed_this_context = true;
-    _inline_prediction_editor_change = false;
-    if (_inline_prediction != null || _inline_prediction_suppressed
-        || _inline_prediction_deleted_last)
-      glog("SEND-TEXT t=" + text.replace(" ", "\\s"));
+    /* Deliberately leave _inline_prediction_editor_change alone: the
+       clear's commitText event must consume it, else the editor's
+       'composing cleared' callback is misread as a real user edit. */
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
@@ -2294,8 +2317,16 @@ public final class KeyEventHandler
       case REPLACE: send_context_menu_action(android.R.id.replaceText); break;
       case ASSIST: send_context_menu_action(android.R.id.textAssist); break;
       case AUTOFILL: send_context_menu_action(android.R.id.autofill); break;
-      case DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
-      case FORWARD_DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
+      case DELETE_WORD:
+        _inline_prediction_suppressed = true;
+        _inline_prediction_deleted_last = true;
+        send_key_down_up(KeyEvent.KEYCODE_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON);
+        break;
+      case FORWARD_DELETE_WORD:
+        _inline_prediction_suppressed = true;
+        _inline_prediction_deleted_last = true;
+        send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON);
+        break;
       case SELECTION_CANCEL: cancel_selection(); break;
       case SPACE_BAR: handle_space_bar(); break;
       case BACKSPACE: handle_backspace(isRepeat); break;
@@ -2355,6 +2386,9 @@ public final class KeyEventHandler
   {
     if (r == 0 && !key_down)
     {
+      /* Deletion streak: pin ghost suppression like handle_backspace. */
+      _inline_prediction_suppressed = true;
+      _inline_prediction_deleted_last = true;
       commit_delete_words_selection();
       return;
     }
@@ -3211,12 +3245,21 @@ public final class KeyEventHandler
   void handle_backspace(boolean isRepeat)
   {
     glog("DEL-ENTRY rep=" + isRepeat);
+    /* Every press is part of a deletion streak: pin suppression so that a
+       commitText buried in send_backspace (autocorrect delete+reinsert,
+       selection clears) can never lift the gate mid-streak — the proven
+       ghost-respawn loop from device telemetry. */
+    _inline_prediction_suppressed = true;
+    _inline_prediction_deleted_last = true;
     if (consult_backspace_hooks(isRepeat))
       return;
-    _inline_prediction_deleted_last = true;
     commit_pending_replacement();
     capture_manual_correction_source();
     send_backspace();
+    /* Re-pin: send_backspace → commitText can flow back through send_text's
+       flag reset; a streak must suppress until a REAL letter lands. */
+    _inline_prediction_suppressed = true;
+    _inline_prediction_deleted_last = true;
   }
 
   public static interface IReceiver

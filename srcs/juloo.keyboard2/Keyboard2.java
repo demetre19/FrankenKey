@@ -1948,8 +1948,13 @@ public class Keyboard2 extends InputMethodService
       Decoder.Candidate[] words = null;
       if (state != null
           && state.state == SharedDecoder.Presentation.State.READY
-          && state.result != null)
-        words = state.ranked != null ? state.ranked : state.result.words();
+          && state.result != null
+          /* Same key-currency guard as decoder_result_completed: stale or
+             unpinned presentations must not touch a live ghost. */
+          && (state.key == null || _decoder.is_current(state.key)))
+        /* result.words(), not state.ranked: pinned-merge dedupe can drop
+           the NEXT_WORD candidate and falsely clear the ghost. */
+        words = state.result.words();
       apply_inline_ghost(inline_prediction_ghost(words));
     }
 
@@ -2002,10 +2007,14 @@ public class Keyboard2 extends InputMethodService
 
     private void apply_inline_ghost(InlineGhost ghost)
     {
+      /* Physical clear, never clear(true): a withdrawn or blocked candidate
+         must remove the composing ghost — clear(true) only drops our
+         reference and strands the grayed text to be baked by the next
+         finishComposingText. */
       if (ghost == null
           || !_keyeventhandler.show_inline_prediction(
               ghost.text, ghost.suffix))
-        _keyeventhandler.clear_inline_prediction(true);
+        _keyeventhandler.clear_inline_prediction(false);
     }
 
     /** Same update driven by a just-completed decode result — the path that
