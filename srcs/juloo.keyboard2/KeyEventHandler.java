@@ -407,7 +407,18 @@ public final class KeyEventHandler
     CharSequence selection = conn.getSelectedText(0);
     if (selection != null && selection.length() > 0)
       return false;
+    /* Only preview right after a plain space — never on a second-space
+       boundary and never when the prediction just echoes the last word
+       typed (the "a … a" echo). */
+    CharSequence before = conn.getTextBeforeCursor(64, 0);
+    if (before == null || before.length() < 2
+        || before.charAt(before.length() - 1) != ' ')
+      return false;
+    String lastWord = last_word_before_cursor(before);
+    if (lastWord == null || lastWord.equalsIgnoreCase(word))
+      return false;
     SpannableString ghost = new SpannableString(word);
+
     ghost.setSpan(new ForegroundColorSpan(INLINE_PREDICTION_COLOR), 0,
         word.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     _inline_prediction_editor_change = true;
@@ -422,6 +433,38 @@ public final class KeyEventHandler
   boolean has_typed_this_context()
   {
     return _typed_this_context;
+  }
+
+  /** Letters immediately before the trailing space in [before], or null
+      when none (double space, start of input). */
+  private static String last_word_before_cursor(CharSequence before)
+  {
+    int end = before.length() - 1; /* skip the trailing space */
+    int start = end;
+    while (start > 0 && Character.isLetterOrDigit(before.charAt(start - 1)))
+      start--;
+    return start == end ? null : before.subSequence(start, end).toString();
+  }
+
+  /** Commit a boundary prediction (ghost or next-word) directly, deduping
+      the separator: editor already ending in " " gets "word ", otherwise
+      " word ". Bypasses suggestion_entered/commit_correction so a stale
+      key or ghost-polluted snapshot can never mangle the insert. */
+  private boolean commit_boundary_prediction(String word)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(1, 0);
+    String insertion = (before != null && " ".contentEquals(before))
+      ? word + " " : " " + word + " ";
+    if (!conn.commitText(insertion, 1))
+      return false;
+    _typedword.typed(insertion, null);
+    _typed_this_context = true;
+    _inline_prediction_suppressed = false;
+    _inline_prediction_deleted_last = false;
+    return true;
   }
 
 
@@ -921,29 +964,24 @@ public final class KeyEventHandler
   {
     cancel_pending_backspace_fallback();
     commit_pending_replacement();
+    /* Ghost accept first, unconditionally — never gated on a possibly
+       stale typed-word snapshot. */
+    String ghost = _inline_prediction;
+    if (ghost != null)
+    {
+      clear_inline_prediction(false);
+      if (commit_boundary_prediction(ghost))
+        return;
+    }
     Decoder.RequestKey key = _decoder.current_key();
     CurrentlyTypedWord.Snapshot swipe_snapshot = _typedword.snapshot();
     String accepted = right_swipe_accept_text(key);
     if (accepted != null && swipe_snapshot.word.length() == 0)
     {
-      /* Boundary accept (ghost or next-word): bypass suggestion_entered —
-         a stale key fails is_current() silently and commit_correction can
-         mangle ghost-polluted tracking state. Direct, deduped commit. */
-      clear_inline_prediction(false);
-      InputConnection conn = _recv.getCurrentInputConnection();
-      if (conn != null)
-      {
-        CharSequence before = conn.getTextBeforeCursor(1, 0);
-        String insertion = (before != null && " ".contentEquals(before))
-          ? accepted + " " : " " + accepted + " ";
-        if (conn.commitText(insertion, 1))
-        {
-          _typedword.typed(insertion, null);
-          _typed_this_context = true;
-          _inline_prediction_suppressed = false;
-          return;
-        }
-      }
+      /* Boundary accept (next-word): bypass suggestion_entered — a stale
+         key fails is_current() silently. Direct, deduped commit. */
+      if (commit_boundary_prediction(accepted))
+        return;
     }
     if (accepted != null)
     {
@@ -2816,6 +2854,15 @@ public final class KeyEventHandler
 
   void handle_word_separator(String separator)
   {
+    /* Ghost accept must run before ANY editor read: every helper below
+       sees the ghost as real text and would mangle or double-commit it. */
+    String boundary_ghost = _inline_prediction;
+    if (" ".equals(separator) && boundary_ghost != null)
+    {
+      clear_inline_prediction(false);
+      if (commit_boundary_prediction(boundary_ghost))
+        return;
+    }
     normalize_accidental_period_before_separator();
     normalize_space_before_punctuation(separator);
     if (_manual_correction != null

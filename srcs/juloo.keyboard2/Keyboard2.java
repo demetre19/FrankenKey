@@ -1987,6 +1987,11 @@ public class Keyboard2 extends InputMethodService
                  already the accepted completion — which is exactly when the
                  ghost should appear — so update the preview from the result
                  itself, never the possibly-stale presentation. */
+              /* Ignore completions for requests that are no longer current —
+                 a late autocorrect result must not clear a fresh ghost. */
+              if (result != null && result.key != null
+                  && !_decoder.is_current(result.key))
+                return;
               update_inline_prediction_result(result);
             }
           });
