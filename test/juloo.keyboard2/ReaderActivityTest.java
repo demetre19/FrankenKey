@@ -557,22 +557,18 @@ public class ReaderActivityTest
   }
 
   @Test
-  public void keyboard_reader_actions_appear_only_for_an_empty_readable_editor()
+  public void keyboard_reader_actions_rest_when_idle()
   {
-    assertTrue("An enabled Reader exposes actions in an empty readable editor.",
-        Keyboard2.reader_entry_visible(true, true, true, false, false, false));
-    assertFalse("Reader actions stay absent until the user enables them.",
-        Keyboard2.reader_entry_visible(false, true, true, false, false, false));
-    assertFalse("Non-empty editors keep the strip hidden.",
-        Keyboard2.reader_entry_visible(true, true, false, false, false, false));
-    assertFalse("Unreadable editors never expose the strip.",
-        Keyboard2.reader_entry_visible(true, false, true, false, false, false));
-    assertFalse("Composing text hides both Reader actions.",
-        Keyboard2.reader_entry_visible(true, true, true, true, false, false));
-    assertFalse("Visible candidates take precedence over Reader actions.",
-        Keyboard2.reader_entry_visible(true, true, true, false, true, false));
-    assertFalse("Expanded playback controls replace the compact action row.",
-        Keyboard2.reader_entry_visible(true, true, true, false, false, true));
+    assertTrue("The strip rests until typing produces candidates.",
+        Keyboard2.reader_entry_visible(true, false, false, false));
+    assertFalse("Disabled Reader never shows the strip.",
+        Keyboard2.reader_entry_visible(false, false, false, false));
+    assertFalse("Composing text hides the strip.",
+        Keyboard2.reader_entry_visible(true, true, false, false));
+    assertFalse("Visible candidates take precedence.",
+        Keyboard2.reader_entry_visible(true, false, true, false));
+    assertFalse("Expanded playback controls replace the action row.",
+        Keyboard2.reader_entry_visible(true, false, false, true));
   }
 
   @Test

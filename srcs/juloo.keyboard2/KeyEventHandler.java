@@ -784,8 +784,12 @@ public final class KeyEventHandler
   {
     commit_pending_replacement();
     clear_manual_correction();
-    if (_decoder.is_current(key))
-      toggle_learned_word(key, text);
+    /* Learn the word the user actually typed (current snapshot), not the
+       swiped candidate surface — a stale request key paired with a newer
+       typed word was teaching the wrong literal. */
+    Decoder.RequestKey current = _decoder.current_key();
+    if (current != null && _decoder.is_current(current))
+      toggle_learned_word(current, _typedword.get());
   }
 
   @Override
@@ -881,25 +885,11 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
-    final long session = _decoder_session;
-    _recv.review_unknown_word(word, new Runnable()
-        {
-          @Override public void run()
-          {
-            // Session guard only: the review dialog takes IME focus, so
-            // the request key is stale by click time and is_current()
-            // would silently drop the confirmation.
-            if (_decoder_session == session)
-              learn_word_now(session, key, word);
-          }
-        }, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session)
-              set_replacement_now(session, key, word, null);
-          }
-        });
+    // The swipe-up gesture is already an explicit learn intent — showing the
+    // review dialog here stole IME focus, hid the keyboard, and its button
+    // presses silently dropped (the request key is stale by click time).
+    // Learn directly; the candidates row shows the learned feedback pill.
+    learn_word_now(_decoder_session, key, word);
   }
 
   void review_repeated_unknown_word(final long session, final String word)
@@ -907,23 +897,9 @@ public final class KeyEventHandler
     if (_decoder_session != session || !should_use_personalization()
         || !can_explicitly_teach(word))
       return;
-    _recv.review_unknown_word(word, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && should_use_personalization()
-                && can_explicitly_teach(word))
-              _decoder.learn_word(session, word);
-          }
-        }, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && should_use_personalization()
-                && can_explicitly_teach(word))
-              _decoder.set_replacement(session, word, null);
-          }
-        });
+    // Repeated unknown commits: direct learn — the modal focus-loss bug
+    // made it unsafe (PWA editors reset; buttons silently dropped).
+    _decoder.learn_word(session, word);
   }
 
   void learn_word(Decoder.RequestKey key, String word)
@@ -977,19 +953,10 @@ public final class KeyEventHandler
   {
     if (key == null || !_decoder.is_current(key) || !can_change_learning(word))
       return;
-    final long session = _decoder_session;
-    _recv.confirm_unlearn_word(word, new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            // Session guard only: the confirm dialog takes IME focus, so
-            // the request key is stale by click time and is_current()
-            // would silently drop the unlearn.
-            if (_decoder_session == session && can_change_learning(word))
-              _decoder.unlearn_word(session, key, word, false);
-          }
-        });
+    // Same as learn: the confirm dialog kills IME focus and its button
+    // presses no-op because the request key is stale at click time.
+    // The swipe gesture is already explicit intent — apply directly.
+    _decoder.unlearn_word(_decoder_session, key, word, false);
   }
 
   void toggle_learned_word(Decoder.RequestKey key, String word)
