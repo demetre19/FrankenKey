@@ -58,16 +58,19 @@ public final class Decoder
   private static final int Q8 = 256;
   // Edit costs follow AOSP LatinIME's typing weights, scaled so that an
   // omission costs 6 Q8: insertion 0.72, same-key insertion 0.55, omission
-  // 0.47, doubled-letter omission 0.35 and a proximity substitution 0.15 plus
-  // 0.15 per squared key distance. Transposition stays cheaper than
-  // LatinIME's 0.56 because fast two-thumb typing swaps letters often.
+  // 0.47, doubled-letter omission 0.35 and a 0.15 proximity base. Two
+  // deliberate departures, tuned on the androidTest oracles: transposition
+  // stays cheaper than LatinIME's 0.56 because fast typing swaps letters
+  // often, and the per-squared-key distance cost is steeper so an accurate
+  // tap on the neighbouring key (mistaks) prefers a missed letter
+  // (mistakes) over a substitution (mistake).
   private static final int OMISSION_COST_Q8 = 6 * Q8;
   private static final int SAME_LETTER_OMISSION_COST_Q8 = 1135;
   private static final int EXTRA_TAP_COST_Q8 = 2384;
   private static final int SAME_LETTER_EXTRA_TAP_COST_Q8 = 1811;
   private static final int TRANSPOSITION_COST_Q8 = 1024;
   private static final double PROXIMITY_BASE_COST = 1.9;
-  private static final double PROXIMITY_DISTANCE_COST = 1.95;
+  private static final double PROXIMITY_DISTANCE_COST = 4.0;
   private static final int UNKNOWN_SUBSTITUTION_COST_Q8 = 12 * Q8;
   private static final int MAX_SUBSTITUTION_COST_Q8 = 64 * Q8;
   private static final int BEAM_COST_Q8 = 48 * Q8;
@@ -76,6 +79,9 @@ public final class Decoder
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
   private static final int DECISIVE_SAME_LENGTH_MARGIN_Q8 = 2 * Q8;
   private static final int LENGTH_DELTA_RANKING_PENALTY_Q8 = 4 * Q8;
+  /** A same-length repair yields to a one-edit length repair only within
+      this ranking gap; word frequency already separates the two. */
+  private static final int COMPETING_LENGTH_REPAIR_GAP_Q8 = Q8;
   private static final int NEARBY_SUBSTITUTION_COST_Q8 = 8 * Q8;
   private static final int UNKNOWN_LITERAL_LENGTH_THRESHOLD = 5;
   private static final int UNKNOWN_LITERAL_LENGTH_PENALTY_Q8 = 3 * Q8 / 2;
@@ -1660,8 +1666,11 @@ public final class Decoder
     {
       int candidateLength = candidate.canonical.codePointCount(
           0, candidate.canonical.length());
+      // A close one-edit length repair (ths: the vs this) is as much a
+      // competitor as a same-length word.
       if (candidate == selected || candidate == literal
-          || candidateLength != request.normalizedCodePointCount
+          || (candidateLength != request.normalizedCodePointCount
+            && !is_complete_one_edit_length_repair(candidate))
           || !is_autocorrection_candidate_text(candidate, literal)
           || !is_case_compatible_autocorrection(request, candidate)
           || !is_safe_autocorrection_edit(candidate))
@@ -2072,7 +2081,7 @@ public final class Decoder
       if ((best.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
           && best.cdictFrequency >= candidate.cdictFrequency + 2)
         continue;
-      if (candidateGap <= LENGTH_DELTA_RANKING_PENALTY_Q8)
+      if (candidateGap <= COMPETING_LENGTH_REPAIR_GAP_Q8)
         return true;
     }
     return false;

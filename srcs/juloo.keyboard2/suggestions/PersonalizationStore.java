@@ -1693,7 +1693,9 @@ public final class PersonalizationStore
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
   private static final int MAX_REPLACEMENT_RULES = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
-  private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
+  /** Fixed key-pair cost that still means "adjacent key": neighbours cost
+      5.9 Q8 (side) and 6.9 Q8 (diagonal); the next ring costs 14.9 Q8+. */
+  private static final int RELATED_SUBSTITUTION_COST_Q8 = 7 * 256;
   private static final int MIN_TOUCH_SAMPLES = 20;
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;

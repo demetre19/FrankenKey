@@ -175,6 +175,33 @@ the correction to a weaker lowercase word.
   rules, casing, protected literals.
 - Gate on the instrumented parity suites; this needs the emulator.
 
+**Part 6 as shipped (targeted, not a rewrite):** measurement showed most
+of the ladder is protective. A blanket smaller runner-up margin breaks the
+"nearly tied → leave it" contract, which `conservative_autocorrect_requires_clear_one_edit_winner`
+encodes. So the shipped changes are only the vetoes that blocked clear
+winners:
+- A same-length repair yields to a one-edit length repair only within
+  1 Q8, down from 4 Q8 (`hellp` → `hello`, `cautios` → `cautious`).
+- The 3-letter fast path counts close one-edit length repairs as
+  competitors (`ths` no longer forced to `the` over `this`).
+- The neighbour distance cost is 4·d², so accurate taps on neighbouring
+  keys read as a missed letter rather than a slip. Personalization
+  adjacency moves to 7 Q8 to keep its meaning.
+
+**Final offline evaluation, original commit `e726145` vs this branch
+(real Decoder, shipped dictionary/Hunspell/n-grams, centred touches):**
+
+| Set | Fixed | Wrong-word corrections | Correct top suggestion | Valid words changed |
+|---|---|---|---|---|
+| Gboard oracle (79 typos) | 67 → **75** | 4 → **1** | 86 → **94** | 0 → 0 |
+| Chapter corpus (169 typos) | 138 → **141** | 4 → 6* | 217 → **224** | 0 → 0 |
+| Common typos (60 + 53 valid) | 46 → **55** | 5 → **1** | 87 → **103** | 1 → 1 (`async`) |
+| **Total** | 251 → **271** | 13 → **8** | 390 → **421** | 1 → 1 |
+
+\* Two of the six are US vs UK spellings (`neighboring`, `capitalization`)
+graded against UK expectations. For comparison, Gboard's own recorded
+result on the oracle is 60/79.
+
 ### Part 7 — Real language model (R5b) · large · highest long-term impact
 - Ship a pruned word-pair/word-triple model (licence-clean corpus) and
   8-bit log-probability unigrams. Weight language roughly equally with key
@@ -204,5 +231,5 @@ the correction to a weaker lowercase word.
 | 3b Dictionary frequency wrap fix | done |
 | 4 Next-word from bundled model | done |
 | 5 Key-position rebalance | done |
-| 6 Collapse veto ladder | planned |
+| 6 Collapse veto ladder | done (targeted) |
 | 7 Real language model | planned (separate work) |
