@@ -113,6 +113,21 @@ a right swipe that can start anywhere on the keyboard.
 - Tests: in `AutocorrectScoringTest`, `nad`→`and`, `wierd`→`weird`, and a
   taught `wierd` stays `wierd`.
 
+### Part 3b — Fix the dictionary frequency wrap (found by measurement) · medium · very high impact
+- Offline evaluation (the real `Decoder` with the shipped Cdict, Hunspell
+  and n-gram files) showed that `the`, `and`, `of`, `to`, `in`, `a` and
+  `was` have Cdict frequency **0**, the lowest bucket.
+- Cause: the vendored builder's `K_medians` computes
+  `cluster = i / (len / 16)`. That can reach 16 for the highest-frequency
+  words, and the 4-bit packing (`land 0xF`) wraps 16 to 0. So the most
+  common words lose every frequency bonus. This is why `yhe` → `he`,
+  `tge` → `teg`, `thw` → `thaw`, `abd` → `bad` and `amd` → `mad`.
+- Fix: clamp the cluster to 15 in `vendor/cdict/ocaml-cdict/builder/k_medians.ml`.
+  Then rebuild the en_US/en_GB/en_AU Cdicts from the pinned upstream
+  sources (Unexpected-Keyboard-dictionaries `c71e034`, aosp-dictionaries
+  `48c29a9`). First prove the unfixed builder reproduces the shipped
+  hashes; then the only change is the corrected frequencies.
+
 ### Part 4 — Next-word predictions from the bundled model (R5a) · easy · medium impact
 - `decode_next_words` merges the personal word pairs (ranked first) with
   the bundled `LanguageModel` word pairs and triples for the previous word.
@@ -160,8 +175,9 @@ a right swipe that can start anywhere on the keyboard.
 |---|---|
 | 1 Stop passive learning | done |
 | 2 Right-swipe accept | done |
-| 3 Weak recognition + whitelist | in progress |
-| 4 Next-word from bundled model | planned |
+| 3 Weak recognition + whitelist | done |
+| 3b Dictionary frequency wrap fix | in progress |
+| 4 Next-word from bundled model | done |
 | 5 Key-position rebalance | planned |
 | 6 Collapse veto ladder | planned |
 | 7 Real language model | planned (separate work) |

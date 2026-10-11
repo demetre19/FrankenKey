@@ -6,9 +6,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import juloo.cdict.Cdict;
 import juloo.keyboard2.ComposeKey;
 import juloo.keyboard2.ComposeKeyData;
@@ -153,7 +155,8 @@ public final class Decoder
       && request.config.autocorrectEnabled;
 
     if (request.normalized.length() == 0)
-      return decode_next_words(request, personalization, displayEnabled, failure);
+      return decode_next_words(request, personalization, languageModel,
+          displayEnabled, failure);
 
     Map<String, Accumulator> merged = new HashMap<String, Accumulator>();
     Accumulator literal = new Accumulator(request.normalized,
@@ -532,40 +535,89 @@ public final class Decoder
   }
 
   private static Result decode_next_words(Request request,
-      PersonalizationStore personalization, boolean displayEnabled,
-      FailureState failure)
+      PersonalizationStore personalization, LanguageModel languageModel,
+      boolean displayEnabled, FailureState failure)
   {
     if (!displayEnabled || personalization == null)
       return new Result(request.key, request.typed, new Candidate[0], null,
           null, null, true, failure.complete(), failure.failure);
     try
     {
+      List<Candidate> words = new ArrayList<Candidate>(MAX_VISIBLE_WORDS);
+      Set<String> seen = new HashSet<String>();
       List<PersonalizationStore.ScoredWord> matches =
         personalization.suggest_next_words_with_counts(MAX_VISIBLE_WORDS);
-      int count = Math.min(matches.size(), MAX_VISIBLE_WORDS);
-      Candidate[] words = new Candidate[count];
-      for (int i = 0; i < count; i++)
+      for (PersonalizationStore.ScoredWord match : matches)
       {
-        PersonalizationStore.ScoredWord match = matches.get(i);
+        if (words.size() == MAX_VISIBLE_WORDS)
+          break;
         String canonical = normalize(match.word);
+        if (!seen.add(canonical))
+          continue;
         int unigram = personalization.word_count(canonical);
         int sourceMask = SOURCE_CONTEXT;
         if (unigram > 0)
           sourceMask |= SOURCE_PERSONAL;
         int total = clamp_score(-(long)256 * count_level(unigram)
             - (long)384 * count_level(match.count));
-        words[i] = new Candidate(canonical, match.word, sourceMask, -1, 0, i,
-            unigram, match.count, 0, 0, 0, 0, 0, 0, total,
-            Role.NEXT_WORD, false, unigram > 0, true);
+        words.add(new Candidate(canonical, match.word, sourceMask, -1, 0,
+            words.size(), unigram, match.count, 0, 0, 0, 0, 0, 0, total,
+            Role.NEXT_WORD, false, unigram > 0, true));
       }
-      return new Result(request.key, request.typed, words, null, null, null,
-          true, failure.complete(), failure.failure);
+      // Packaged context priors fill the remaining slots: trigram rows for
+      // the two previous words first, then bigram rows for the last word.
+      String previous = personalization.previous_word();
+      if (languageModel != null && previous != null)
+      {
+        String prior = personalization.previous_previous_word();
+        add_model_next_words(words, seen,
+            languageModel.following(prior, previous));
+        add_model_next_words(words, seen, languageModel.following(previous));
+      }
+      return new Result(request.key, request.typed,
+          words.toArray(new Candidate[0]), null, null, null, true,
+          failure.complete(), failure.failure);
     }
     catch (RuntimeException e)
     {
       failure.resource();
       return new Result(request.key, request.typed, new Candidate[0], null,
           null, null, true, failure.complete(), failure.failure);
+    }
+  }
+
+  private static void add_model_next_words(List<Candidate> words,
+      Set<String> seen, Map<String, Integer> following)
+  {
+    if (words.size() >= MAX_VISIBLE_WORDS || following.isEmpty())
+      return;
+    List<Map.Entry<String, Integer>> rows =
+      new ArrayList<Map.Entry<String, Integer>>(following.entrySet());
+    Collections.sort(rows, new Comparator<Map.Entry<String, Integer>>()
+        {
+          @Override
+          public int compare(Map.Entry<String, Integer> a,
+              Map.Entry<String, Integer> b)
+          {
+            int result = Integer.compare(b.getValue(), a.getValue());
+            return result != 0 ? result
+              : code_point_compare(a.getKey(), b.getKey());
+          }
+        });
+    for (Map.Entry<String, Integer> row : rows)
+    {
+      if (words.size() >= MAX_VISIBLE_WORDS)
+        return;
+      String canonical = row.getKey();
+      if (!seen.add(canonical))
+        continue;
+      String surface = "i'm".equals(canonical) ? "I'm"
+        : ("i".equals(canonical) ? "I" : canonical);
+      int weight = row.getValue();
+      words.add(new Candidate(canonical, surface, SOURCE_CONTEXT, -1, 0,
+          words.size(), 0, weight, 0, 0, 0, 0, 0, 0,
+          clamp_score(-(long)384 * count_level(weight)), Role.NEXT_WORD,
+          false, false, true));
     }
   }
 
