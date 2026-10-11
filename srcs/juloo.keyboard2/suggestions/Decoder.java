@@ -39,6 +39,8 @@ public final class Decoder
   public static final int SOURCE_CONTEXTUAL_CORRECTION = 1 << 9;
   public static final int SOURCE_HUNSPELL_PRIMARY = 1 << 10;
   public static final int SOURCE_REPLACEMENT = 1 << 11;
+  /** Packaged dictionary shortcut: the typed form is a known misspelling. */
+  public static final int SOURCE_WHITELIST = 1 << 12;
 
   public static final int EDIT_SUBSTITUTION = 1;
   public static final int EDIT_OMISSION = 1 << 1;
@@ -176,6 +178,8 @@ public final class Decoder
     boolean generateCandidates = inputLength >= 1 && boundedInput;
     PersonalizationStore.ReplacementRule replacementRule = null;
     CostTable costs = null;
+    String whitelistCanonical = null;
+    boolean literalAcronymOnly = false;
     if (generateCandidates && personalization != null)
     {
       try
@@ -210,9 +214,31 @@ public final class Decoder
         Cdict.Result exact = dictionary.find(request.normalized);
         if (exact.found)
         {
-          literal.sourceMask |= SOURCE_CDICT_EXACT;
-          literal.exactSurface = dictionary.word(exact.index);
-          literal.set_cdict_exact(exact.index, dictionary.freq(exact.index));
+          String exactWord = dictionary.word(exact.index);
+          int exactFrequency = dictionary.freq(exact.index);
+          if (exact.original_index != exact.index
+              && !normalize(exactWord).equals(request.normalized))
+          {
+            // The typed form only exists as a shortcut to another word
+            // (wierd -> weird): it is a misspelling, not a valid literal.
+            Accumulator target = accumulator_for(merged, exactWord);
+            if (target != null && is_whitelist_text(exactWord))
+            {
+              target.sourceMask |= SOURCE_CDICT_EXACT | SOURCE_WHITELIST;
+              target.exactSurface = exactWord;
+              target.set_cdict_exact(exact.index, exactFrequency);
+              whitelistCanonical = target.canonical;
+            }
+          }
+          else
+          {
+            literal.sourceMask |= SOURCE_CDICT_EXACT;
+            literal.exactSurface = exactWord;
+            literal.set_cdict_exact(exact.index, exactFrequency);
+            literalAcronymOnly = casing(request.typed) == Casing.LOWER
+              && exactWord.codePointCount(0, exactWord.length()) >= 2
+              && casing(exactWord) == Casing.UPPER;
+          }
         }
 
 
@@ -391,7 +417,8 @@ public final class Decoder
     Candidate literalCandidate = candidate_for_canonical(ranked,
         request.normalized);
     Candidate autocorrection = choose_autocorrection(request, ranked,
-        literalCandidate, autocorrectEnabled, failure.failure);
+        literalCandidate, autocorrectEnabled, failure.failure,
+        literalAcronymOnly);
     if (fast && !is_proven_fast_autocorrection(autocorrection))
       autocorrection = null;
     if (!fast && dictionary != null && costs != null
@@ -415,7 +442,8 @@ public final class Decoder
           languageModel, priorWord, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
-          literalCandidate, autocorrectEnabled, failure.failure);
+          literalCandidate, autocorrectEnabled, failure.failure,
+          literalAcronymOnly);
     }
     if (!fast && !boundaryPreview && hunspell != null && generateCandidates
         && literalCandidate != null
@@ -438,7 +466,8 @@ public final class Decoder
           languageModel, priorWord, previousWord, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
-          literalCandidate, autocorrectEnabled, failure.failure);
+          literalCandidate, autocorrectEnabled, failure.failure,
+          literalAcronymOnly);
     }
     if (replacementRule != null)
       autocorrection = choose_replacement_autocorrection(
@@ -446,7 +475,9 @@ public final class Decoder
           autocorrectEnabled);
     boolean replacementApplied = replacementRule != null
       && autocorrection != null;
-    if (boundaryPreview && !replacementApplied
+    boolean whitelistApplied = autocorrection != null
+      && (autocorrection.sourceMask & SOURCE_WHITELIST) != 0;
+    if (boundaryPreview && !replacementApplied && !whitelistApplied
         && !is_safe_boundary_autocorrection(
           request, literalCandidate, autocorrection, ranked))
       autocorrection = null;
@@ -460,6 +491,11 @@ public final class Decoder
       ? query_emoji(emojiDictionary, request.normalized, failure) : null;
     if (autocorrection != null)
       promote_candidate(ranked, autocorrection.canonical);
+    else if (whitelistCanonical != null && literalCandidate != null
+        && !literalCandidate.learned)
+      // A valid literal with a packaged shortcut (cant -> can't) is kept on
+      // separators but its shortcut leads the strip for explicit acceptance.
+      promote_candidate(ranked, whitelistCanonical);
     Candidate[] words = displayEnabled && inputLength >= 2
       ? visible_words(ranked, request, personalization) : new Candidate[0];
 
@@ -929,7 +965,7 @@ public final class Decoder
   private static boolean is_proven_fast_autocorrection(Candidate candidate)
   {
     return candidate != null
-      && ((candidate.sourceMask & SOURCE_REPLACEMENT) != 0
+      && ((candidate.sourceMask & (SOURCE_REPLACEMENT | SOURCE_WHITELIST)) != 0
         || candidate.exactCorrectionCount > 0
         || (candidate.sourceMask & SOURCE_CONTEXTUAL_CORRECTION) != 0);
   }
@@ -996,6 +1032,14 @@ public final class Decoder
       List<Candidate> ranked, Candidate literal, boolean enabled,
       Failure failure)
   {
+    return choose_autocorrection(request, ranked, literal, enabled, failure,
+        false);
+  }
+
+  private static Candidate choose_autocorrection(Request request,
+      List<Candidate> ranked, Candidate literal, boolean enabled,
+      Failure failure, boolean literalAcronymOnly)
+  {
     if (!enabled || literal == null || request.codePointCount < 1
         || request.codePointCount > MAX_WORD_CODEPOINTS
         || !is_autocorrection_source_text(request)
@@ -1032,6 +1076,16 @@ public final class Decoder
     if (literal.unigramCount > 0)
       return repeatedExact == null ? null
         : present_candidate(repeatedExact, request, true);
+    Candidate whitelist = whitelist_correction(request, literal, ranked);
+    if (whitelist != null)
+      return present_candidate(whitelist, request, true);
+    if (literalAcronymOnly)
+    {
+      Candidate acronymRepair =
+        acronym_transposition_repair(request, literal, ranked);
+      if (acronymRepair != null)
+        return present_candidate(acronymRepair, request, true);
+    }
     if (contextualExact != null)
       return present_candidate(contextualExact, request, true);
     if (repeatedExact != null)
@@ -1135,6 +1189,51 @@ public final class Decoder
         && best.exactCorrectionCount < PROTECTED_LITERAL_EXACT_EVENTS)
       return null;
     return present_candidate(best, request, true);
+  }
+
+  /** A packaged shortcut target replaces an unrecognized, untaught literal
+      (LatinIME whitelist semantics). */
+  private static Candidate whitelist_correction(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.recognized || literal.learned)
+      return null;
+    for (Candidate candidate : ranked)
+      if (candidate != literal
+          && (candidate.sourceMask & SOURCE_WHITELIST) != 0
+          && is_case_compatible_autocorrection(request, candidate))
+        return candidate;
+    return null;
+  }
+
+  /** Lowercase input matching only an all-caps entry (nad -> NAD) yields to
+      an equally or more frequent adjacent transposition (nad -> and). */
+  private static Candidate acronym_transposition_repair(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.learned || (literal.sourceMask & SOURCE_HUNSPELL) != 0)
+      return null;
+    for (Candidate candidate : ranked)
+      if (is_autocorrection_candidate_text(candidate, literal)
+          && is_case_compatible_autocorrection(request, candidate)
+          && candidate.recognized && candidate.completeEvidence
+          && candidate.editCount == 1
+          && candidate.editMask == EDIT_TRANSPOSITION
+          && candidate.cdictFrequency >= literal.cdictFrequency)
+        return candidate;
+    return null;
+  }
+
+  private static boolean is_whitelist_text(String word)
+  {
+    if (word.length() == 0 || word.startsWith(" ") || word.endsWith(" ")
+        || word.contains("  "))
+      return false;
+    for (String part : word.split(" "))
+      if (!(part.codePointCount(0, part.length()) == 1
+            ? is_letters_only(part) : is_word_text(part)))
+        return false;
+    return true;
   }
 
   private static Candidate regular_inflection_repair(Request request,

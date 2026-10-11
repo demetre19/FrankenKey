@@ -88,6 +88,70 @@ public class AutocorrectScoringTest
   }
 
   @Test
+  public void packaged_shortcut_target_replaces_unrecognized_literal()
+      throws Exception
+  {
+    Decoder.Request request = request("wierd");
+    Decoder.Candidate literal = candidate("wierd", "wierd",
+        Decoder.SOURCE_LITERAL, UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false,
+        true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate wired = candidate("wired", "wired",
+        Decoder.SOURCE_CDICT_SPATIAL, -512, 1, Decoder.EDIT_TRANSPOSITION,
+        true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate weird = candidate("weird", "weird",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_WHITELIST, 0, 1,
+        Decoder.EDIT_TRANSPOSITION, true, false, true, Decoder.Role.WORD);
+
+    assertEquals("A dictionary shortcut names the intended word even when another repair scores closer.",
+        "weird", choose(request, Arrays.asList(wired, weird, literal), literal,
+          true, Decoder.Failure.NONE).canonical);
+
+    Decoder.Candidate valid = candidate("cant", "cant",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_HUNSPELL, 0, 0, 0, true,
+        false, true, Decoder.Role.WORD);
+    Decoder.Candidate contraction = candidate("can't", "can't",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_WHITELIST, 0, 1,
+        Decoder.EDIT_OMISSION, true, false, true, Decoder.Role.WORD);
+    assertNull("A literal Hunspell accepts keeps its spelling on separators.",
+        choose(request("cant"), Arrays.asList(contraction, valid), valid, true,
+          Decoder.Failure.NONE));
+
+    Decoder.Candidate taught = candidate("wierd", "wierd",
+        Decoder.SOURCE_LITERAL, 0, 0, 0, false, true, true,
+        Decoder.Role.ENTERED_LITERAL);
+    assertNull("A taught spelling outranks any packaged shortcut.",
+        choose(request, Arrays.asList(weird, taught), taught, true,
+          Decoder.Failure.NONE));
+  }
+
+  @Test
+  public void lowercase_acronym_only_literal_yields_to_frequent_transposition()
+      throws Exception
+  {
+    Decoder.Request request = request("nad");
+    Decoder.Candidate literal = frequencyCandidate("nad", "nad",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT, 14, 0, 0,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate and = frequencyCandidate("and", "and",
+        Decoder.SOURCE_CDICT_SPATIAL, 15, 1, Decoder.EDIT_TRANSPOSITION,
+        Decoder.Role.WORD);
+    List<Decoder.Candidate> ranked = Arrays.asList(literal, and);
+
+    assertEquals("Lowercase nad only matches the acronym NAD and must become and.",
+        "and", choose(request, ranked, literal, true, Decoder.Failure.NONE,
+          true).canonical);
+    assertNull("Without the acronym-only signal the recognized literal stays protected.",
+        choose(request, ranked, literal, true, Decoder.Failure.NONE, false));
+
+    Decoder.Candidate rare = frequencyCandidate("and", "and",
+        Decoder.SOURCE_CDICT_SPATIAL, 9, 1, Decoder.EDIT_TRANSPOSITION,
+        Decoder.Role.WORD);
+    assertNull("A less frequent transposition must not replace the acronym match.",
+        choose(request, Arrays.asList(literal, rare), literal, true,
+          Decoder.Failure.NONE, true));
+  }
+
+  @Test
   public void swiftkey_parity_ranks_same_length_hello_before_shorter_help()
       throws Exception
   {
@@ -1233,6 +1297,36 @@ public class AutocorrectScoringTest
     method.setAccessible(true);
     return (Decoder.Candidate)method.invoke(null, request, ranked, literal,
         enabled, failure);
+  }
+
+  private static Decoder.Candidate choose(Decoder.Request request,
+      List<Decoder.Candidate> ranked, Decoder.Candidate literal,
+      boolean enabled, Decoder.Failure failure, boolean acronymOnly)
+      throws Exception
+  {
+    Method method = Decoder.class.getDeclaredMethod("choose_autocorrection",
+        Decoder.Request.class, List.class, Decoder.Candidate.class,
+        boolean.class, Decoder.Failure.class, boolean.class);
+    method.setAccessible(true);
+    return (Decoder.Candidate)method.invoke(null, request, ranked, literal,
+        enabled, failure, acronymOnly);
+  }
+
+  private static Decoder.Candidate frequencyCandidate(String canonical,
+      String surface, int sourceMask, int frequency, int editCount,
+      int editMask, Decoder.Role role)
+      throws Exception
+  {
+    Constructor<Decoder.Candidate> constructor =
+      Decoder.Candidate.class.getDeclaredConstructor(String.class,
+          String.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, Decoder.Role.class, boolean.class,
+          boolean.class, boolean.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(canonical, surface, sourceMask, -1,
+        frequency, 0, 0, 0, 0, 0, 0, 0, editCount, editMask,
+        -128 * frequency, role, true, false, true);
   }
 
   private static Decoder.Candidate candidate(String canonical, String surface,
