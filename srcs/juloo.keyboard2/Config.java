@@ -45,6 +45,7 @@ public final class Config
   public boolean clean_mode;
   public boolean show_period_key;
   public boolean show_speak_key;
+  public boolean double_space_period;
   public float swipe_dist_px;
   public float slide_step_px;
   public boolean suggestions_enabled;
@@ -157,6 +158,7 @@ public final class Config
     clean_mode = _prefs.getBoolean("clean_mode", true);
     show_period_key = _prefs.getBoolean("show_period_key", true);
     show_speak_key = _prefs.getBoolean("frankenkey_show_speak_key", true);
+    double_space_period = _prefs.getBoolean("double_space_period", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
     /* Grammar features are parked until the rework — toggle hidden,
        always off regardless of a stored value. */

@@ -2615,6 +2615,43 @@ public final class KeyEventHandler
   }
 
 
+  private boolean has_plain_space_before_cursor()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence selection = conn.getSelectedText(0);
+    if (selection != null && selection.length() != 0)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(1, 0);
+    return before != null && " ".contentEquals(before);
+  }
+
+  private boolean is_double_space_period_candidate()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(3, 0);
+    if (before == null || before.length() < 2
+        || before.charAt(before.length() - 1) != ' ')
+      return false;
+    int previous = Character.codePointBefore(before, before.length() - 1);
+    return !Character.isWhitespace(previous)
+      && (previous > Character.MAX_VALUE
+        || !is_autocorrect_separator((char)previous));
+  }
+
+  private boolean replace_double_space_with_period()
+  {
+    if (!is_double_space_period_candidate()
+        || !replace_recent_text(" ", ". "))
+      return false;
+    _autocap.text_replaced(1, ". ");
+    _typedword.typed(". ");
+    return true;
+  }
+
   private void normalize_space_before_punctuation(String separator)
   {
     if (!should_normalize_prose_spacing() || separator.length() != 1
@@ -2793,11 +2830,20 @@ public final class KeyEventHandler
     _skip_next_word_learning = false;
   }
 
-  /** Implement autocorrect on word boundary. */
+  /** Implement autocorrect and optional double-space period insertion. */
   void handle_space_bar()
   {
     if (should_normalize_prose_spacing())
+    {
       commit_pending_replacement();
+      if (has_plain_space_before_cursor()
+          && _config != null && _config.double_space_period)
+      {
+        if (!is_double_space_period_candidate()
+            || replace_double_space_with_period())
+          return;
+      }
+    }
     handle_word_separator(" ");
   }
 

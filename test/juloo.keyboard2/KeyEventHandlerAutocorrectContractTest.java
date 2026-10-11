@@ -256,13 +256,38 @@ public class KeyEventHandlerAutocorrectContractTest
       harness.handler.handle_space_bar();
 
       assertEquals("Prose typing word Space " + punctuation
-          + " Space must attach punctuation; the removed double-space "
-          + "feature no longer swallows the next space.",
-          "word" + punctuation + "  ",
+          + " Space must attach punctuation and retain exactly one following space.",
+          "word" + punctuation + " ",
           harness.receiver.input.text.toString());
     }
   }
 
+  @Test
+  public void prose_double_space_inserts_period_and_following_space()
+      throws Exception
+  {
+    Harness harness = harness("word", false, true);
+
+    harness.handler.handle_space_bar();
+    harness.handler.handle_space_bar();
+
+    assertEquals("The enabled double-space setting must replace the first space with a full stop and one following space.",
+        "word. ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void disabled_double_space_period_preserves_the_second_space()
+      throws Exception
+  {
+    Harness harness = harness("word", false, true);
+    harness.config.double_space_period = false;
+
+    harness.handler.handle_space_bar();
+    harness.handler.handle_space_bar();
+
+    assertEquals("Turning off double-space period must preserve both spaces.",
+        "word  ", harness.receiver.input.text.toString());
+  }
 
   @Test
   public void structured_fields_and_termux_keep_literal_spacing()

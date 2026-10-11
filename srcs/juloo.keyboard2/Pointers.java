@@ -34,7 +34,7 @@ public final class Pointers implements Handler.Callback
   private float _key_unit_width = 0.f;
 
   /** A keyboard-wide right swipe must travel this many key units. */
-  static final float RIGHT_ACCEPT_SWIPE_KEYS = 2.f;
+  static final float RIGHT_ACCEPT_SWIPE_KEYS = 1.5f;
 
   public Pointers(IPointerEventHandler h, Config c)
   {
@@ -153,6 +153,23 @@ public final class Pointers implements Handler.Callback
     Pointer ptr = getPtr(pointerId);
     if (ptr == null)
       return;
+    /* Right-accept override: a clearly horizontal rightward flick accepts the
+       suggestion even when a corner slider captured the gesture into sliding
+       mode. Excluded keys: the spacebar (dedicated cursor/clipboard drags)
+       and any key carrying horizontal cursor sliders — G's trackpad swipes
+       must keep moving the cursor instead of accepting. */
+    if (!isSpaceBar(ptr.value)
+        && !isHorizontalCursorSliderKey(ptr)
+        && _key_unit_width > 0.f
+        && ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
+        && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx)
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
+      return;
+    }
     if (ptr.hasFlagsAny(FLAG_P_SLIDING))
     {
       clearLatched();
@@ -441,10 +458,25 @@ public final class Pointers implements Handler.Callback
   boolean isRightAcceptSwipe(Pointer ptr)
   {
     if (ptr.gesture == null || _key_unit_width <= 0.f
-        || ptr.hasFlagsAny(FLAG_P_SLIDING))
+        || ptr.hasFlagsAny(FLAG_P_SLIDING)
+        || isSpaceBar(ptr.value) || isHorizontalCursorSliderKey(ptr))
       return false;
     return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
       && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
+  }
+
+  /** True for keys that carry horizontal cursor sliders — G's trackpad —
+      whose left/right drags move the cursor and must never fire
+      right-accept. The spacebar is handled separately. */
+  private boolean isHorizontalCursorSliderKey(Pointer ptr)
+  {
+    KeyboardData.Key key = ptr.key;
+    if (key == null || key.keys == null || key.keys.length <= 6)
+      return false;
+    KeyValue right = _handler.modifyKey(key.keys[6], ptr.modifiers);
+    return right != null
+      && right.getKind() == KeyValue.Kind.Slider
+      && right.getSlider() == KeyValue.Slider.Cursor_right;
   }
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)

@@ -25,6 +25,8 @@ public class SettingsUiContractsTest
         "Check GitHub Releases at most once a day. Updates are never downloaded or installed without asking." },
       { "autocorrect", "pref_autocorrect_summary",
         "Correct likely typos when you finish a word." },
+      { "double_space_period", "pref_double_space_period_summary",
+        "Press space twice to insert a full stop followed by a space." },
       { "suggestions", "pref_suggestions_summary",
         "Show word suggestions while typing." },
       { "contact_email_suggestions", "contact_email_suggestions_summary",

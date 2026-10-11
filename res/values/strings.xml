@@ -79,6 +79,8 @@
     <string name="pref_category_typing_assistance">Typing assistance</string>
     <string name="pref_autocorrect_title">Autocorrect</string>
     <string name="pref_autocorrect_summary">Correct likely typos when you finish a word.</string>
+    <string name="pref_double_space_period_title">Double-space for full stop</string>
+    <string name="pref_double_space_period_summary">Press space twice to insert a full stop followed by a space.</string>
     <string name="pref_suggestions_title">Suggestions</string>
     <string name="pref_suggestions_summary">Show word suggestions while typing.</string>
     <string name="pref_reader_ai_settings_title">AI provider and credentials</string>
