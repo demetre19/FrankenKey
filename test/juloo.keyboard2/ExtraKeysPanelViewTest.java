@@ -358,6 +358,7 @@ public class ExtraKeysPanelViewTest
     @Override public void mods_changed(Pointers.Modifiers mods) {}
     @Override public void suggestion_entered(Decoder.RequestKey key, String text) {}
     @Override public void suggestion_swiped_up(Decoder.RequestKey key, String text) {}
+    @Override public void email_suggestion_entered(String text) {}
     @Override public void typing_assistance_data_cleared() {}
     @Override public void keyboard_swiped_up() {}
     @Override public void keyboard_swiped_down() {}

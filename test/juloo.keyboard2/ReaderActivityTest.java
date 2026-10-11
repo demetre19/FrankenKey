@@ -560,29 +560,15 @@ public class ReaderActivityTest
   public void keyboard_reader_actions_appear_only_for_an_empty_readable_editor()
   {
     assertTrue("An enabled Reader exposes actions in an empty readable editor.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
+        Keyboard2.reader_entry_visible(true, false, false, false));
     assertFalse("Reader actions stay absent until the user enables them.",
-        Keyboard2.reader_entry_visible(
-          false, true, true, false, false, false));
-    assertFalse("The first editor text immediately hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, false, false, false, false));
+        Keyboard2.reader_entry_visible(false, false, false, false));
     assertFalse("Composing text hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, true, false, false));
+        Keyboard2.reader_entry_visible(true, true, false, false));
     assertFalse("Visible candidates take precedence over Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, true, false));
-    assertTrue("Collapsed playback leaves the empty-editor actions available.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
+        Keyboard2.reader_entry_visible(true, false, true, false));
     assertFalse("Expanded playback controls replace the compact action row.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, true));
-    assertFalse("Private or unsupported editors never expose Reader text access.",
-        Keyboard2.reader_entry_visible(
-          true, false, true, false, false, false));
+        Keyboard2.reader_entry_visible(true, false, false, true));
   }
 
   @Test

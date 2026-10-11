@@ -333,6 +333,7 @@ public class CandidatesViewPresentationTest
     @Override public void key_hold(KeyValue value, Pointers.Modifiers mods,
         int holdCount) {}
     @Override public void mods_changed(Pointers.Modifiers mods) {}
+    @Override public void email_suggestion_entered(String text) {}
 
     @Override
     public void suggestion_entered(Decoder.RequestKey key, String text)

@@ -617,13 +617,12 @@ public final class SharedDecoder implements AutoCloseable
     synchronized (_lock)
     {
       PendingDecode sourceEnvelope = find_envelope_locked(source);
-      boolean _dbg_bad = !is_active_session_locked(sessionEpoch)
+      if (!is_active_session_locked(sessionEpoch)
           || !is_valid_request_key_locked(source)
           || sourceEnvelope == null
           || (!is_current_locked(source) && !sourceEnvelope.boundary)
           || !_config.useTypingAssistance
-          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled);
-      if (_dbg_bad)
+          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled))
         return null;
       Boolean recognized = recognized_from_result_locked(source,
           committedWord, sourceEnvelope);
