@@ -162,6 +162,7 @@ public final class Pointers implements Handler.Callback
     if (isRightAcceptSwipe(ptr))
     {
       stopLongPress(ptr);
+      clearLatched();
       removePtr(ptr);
       _handler.onKeyboardSwipeRight();
       return;

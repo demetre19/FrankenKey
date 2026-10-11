@@ -125,6 +125,51 @@ public class AutocorrectScoringTest
   }
 
   @Test
+  public void common_acronyms_typed_lowercase_are_not_rewritten()
+      throws Exception
+  {
+    Decoder.Request nadRequest = request("nad");
+    Decoder.Candidate nad = unigramCandidate("nad", Decoder.SOURCE_LITERAL
+        | Decoder.SOURCE_CDICT_EXACT, 14, 95, 0, 0,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate and = unigramCandidate("and",
+        Decoder.SOURCE_CDICT_SPATIAL, 15, 212, 1, Decoder.EDIT_TRANSPOSITION,
+        Decoder.Role.WORD);
+    assertEquals("A rare acronym yields to a far more frequent word.", "and",
+        choose(nadRequest, Arrays.asList(nad, and), nad, true,
+          Decoder.Failure.NONE, true).canonical);
+
+    Decoder.Request usbRequest = request("usb");
+    Decoder.Candidate usb = unigramCandidate("usb", Decoder.SOURCE_LITERAL
+        | Decoder.SOURCE_CDICT_EXACT, 15, 106, 0, 0,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate sub = unigramCandidate("sub",
+        Decoder.SOURCE_CDICT_SPATIAL, 15, 131, 1, Decoder.EDIT_TRANSPOSITION,
+        Decoder.Role.WORD);
+    assertNull("A common acronym typed lowercase (usb) must not become sub.",
+        choose(usbRequest, Arrays.asList(usb, sub), usb, true,
+          Decoder.Failure.NONE, true));
+  }
+
+  @Test
+  public void shortcuts_never_rewrite_cold_short_all_caps_input()
+      throws Exception
+  {
+    Decoder.Request request = request("IM");
+    Decoder.Candidate literal = candidate("im", "IM", Decoder.SOURCE_LITERAL,
+        UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate contraction = candidate("i'm", "I'm",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_WHITELIST, 0, 1,
+        Decoder.EDIT_OMISSION, true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate chosen = choose(request,
+        Arrays.asList(contraction, literal), literal, true,
+        Decoder.Failure.NONE);
+    assertTrue("Short all-caps tokens keep their spelling.",
+        chosen == null || !"i'm".equals(chosen.canonical));
+  }
+
+  @Test
   public void stronger_capitalized_word_keeps_lowercase_literal()
       throws Exception
   {
@@ -1336,6 +1381,23 @@ public class AutocorrectScoringTest
     method.setAccessible(true);
     return (Decoder.Candidate)method.invoke(null, request, ranked, literal,
         enabled, failure, acronymOnly);
+  }
+
+  private static Decoder.Candidate unigramCandidate(String canonical,
+      int sourceMask, int level, int frequency8, int editCount, int editMask,
+      Decoder.Role role)
+      throws Exception
+  {
+    Constructor<Decoder.Candidate> constructor =
+      Decoder.Candidate.class.getDeclaredConstructor(String.class,
+          String.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, int.class, int.class, int.class,
+          int.class, int.class, int.class, Decoder.Role.class, boolean.class,
+          boolean.class, boolean.class, int.class);
+    constructor.setAccessible(true);
+    return constructor.newInstance(canonical, canonical, sourceMask, -1,
+        level, 0, 0, 0, 0, 0, 0, 0, editCount, editMask, -14 * frequency8,
+        role, true, false, true, frequency8);
   }
 
   private static Decoder.Candidate frequencyCandidate(String canonical,

@@ -827,9 +827,16 @@ public final class KeyEventHandler
     if (result.autocorrection != null)
       return result.autocorrection.surface;
     Decoder.Candidate[] words = result.words();
-    if (words.length > 0 && words[0].role != Decoder.Role.NEXT_WORD)
-      return words[0].surface;
-    return null;
+    if (words.length == 0 || words[0].role == Decoder.Role.NEXT_WORD)
+      return null;
+    // A valid or learned word that autocorrect kept stays as typed; only its
+    // dictionary shortcut (cant -> can't) may replace it.
+    boolean literalValid = result.literal != null
+      && (result.literal.recognized || result.literal.learned);
+    if (literalValid
+        && (words[0].sourceMask & Decoder.SOURCE_WHITELIST) == 0)
+      return snapshot.word;
+    return words[0].surface;
   }
 
   void confirm_learn_current_word()

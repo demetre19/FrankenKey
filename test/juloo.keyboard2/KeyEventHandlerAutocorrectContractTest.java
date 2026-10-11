@@ -107,6 +107,37 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void right_swipe_keeps_a_valid_literal_unless_its_shortcut_leads()
+      throws Exception
+  {
+    Harness harness = harness("hone", false, true);
+    Decoder.Candidate literal = candidate("hone", "hone",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT, 0, 0, 0, true,
+        false, Decoder.Role.WORD);
+    Decoder.Candidate home = candidate("home", "home",
+        Decoder.SOURCE_CDICT_SPATIAL, -100, 1, Decoder.EDIT_SUBSTITUTION,
+        true, false, Decoder.Role.WORD);
+    installResult(harness.decoder, result(harness.key, "hone",
+          new Decoder.Candidate[] { home, literal }, literal, null));
+    harness.handler.keyboard_swiped_right();
+    assertEquals("A valid word that autocorrect kept must not be swapped by the swipe.",
+        "hone ", harness.receiver.input.text.toString());
+
+    Harness cant = harness("cant", false, true);
+    Decoder.Candidate valid = candidate("cant", "cant",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_HUNSPELL, 0, 0, 0, true,
+        false, Decoder.Role.WORD);
+    Decoder.Candidate shortcut = candidate("can't", "can't",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_WHITELIST, -100, 1,
+        Decoder.EDIT_OMISSION, true, false, Decoder.Role.WORD);
+    installResult(cant.decoder, result(cant.key, "cant",
+          new Decoder.Candidate[] { shortcut, valid }, valid, null));
+    cant.handler.keyboard_swiped_right();
+    assertEquals("A leading dictionary shortcut is the explicit swipe target.",
+        "can't ", cant.receiver.input.text.toString());
+  }
+
+  @Test
   public void right_swipe_without_a_word_or_result_acts_as_space()
       throws Exception
   {

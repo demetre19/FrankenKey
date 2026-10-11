@@ -94,6 +94,8 @@ public final class Decoder
   private static final int UNIGRAM_FREQUENCY_WEIGHT = 14;
   /** Fixed-point score per 4-bit Cdict level when no unigram table exists. */
   private static final int CDICT_LEVEL_WEIGHT = 128;
+  /** Unigram lead a transposition needs over a lowercase-typed acronym. */
+  private static final int ACRONYM_REPAIR_FREQUENCY_GAP = 50;
   /** Context weights for the previous word's ranked dictionary continuations;
       they stay below the decisive-context threshold of 8 so continuations
       alone never override a valid literal. */
@@ -1380,13 +1382,15 @@ public final class Decoder
     for (Candidate candidate : ranked)
       if (candidate != literal
           && (candidate.sourceMask & SOURCE_WHITELIST) != 0
-          && is_case_compatible_autocorrection(request, candidate))
+          && is_case_compatible_autocorrection(request, candidate)
+          && !is_cold_short_all_caps_correction(request, candidate))
         return candidate;
     return null;
   }
 
   /** Lowercase input matching only an all-caps entry (nad -> NAD) yields to
-      an equally or more frequent adjacent transposition (nad -> and). */
+      a decisively more frequent adjacent transposition (nad -> and), but
+      not when the acronym is itself common (usb, rna, byu stay). */
   private static Candidate acronym_transposition_repair(Request request,
       Candidate literal, List<Candidate> ranked)
   {
@@ -1398,7 +1402,10 @@ public final class Decoder
           && candidate.recognized && candidate.completeEvidence
           && candidate.editCount == 1
           && candidate.editMask == EDIT_TRANSPOSITION
-          && candidate.cdictFrequency >= literal.cdictFrequency)
+          && candidate.cdictFrequency >= literal.cdictFrequency
+          && (candidate.frequency8 < 0 || literal.frequency8 < 0
+            || candidate.frequency8 >= literal.frequency8
+              + ACRONYM_REPAIR_FREQUENCY_GAP))
         return candidate;
     return null;
   }
@@ -3118,7 +3125,7 @@ public final class Decoder
           exactCorrectionCount, relatedCorrectionCount, correctionWeight,
           score.spatialQ8, score.editCount, score.editMask,
           clamp_score(total), role, recognized, learnedEvidence,
-          completeEvidence);
+          completeEvidence, frequency8);
     }
 
     private long frequency_bonus()
@@ -3213,6 +3220,8 @@ public final class Decoder
     public final boolean recognized;
     public final boolean learned;
     public final boolean completeEvidence;
+    /** Pack unigram frequency 0..255, or -1 without a unigram table. */
+    public final int frequency8;
 
     private Candidate(String canonical_, String surface_, int sourceMask_,
         int cdictIndex_, int cdictFrequency_, int providerRank_,
@@ -3221,6 +3230,22 @@ public final class Decoder
         int editCount_, int editMask_, int totalQ8_, Role role_,
         boolean recognized_, boolean learned_, boolean completeEvidence_)
     {
+      this(canonical_, surface_, sourceMask_, cdictIndex_, cdictFrequency_,
+          providerRank_, unigramCount_, bigramCount_, exactCorrectionCount_,
+          relatedCorrectionCount_, correctionWeight_, spatialQ8_, editCount_,
+          editMask_, totalQ8_, role_, recognized_, learned_,
+          completeEvidence_, -1);
+    }
+
+    private Candidate(String canonical_, String surface_, int sourceMask_,
+        int cdictIndex_, int cdictFrequency_, int providerRank_,
+        int unigramCount_, int bigramCount_, int exactCorrectionCount_,
+        int relatedCorrectionCount_, int correctionWeight_, int spatialQ8_,
+        int editCount_, int editMask_, int totalQ8_, Role role_,
+        boolean recognized_, boolean learned_, boolean completeEvidence_,
+        int frequency8_)
+    {
+      frequency8 = frequency8_;
       canonical = canonical_;
       surface = surface_;
       sourceMask = sourceMask_;
@@ -3250,7 +3275,7 @@ public final class Decoder
           cdictFrequency, providerRank, unigramCount, bigramCount,
           exactCorrectionCount, relatedCorrectionCount, correctionWeight,
           spatialQ8, editCount, editMask, totalQ8, role, recognized, learned,
-          completeEvidence);
+          completeEvidence, frequency8);
     }
   }
   public static final class Result

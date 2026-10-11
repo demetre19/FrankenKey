@@ -247,3 +247,21 @@ licence-clean corpus, and context-driven real-word correction
 | 5 Key-position rebalance | done |
 | 6 Collapse veto ladder | done (targeted) |
 | 7 Real language model | done (first step: dictionary bigrams) |
+
+## 7. Adversarial review (after Part 7)
+
+Every finding was fixed with a regression test unless marked "accepted".
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Acronym repair would rewrite common lowercase acronyms: of 261 such dictionary pairs, `usb` → `sub`, `rna` → `ran` and `byu` → `buy` would fire. | The target needs a unigram lead of at least 50 over the acronym (`nad` 95 → `and` 212 still fires). |
+| 2 | Shortcut corrections skipped the cold-short-all-caps protection (`IM` → `I'M`). | Whitelist corrections now honour it. |
+| 3 | Right swipe after a valid word that autocorrect kept (`hone`) committed the top-ranked neighbour (`home`). | A recognized or learned literal is kept unless the leading suggestion is its dictionary shortcut (`cant` → `can't`). |
+| 4 | Right swipe left a latched Shift, unlike any other key. | It clears latched modifiers. |
+| 5 | Pack assets are re-copied on every pack lookup; the new tables add about 560 KB per copy. | Accepted: the existing pack loader already re-copies the 550 KB Hunspell `.dic` the same way. |
+| 6 | The vendored `cdict-tool query` no longer compiles (`Cdict.distance` was removed before this work). | Accepted, pre-existing. The builder fix was verified with upstream `cdict@4e29981`. |
+| 7 | Not verifiable in the cloud container: signed release build, instrumented `RealImeThroughputInstrumentedTest`/`SwiftKeyParityInstrumentedTest`, and on-device swipe feel. | Must run on the Mac or phone before release (root `AGENTS.md` Verification). |
+
+After the fixes the offline evaluation is unchanged (fixed 271, wrong 8,
+correct top suggestion 421). The unit suite has 607 tests with 5
+failures, the same 5 that fail on the original commit.
