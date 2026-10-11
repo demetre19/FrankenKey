@@ -1919,6 +1919,12 @@ public class Keyboard2 extends InputMethodService
       return Keyboard2.this.getCurrentInputEditorInfo();
     }
 
+    @Override
+    public android.content.Context diag_context()
+    {
+      return Keyboard2.this;
+    }
+
     public Handler getHandler()
     {
       return _handler;

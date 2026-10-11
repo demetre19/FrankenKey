@@ -403,11 +403,13 @@ public final class KeyEventHandler
   boolean show_inline_prediction(String word, boolean suffix)
   {
     if (word == null || word.length() == 0 || _config == null
-        || !_config.inline_predictions_enabled
-        || _inline_prediction_suppressed
-        || _inline_prediction_deleted_last
-        || !_typed_this_context
-        || word.equals(_inline_prediction)
+        || !_config.inline_predictions_enabled)
+      return false;
+    if (_inline_prediction_suppressed)
+      { glog("SHOW-DENY sup w=" + word); return false; }
+    if (_inline_prediction_deleted_last)
+      { glog("SHOW-DENY dlast w=" + word); return false; }
+    if (!_typed_this_context || word.equals(_inline_prediction)
         || !_config.editor_config.should_use_typing_assistance
         || uses_termux_raw_events())
       return false;
@@ -437,11 +439,22 @@ public final class KeyEventHandler
     if (!conn.setComposingText(ghost, 1))
     {
       _inline_prediction_editor_change = false;
+      glog("SHOW-FAIL sct w=" + word);
       return false;
     }
     _inline_prediction = word;
     _inline_prediction_is_suffix = suffix;
+    glog("SHOW " + (suffix ? "sfx " : "bnd ") + word);
     return true;
+  }
+
+  private void glog(String event)
+  {
+    GhostLog.log(_recv.diag_context(), event
+        + " ghost=" + _inline_prediction
+        + " sup=" + _inline_prediction_suppressed
+        + " dlast=" + _inline_prediction_deleted_last
+        + " echg=" + _inline_prediction_editor_change);
   }
   boolean has_typed_this_context()
   {
@@ -489,6 +502,7 @@ public final class KeyEventHandler
     String ghost = _inline_prediction;
     _inline_prediction = null;
     _inline_prediction_is_suffix = false;
+    glog("CLEAR edChg=" + editorChange + " had=" + ghost);
     if (ghost == null || editorChange)
       return;
     InputConnection conn = _recv.getCurrentInputConnection();
@@ -521,6 +535,7 @@ public final class KeyEventHandler
   {
     if (_inline_prediction == null)
       return false;
+    glog("DEL-CONSUME had=" + _inline_prediction);
     clear_inline_prediction(false);
     /* Consume the press AND suppress re-show: the editor event clears the
        boundary and a fresh next-word result would instantly resurrect the
@@ -994,6 +1009,7 @@ public final class KeyEventHandler
   {
     cancel_pending_backspace_fallback();
     commit_pending_replacement();
+    glog("SWIPE-R ghost=" + _inline_prediction);
     /* Ghost accept first, unconditionally — commitText over the still-
        composing ghost replaces it atomically (Gboard model). A boundary
        ghost commits word+" "; a mid-word suffix commits suffix+" ", which
@@ -1300,10 +1316,26 @@ public final class KeyEventHandler
     if (_inline_prediction_editor_change)
     {
       _inline_prediction_editor_change = false;
+      glog("EVT ours word=" + snapshot.word);
       return;
     }
     if (_inline_prediction != null)
-      _inline_prediction = null;
+    {
+      /* Desync-proofing: the editor event carries the CURRENT composing
+         word. If it still equals our ghost, the ghost physically survived
+         whatever triggered this event — keep the reference or DEL/swipe
+         lose track of a ghost that's still on screen ("can't delete past
+         it"). Only drop when the composing word actually changed. */
+      if (!snapshot.word.equals(_inline_prediction))
+      {
+        glog("EVT-NULLS-GHOST word=" + snapshot.word
+            + " ghost=" + _inline_prediction);
+        _inline_prediction = null;
+        _inline_prediction_is_suffix = false;
+      }
+      else
+        glog("EVT-KEEP-GHOST word=" + snapshot.word);
+    }
     boolean empty_boundary = snapshot.word.length() == 0
       && !snapshot.hasSelection && snapshot.cursorRelative == 0;
     boolean following_boundary =
@@ -2130,6 +2162,9 @@ public final class KeyEventHandler
     _inline_prediction_deleted_last = false;
     _typed_this_context = true;
     _inline_prediction_editor_change = false;
+    if (_inline_prediction != null || _inline_prediction_suppressed
+        || _inline_prediction_deleted_last)
+      glog("SEND-TEXT t=" + text.replace(" ", "\\s"));
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
@@ -3175,6 +3210,7 @@ public final class KeyEventHandler
       skips the deletion. */
   void handle_backspace(boolean isRepeat)
   {
+    glog("DEL-ENTRY rep=" + isRepeat);
     if (consult_backspace_hooks(isRepeat))
       return;
     _inline_prediction_deleted_last = true;
@@ -3201,6 +3237,8 @@ public final class KeyEventHandler
     public default void review_unknown_word(String word,
         Runnable learn_action, Runnable best_match_action) {}
     public InputConnection getCurrentInputConnection();
+    /** Context for diagnostics logging; null disables logging. */
+    public default android.content.Context diag_context() { return null; }
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();
   }

@@ -153,6 +153,21 @@ public final class Pointers implements Handler.Callback
     Pointer ptr = getPtr(pointerId);
     if (ptr == null)
       return;
+    /* Ghost-accept override: while an inline prediction is visible, a fast
+       rightward flick accepts it — checked BEFORE the sliding branch so
+       corner keys (G trackpad etc.) that captured the gesture into sliding
+       mode cannot eat the accept. Pure trajectory test; spacebar excluded. */
+    if (inline_prediction_visible() && !isSpaceBar(ptr.value)
+        && _key_unit_width > 0.f
+        && ptr.lastDx >= 1.5f * _key_unit_width
+        && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx)
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
+      return;
+    }
     if (ptr.hasFlagsAny(FLAG_P_SLIDING))
     {
       clearLatched();
