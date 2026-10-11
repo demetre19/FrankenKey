@@ -125,6 +125,32 @@ public class AutocorrectScoringTest
   }
 
   @Test
+  public void stronger_capitalized_word_keeps_lowercase_literal()
+      throws Exception
+  {
+    Decoder.Request request = request("englis");
+    Decoder.Candidate literal = candidate("englis", "englis",
+        Decoder.SOURCE_LITERAL, UNKNOWN_LITERAL_TOTAL_Q8, 0, 0, false, false,
+        true, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate english = candidate("english", "English",
+        Decoder.SOURCE_CDICT_SPATIAL, -480, 1, Decoder.EDIT_OMISSION, true,
+        false, true, Decoder.Role.WORD);
+    Decoder.Candidate envois = candidate("envois", "envois",
+        Decoder.SOURCE_CDICT_SPATIAL, 1774, 2, Decoder.EDIT_SUBSTITUTION,
+        true, false, true, Decoder.Role.WORD);
+    Decoder.Candidate acronym = candidate("englis", "ENGLIS",
+        Decoder.SOURCE_CDICT_SPATIAL, -600, 1, Decoder.EDIT_SUBSTITUTION,
+        true, false, true, Decoder.Role.WORD);
+
+    assertNull("A weaker lowercase word must not win because the stronger match is capitalized.",
+        choose(request, Arrays.asList(english, envois, literal), literal, true,
+          Decoder.Failure.NONE));
+    assertEquals("An all-caps acronym ranked first must not block a lowercase repair.",
+        "envois", choose(request, Arrays.asList(acronym, envois, literal),
+          literal, true, Decoder.Failure.NONE).canonical);
+  }
+
+  @Test
   public void lowercase_acronym_only_literal_yields_to_frequent_transposition()
       throws Exception
   {

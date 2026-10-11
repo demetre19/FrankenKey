@@ -22,12 +22,39 @@ public final class LanguageModel
 
   private final Map<String, Map<String, Integer>> _bigrams;
   private final Map<String, Map<String, Integer>> _trigrams;
+  private final WordFrequencies _unigrams;
 
   private LanguageModel(Map<String, Map<String, Integer>> bigrams,
       Map<String, Map<String, Integer>> trigrams)
   {
+    this(bigrams, trigrams, null);
+  }
+
+  private LanguageModel(Map<String, Map<String, Integer>> bigrams,
+      Map<String, Map<String, Integer>> trigrams, WordFrequencies unigrams)
+  {
     _bigrams = bigrams;
     _trigrams = trigrams;
+    _unigrams = unigrams;
+  }
+
+  /** The same context priors plus unigram frequencies for the main Cdict. */
+  public LanguageModel with_unigrams(WordFrequencies unigrams)
+  {
+    return new LanguageModel(_bigrams, _trigrams, unigrams);
+  }
+
+  /** Source unigram frequency 0..255 for a Cdict index, or -1. */
+  int unigram(int cdictIndex)
+  {
+    return _unigrams == null ? -1 : _unigrams.frequency(cdictIndex);
+  }
+
+  /** Cdict 4-bit level with the builder's top-cluster wrap repaired. */
+  int repaired_level(int cdictIndex, int level)
+  {
+    return _unigrams == null ? level
+      : _unigrams.repaired_level(cdictIndex, level);
   }
 
   static LanguageModel empty()

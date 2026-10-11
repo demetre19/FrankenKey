@@ -1357,6 +1357,24 @@ public final class SharedDecoder implements AutoCloseable
         Logs.exn("Failed to load language context model", e);
       }
     }
+    if (resources.languagePack != null
+        && resources.languagePack.word_frequencies != null
+        && resources.mainDictionary != null)
+    {
+      try
+      {
+        LanguageModel base = next.languageModel == null
+          ? LanguageModel.empty() : next.languageModel;
+        next.languageModel = base.with_unigrams(WordFrequencies.load(
+              resources.languagePack.word_frequencies,
+              resources.mainDictionary));
+      }
+      catch (Exception e)
+      {
+        // Ranking falls back to the dictionary's 4-bit levels.
+        Logs.exn("Failed to load word frequencies", e);
+      }
+    }
     _workerResources = next;
     synchronized (_lock)
     {

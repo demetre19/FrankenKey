@@ -56,13 +56,21 @@ public final class Decoder
   private static final int MAX_CORRECTION_RESULTS = 6;
 
   private static final int Q8 = 256;
+  // Edit costs follow AOSP LatinIME's typing weights, scaled so that an
+  // omission costs 6 Q8: insertion 0.72, same-key insertion 0.55, omission
+  // 0.47, doubled-letter omission 0.35 and a proximity substitution 0.15 plus
+  // 0.15 per squared key distance. Transposition stays cheaper than
+  // LatinIME's 0.56 because fast two-thumb typing swaps letters often.
   private static final int OMISSION_COST_Q8 = 6 * Q8;
-  private static final int EXTRA_TAP_COST_Q8 = 6 * Q8;
-  private static final int TRANSPOSITION_COST_Q8 = 2 * Q8;
+  private static final int SAME_LETTER_OMISSION_COST_Q8 = 1135;
+  private static final int EXTRA_TAP_COST_Q8 = 2384;
+  private static final int SAME_LETTER_EXTRA_TAP_COST_Q8 = 1811;
+  private static final int TRANSPOSITION_COST_Q8 = 1024;
+  private static final double PROXIMITY_BASE_COST = 1.9;
+  private static final double PROXIMITY_DISTANCE_COST = 1.95;
   private static final int UNKNOWN_SUBSTITUTION_COST_Q8 = 12 * Q8;
   private static final int MAX_SUBSTITUTION_COST_Q8 = 64 * Q8;
   private static final int BEAM_COST_Q8 = 48 * Q8;
-  private static final double TOUCH_SUBSTITUTION_COST_SCALE = 2.0;
   private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 2 * Q8;
   private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = Q8 / 2;
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
@@ -76,6 +84,10 @@ public final class Decoder
   private static final int BOUNDARY_PREVIEW_LITERAL_MARGIN_Q8 = 8 * Q8;
   private static final int BOUNDARY_PREVIEW_RUNNER_MARGIN_Q8 = Q8;
   private static final int SCORE_LIMIT = 0x3fffffff;
+  /** Fixed-point score per source frequency step (0..255 wordlist scale). */
+  private static final int UNIGRAM_FREQUENCY_WEIGHT = 14;
+  /** Fixed-point score per 4-bit Cdict level when no unigram table exists. */
+  private static final int CDICT_LEVEL_WEIGHT = 128;
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
   private static final int PROTECTED_LITERAL_EXACT_EVENTS = 4;
@@ -519,6 +531,7 @@ public final class Decoder
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
     for (Accumulator accumulator : merged.values())
     {
+      add_unigram_frequency(accumulator, languageModel);
       add_personalization_metadata(accumulator, personalization, languageModel,
           priorWord, previousWord, failure);
       Score score;
@@ -945,6 +958,23 @@ public final class Decoder
     return candidate;
   }
 
+  private static void add_unigram_frequency(Accumulator candidate,
+      LanguageModel languageModel)
+  {
+    if (languageModel == null)
+      return;
+    for (int index : new int[] { candidate.exactIndex, candidate.spatialIndex,
+        candidate.prefixIndex })
+    {
+      if (index < 0)
+        continue;
+      candidate.frequency8 = Math.max(candidate.frequency8,
+          languageModel.unigram(index));
+      if (candidate.cdictFrequency == 0)
+        candidate.cdictFrequency = languageModel.repaired_level(index, 0);
+    }
+  }
+
   private static void add_personalization_metadata(Accumulator candidate,
       PersonalizationStore personalization, LanguageModel languageModel,
       String priorWord, String previousWord, FailureState failure)
@@ -1180,8 +1210,18 @@ public final class Decoder
     Candidate best = null;
     Candidate runner = null;
     Candidate closestSpatial = null;
+    boolean betterCaseOnlyCandidate = false;
     for (Candidate candidate : ranked)
     {
+      // A stronger capitalized word (englis -> English) must not hand the
+      // correction to a weaker lowercase one (envois); keep the literal and
+      // let the strip offer the capitalized word.
+      if (best == null && candidate != literal
+          && casing(request.typed) == Casing.LOWER
+          && casing(candidate.surface) == Casing.INITIAL
+          && is_autocorrection_candidate_text(candidate, literal)
+          && candidate.recognized && is_safe_autocorrection_edit(candidate))
+        betterCaseOnlyCandidate = true;
       if (!is_autocorrection_candidate_text(candidate, literal)
           || !is_case_compatible_autocorrection(request, candidate)
           || !is_safe_autocorrection_edit(request, candidate)
@@ -1202,6 +1242,8 @@ public final class Decoder
       else if (runner == null)
         runner = candidate;
     }
+    if (betterCaseOnlyCandidate)
+      return null;
     Candidate primarySameLengthRepair =
       primary_same_length_repair_over_length_guesses(
         request, literal, best, ranked);
@@ -2605,19 +2647,24 @@ public final class Decoder
           + (_x[candidatePosition] - _x[typedPosition]) * unitX;
         float candidateCenterY = touch.keyCenterY
           + (_y[candidatePosition] - _y[typedPosition]) * unitY;
-        float sigmaX = Math.max(touch.keyWidth * 0.55f, 1f);
-        float sigmaY = Math.max(touch.keyHeight * 0.55f, 1f);
         float dx = (touch.touchX - touch.keyWidth * touchOffsetX
-            - candidateCenterX) / sigmaX;
+            - candidateCenterX) / Math.max(touch.keyWidth, 1f);
         float dy = (touch.touchY - touch.keyHeight * touchOffsetY
-            - candidateCenterY) / sigmaY;
-        return round_q8(Math.min(64.0,
-            TOUCH_SUBSTITUTION_COST_SCALE * (dx * dx + dy * dy)));
+            - candidateCenterY) / Math.max(touch.keyHeight, 1f);
+        return proximity_cost_q8(dx * dx + dy * dy);
       }
 
+      // Layout coordinates use two units per key.
       float dx = _x[typedPosition] - _x[candidatePosition];
       float dy = _y[typedPosition] - _y[candidatePosition];
-      return round_q8(Math.min(64.0, dx * dx + dy * dy));
+      return proximity_cost_q8((dx * dx + dy * dy) / 4.0);
+    }
+
+    /** [squaredKeys] is the squared distance in key widths. */
+    private static int proximity_cost_q8(double squaredKeys)
+    {
+      return round_q8(Math.min(64.0,
+          PROXIMITY_BASE_COST + PROXIMITY_DISTANCE_COST * squaredKeys));
     }
 
     private static boolean valid_touch(TouchTrace.Entry touch)
@@ -2765,9 +2812,13 @@ public final class Decoder
             : costs.substitution(i - 1, candidate[j - 1]);
           set_path(current, j, previous, j - 1, substitution,
               exact ? 0 : 1, exact ? 0 : EDIT_SUBSTITUTION);
-          consider_path(current, j, previous, j, EXTRA_TAP_COST_Q8, 1,
+          consider_path(current, j, previous, j,
+              i > 1 && costs.typed[i - 1] == costs.typed[i - 2]
+                ? SAME_LETTER_EXTRA_TAP_COST_Q8 : EXTRA_TAP_COST_Q8, 1,
               EDIT_EXTRA_TAP);
-          consider_path(current, j, current, j - 1, OMISSION_COST_Q8, 1,
+          consider_path(current, j, current, j - 1,
+              j > 1 && candidate[j - 1] == candidate[j - 2]
+                ? SAME_LETTER_OMISSION_COST_Q8 : OMISSION_COST_Q8, 1,
               EDIT_OMISSION);
           if (i > 1 && j > 1
               && costs.typed[i - 2] == candidate[j - 1]
@@ -2866,6 +2917,8 @@ public final class Decoder
     int spatialIndex = -1;
     int prefixIndex = -1;
     int cdictFrequency;
+    /** Source unigram frequency 0..255, or -1 without a unigram table. */
+    int frequency8 = -1;
     int spatialRank = Integer.MAX_VALUE;
     int hunspellRank = Integer.MAX_VALUE;
     int prefixRank = Integer.MAX_VALUE;
@@ -2966,7 +3019,7 @@ public final class Decoder
       int contractionBonus = (sourceMask & SOURCE_CONTRACTION) != 0
         ? OMISSION_COST_Q8 : 0;
       long total = (long)score.spatialQ8 + sourcePenalty
-        + unknownLiteralPenalty - (long)128 * cdictFrequency
+        + unknownLiteralPenalty - frequency_bonus()
         - (long)256 * count_level(unigramCount)
         - (long)384 * count_level(bigramCount)
         - (long)CORRECTION_BONUS_Q8 * correctionWeight
@@ -2978,6 +3031,12 @@ public final class Decoder
           score.spatialQ8, score.editCount, score.editMask,
           clamp_score(total), role, recognized, learnedEvidence,
           completeEvidence);
+    }
+
+    private long frequency_bonus()
+    {
+      return frequency8 >= 0 ? (long)UNIGRAM_FREQUENCY_WEIGHT * frequency8
+        : (long)CDICT_LEVEL_WEIGHT * cdictFrequency;
     }
 
     private String surface()

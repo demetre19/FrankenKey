@@ -43,6 +43,13 @@ public class LanguagePackManagerTest
     assertSameCanonicalFile(dic, pack.hunspell_dic);
     assertSameCanonicalFile(suggestions, pack.suggestions);
     assertSameCanonicalFile(nextWords, pack.next_words);
+    assertNull(pack.word_frequencies);
+
+    File frequencies = touch(root, "word_frequencies.bin");
+    LanguagePack withFrequencies = LanguagePackManager.from_manifest("en_US",
+        root, manifest("hunspell.aff", "hunspell.dic", null, null)
+          .replace("}", ",\"word_frequencies\":\"word_frequencies.bin\"}"));
+    assertSameCanonicalFile(frequencies, withFrequencies.word_frequencies);
   }
 
   @Test
