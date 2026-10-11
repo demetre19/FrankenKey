@@ -1236,12 +1236,13 @@ public class Keyboard2 extends InputMethodService
   }
 
   static boolean reader_entry_visible(boolean readerEnabled,
-      boolean composing, boolean hasCandidates, boolean transportVisible)
+      boolean readableEditor, boolean editorEmpty, boolean composing,
+      boolean hasCandidates, boolean transportVisible)
   {
-    /* The action strip is the resting row of the keyboard — always on
-       until typing produces candidates or playback takes over. */
-    return readerEnabled && !composing && !hasCandidates
-      && !transportVisible;
+    /* Action strip is a resting row for an empty readable editor only;
+       text (or pending/ready candidates, composing, playback) hides it. */
+    return readerEnabled && readableEditor && editorEmpty && !composing
+      && !hasCandidates && !transportVisible;
   }
 
   private void update_reader_entry()
@@ -1269,6 +1270,7 @@ public class Keyboard2 extends InputMethodService
         presentation.result.emoji != null));
     return reader_entry_visible(
         _config.reader_keyboard_controls_enabled,
+        ReaderTextAccess.isReadableEditor(editor), editor_is_empty(),
         _reader_composing, hasCandidates, transportVisible);
   }
 
