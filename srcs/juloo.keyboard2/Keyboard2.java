@@ -1939,29 +1939,67 @@ public class Keyboard2 extends InputMethodService
     private void update_inline_prediction(
         SharedDecoder.Presentation state)
     {
-      String ghost = null;
       Decoder.Candidate[] words = null;
       if (state != null
           && state.state == SharedDecoder.Presentation.State.READY
           && state.result != null)
         words = state.ranked != null ? state.ranked : state.result.words();
-      ghost = inline_prediction_ghost(words);
-      if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
-        _keyeventhandler.clear_inline_prediction(true);
+      apply_inline_ghost(inline_prediction_ghost(words));
     }
 
-    /** Top next-word candidate worth previewing, or null. The typed-context
-        gate lives here so the same rule covers state-change and
-        result-completed paths. */
-    private String inline_prediction_ghost(Decoder.Candidate[] words)
+
+    /** Ghost candidate descriptor: the text to grey in and whether it is a
+        mid-word completion suffix (displayed after an unfinished word) or a
+        next-word preview (displayed after a space). */
+    private final class InlineGhost
+    {
+      final String text;
+      final boolean suffix;
+      InlineGhost(String text, boolean suffix)
+      {
+        this.text = text;
+        this.suffix = suffix;
+      }
+    }
+
+    /** Gboard-style dynamic ghost. Mid-word: first candidate that extends
+        the typed prefix, greyed as a suffix ("te" → "st"). Empty boundary:
+        top NEXT_WORD after the space. */
+    private InlineGhost inline_prediction_ghost(Decoder.Candidate[] words)
     {
       if (words == null || !_keyeventhandler.has_typed_this_context())
         return null;
+      String typed = _keyeventhandler.currently_typed_word_text();
+      if (typed != null && typed.length() > 0)
+      {
+        String prefix = typed.toLowerCase(java.util.Locale.ROOT);
+        for (Decoder.Candidate word : words)
+        {
+          if (word == null || word.surface == null
+              || word.role == Decoder.Role.NEXT_WORD)
+            continue;
+          String surface = word.surface;
+          if (surface.length() > prefix.length()
+              && surface.toLowerCase(java.util.Locale.ROOT)
+                  .startsWith(prefix))
+            return new InlineGhost(
+                surface.substring(prefix.length()), true);
+        }
+        return null;
+      }
       for (Decoder.Candidate word : words)
         if (word != null && word.role == Decoder.Role.NEXT_WORD
             && word.surface != null && word.surface.length() > 0)
-          return word.surface;
+          return new InlineGhost(word.surface, false);
       return null;
+    }
+
+    private void apply_inline_ghost(InlineGhost ghost)
+    {
+      if (ghost == null
+          || !_keyeventhandler.show_inline_prediction(
+              ghost.text, ghost.suffix))
+        _keyeventhandler.clear_inline_prediction(true);
     }
 
     /** Same update driven by a just-completed decode result — the path that
@@ -1969,10 +2007,8 @@ public class Keyboard2 extends InputMethodService
         already-accepted completions. */
     private void update_inline_prediction_result(Decoder.Result result)
     {
-      String ghost = inline_prediction_ghost(
-          result == null ? null : result.words());
-      if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
-        _keyeventhandler.clear_inline_prediction(true);
+      apply_inline_ghost(inline_prediction_ghost(
+          result == null ? null : result.words()));
     }
 
     @Override

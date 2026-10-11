@@ -397,6 +397,13 @@ public final class Config
     {
       return java.util.Collections.emptyList();
     }
+    /** A grayed inline prediction is currently displayed in the editor:
+        Pointers suppresses slider-key capture on right-leaning swipes so the
+        user can still accept it from any key (incl. G's trackpad corner). */
+    public default boolean inline_prediction_visible()
+    {
+      return false;
+    }
     /** Latest editor context captured on the main thread for the current
         input session; default [EditorContext.EMPTY]. */
     public default juloo.keyboard2.suggestions.EditorContext editor_context()

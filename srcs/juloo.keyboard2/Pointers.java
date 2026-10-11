@@ -349,8 +349,14 @@ public final class Pointers implements Handler.Callback
         }
         if (isVerticalKeyboardSwipe(ptr))
           return;
-        KeyValue new_value = backspaceSelectionSlider(ptr, dx, dy);
-        if (new_value == null)
+        /* While a ghost is displayed, a right-leaning swipe must reach
+           [isRightAcceptSwipe] at release: skip side-key capture (incl. G's
+           trackpad slider) which would otherwise consume it into sliding. */
+        boolean ghost_right =
+          direction >= 3 && direction <= 5 && inline_prediction_visible();
+        KeyValue new_value = ghost_right ? null
+          : backspaceSelectionSlider(ptr, dx, dy);
+        if (new_value == null && !ghost_right)
           new_value = getNearestKeyAtDirection(ptr, direction);
         if (new_value != null)
         { // Pointer is swiping into a side key.
@@ -446,6 +452,14 @@ public final class Pointers implements Handler.Callback
       return false;
     return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
       && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
+  }
+
+  /** True when the grayed inline prediction is currently displayed; asks the
+      key event handler through [Config.IKeyEventHandler]. */
+  boolean inline_prediction_visible()
+  {
+    Config.IKeyEventHandler handler = _config.handler;
+    return handler != null && handler.inline_prediction_visible();
   }
 
 
