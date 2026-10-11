@@ -153,22 +153,6 @@ public final class Pointers implements Handler.Callback
     Pointer ptr = getPtr(pointerId);
     if (ptr == null)
       return;
-    /* Ghost-accept override: while an inline prediction is visible, a fast
-       rightward flick accepts it — checked BEFORE the sliding branch so
-       corner keys (G trackpad etc.) that captured the gesture into sliding
-       mode cannot eat the accept. Pure trajectory test; spacebar excluded. */
-    if (inline_prediction_visible() && !isSpaceBar(ptr.value)
-        && !ptr.hasFlagsAny(FLAG_P_SLIDING)
-        && _key_unit_width > 0.f
-        && ptr.lastDx >= 1.5f * _key_unit_width
-        && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx)
-    {
-      stopLongPress(ptr);
-      clearLatched();
-      removePtr(ptr);
-      _handler.onKeyboardSwipeRight();
-      return;
-    }
     if (ptr.hasFlagsAny(FLAG_P_SLIDING))
     {
       clearLatched();
@@ -365,14 +349,8 @@ public final class Pointers implements Handler.Callback
         }
         if (isVerticalKeyboardSwipe(ptr))
           return;
-        /* While a ghost is displayed, a right-leaning swipe must reach
-           [isRightAcceptSwipe] at release: skip side-key capture (incl. G's
-           trackpad slider) which would otherwise consume it into sliding. */
-        boolean ghost_right =
-          direction >= 3 && direction <= 5 && inline_prediction_visible();
-        KeyValue new_value = ghost_right ? null
-          : backspaceSelectionSlider(ptr, dx, dy);
-        if (new_value == null && !ghost_right)
+        KeyValue new_value = backspaceSelectionSlider(ptr, dx, dy);
+        if (new_value == null)
           new_value = getNearestKeyAtDirection(ptr, direction);
         if (new_value != null)
         { // Pointer is swiping into a side key.
@@ -457,27 +435,17 @@ public final class Pointers implements Handler.Callback
   }
 
   /** Keyboard-wide right swipe: starts on any key that has not entered a
-      slider — EXCEPT the spacebar, whose NE/SE corners own clipboard,
-      mode, emoji and GIF shortcuts. Letter keys keep right-accept even
-      when they bind corner gestures: a clearly diagonal flick fails the
-      |dy| <= |dx|/2 test and the gesture wins. */
+      slider, travels at least [RIGHT_ACCEPT_SWIPE_KEYS] key units to the right
+      and stays mostly horizontal (|dy| <= |dx| / 2). Evaluated on release so
+      returning before lifting cancels it. */
   boolean isRightAcceptSwipe(Pointer ptr)
   {
     if (ptr.gesture == null || _key_unit_width <= 0.f
-        || ptr.hasFlagsAny(FLAG_P_SLIDING) || isSpaceBar(ptr.value))
+        || ptr.hasFlagsAny(FLAG_P_SLIDING))
       return false;
     return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
       && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
   }
-
-  /** True when the grayed inline prediction is currently displayed; asks the
-      key event handler through [Config.IKeyEventHandler]. */
-  boolean inline_prediction_visible()
-  {
-    Config.IKeyEventHandler handler = _config.handler;
-    return handler != null && handler.inline_prediction_visible();
-  }
-
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)
   {

@@ -89,7 +89,6 @@ public final class Config
   public boolean autocorrect_enabled;
   public boolean physical_keyboard_hide;
 
-  public boolean inline_predictions_enabled;
   // Dynamically set
   /** Configuration options implied by the connected editor. */
   public EditorConfig editor_config;
@@ -226,7 +225,6 @@ public final class Config
     clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "-1"));
     clipboard_save_screenshots = _prefs.getBoolean("clipboard_save_screenshots", true);
     autocorrect_enabled = _prefs.getBoolean("autocorrect", true);
-    inline_predictions_enabled = _prefs.getBoolean("inline_predictions", true);
     physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "show").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;
@@ -396,13 +394,6 @@ public final class Config
         space_gesture_hooks()
     {
       return java.util.Collections.emptyList();
-    }
-    /** A grayed inline prediction is currently displayed in the editor:
-        Pointers suppresses slider-key capture on right-leaning swipes so the
-        user can still accept it from any key (incl. G's trackpad corner). */
-    public default boolean inline_prediction_visible()
-    {
-      return false;
     }
     /** Latest editor context captured on the main thread for the current
         input session; default [EditorContext.EMPTY]. */

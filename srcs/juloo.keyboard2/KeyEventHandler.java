@@ -15,10 +15,6 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -75,30 +71,6 @@ public final class KeyEventHandler
       [space_gesture_hooks]; empty by default. */
   private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
     new ArrayList<Pointers.SpaceGestureHook>();
-  /** Grayed next-word preview held in the editor's composing region.
-      [_inline_prediction] is the text currently displayed (null = none).
-      [_inline_prediction_editor_change] marks editor callbacks we caused
-      ourselves so [currently_typed_word] can skip them. */
-  private String _inline_prediction = null;
-  private boolean _inline_prediction_editor_change = false;
-  /** True when the ghost is a mid-word completion suffix ("te"→grayed
-      "st"); accept commits suffix+space, never a leading space. */
-  private boolean _inline_prediction_is_suffix = false;
-  /** The typed prefix under a suffix ghost ("te" of "te|st"); needed to
-      match snapshot.word (which sees the FULL merged word) in
-      [currently_typed_word]. */
-  private String _inline_prediction_prefix = null;
-  /** Set when DEL dismissed a ghost: suppress re-showing the next-word
-      preview until the user moves the context forward with real input,
-      otherwise each dismissed ghost instantly re-predicts. */
-  private boolean _inline_prediction_suppressed = false;
-  /** True once a real character was committed in this editing context; gates
-      the ghost so empty fields never preview. */
-  private boolean _typed_this_context = false;
-  /** True when the last editorial action deleted text: preview must not
-      reappear mid-deletion streak even though boundaries keep arriving. */
-  private boolean _inline_prediction_deleted_last = false;
-  private static final int INLINE_PREDICTION_COLOR = 0x80808080;
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
   /** Incremented to invalidate a posted delayed DEL fallback; see
       [schedule_backspace_fallback]. */
@@ -343,8 +315,6 @@ public final class KeyEventHandler
   /** Run the ordered backspace hooks; true when one consumed the press. */
   boolean consult_backspace_hooks(boolean isRepeat)
   {
-    if (backspace_clears_inline_prediction(isRepeat))
-      return true;
     if (_backspace_hooks.isEmpty())
       return false;
     EditorContext ctx = capture_editor_context();
@@ -386,180 +356,6 @@ public final class KeyEventHandler
       conf.editor_config.should_move_cursor_force_fallback;
     _autocorrect_enabled = conf.autocorrect_enabled;
     _delete_selection = null;
-
-    _inline_prediction = null;
-    _inline_prediction_editor_change = false;
-    _inline_prediction_suppressed = false;
-    _typed_this_context = false;
-  }
-  /** Show [word] as grayed uncommitted text inside the editor — Gboard
-      Smart Compose. The suggestion lives in the composing region, so any
-      commitText replaces it and it never enters the undo history. Returns
-      true when the ghost was installed. */
-  boolean show_inline_prediction(String word)
-  {
-    return show_inline_prediction(word, false);
-  }
-
-  /** [suffix] marks a mid-word completion ghost ("te"→"st"): skips the
-      "only after a plain space" context rule since the cursor ends inside
-      the typed word; accept commits suffix+" ". */
-  boolean show_inline_prediction(String word, boolean suffix)
-  {
-    if (word == null || word.length() == 0 || _config == null
-        || !_config.inline_predictions_enabled)
-      return false;
-    if (_inline_prediction_suppressed)
-      { glog("SHOW-DENY sup w=" + word); return false; }
-    if (_inline_prediction_deleted_last)
-      { glog("SHOW-DENY dlast w=" + word); return false; }
-    if (!_typed_this_context
-        || !_config.editor_config.should_use_typing_assistance
-        || uses_termux_raw_events())
-      return false;
-    /* Same word already on screen = success, not failure: the caller's
-       fail→clear path must never destroy a live identical ghost. */
-    if (word.equals(_inline_prediction)
-        && suffix == _inline_prediction_is_suffix)
-      return true;
-    InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn == null)
-      return false;
-    CharSequence selection = conn.getSelectedText(0);
-    if (selection != null && selection.length() > 0)
-      return false;
-    if (!suffix)
-    {
-      /* Boundary ghost previews only right after a plain space — never on
-         a second-space boundary, never mid-text (cursor inside existing
-         content), and never when the prediction just echoes the last word
-         typed (the "a … a" echo). */
-      CharSequence after = conn.getTextAfterCursor(1, 0);
-      if (after != null && after.length() > 0
-          && !Character.isWhitespace(after.charAt(0)))
-        return false;
-      CharSequence before = conn.getTextBeforeCursor(64, 0);
-      if (before == null || before.length() < 2
-          || before.charAt(before.length() - 1) != ' ')
-        return false;
-      String lastWord = last_word_before_cursor(before);
-      if (lastWord == null || lastWord.equalsIgnoreCase(word))
-        return false;
-    }
-    SpannableString ghost = new SpannableString(word);
-    ghost.setSpan(new ForegroundColorSpan(INLINE_PREDICTION_COLOR), 0,
-        word.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-    _inline_prediction_editor_change = true;
-    if (!conn.setComposingText(ghost, 1))
-    {
-      _inline_prediction_editor_change = false;
-      glog("SHOW-FAIL sct w=" + word);
-      return false;
-    }
-    _inline_prediction = word;
-    _inline_prediction_is_suffix = suffix;
-    _inline_prediction_prefix =
-      suffix ? _typedword.get() : null;
-    glog("SHOW " + (suffix ? "sfx " : "bnd ") + word);
-    return true;
-  }
-
-  private void glog(String event)
-  {
-    GhostLog.log(_recv.diag_context(), event
-        + " ghost=" + _inline_prediction
-        + " sup=" + _inline_prediction_suppressed
-        + " dlast=" + _inline_prediction_deleted_last
-        + " echg=" + _inline_prediction_editor_change);
-  }
-  boolean has_typed_this_context()
-  {
-    return _typed_this_context;
-  }
-
-  /** Letters immediately before the trailing space in [before], or null
-      when none (double space, start of input). */
-  private static String last_word_before_cursor(CharSequence before)
-  {
-    int end = before.length() - 1; /* skip the trailing space */
-    int start = end;
-    while (start > 0 && Character.isLetterOrDigit(before.charAt(start - 1)))
-      start--;
-    return start == end ? null : before.subSequence(start, end).toString();
-  }
-
-  /** Commit a boundary prediction (ghost or next-word) directly, deduping
-      the separator: editor already ending in " " gets "word ", otherwise
-      " word ". Bypasses suggestion_entered/commit_correction so a stale
-      key or ghost-polluted snapshot can never mangle the insert. */
-  private boolean commit_boundary_prediction(String word)
-  {
-    InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn == null)
-      return false;
-    CharSequence before = conn.getTextBeforeCursor(1, 0);
-    String insertion = (before != null && " ".contentEquals(before))
-      ? word + " " : " " + word + " ";
-    if (!conn.commitText(insertion, 1))
-      return false;
-    _typedword.typed(insertion, null);
-    _typed_this_context = true;
-    _inline_prediction_suppressed = false;
-    _inline_prediction_deleted_last = false;
-    return true;
-  }
-
-
-  /** Clear the ghost. [editorChange] distinguishes "the editor/user removed
-      it" (just drop our reference) from "we must remove it" (clear the
-      composing region). */
-  void clear_inline_prediction(boolean editorChange)
-  {
-    String ghost = _inline_prediction;
-    _inline_prediction = null;
-    _inline_prediction_is_suffix = false;
-    _inline_prediction_prefix = null;
-    glog("CLEAR edChg=" + editorChange + " had=" + ghost);
-    if (ghost == null || editorChange)
-      return;
-    InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn == null)
-      return;
-    /* commitText("",1) removes the composing region atomically;
-       setComposingText("",1) is a no-op in several editors and leaves a
-       stranded composing ghost that finishComposingText later bakes into
-       real text — the "suggested words become a word" bug. */
-    _inline_prediction_editor_change = true;
-    if (!conn.commitText("", 1))
-      _inline_prediction_editor_change = false;
-  }
-
-  @Override
-  public boolean inline_prediction_visible()
-  {
-    return _inline_prediction != null;
-  }
-
-  /** Currently typed word for mid-word completion ghosting. */
-  public String currently_typed_word_text()
-  {
-    return _typedword.get();
-  }
-
-  /** Backspace hook: a ghost must be cleared before the press is honored so
-      DEL eats the preview rather than the preceding character. */
-  boolean backspace_clears_inline_prediction(boolean isRepeat)
-  {
-    if (_inline_prediction == null)
-      return false;
-    glog("DEL-CONSUME had=" + _inline_prediction);
-    clear_inline_prediction(false);
-    /* Consume the press AND suppress re-show: the editor event clears the
-       boundary and a fresh next-word result would instantly resurrect the
-       ghost, making deletion impossible. Lifts on the next real commit. */
-    _inline_prediction_suppressed = true;
-    _inline_prediction_deleted_last = true;
-    return true;
   }
 
   public void finished()
@@ -570,7 +366,6 @@ public final class KeyEventHandler
     _manual_correction = null;
     _skip_next_word_learning = false;
     _delete_selection = null;
-    clear_inline_prediction(false);
     _autocap.finished();
     _typedword.finished();
     if (_decoder_session != 0)
@@ -901,8 +696,6 @@ public final class KeyEventHandler
   public void suggestion_entered(Decoder.RequestKey key, String text)
   {
     cancel_pending_backspace_fallback();
-    _inline_prediction_suppressed = false;
-    clear_inline_prediction(false);
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
@@ -1026,28 +819,6 @@ public final class KeyEventHandler
   {
     cancel_pending_backspace_fallback();
     commit_pending_replacement();
-    glog("SWIPE-R ghost=" + _inline_prediction);
-    /* Ghost accept first, unconditionally — commitText over the still-
-       composing ghost replaces it atomically (Gboard model). A boundary
-       ghost commits word+" "; a mid-word suffix commits suffix+" ", which
-       lands right after the already-committed prefix. */
-    String ghost = _inline_prediction;
-    if (ghost != null)
-    {
-      InputConnection conn = _recv.getCurrentInputConnection();
-      if (conn != null && conn.commitText(ghost + " ", 1))
-      {
-        _inline_prediction = null;
-        _inline_prediction_is_suffix = false;
-        _typedword.typed(ghost + " ", null);
-        _typed_this_context = true;
-        _inline_prediction_suppressed = false;
-        _inline_prediction_deleted_last = false;
-        return;
-      }
-      /* Accept failed: drop the stranded composing region entirely. */
-      clear_inline_prediction(false);
-    }
     Decoder.RequestKey key = _decoder.current_key();
     CurrentlyTypedWord.Snapshot swipe_snapshot = _typedword.snapshot();
     String accepted = right_swipe_accept_text(key);
@@ -1068,9 +839,6 @@ public final class KeyEventHandler
 
   String right_swipe_accept_text(Decoder.RequestKey key)
   {
-    /* A visible ghost is the strongest signal: accept it verbatim. */
-    if (_inline_prediction != null)
-      return _inline_prediction;
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
     if (key == null || snapshot.completeness
           == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
@@ -1099,6 +867,25 @@ public final class KeyEventHandler
         && (words[0].sourceMask & Decoder.SOURCE_WHITELIST) == 0)
       return snapshot.word;
     return words[0].surface;
+  }
+
+
+  /** Commit a boundary next-word prediction directly, deduping the
+      separator: editor already ending in " " gets "word ", otherwise
+      " word ". Bypasses suggestion_entered/commit_correction so a stale
+      key can never mangle the insert. */
+  private boolean commit_boundary_prediction(String word)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(1, 0);
+    String insertion = (before != null && " ".contentEquals(before))
+      ? word + " " : " " + word + " ";
+    if (!conn.commitText(insertion, 1))
+      return false;
+    _typedword.typed(insertion, null);
+    return true;
   }
 
   void confirm_learn_current_word()
@@ -1327,36 +1114,6 @@ public final class KeyEventHandler
   @Override
   public void currently_typed_word(CurrentlyTypedWord.Snapshot snapshot)
   {
-    /* Skip snapshots our own ghost install/clear produced. Editor changes
-       the user made replace the composing region — drop the reference and
-       proceed normally. */
-    if (_inline_prediction_editor_change)
-    {
-      _inline_prediction_editor_change = false;
-      glog("EVT ours word=" + snapshot.word);
-      return;
-    }
-    if (_inline_prediction != null)
-    {
-      /* Desync-proofing: the editor event carries the CURRENT composing
-         word. If it still equals our ghost, the ghost physically survived
-         whatever triggered this event — keep the reference or DEL/swipe
-         lose track of a ghost that's still on screen ("can't delete past
-         it"). Only drop when the composing word actually changed. */
-      String expected = _inline_prediction_is_suffix
-          ? _inline_prediction_prefix + _inline_prediction
-          : _inline_prediction;
-      if (!snapshot.word.equals(expected))
-      {
-        glog("EVT-NULLS-GHOST word=" + snapshot.word
-            + " ghost=" + _inline_prediction);
-        _inline_prediction = null;
-        _inline_prediction_is_suffix = false;
-        _inline_prediction_prefix = null;
-      }
-      else
-        glog("EVT-KEEP-GHOST word=" + snapshot.word);
-    }
     boolean empty_boundary = snapshot.word.length() == 0
       && !snapshot.hasSelection && snapshot.cursorRelative == 0;
     boolean following_boundary =
@@ -2173,21 +1930,6 @@ public final class KeyEventHandler
   boolean send_text(String text, TouchTrace.Entry touch)
   {
     cancel_pending_backspace_fallback();
-    /* The ghost lives in the composing region and contaminates every editor
-       read (getTextBeforeCursor, ExtractedText, typed-word snapshots).
-       Space is DISMISS-only — accept is swipe-right — so clear it, then let
-       commitText insert the literal text over an empty composing region. */
-    if (_inline_prediction != null || _inline_prediction_suppressed
-        || _inline_prediction_deleted_last)
-      glog("SEND-TEXT t=" + text.replace(" ", "\\s"));
-    if (_inline_prediction != null)
-      clear_inline_prediction(false);
-    _inline_prediction_suppressed = false;
-    _inline_prediction_deleted_last = false;
-    _typed_this_context = true;
-    /* Deliberately leave _inline_prediction_editor_change alone: the
-       clear's commitText event must consume it, else the editor's
-       'composing cleared' callback is misread as a real user edit. */
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return false;
@@ -2317,16 +2059,8 @@ public final class KeyEventHandler
       case REPLACE: send_context_menu_action(android.R.id.replaceText); break;
       case ASSIST: send_context_menu_action(android.R.id.textAssist); break;
       case AUTOFILL: send_context_menu_action(android.R.id.autofill); break;
-      case DELETE_WORD:
-        _inline_prediction_suppressed = true;
-        _inline_prediction_deleted_last = true;
-        send_key_down_up(KeyEvent.KEYCODE_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON);
-        break;
-      case FORWARD_DELETE_WORD:
-        _inline_prediction_suppressed = true;
-        _inline_prediction_deleted_last = true;
-        send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON);
-        break;
+      case DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
+      case FORWARD_DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
       case SELECTION_CANCEL: cancel_selection(); break;
       case SPACE_BAR: handle_space_bar(); break;
       case BACKSPACE: handle_backspace(isRepeat); break;
@@ -2386,9 +2120,6 @@ public final class KeyEventHandler
   {
     if (r == 0 && !key_down)
     {
-      /* Deletion streak: pin ghost suppression like handle_backspace. */
-      _inline_prediction_suppressed = true;
-      _inline_prediction_deleted_last = true;
       commit_delete_words_selection();
       return;
     }
@@ -2883,17 +2614,6 @@ public final class KeyEventHandler
       && !uses_termux_raw_events();
   }
 
-  private boolean has_plain_space_before_cursor()
-  {
-    InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn == null)
-      return false;
-    CharSequence selection = conn.getSelectedText(0);
-    if (selection != null && selection.length() != 0)
-      return false;
-    CharSequence before = conn.getTextBeforeCursor(1, 0);
-    return before != null && " ".contentEquals(before);
-  }
 
   private void normalize_space_before_punctuation(String separator)
   {
@@ -2950,10 +2670,6 @@ public final class KeyEventHandler
 
   void handle_word_separator(String separator)
   {
-    /* A visible ghost contaminates every editor read below. Separators
-       dismiss it — accept is swipe-right only — so clear before any read. */
-    if (_inline_prediction != null)
-      clear_inline_prediction(false);
     normalize_accidental_period_before_separator();
     normalize_space_before_punctuation(separator);
     if (_manual_correction != null
@@ -3077,7 +2793,7 @@ public final class KeyEventHandler
     _skip_next_word_learning = false;
   }
 
-  /** Implement autocorrect and optional double-space period insertion. */
+  /** Implement autocorrect on word boundary. */
   void handle_space_bar()
   {
     if (should_normalize_prose_spacing())
@@ -3244,22 +2960,11 @@ public final class KeyEventHandler
       skips the deletion. */
   void handle_backspace(boolean isRepeat)
   {
-    glog("DEL-ENTRY rep=" + isRepeat);
-    /* Every press is part of a deletion streak: pin suppression so that a
-       commitText buried in send_backspace (autocorrect delete+reinsert,
-       selection clears) can never lift the gate mid-streak — the proven
-       ghost-respawn loop from device telemetry. */
-    _inline_prediction_suppressed = true;
-    _inline_prediction_deleted_last = true;
     if (consult_backspace_hooks(isRepeat))
       return;
     commit_pending_replacement();
     capture_manual_correction_source();
     send_backspace();
-    /* Re-pin: send_backspace → commitText can flow back through send_text's
-       flag reset; a streak must suppress until a REAL letter lands. */
-    _inline_prediction_suppressed = true;
-    _inline_prediction_deleted_last = true;
   }
 
   public static interface IReceiver
@@ -3280,8 +2985,6 @@ public final class KeyEventHandler
     public default void review_unknown_word(String word,
         Runnable learn_action, Runnable best_match_action) {}
     public InputConnection getCurrentInputConnection();
-    /** Context for diagnostics logging; null disables logging. */
-    public default android.content.Context diag_context() { return null; }
     public EditorInfo getCurrentInputEditorInfo();
     public Handler getHandler();
   }

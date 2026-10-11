@@ -1919,12 +1919,6 @@ public class Keyboard2 extends InputMethodService
       return Keyboard2.this.getCurrentInputEditorInfo();
     }
 
-    @Override
-    public android.content.Context diag_context()
-    {
-      return Keyboard2.this;
-    }
-
     public Handler getHandler()
     {
       return _handler;
@@ -1935,95 +1929,6 @@ public class Keyboard2 extends InputMethodService
     {
       update_email_completions();
       update_reader_entry();
-      update_inline_prediction(state);
-    }
-    /** Gboard-style ghost text: preview the top next-word candidate inside
-        the editor — but ONLY after at least one letter was typed in this
-        editing context. An untouched or fully deleted field must never
-        ghost, or DEL fights a prediction that keeps respawning at the
-        empty boundary. */
-    private void update_inline_prediction(
-        SharedDecoder.Presentation state)
-    {
-      Decoder.Candidate[] words = null;
-      if (state != null
-          && state.state == SharedDecoder.Presentation.State.READY
-          && state.result != null
-          /* Same key-currency guard as decoder_result_completed: stale or
-             unpinned presentations must not touch a live ghost. */
-          && (state.key == null || _decoder.is_current(state.key)))
-        /* result.words(), not state.ranked: pinned-merge dedupe can drop
-           the NEXT_WORD candidate and falsely clear the ghost. */
-        words = state.result.words();
-      apply_inline_ghost(inline_prediction_ghost(words));
-    }
-
-
-    /** Ghost candidate descriptor: the text to grey in and whether it is a
-        mid-word completion suffix (displayed after an unfinished word) or a
-        next-word preview (displayed after a space). */
-    private final class InlineGhost
-    {
-      final String text;
-      final boolean suffix;
-      InlineGhost(String text, boolean suffix)
-      {
-        this.text = text;
-        this.suffix = suffix;
-      }
-    }
-
-    /** Gboard-style dynamic ghost. Mid-word: first candidate that extends
-        the typed prefix, greyed as a suffix ("te" → "st"). Empty boundary:
-        top NEXT_WORD after the space. */
-    private InlineGhost inline_prediction_ghost(Decoder.Candidate[] words)
-    {
-      if (words == null || !_keyeventhandler.has_typed_this_context())
-        return null;
-      String typed = _keyeventhandler.currently_typed_word_text();
-      if (typed != null && typed.length() > 0)
-      {
-        String prefix = typed.toLowerCase(java.util.Locale.ROOT);
-        for (Decoder.Candidate word : words)
-        {
-          if (word == null || word.surface == null
-              || word.role == Decoder.Role.NEXT_WORD)
-            continue;
-          String surface = word.surface;
-          if (surface.length() > prefix.length()
-              && surface.toLowerCase(java.util.Locale.ROOT)
-                  .startsWith(prefix))
-            return new InlineGhost(
-                surface.substring(prefix.length()), true);
-        }
-        return null;
-      }
-      for (Decoder.Candidate word : words)
-        if (word != null && word.role == Decoder.Role.NEXT_WORD
-            && word.surface != null && word.surface.length() > 0)
-          return new InlineGhost(word.surface, false);
-      return null;
-    }
-
-    private void apply_inline_ghost(InlineGhost ghost)
-    {
-      /* Physical clear, never clear(true): a withdrawn or blocked candidate
-         must remove the composing ghost — clear(true) only drops our
-         reference and strands the grayed text to be baked by the next
-         finishComposingText. */
-      if (ghost == null
-          || !_keyeventhandler.show_inline_prediction(
-              ghost.text, ghost.suffix))
-        _keyeventhandler.clear_inline_prediction(false);
-    }
-
-    /** Same update driven by a just-completed decode result — the path that
-        actually carries next-word predictions, since state-changed skips
-        already-accepted completions. */
-    private void update_inline_prediction_result(Decoder.Result result)
-    {
-      apply_inline_ghost(inline_prediction_ghost(
-          result == null ? null : result.words()));
     }
 
     @Override
@@ -2034,16 +1939,6 @@ public class Keyboard2 extends InputMethodService
             @Override public void run()
             {
               _keyeventhandler.decoder_result_ready(result);
-              /* [decoder_state_changed] skips delivery when this result was
-                 already the accepted completion — which is exactly when the
-                 ghost should appear — so update the preview from the result
-                 itself, never the possibly-stale presentation. */
-              /* Ignore completions for requests that are no longer current —
-                 a late autocorrect result must not clear a fresh ghost. */
-              if (result != null && result.key != null
-                  && !_decoder.is_current(result.key))
-                return;
-              update_inline_prediction_result(result);
             }
           });
     }
