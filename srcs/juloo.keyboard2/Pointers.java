@@ -30,12 +30,23 @@ public final class Pointers implements Handler.Callback
   private ArrayList<Pointer> _ptrs = new ArrayList<Pointer>();
   private IPointerEventHandler _handler;
   private Config _config;
+  /** Width of one layout key unit in pixels; 0 until the view is measured. */
+  private float _key_unit_width = 0.f;
+
+  /** A keyboard-wide right swipe must travel this many key units. */
+  static final float RIGHT_ACCEPT_SWIPE_KEYS = 3.f;
 
   public Pointers(IPointerEventHandler h, Config c)
   {
     _longpress_handler = new Handler(this);
     _handler = h;
     _config = c;
+  }
+
+  /** Called by the view whenever the key unit width changes. */
+  public void set_key_unit_width(float width)
+  {
+    _key_unit_width = width > 0.f ? width : 0.f;
   }
 
   /** Return the list of modifiers currently activated. */
@@ -146,6 +157,13 @@ public final class Pointers implements Handler.Callback
     {
       clearLatched();
       ptr.sliding.onTouchUp(ptr);
+      return;
+    }
+    if (isRightAcceptSwipe(ptr))
+    {
+      stopLongPress(ptr);
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
       return;
     }
     if (isVerticalKeyboardSwipe(ptr))
@@ -413,6 +431,19 @@ public final class Pointers implements Handler.Callback
       else if ((ptr.flags & FLAG_P_LATCHABLE) != 0)
         ptr.flags &= ~FLAG_P_LATCHABLE;
     }
+  }
+
+  /** Keyboard-wide right swipe: starts on any key that has not entered a
+      slider, travels at least [RIGHT_ACCEPT_SWIPE_KEYS] key units to the right
+      and stays mostly horizontal (|dy| <= |dx| / 2). Evaluated on release so
+      returning before lifting cancels it. */
+  boolean isRightAcceptSwipe(Pointer ptr)
+  {
+    if (ptr.gesture == null || _key_unit_width <= 0.f
+        || ptr.hasFlagsAny(FLAG_P_SLIDING))
+      return false;
+    return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
+      && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
   }
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)
@@ -1093,5 +1124,8 @@ public final class Pointers implements Handler.Callback
 
     /** Keyboard-wide vertical swipe, independent of side-label keys. */
     public void onKeyboardSwipeDown();
+
+    /** Keyboard-wide long right swipe, independent of side-label keys. */
+    public default void onKeyboardSwipeRight() {}
   }
 }

@@ -793,6 +793,45 @@ public final class KeyEventHandler
     unlearn_current_word();
   }
 
+  /**
+   * Long right swipe: commit the decoder's autocorrection, else its top
+   * suggestion, followed by a space, through the same path as tapping a
+   * suggestion. Without a typed word or a ready result, act as the space bar
+   * so the separator autocorrect path still applies. Never waits on decoding.
+   */
+  @Override
+  public void keyboard_swiped_right()
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    Decoder.RequestKey key = _decoder.current_key();
+    String accepted = right_swipe_accept_text(key);
+    if (accepted != null)
+    {
+      suggestion_entered(key, accepted);
+      return;
+    }
+    key_up(KeyValue.getKeyByName("space"), _mods, null);
+  }
+
+  String right_swipe_accept_text(Decoder.RequestKey key)
+  {
+    CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    if (key == null || snapshot.word.length() == 0
+        || snapshot.completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return null;
+    Decoder.Result result = _decoder.current_result(key);
+    if (result == null)
+      return null;
+    if (result.autocorrection != null)
+      return result.autocorrection.surface;
+    Decoder.Candidate[] words = result.words();
+    if (words.length > 0 && words[0].role != Decoder.Role.NEXT_WORD)
+      return words[0].surface;
+    return null;
+  }
+
   void confirm_learn_current_word()
   {
     confirm_learn_word(_decoder.current_key(), _typedword.get());

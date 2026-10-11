@@ -159,8 +159,8 @@ a right swipe that can start anywhere on the keyboard.
 | Part | State |
 |---|---|
 | 1 Stop passive learning | done |
-| 2 Right-swipe accept | in progress |
-| 3 Weak recognition + whitelist | planned |
+| 2 Right-swipe accept | done |
+| 3 Weak recognition + whitelist | in progress |
 | 4 Next-word from bundled model | planned |
 | 5 Key-position rebalance | planned |
 | 6 Collapse veto ladder | planned |

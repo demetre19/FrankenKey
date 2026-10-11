@@ -404,6 +404,8 @@ public final class Config
     public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();
+    /** Long right swipe across the keyboard: accept the top suggestion. */
+    public default void keyboard_swiped_right() {}
   }
 
   /** Config migrations. */
