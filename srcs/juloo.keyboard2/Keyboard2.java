@@ -1940,21 +1940,37 @@ public class Keyboard2 extends InputMethodService
         SharedDecoder.Presentation state)
     {
       String ghost = null;
-      if (_keyeventhandler.has_typed_this_context()
-          && state != null
+      Decoder.Candidate[] words = null;
+      if (state != null
           && state.state == SharedDecoder.Presentation.State.READY
           && state.result != null)
-      {
-        Decoder.Candidate[] words = state.ranked != null
-          ? state.ranked : state.result.words();
-        for (Decoder.Candidate word : words)
-          if (word != null && word.role == Decoder.Role.NEXT_WORD
-              && word.surface != null && word.surface.length() > 0)
-          {
-            ghost = word.surface;
-            break;
-          }
-      }
+        words = state.ranked != null ? state.ranked : state.result.words();
+      ghost = inline_prediction_ghost(words);
+      if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
+        _keyeventhandler.clear_inline_prediction(true);
+    }
+
+    /** Top next-word candidate worth previewing, or null. The typed-context
+        gate lives here so the same rule covers state-change and
+        result-completed paths. */
+    private String inline_prediction_ghost(Decoder.Candidate[] words)
+    {
+      if (words == null || !_keyeventhandler.has_typed_this_context())
+        return null;
+      for (Decoder.Candidate word : words)
+        if (word != null && word.role == Decoder.Role.NEXT_WORD
+            && word.surface != null && word.surface.length() > 0)
+          return word.surface;
+      return null;
+    }
+
+    /** Same update driven by a just-completed decode result — the path that
+        actually carries next-word predictions, since state-changed skips
+        already-accepted completions. */
+    private void update_inline_prediction_result(Decoder.Result result)
+    {
+      String ghost = inline_prediction_ghost(
+          result == null ? null : result.words());
       if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
         _keyeventhandler.clear_inline_prediction(true);
     }
@@ -1969,8 +1985,9 @@ public class Keyboard2 extends InputMethodService
               _keyeventhandler.decoder_result_ready(result);
               /* [decoder_state_changed] skips delivery when this result was
                  already the accepted completion — which is exactly when the
-                 ghost should appear — so update the preview here too. */
-              update_inline_prediction(_decoder.current_presentation());
+                 ghost should appear — so update the preview from the result
+                 itself, never the possibly-stale presentation. */
+              update_inline_prediction_result(result);
             }
           });
     }

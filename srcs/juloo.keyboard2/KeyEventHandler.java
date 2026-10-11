@@ -797,6 +797,7 @@ public final class KeyEventHandler
   {
     cancel_pending_backspace_fallback();
     _inline_prediction_suppressed = false;
+    clear_inline_prediction(false);
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
@@ -921,7 +922,29 @@ public final class KeyEventHandler
     cancel_pending_backspace_fallback();
     commit_pending_replacement();
     Decoder.RequestKey key = _decoder.current_key();
+    CurrentlyTypedWord.Snapshot swipe_snapshot = _typedword.snapshot();
     String accepted = right_swipe_accept_text(key);
+    if (accepted != null && swipe_snapshot.word.length() == 0)
+    {
+      /* Boundary accept (ghost or next-word): bypass suggestion_entered —
+         a stale key fails is_current() silently and commit_correction can
+         mangle ghost-polluted tracking state. Direct, deduped commit. */
+      clear_inline_prediction(false);
+      InputConnection conn = _recv.getCurrentInputConnection();
+      if (conn != null)
+      {
+        CharSequence before = conn.getTextBeforeCursor(1, 0);
+        String insertion = (before != null && " ".contentEquals(before))
+          ? accepted + " " : " " + accepted + " ";
+        if (conn.commitText(insertion, 1))
+        {
+          _typedword.typed(insertion, null);
+          _typed_this_context = true;
+          _inline_prediction_suppressed = false;
+          return;
+        }
+      }
+    }
     if (accepted != null)
     {
       suggestion_entered(key, accepted);
@@ -2017,29 +2040,30 @@ public final class KeyEventHandler
   boolean send_text(String text, TouchTrace.Entry touch)
   {
     cancel_pending_backspace_fallback();
-    /* Space while a ghost is visible accepts it instead of overwriting it
-       with a literal space. */
-    if (text.equals(" ") && _inline_prediction != null)
+    /* The ghost lives in the composing region and contaminates every editor
+       read (getTextBeforeCursor, ExtractedText, typed-word snapshots).
+       Physically remove it BEFORE any mutation — never rely on commitText
+       replacing it. */
+    String ghost = _inline_prediction;
+    if (ghost != null)
+      clear_inline_prediction(false);
+    /* Space while a ghost was visible accepts it instead of inserting a
+       literal space. */
+    if (text.equals(" ") && ghost != null)
     {
       _inline_prediction_deleted_last = false;
       _typed_this_context = true;
-      String accepted = _inline_prediction;
-      _inline_prediction = null;
-      _inline_prediction_editor_change = false;
       _inline_prediction_suppressed = false;
       InputConnection accept_conn = _recv.getCurrentInputConnection();
-      if (accept_conn != null && accept_conn.commitText(accepted + " ", 1))
+      if (accept_conn != null && accept_conn.commitText(ghost + " ", 1))
       {
-        _typedword.typed(accepted + " ", touch);
+        _typedword.typed(ghost + " ", touch);
         return true;
       }
     }
     _inline_prediction_suppressed = false;
     _inline_prediction_deleted_last = false;
     _typed_this_context = true;
-    /* The commit below replaces any ghost in the composing region; drop our
-       reference before the editor callback arrives. */
-    _inline_prediction = null;
     _inline_prediction_editor_change = false;
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
@@ -2856,7 +2880,10 @@ public final class KeyEventHandler
         ? literal_token
         : _decoder.prepare_selected_correction(_decoder_session, key,
             correction.surface, snapshot.word);
-    boolean should_capitalize_i = correction == null && _config != null
+    /* Standalone "i" capitalizes even when the decoder proposes a generic
+       correction (in/is/it); that correction is almost never intended for
+       a single letter. */
+    boolean should_capitalize_i = _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
       && should_commit_typed_word() && "i".equals(snapshot.word);
@@ -2864,7 +2891,19 @@ public final class KeyEventHandler
       should_record && should_capitalize_i
       ? _decoder.prepare_commit(_decoder_session, key, "I", null)
       : null;
-    if (correction != null)
+    if (should_capitalize_i)
+    {
+      _current_request_key = null;
+      if (replace_standalone_i(separator))
+      {
+        _autocap.text_replaced(1, "I" + separator);
+        _typedword.typed(separator);
+        commit_prepared(capitalized_token);
+      }
+      else if (send_text(separator))
+        commit_prepared(literal_token);
+    }
+    else if (correction != null)
     {
       _current_request_key = null;
       if (commit_correction(correction.surface, separator,
@@ -2875,18 +2914,6 @@ public final class KeyEventHandler
         else
           stage_pending_replacement(correction_token, literal_token,
               snapshot.word, correction.surface, separator, false);
-      }
-      else if (send_text(separator))
-        commit_prepared(literal_token);
-    }
-    else if (should_capitalize_i)
-    {
-      _current_request_key = null;
-      if (replace_standalone_i(separator))
-      {
-        _autocap.text_replaced(1, "I" + separator);
-        _typedword.typed(separator);
-        commit_prepared(capitalized_token);
       }
       else if (send_text(separator))
         commit_prepared(literal_token);

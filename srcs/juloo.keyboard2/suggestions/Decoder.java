@@ -114,6 +114,26 @@ public final class Decoder
     { "are", "could", "did", "does", "had", "has", "have", "is", "might",
       "must", "need", "should", "was", "were", "would" };
 
+
+  /** Common contractions that MUST autocorrect even when the hunspell
+      dictionary lacks the surface (ive→I've, were→we're, well→we'll, ill→I'll,
+      cant→can't, dont→don't, isnt→isn't, wasnt→wasn't, wont→won't,
+      couldnt→couldn't, shouldnt→shouldn't, wouldnt→wouldn't, didnt→didn't,
+      doesnt→doesn't, havent→haven't, hasnt→hasn't, hadnt→hadn't, im→I'm). */
+  private static final String[][] CANONICAL_CONTRACTIONS = {
+    { "ive", "I've" }, { "im", "I'm" }, { "ill", "I'll" },
+    { "were", "we're" }, { "well", "we'll" }, { "cant", "can't" },
+    { "dont", "don't" }, { "isnt", "isn't" }, { "wasnt", "wasn't" },
+    { "wont", "won't" }, { "didnt", "didn't" }, { "doesnt", "doesn't" },
+    { "couldnt", "couldn't" }, { "shouldnt", "shouldn't" },
+    { "wouldnt", "wouldn't" }, { "havent", "haven't" },
+    { "hasnt", "hasn't" }, { "hadnt", "hadn't" }, { "aint", "ain't" },
+    { "lets", "let's" }, { "hes", "he's" }, { "shes", "she's" },
+    { "its", "it's" }, { "thats", "that's" }, { "whats", "what's" },
+    { "heres", "here's" }, { "theres", "there's" }, { "youre", "you're" },
+    { "youll", "you'll" }, { "youve", "you've" }, { "theyre", "they're" },
+    { "theyll", "they'll" }, { "theyve", "they've" }, { "id", "I'd" }
+  };
   public Decoder() {}
 
   /** Decode one immutable request. Each non-literal canonical candidate is
@@ -340,6 +360,7 @@ public final class Decoder
           collect_hunspell_contractions(
               hunspell, request.normalized, merged);
         }
+        collect_canonical_contractions(request.normalized, merged);
       }
       catch (RuntimeException e)
       {
@@ -773,6 +794,27 @@ public final class Decoder
         candidate.sourceMask |= SOURCE_HUNSPELL | SOURCE_CONTRACTION;
         candidate.set_hunspell(negative, rank);
       }
+    }
+  }
+
+  /** Inject canonical contractions when the typed word is exactly a known
+      uncontracted spelling. Whitelist-masked so autocorrect may pick them
+      even when hunspell lacks the surface (ive→I've, im→I'm). */
+  private static void collect_canonical_contractions(String normalized,
+      Map<String, Accumulator> merged)
+  {
+    if (normalized == null || !is_letters_only(normalized))
+      return;
+    for (String[] pair : CANONICAL_CONTRACTIONS)
+    {
+      if (!normalized.equalsIgnoreCase(pair[0]))
+        continue;
+      Accumulator candidate = accumulator_for(merged, pair[1]);
+      if (candidate == null)
+        continue;
+      candidate.sourceMask |= SOURCE_WHITELIST | SOURCE_CONTRACTION;
+      candidate.exactSurface = pair[1];
+      return;
     }
   }
 
