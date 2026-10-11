@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="center_vertical"
     android:visibility="gone"
     android:paddingHorizontal="4dp"
     android:paddingVertical="8dp">
@@ -103,7 +102,6 @@
       android:id="@+id/reader_transport_actions_scroll"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_gravity="center_vertical"
       android:fillViewport="true"
       android:overScrollMode="ifContentScrolls"
       android:scrollbars="horizontal">
@@ -115,6 +113,7 @@
         android:gravity="center"
         android:orientation="horizontal">
       <ImageButton
+
           android:id="@+id/reader_transport_voice"
           android:layout_width="40dp"
           android:layout_height="40dp"
@@ -186,6 +185,7 @@
           android:scaleType="centerInside"
           android:src="@drawable/ic_reader_ai"
           android:tint="?attr/colorLabel"/>
+
     </LinearLayout>
   </HorizontalScrollView>
 </LinearLayout>

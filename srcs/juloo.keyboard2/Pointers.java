@@ -5,7 +5,9 @@ import android.os.Message;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
+import juloo.keyboard2.suggestions.EditorContext;
 
 /**
  * Manage pointers (fingers) on the screen and long presses.
@@ -28,12 +30,23 @@ public final class Pointers implements Handler.Callback
   private ArrayList<Pointer> _ptrs = new ArrayList<Pointer>();
   private IPointerEventHandler _handler;
   private Config _config;
+  /** Width of one layout key unit in pixels; 0 until the view is measured. */
+  private float _key_unit_width = 0.f;
+
+  /** A keyboard-wide right swipe must travel this many key units. */
+  static final float RIGHT_ACCEPT_SWIPE_KEYS = 3.f;
 
   public Pointers(IPointerEventHandler h, Config c)
   {
     _longpress_handler = new Handler(this);
     _handler = h;
     _config = c;
+  }
+
+  /** Called by the view whenever the key unit width changes. */
+  public void set_key_unit_width(float width)
+  {
+    _key_unit_width = width > 0.f ? width : 0.f;
   }
 
   /** Return the list of modifiers currently activated. */
@@ -144,6 +157,14 @@ public final class Pointers implements Handler.Callback
     {
       clearLatched();
       ptr.sliding.onTouchUp(ptr);
+      return;
+    }
+    if (isRightAcceptSwipe(ptr))
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
       return;
     }
     if (isVerticalKeyboardSwipe(ptr))
@@ -320,6 +341,12 @@ public final class Pointers implements Handler.Callback
       { // Gesture starts
 
         ptr.gesture = new Gesture(direction);
+        if (isSpaceBar(ptr.value)
+            && consult_space_gesture_hooks(direction))
+        {
+          ptr.gesture = null;
+          return;
+        }
         if (isVerticalKeyboardSwipe(ptr))
           return;
         KeyValue new_value = backspaceSelectionSlider(ptr, dx, dy);
@@ -405,6 +432,19 @@ public final class Pointers implements Handler.Callback
       else if ((ptr.flags & FLAG_P_LATCHABLE) != 0)
         ptr.flags &= ~FLAG_P_LATCHABLE;
     }
+  }
+
+  /** Keyboard-wide right swipe: starts on any key that has not entered a
+      slider, travels at least [RIGHT_ACCEPT_SWIPE_KEYS] key units to the right
+      and stays mostly horizontal (|dy| <= |dx| / 2). Evaluated on release so
+      returning before lifting cancels it. */
+  boolean isRightAcceptSwipe(Pointer ptr)
+  {
+    if (ptr.gesture == null || _key_unit_width <= 0.f
+        || ptr.hasFlagsAny(FLAG_P_SLIDING))
+      return false;
+    return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
+      && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
   }
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)
@@ -551,6 +591,33 @@ public final class Pointers implements Handler.Callback
       default:
         return false;
     }
+  }
+
+  private static boolean isSpaceBar(KeyValue value)
+  {
+    return value != null
+      && value.getKind() == KeyValue.Kind.Editing
+      && value.getEditing() == KeyValue.Editing.SPACE_BAR;
+  }
+
+  /**
+   * Consult the ordered space-bar swipe hooks with the raw 16-way direction,
+   * before [getNearestKeyAtDirection] snaps unassigned directions to the
+   * nearest corner action. A hook returning true consumes the gesture.
+   */
+  boolean consult_space_gesture_hooks(int rawDirection16)
+  {
+    Config.IKeyEventHandler handler = _config.handler;
+    if (handler == null)
+      return false;
+    List<SpaceGestureHook> hooks = handler.space_gesture_hooks();
+    if (hooks == null || hooks.isEmpty())
+      return false;
+    EditorContext ctx = handler.editor_context();
+    for (SpaceGestureHook hook : hooks)
+      if (hook.on_space_swipe(rawDirection16, ctx))
+        return true;
+    return false;
   }
 
   private static boolean isDeleteRepeatKey(KeyValue value)
@@ -1017,6 +1084,18 @@ public final class Pointers implements Handler.Callback
     }
   }
 
+  /**
+   * Ordered hook consulted when a swipe gesture starts on the space bar.
+   * [rawDirection16] is the direction in sixteenths of a circle clockwise
+   * from the top, before any corner snapping. Returning true consumes the
+   * gesture. The list is empty by default and registered through
+   * [KeyEventHandler.register_space_gesture_hook].
+   */
+  public static interface SpaceGestureHook
+  {
+    public boolean on_space_swipe(int rawDirection16, EditorContext ctx);
+  }
+
   public interface IPointerEventHandler
   {
     /** Key can be modified or removed by returning [null]. */
@@ -1046,5 +1125,8 @@ public final class Pointers implements Handler.Callback
 
     /** Keyboard-wide vertical swipe, independent of side-label keys. */
     public void onKeyboardSwipeDown();
+
+    /** Keyboard-wide long right swipe, independent of side-label keys. */
+    public default void onKeyboardSwipeRight() {}
   }
 }

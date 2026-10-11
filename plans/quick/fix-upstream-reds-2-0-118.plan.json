@@ -1,0 +1,60 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "test/juloo.keyboard2/ReaderActivityTest.java"
+      ],
+      "covered_paths": [
+        "res/layout/keyboard.xml",
+        "test/juloo.keyboard2/CleanModeFleksyLayoutTest.java",
+        "test/juloo.keyboard2/snippets/KeyboardLayoutSeamTest.java",
+        "test/juloo.keyboard2/LauncherPrivacyCardTest.java",
+        "test/juloo.keyboard2/ReaderAiButtonTest.java",
+        "test/juloo.keyboard2/ReleaseUpdaterResourcesTest.java",
+        "srcs/juloo.keyboard2/lang/LanguagePackManager.java",
+        "test/juloo.keyboard2/lang/LanguagePackManagerTest.java",
+        "res/values/",
+        "res/xml/",
+        "srcs/juloo.keyboard2/Config.java"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "autobuild tip 41b623e carries 6 pre-existing upstream unit-test reds that predate S1 (introduced by release 2.0.118 / upstream drift, confirmed by boss full-suite run on /tmp/ver-s1-recheck): (1-2) CleanModeFleksyLayoutTest.keyboard_layout_keeps_snippet_row_above_keyboard_view + KeyboardLayoutSeamTest.snippet_row_is_direct_sibling_immediately_above_keyboard_view \u2014 4b14c71 reordered res/layout/keyboard.xml so reader_transport_strip sits between SnippetRowView and Keyboard2View; decide whether the reorder is intentional (update the seam tests to allow the transport between them) or revert it. (3) LauncherPrivacyCardTest.shortcut_map_button_opens_the_complete_compact_guide \u2014 modal must document the AI button tap. (4) ReaderAiButtonTest.config_loads_omnibutton_edge_swap \u2014 NPE foldableUnfolded null (config loader drift). (5) ReleaseUpdaterResourcesTest.release_metadata_is_2_0_108_version_code_159 \u2014 stale version pin vs current release. (6) LanguagePackManagerTest.bundledEnglishPacksLoadDictionaryAndContextResources \u2014 en_AU context prior mismatch (bundled next_words.tsv drift). Fix each red so the named tests pass; when done crew learn and cite."
+      ],
+      "depends_on": [],
+      "id": "fix-upstream-reds-2-0-118",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "autobuild tip 41b623e carries 6 pre-existing upstream unit-test reds that predate S1 (introduced by release 2.0.118 / upstream drift, confirmed by boss full-suite run on /tmp/ver-s1-recheck): (1-2) Cl",
+      "write_paths": [
+        "res/layout/keyboard.xml",
+        "test/juloo.keyboard2/CleanModeFleksyLayoutTest.java",
+        "test/juloo.keyboard2/snippets/KeyboardLayoutSeamTest.java",
+        "test/juloo.keyboard2/LauncherPrivacyCardTest.java",
+        "test/juloo.keyboard2/ReaderAiButtonTest.java",
+        "test/juloo.keyboard2/ReleaseUpdaterResourcesTest.java",
+        "srcs/juloo.keyboard2/lang/LanguagePackManager.java",
+        "test/juloo.keyboard2/lang/LanguagePackManagerTest.java",
+        "res/values/",
+        "res/xml/",
+        "srcs/juloo.keyboard2/Config.java"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

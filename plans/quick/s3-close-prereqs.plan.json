@@ -1,0 +1,44 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "/bin/test",
+        "-f",
+        "plans/quick/s2-features.plan.json"
+      ],
+      "covered_paths": [
+        "plans/quick/",
+        "tests/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "Commit the load-bearing untracked files blocking run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224 close: (1) plans/quick/s2-features.plan.json, (2) plans/quick/aticket-attempt8-forensics.plan.json, (3) tests/quarantine.jsonl \u2014 the latter is a machinery-generated quarantine record (inspect first; it is one JSONL row nightly-sweep red record \u2014 commit it). Do NOT touch .github/workflows/docs.yml (push would fail on OAuth workflow scope \u2014 it stays untracked by operator ruling). One commit, conventional message. Closing contract: crew learn then land-manual --review pass."
+      ],
+      "depends_on": [],
+      "id": "s3-close-prereqs",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Commit the load-bearing untracked files blocking run prd-frankenkey-typing-intelligence-2026-09-27-s3-20261006-095224 close: (1) plans/quick/s2-features.plan.json, (2) plans/quick/aticket-attempt8-for",
+      "write_paths": [
+        "plans/quick/",
+        "tests/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

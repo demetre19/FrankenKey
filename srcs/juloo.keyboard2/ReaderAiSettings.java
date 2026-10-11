@@ -36,7 +36,6 @@ final class ReaderAiSettings
     "cloudflare_token_ciphertext";
   private static final String CF_TOKEN_IV = "cloudflare_token_iv";
   private static final String CF_MODEL_ID = "cloudflare_model_id";
-  private static final String AUTO_GRAMMAR = "ai_auto_grammar";
 
   /** Selectable AI backends; Cloudflare is the default provider. */
   static final class Provider
@@ -136,16 +135,6 @@ final class ReaderAiSettings
   {
     return Provider.OPENROUTER.equals(getProvider())
       ? getModelId() : getCloudflareModelId();
-  }
-
-  boolean isAutoGrammarEnabled()
-  {
-    return preferences.getBoolean(AUTO_GRAMMAR, true);
-  }
-
-  void setAutoGrammarEnabled(boolean enabled)
-  {
-    preferences.edit().putBoolean(AUTO_GRAMMAR, enabled).apply();
   }
 
   private synchronized String getSecret(String alias, String ciphertextKey,

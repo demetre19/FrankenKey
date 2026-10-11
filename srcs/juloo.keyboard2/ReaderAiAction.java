@@ -18,7 +18,6 @@ public enum ReaderAiAction
   SHARE("share", R.string.reader_ai_action_share),
   SAVED("saved", R.string.reader_ai_action_saved),
   SPEED_READ("speed_read", R.string.reader_ai_action_speed_read),
-  AI_SETTINGS("ai_settings", R.string.reader_ai_action_ai_settings),
   LOAD_CLIPBOARD("load_clipboard", R.string.reader_ai_action_load_clipboard),
   READ_CLIPBOARD("read_clipboard", R.string.reader_ai_action_read_clipboard);
 
@@ -58,7 +57,7 @@ public enum ReaderAiAction
     DOWN_LEFT("down_left", R.string.pref_reader_ai_button_swipe_down_left,
         ReaderAiAction.SPEED_READ),
     LEFT("left", R.string.pref_reader_ai_button_swipe_left,
-        ReaderAiAction.AI_SETTINGS),
+        ReaderAiAction.OPEN_CHAT),
     UP_LEFT("up_left", R.string.pref_reader_ai_button_swipe_up_left,
         ReaderAiAction.OPEN_CHAT);
 

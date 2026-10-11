@@ -81,8 +81,15 @@ public class SnippetRowView extends HorizontalScrollView
       _pages.addView(makePage(page, SnippetPages.pageOf(slots, page), listener));
     applyPageWidths();
     _snap_running = false;
+    _touch_down_x = Float.NaN;
     removeCallbacks(_settle_check);
+    // A tap on an edge page leaves the scroll offset shifted by one page
+    // (rotateEdgePage keeps the ring neighbour adjacent). Rebuilding pages in
+    // natural order without resetting the offset would reopen on the wrong
+    // page — e.g. scrollX == one page shows page index 1, "snippet 8".
+    scrollTo(0, 0);
   }
+
 
   private LinearLayout makePage(int pageIndex, List<SnippetSlot> slots,
       OnSnippetClickListener listener)
@@ -264,6 +271,7 @@ public class SnippetRowView extends HorizontalScrollView
       View last = _pages.getChildAt(n - 1);
       _pages.removeView(last);
       _pages.addView(last, 0);
+      fixPageBounds(w);
       scrollTo(sx + w, 0);
     }
     else if (nearest >= n - 1 && sx - w >= 0)
@@ -272,7 +280,29 @@ public class SnippetRowView extends HorizontalScrollView
       View first = _pages.getChildAt(0);
       _pages.removeView(first);
       _pages.addView(first);
+      fixPageBounds(w);
       scrollTo(sx - w, 0);
+    }
+  }
+
+  /**
+   * Reordering children only schedules a layout pass, so their bounds stay
+   * stale for the rest of the in-flight touch dispatch. Rotation runs inside
+   * onInterceptTouchEvent on ACTION_DOWN — before the hit-test — which would
+   * deliver the tap to the slot at the child's old position (the next page),
+   * swallowing the first tap or pasting the wrong snippet. Repair each page's
+   * horizontal bounds synchronously so the hit-test sees the new order.
+   */
+  private void fixPageBounds(int pageWidth)
+  {
+    for (int i = 0; i < _pages.getChildCount(); ++i)
+    {
+      View child = _pages.getChildAt(i);
+      int left = i * pageWidth;
+      int top = child.getTop();
+      int height = child.getHeight() > 0 ? child.getHeight()
+          : child.getMeasuredHeight();
+      child.layout(left, top, left + pageWidth, top + height);
     }
   }
 

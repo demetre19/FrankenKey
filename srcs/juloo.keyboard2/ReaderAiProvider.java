@@ -29,17 +29,6 @@ final class ReaderAiProvider
     }
   }
 
-  /** Resolved model for the selected provider; catalog-only, no request. */
-  static final class ModelRef
-  {
-    final ReaderAiOpenRouter.Model model;
-
-    ModelRef(ReaderAiOpenRouter.Model model_)
-    {
-      model = model_;
-    }
-  }
-
   private final ReaderAiSettings settings;
   private final ReaderAiOpenRouter openRouter = new ReaderAiOpenRouter();
   private final ReaderAiCloudflare cloudflare = new ReaderAiCloudflare();
@@ -132,31 +121,6 @@ final class ReaderAiProvider
     };
   }
 
-  /**
-   * Grammar correction request: bounded tokens, zero temperature. Returns
-   * the raw model text for [AiGrammarFixer] guards.
-   */
-  String fixGrammar(String prompt, String input)
-      throws IOException, JSONException, GeneralSecurityException
-  {
-    Resolved resolved = resolve();
-    String modelId = settings.getActiveModelId();
-    if (modelId.isEmpty())
-      modelId = ReaderAiSettings.Provider.OPENROUTER
-          .equals(resolved.provider)
-        ? ReaderAiOpenRouter.PREFERRED_MODEL_ID
-        : ReaderAiCloudflare.PREFERRED_MODEL_ID;
-    java.util.List<ReaderAiOpenRouter.Message> msgs = new java.util.ArrayList<>();
-    msgs.add(new ReaderAiOpenRouter.Message("system", prompt));
-    msgs.add(new ReaderAiOpenRouter.Message("user", input));
-    int tokens = Math.max(1, input.length() / 4);
-    org.json.JSONObject body = ReaderAiOpenRouter.buildRequest(modelId,
-        msgs, (int)Math.ceil(tokens * 1.5) + 8, 0.0);
-    if (ReaderAiSettings.Provider.OPENROUTER.equals(resolved.provider))
-      return openRouter.generate(resolved.bearer, body, 30_000);
-    return cloudflare.generate(resolved.accountId, resolved.bearer, body,
-        30_000);
-  }
 
   /**
    * Model to run with: for Cloudflare the static catalog; for OpenRouter

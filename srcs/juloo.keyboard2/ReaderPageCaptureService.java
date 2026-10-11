@@ -315,9 +315,24 @@ public final class ReaderPageCaptureService extends AccessibilityService
     if (hide == keyboardVisible)
       return;
     keyboardVisible = hide;
-    if (overlayButton != null)
+    if (overlayButton != null && overlayParams != null)
+    {
       overlayButton.setVisibility(hide ? View.GONE : View.VISIBLE);
+      // A GONE overlay window still receives touches inside its bounds, which
+      // would swallow taps meant for whatever sits beneath it (e.g. the
+      // snippet row). Mark the window untouchable while it is hidden.
+      int flags = hide
+          ? overlayParams.flags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+          : overlayParams.flags & ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+      if (flags != overlayParams.flags)
+      {
+        overlayParams.flags = flags;
+        try { windowManager.updateViewLayout(overlayButton, overlayParams); }
+        catch (Exception ignored) {}
+      }
+    }
   }
+
 
   private boolean hasPasswordNode(AccessibilityNodeInfo node)
   {

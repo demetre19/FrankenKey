@@ -18,6 +18,7 @@ import android.preference.TwoStatePreference;
 import android.preference.PreferenceActivity;
 import android.content.SharedPreferences;
 import android.preference.PreferenceCategory;
+import android.preference.PreferenceScreen;
 import android.view.LayoutInflater;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
@@ -77,6 +78,7 @@ public class SettingsActivity extends PreferenceActivity
     setupVoiceTypingPreference();
     setupClipboardPreferences();
     setupContactEmailPreference();
+    hideEmptySmartTypingCategories();
     setupBackupPreferences();
     queueExtraKeysBarManager(getIntent());
     requestScreenshotPermissionFromIntent();
@@ -438,6 +440,25 @@ public class SettingsActivity extends PreferenceActivity
     Preference preference = findPreference("multimodal_voice_typing");
     if (preference instanceof TwoStatePreference)
       ((TwoStatePreference)preference).setChecked(enabled);
+  }
+
+  /** Detach the Smart typing placeholder categories that are still empty
+      at inflation so the sub-screen opens blank; a lane that declares
+      children inside its [ti_*_category] makes it non-empty and it
+      stays. */
+  private void hideEmptySmartTypingCategories()
+  {
+    Preference p = findPreference("ti_smart_typing");
+    if (!(p instanceof PreferenceScreen))
+      return;
+    PreferenceScreen screen = (PreferenceScreen)p;
+    for (int i = screen.getPreferenceCount() - 1; i >= 0; --i)
+    {
+      Preference child = screen.getPreference(i);
+      if (child instanceof PreferenceCategory
+          && ((PreferenceCategory)child).getPreferenceCount() == 0)
+        screen.removePreference(child);
+    }
   }
 
   private void setupContactEmailPreference()

@@ -11,9 +11,21 @@ public final class LanguagePack
   public final File hunspell_dic;
   public final File suggestions;
   public final File next_words;
+  /** Optional 8-bit unigram table aligned to the bundled Cdict. */
+  public final File word_frequencies;
+  /** Optional ranked next-word table aligned to the bundled Cdict. */
+  public final File word_bigrams;
 
   LanguagePack(String id, File root, File hunspell_aff, File hunspell_dic,
       File suggestions, File next_words)
+  {
+    this(id, root, hunspell_aff, hunspell_dic, suggestions, next_words, null,
+        null);
+  }
+
+  LanguagePack(String id, File root, File hunspell_aff, File hunspell_dic,
+      File suggestions, File next_words, File word_frequencies,
+      File word_bigrams)
   {
     this.id = id;
     this.root = root;
@@ -21,5 +33,7 @@ public final class LanguagePack
     this.hunspell_dic = hunspell_dic;
     this.suggestions = suggestions;
     this.next_words = next_words;
+    this.word_frequencies = word_frequencies;
+    this.word_bigrams = word_bigrams;
   }
 }

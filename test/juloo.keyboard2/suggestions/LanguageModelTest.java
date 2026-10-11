@@ -36,6 +36,44 @@ public class LanguageModelTest
   }
 
   @Test
+  public void emptyRequestPredictsNextWordsFromPackagedPriors() throws Exception
+  {
+    LanguageModel model = load("good\tmorning\t12\n"
+        + "good\tnight\t9\n"
+        + "good\tluck\t12\n"
+        + "very\tgood\tidea\t14\n"
+        + "very\tgood\tmorning\t3\n");
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("very");
+    store.record_word("good");
+
+    Decoder.Result result = new Decoder().decode(request(""), null, null,
+        null, store, model, false);
+
+    String[] words = new String[result.words().length];
+    for (int i = 0; i < words.length; i++)
+    {
+      words[i] = result.words()[i].surface;
+      assertEquals(Decoder.Role.NEXT_WORD, result.words()[i].role);
+    }
+    assertArrayEquals("Trigram rows lead, then bigram rows by weight, without duplicates.",
+        new String[] { "idea", "morning", "luck", "night" }, words);
+
+    PersonalizationStore fresh = PersonalizationStore.empty();
+    assertEquals("Without a previous word there is nothing to predict.",
+        0, new Decoder().decode(request(""), null, null, null, fresh, model,
+          false).words().length);
+  }
+
+  private static Decoder.Request request(String typed)
+  {
+    return new Decoder.Request(new Decoder.RequestKey(1, 1, 1, 1, 1, 1, 1),
+        typed, (juloo.keyboard2.TouchTrace.Snapshot)null,
+        Decoder.Geometry.from(null),
+        new Decoder.DecoderConfig(true, true, true, true));
+  }
+
+  @Test
   public void rejectsMalformedDuplicateAndOutOfRangeRows() throws Exception
   {
     assertMalformed("examples of 15\n", "three or four tab-separated fields");

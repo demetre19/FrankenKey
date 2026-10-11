@@ -14,11 +14,17 @@ import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
+import juloo.keyboard2.suggestions.CandidateRole;
 import juloo.keyboard2.suggestions.Decoder;
+import juloo.keyboard2.suggestions.DomainSuggestions;
+import juloo.keyboard2.suggestions.EditorContext;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 import juloo.keyboard2.suggestions.SharedDecoder;
+import juloo.keyboard2.suggestions.SuggestionAcceptor;
 import juloo.keyboard2.snippets.SnippetInserter;
 
 public final class KeyEventHandler
@@ -47,6 +53,7 @@ public final class KeyEventHandler
   boolean _autocorrect_enabled = false;
   private PendingReplacement _pending_replacement = null;
   private ManualCorrection _manual_correction = null;
+  private boolean _skip_next_word_learning = false;
   private boolean _preserve_manual_correction_transition = false;
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
   private final ArrayDeque<LatentAutocorrectBoundary>
@@ -54,8 +61,20 @@ public final class KeyEventHandler
       new ArrayDeque<LatentAutocorrectBoundary>();
   private boolean _preserve_autocorrect_boundary_transition = false;
   private DeleteSelection _delete_selection = null;
-  private long _backspace_fallback_generation = 0;
+  private final SuggestionAcceptor _suggestion_acceptor =
+    new SuggestionAcceptor();
+  /** Ordered backspace hooks. Consulted for discrete presses and held-key
+      repeats; empty by default so behavior is unchanged. */
+  private final List<BackspaceHook> _backspace_hooks =
+    new ArrayList<BackspaceHook>();
+  /** Ordered space-bar swipe hooks exposed to [Pointers] through
+      [space_gesture_hooks]; empty by default. */
+  private final List<Pointers.SpaceGestureHook> _space_gesture_hooks =
+    new ArrayList<Pointers.SpaceGestureHook>();
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
+  /** Incremented to invalidate a posted delayed DEL fallback; see
+      [schedule_backspace_fallback]. */
+  private long _backspace_fallback_generation = 0;
   private static final int DELETE_WORDS_CONTEXT_LIMIT = 4096;
   private static final int DELETE_WORDS_CURSOR_LOCAL = -1;
   private static final int DELETE_WORDS_TRACKED_TERMINAL = -2;
@@ -190,6 +209,130 @@ public final class KeyEventHandler
     _mods = Pointers.Modifiers.EMPTY;
     _decoder = decoder;
     _typedword = new CurrentlyTypedWord(handler, this);
+    SuggestionAcceptor.Action enter = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          suggestion_entered(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.WORD, enter);
+    _suggestion_acceptor.register(CandidateRole.ENTERED_TEXT, enter);
+    _suggestion_acceptor.register(CandidateRole.NEXT_WORD, enter);
+    _suggestion_acceptor.register(CandidateRole.EMOJI, enter);
+    SuggestionAcceptor.Action learn = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          suggestion_swiped_up(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
+    _suggestion_acceptor.register(CandidateRole.LEARN_ACTION, learn);
+    _suggestion_acceptor.register(CandidateRole.UNLEARN_ACTION, learn);
+    SuggestionAcceptor.Action domain = new SuggestionAcceptor.Action()
+      {
+        @Override public void on_candidate(Decoder.RequestKey ticket,
+            String text)
+        {
+          domain_suggestion_entered(ticket, text);
+        }
+      };
+    _suggestion_acceptor.register(CandidateRole.EMAIL_DOMAIN, domain);
+  }
+
+  /**
+   * One entry point for every candidate strip action. Dispatches by
+   * [CandidateRole] through the acceptor's registration map.
+   */
+  @Override
+  public void candidate_accepted(Decoder.RequestKey ticket,
+      CandidateRole role, String text)
+  {
+    _suggestion_acceptor.accept(ticket, role, text);
+  }
+
+  @Override
+  public void candidate_long_pressed(Decoder.RequestKey ticket,
+      CandidateRole role, String text)
+  {
+    _suggestion_acceptor.long_pressed(ticket, role, text);
+  }
+
+  /** Exposed so lanes can register actions for new candidate roles. */
+  public SuggestionAcceptor suggestion_acceptor()
+  {
+    return _suggestion_acceptor;
+  }
+
+  /** Register an ordered backspace hook; first handled result wins. */
+  public void register_backspace_hook(BackspaceHook hook)
+  {
+    if (hook == null)
+      throw new IllegalArgumentException("hook must not be null");
+    _backspace_hooks.add(hook);
+  }
+
+  /** Register an ordered space-bar swipe hook consumed by [Pointers]. */
+  public void register_space_gesture_hook(Pointers.SpaceGestureHook hook)
+  {
+    if (hook == null)
+      throw new IllegalArgumentException("hook must not be null");
+    _space_gesture_hooks.add(hook);
+  }
+
+  @Override
+  public List<Pointers.SpaceGestureHook> space_gesture_hooks()
+  {
+    return _space_gesture_hooks;
+  }
+
+  @Override
+  public EditorContext editor_context()
+  {
+    return capture_editor_context();
+  }
+
+  /** Snapshot the editor the next request runs against. Main thread only. */
+  EditorContext capture_editor_context()
+  {
+    EditorInfo info = _recv.getCurrentInputEditorInfo();
+    InputConnection conn = _recv.getCurrentInputConnection();
+    Locale locale = null;
+    if (_config != null && _config.device_locales != null
+        && _config.device_locales.default_ != null)
+      locale = Locale.forLanguageTag(_config.device_locales.default_.lang_tag);
+    return EditorContext.capture(info, conn, locale);
+  }
+
+  void update_editor_context()
+  {
+    _decoder.update_editor_context(capture_editor_context());
+  }
+
+  /** Run the ordered backspace hooks; true when one consumed the press. */
+  boolean consult_backspace_hooks(boolean isRepeat)
+  {
+    if (_backspace_hooks.isEmpty())
+      return false;
+    EditorContext ctx = capture_editor_context();
+    for (BackspaceHook hook : _backspace_hooks)
+      if (hook.on_backspace(ctx, isRepeat))
+        return true;
+    return false;
+  }
+
+  /**
+   * Ordered hook consulted for each backspace key event. [isRepeat] is true
+   * for held-key repeats and false for the discrete press. Returning true
+   * consumes the event: no character is deleted. Registered via
+   * [register_backspace_hook].
+   */
+  public static interface BackspaceHook
+  {
+    public boolean on_backspace(EditorContext ctx, boolean isRepeat);
   }
 
   /** Editing just started. */
@@ -201,6 +344,7 @@ public final class KeyEventHandler
     _current_request_key = null;
     _pending_replacement = null;
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _preserve_manual_correction_transition = false;
     _pending_autocorrect_boundary = null;
     _latent_autocorrect_boundaries.clear();
@@ -220,6 +364,7 @@ public final class KeyEventHandler
     commit_pending_replacement();
     commit_latent_boundaries();
     _manual_correction = null;
+    _skip_next_word_learning = false;
     _delete_selection = null;
     _autocap.finished();
     _typedword.finished();
@@ -435,6 +580,12 @@ public final class KeyEventHandler
   @Override
   public void key_up(KeyValue key, Pointers.Modifiers mods, TouchTrace.Entry touch)
   {
+    key_up(key, mods, touch, false);
+  }
+
+  void key_up(KeyValue key, Pointers.Modifiers mods, TouchTrace.Entry touch,
+      boolean isRepeat)
+  {
     if (key == null)
       return;
     if (!is_backspace_action(key))
@@ -474,7 +625,7 @@ public final class KeyEventHandler
         }
         break;
       case Modifier: break;
-      case Editing: handle_editing_key(key.getEditing()); break;
+      case Editing: handle_editing_key(key.getEditing(), isRepeat); break;
       case Compose_pending:
         clear_manual_correction();
         _recv.set_compose_pending(true);
@@ -519,7 +670,7 @@ public final class KeyEventHandler
   @Override
   public void key_hold(KeyValue key, Pointers.Modifiers mods, int holdCount)
   {
-    key_up(key, mods, null);
+    key_up(key, mods, null, true);
   }
 
   @Override
@@ -570,8 +721,56 @@ public final class KeyEventHandler
           false);
   }
 
-  /** Domain pill tapped while composing an email address: append the domain
-      (or replace the partial domain after '@') — no decoder request needed. */
+  /**
+   * Commit a [DomainSuggestions] domain candidate: replace the whole
+   * "@" plus partial-suffix span with the chosen domain and a separator, in
+   * one editor transaction. The typed-word model ends at "@" and "." so the
+   * suffix span is re-derived from the editor text — never from
+   * [_typedword] — which keeps "bob@gmail.c" -> "bob@gmail.com" instead of
+   * appending after the last label. No personalization tokens are prepared:
+   * a provider domain must never enter the learned-words store.
+   */
+  void domain_suggestion_entered(Decoder.RequestKey key, String text)
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    if (!_decoder.is_current(key))
+      return;
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(
+        DomainSuggestions.MAX_SCAN + 1, 0);
+    int span_start = DomainSuggestions.domain_span_start(before);
+    if (span_start < 0)
+      return;
+    int remove = before.length() - span_start;
+    String replacement = text + " ";
+    boolean termux_raw_events = uses_termux_raw_events();
+    if (!termux_raw_events
+        && _typedword.snapshot().completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return;
+    if (!termux_raw_events && tracked_word_mismatches_editor(_typedword.get()))
+    {
+      _typedword.refresh_current_word();
+      return;
+    }
+    boolean replaced = termux_raw_events
+      ? _typedword.cursor_relative() == 0
+        && replace_termux_suffix(
+            before.subSequence(span_start, before.length()).toString(),
+            replacement)
+      : replace_surrounding_text(conn, remove, 0, replacement);
+    if (!replaced)
+      return;
+    _autocap.text_replaced(remove, replacement);
+    _typedword.typed(" ");
+  }
+
+  /** Domain pill tapped while composing an email address: append the
+      domain (or replace the partial domain after '@') — no decoder
+      request needed. */
   @Override
   public void email_suggestion_entered(String text)
   {
@@ -603,6 +802,52 @@ public final class KeyEventHandler
     commit_pending_replacement();
     clear_manual_correction();
     unlearn_current_word();
+  }
+
+  /**
+   * Long right swipe: commit the decoder's autocorrection, else its top
+   * suggestion, followed by a space, through the same path as tapping a
+   * suggestion. Without a typed word or a ready result, act as the space bar
+   * so the separator autocorrect path still applies. Never waits on decoding.
+   */
+  @Override
+  public void keyboard_swiped_right()
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    Decoder.RequestKey key = _decoder.current_key();
+    String accepted = right_swipe_accept_text(key);
+    if (accepted != null)
+    {
+      suggestion_entered(key, accepted);
+      return;
+    }
+    key_up(KeyValue.getKeyByName("space"), _mods, null);
+  }
+
+  String right_swipe_accept_text(Decoder.RequestKey key)
+  {
+    CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    if (key == null || snapshot.word.length() == 0
+        || snapshot.completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return null;
+    Decoder.Result result = _decoder.current_result(key);
+    if (result == null)
+      return null;
+    if (result.autocorrection != null)
+      return result.autocorrection.surface;
+    Decoder.Candidate[] words = result.words();
+    if (words.length == 0 || words[0].role == Decoder.Role.NEXT_WORD)
+      return null;
+    // A valid or learned word that autocorrect kept stays as typed; only its
+    // dictionary shortcut (cant -> can't) may replace it.
+    boolean literalValid = result.literal != null
+      && (result.literal.recognized || result.literal.learned);
+    if (literalValid
+        && (words[0].sourceMask & Decoder.SOURCE_WHITELIST) == 0)
+      return snapshot.word;
+    return words[0].surface;
   }
 
   void confirm_learn_current_word()
@@ -641,15 +886,18 @@ public final class KeyEventHandler
         {
           @Override public void run()
           {
-            if (_decoder_session == session && _decoder.is_current(key))
-              learn_word(key, word);
+            // Session guard only: the review dialog takes IME focus, so
+            // the request key is stale by click time and is_current()
+            // would silently drop the confirmation.
+            if (_decoder_session == session)
+              learn_word_now(session, key, word);
           }
         }, new Runnable()
         {
           @Override public void run()
           {
-            if (_decoder_session == session && _decoder.is_current(key))
-              set_replacement(key, word, null);
+            if (_decoder_session == session)
+              set_replacement_now(session, key, word, null);
           }
         });
   }
@@ -683,10 +931,35 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
+    learn_word_now(_decoder_session, key, word);
+  }
+
+  /** Learn a word after the user confirmed in the review dialog. Unlike
+      learn_word() this does not require the request key to still be
+      current: the dialog takes focus, so by the time the user taps a
+      button the key has usually advanced. The session epoch is the
+      meaningful guard. */
+  void learn_word_now(long session, Decoder.RequestKey key, String word)
+  {
+    if (!can_explicitly_teach(word))
+      return;
     if (should_use_personalization())
-      _decoder.learn_word(_decoder_session, word);
+      _decoder.learn_word(session, word);
+    else if (key != null)
+      _recv.confirm_teach_word(key, word);
+  }
+
+  /** Same contract as learn_word_now for the replacement ("best match")
+      button: session-scoped, no is_current requirement. */
+  void set_replacement_now(long session, Decoder.RequestKey key,
+      String source, String target)
+  {
+    if (!can_explicitly_teach(source))
+      return;
+    if (should_use_personalization())
+      _decoder.set_replacement(session, source, target);
     else
-      _recv.explicitly_teach_word(key, word);
+      _recv.explicitly_set_replacement(source, target);
   }
 
   void set_replacement(Decoder.RequestKey key, String source, String target)
@@ -710,9 +983,11 @@ public final class KeyEventHandler
           @Override
           public void run()
           {
-            if (_decoder_session == session && _decoder.is_current(key)
-                && can_change_learning(word))
-              _decoder.unlearn_word(session, key, word);
+            // Session guard only: the confirm dialog takes IME focus, so
+            // the request key is stale by click time and is_current()
+            // would silently drop the unlearn.
+            if (_decoder_session == session && can_change_learning(word))
+              _decoder.unlearn_word(session, key, word, false);
           }
         });
   }
@@ -874,15 +1149,17 @@ public final class KeyEventHandler
       _current_request_key = null;
       return;
     }
+    update_editor_context();
     if (snapshot.word.length() == 0 && !snapshot.hasSelection
         && _config.editor_config.should_use_personalization)
       learn_email_before_cursor();
     _current_request_key = _decoder.request(_decoder_session, snapshot);
   }
 
-  /** When the user finishes an email address (boundary after local@domain),
-      teach it and its domain to the personalization model so both appear as
-      suggestions later. */
+
+  /** When the user finishes an email address (boundary after
+      local@domain), teach it and its domain to the personalization model
+      so both appear as suggestions later. */
   private void learn_email_before_cursor()
   {
     InputConnection conn = _recv.getCurrentInputConnection();
@@ -899,7 +1176,6 @@ public final class KeyEventHandler
     if (domain != null)
       _decoder.learn_word(_decoder_session, domain);
   }
-
   @Override
   public void typing_assistance_data_cleared()
   {
@@ -1005,9 +1281,13 @@ public final class KeyEventHandler
   private String manual_selected_correction_source(
       CurrentlyTypedWord.Snapshot snapshot, String target)
   {
-    if (!manual_target_matches_snapshot(snapshot))
-      return null;
-    return plausible_correction_source(_manual_correction.source, target);
+    String source = null;
+    if (manual_target_matches_snapshot(snapshot) && target.equals(snapshot.word))
+      source = _manual_correction.source;
+    else if (snapshot != null && !snapshot.hasSelection
+        && snapshot.cursorRelative == 0)
+      source = snapshot.word;
+    return plausible_correction_source(source, target);
   }
 
   private void commit_prepared(SharedDecoder.CommitToken token)
@@ -1022,8 +1302,11 @@ public final class KeyEventHandler
     if (pending == null || pending.sessionEpoch != _decoder_session)
       return;
     if (_decoder.is_current(pending.key))
+    {
+      update_editor_context();
       _current_request_key = _decoder.request(
           pending.sessionEpoch, _typedword.snapshot());
+    }
     else if (pending.key.equals(_current_request_key))
       _current_request_key = null;
   }
@@ -1230,6 +1513,7 @@ public final class KeyEventHandler
       SharedDecoder.CommitToken undoToken, String source, String target,
       String separator, boolean learnSourceOnUndo)
   {
+    commit_prepared(token);
     InputConnection conn = _recv.getCurrentInputConnection();
     ExtractedText et = conn == null ? null : get_cursor_pos(conn);
     int cursor = et != null && et.selectionStart == et.selectionEnd
@@ -1752,6 +2036,12 @@ public final class KeyEventHandler
   @SuppressLint("InlinedApi")
   void handle_editing_key(KeyValue.Editing ev)
   {
+    handle_editing_key(ev, false);
+  }
+
+  @SuppressLint("InlinedApi")
+  void handle_editing_key(KeyValue.Editing ev, boolean isRepeat)
+  {
     if (ev != KeyValue.Editing.SPACE_BAR
         && ev != KeyValue.Editing.BACKSPACE)
       clear_manual_correction();
@@ -1772,7 +2062,7 @@ public final class KeyEventHandler
       case FORWARD_DELETE_WORD: send_key_down_up(KeyEvent.KEYCODE_FORWARD_DEL, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON); break;
       case SELECTION_CANCEL: cancel_selection(); break;
       case SPACE_BAR: handle_space_bar(); break;
-      case BACKSPACE: handle_backspace(); break;
+      case BACKSPACE: handle_backspace(isRepeat); break;
     }
   }
 
@@ -2427,6 +2717,22 @@ public final class KeyEventHandler
       _typedword.refresh_current_word();
       snapshot = _typedword.snapshot();
     }
+    // A short fragment left by a manual edit is a cross-boundary split; do not
+    // learn it and skip the following word until the boundary is re-established.
+    if (_manual_correction != null
+        && manual_target_matches_snapshot(snapshot)
+        && snapshot.word.length() < 3
+        && _manual_correction.source.startsWith(snapshot.word)
+        && !_manual_correction.source.equals(snapshot.word))
+    {
+      _current_request_key = null;
+      if (_decoder_session != 0)
+        _decoder.invalidate(_decoder_session);
+      send_text(separator);
+      clear_manual_correction();
+      _skip_next_word_learning = true;
+      return;
+    }
     if (snapshot.completeness
         == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
     {
@@ -2435,6 +2741,7 @@ public final class KeyEventHandler
         _decoder.invalidate(_decoder_session);
       send_text(separator);
       clear_manual_correction();
+      _skip_next_word_learning = true;
       return;
     }
     Decoder.RequestKey key = _current_request_key;
@@ -2445,14 +2752,23 @@ public final class KeyEventHandler
       correction = null;
     if (should_preserve_manual_word_case(snapshot.word, correction))
       correction = null;
-    boolean should_record = should_record_personalization() && key != null;
+    boolean is_learned_correction = correction != null
+      && (correction.learned || (correction.sourceMask & Decoder.SOURCE_PERSONAL) != 0);
+    boolean broad_or_unsafe_edit = _manual_correction != null
+      && manual_target_matches_snapshot(snapshot)
+      && plausible_correction_source(_manual_correction.source, snapshot.word) == null;
+    boolean skip_learning = _skip_next_word_learning || broad_or_unsafe_edit;
+    boolean should_record = should_record_personalization() && key != null
+      && !is_learned_correction && !skip_learning;
     SharedDecoder.CommitToken literal_token = should_record
       ? _decoder.prepare_commit(_decoder_session, key, snapshot.word, null)
       : null;
     SharedDecoder.CommitToken correction_token = null;
     if (should_record && correction != null)
-      correction_token = _decoder.prepare_commit(_decoder_session, key,
-          correction.surface, null);
+      correction_token = correction.surface.equals(snapshot.word)
+        ? literal_token
+        : _decoder.prepare_selected_correction(_decoder_session, key,
+            correction.surface, snapshot.word);
     boolean should_capitalize_i = correction == null && _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
@@ -2506,6 +2822,7 @@ public final class KeyEventHandler
         && _decoder_session != 0)
       _decoder.invalidate(_decoder_session);
     clear_manual_correction();
+    _skip_next_word_learning = false;
   }
 
   /** Implement autocorrect and optional double-space period insertion. */
@@ -2674,9 +2991,18 @@ public final class KeyEventHandler
     }
   }
 
-  /** Commit an accepted correction, then perform ordinary Backspace. */
   void handle_backspace()
   {
+    handle_backspace(false);
+  }
+
+  /** Commit an accepted correction, then perform ordinary Backspace. The
+      ordered [BackspaceHook] list runs first; a hook that consumes the press
+      skips the deletion. */
+  void handle_backspace(boolean isRepeat)
+  {
+    if (consult_backspace_hooks(isRepeat))
+      return;
     commit_pending_replacement();
     capture_manual_correction_source();
     send_backspace();
@@ -2692,6 +3018,9 @@ public final class KeyEventHandler
         Runnable positive_action) {}
     public default boolean explicitly_teach_word(Decoder.RequestKey key,
         String word) { return false; }
+    /** Confirmed-in-dialog teach: skips the stale is_current key guard. */
+    public default boolean confirm_teach_word(Decoder.RequestKey key,
+        String word) { return explicitly_teach_word(key, word); }
     public default boolean explicitly_set_replacement(
         String source, String target) { return false; }
     public default void review_unknown_word(String word,

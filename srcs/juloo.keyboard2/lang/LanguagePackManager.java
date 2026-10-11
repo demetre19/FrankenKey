@@ -51,7 +51,11 @@ public final class LanguagePackManager
     File dic = required_path(pack_id, root, obj, "hunspell_dic");
     File suggestions = optional_path(pack_id, root, obj, "suggestions");
     File next_words = optional_path(pack_id, root, obj, "next_words");
-    return new LanguagePack(pack_id, root, aff, dic, suggestions, next_words);
+    File word_frequencies =
+      optional_path(pack_id, root, obj, "word_frequencies");
+    File word_bigrams = optional_path(pack_id, root, obj, "word_bigrams");
+    return new LanguagePack(pack_id, root, aff, dic, suggestions, next_words,
+        word_frequencies, word_bigrams);
   }
 
   private static File required_path(String pack_id, File root, JSONObject obj,
@@ -115,6 +119,8 @@ public final class LanguagePackManager
     copy_manifest_asset(asset_root, root, obj, "hunspell_dic");
     copy_manifest_asset(asset_root, root, obj, "suggestions");
     copy_manifest_asset(asset_root, root, obj, "next_words");
+    copy_manifest_asset(asset_root, root, obj, "word_frequencies");
+    copy_manifest_asset(asset_root, root, obj, "word_bigrams");
     return root;
   }
 

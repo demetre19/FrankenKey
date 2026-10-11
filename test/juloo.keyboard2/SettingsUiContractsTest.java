@@ -29,6 +29,8 @@ public class SettingsUiContractsTest
         "Press space twice to insert a full stop followed by a space." },
       { "suggestions", "pref_suggestions_summary",
         "Show word suggestions while typing." },
+      { "contact_email_suggestions", "contact_email_suggestions_summary",
+        "Learn email addresses and domains from your contacts so they appear as suggestions while typing." },
       { "multimodal_voice_typing", "pref_multimodal_voice_summary",
         "Dictate and type at the same time while the keyboard stays visible. Audio is handled by your device’s speech service." },
       { "reader_keyboard_controls", "pref_reader_keyboard_controls_summary",

@@ -546,10 +546,12 @@ public final class PersonalizationStore
     String previousWord = _last_word;
     _prior_word = previousWord;
     _last_word = normalizedWord;
-    boolean persisted = record_touch_calibration(typedWord, normalizedWord,
+    // Ordinary commits only advance context and touch calibration; vocabulary
+    // grows solely through explicit teaching or verified corrections.
+    boolean changed = record_touch_calibration(typedWord, normalizedWord,
         normalize(correctedFrom), touches);
     _generation++;
-    if (persisted)
+    if (changed)
       save();
   }
 
@@ -834,34 +836,33 @@ public final class PersonalizationStore
       String normalizedWord, String normalizedCorrection,
       TouchTrace.Snapshot touches)
   {
-    if (typedWord == null || touches == null
+    if (typedWord == null
         || normalizedCorrection.length() != 0
-        || !normalize(typedWord).equals(normalizedWord)
-        || typedWord.codePointCount(0, typedWord.length()) != touches.size())
+        || !normalize(typedWord).equals(normalizedWord))
       return false;
-    boolean changed = false;
-    for (int i = 0; i < touches.size(); ++i)
+    if (touches != null)
     {
-      TouchTrace.Entry touch = touches.get(i);
-      if (touch == null || touch.keyWidth <= 0f || touch.keyHeight <= 0f)
-        continue;
-      float x = (touch.touchX - touch.keyCenterX) / touch.keyWidth;
-      float y = (touch.touchY - touch.keyCenterY) / touch.keyHeight;
-      if (!finite(x) || !finite(y) || Math.abs(x) > 0.6f
-          || Math.abs(y) > 0.6f)
-        continue;
-      int denominator = Math.min(_touch_samples + 1, 256);
-      _touch_offset_x += (clamp_touch_offset(x) - _touch_offset_x)
-        / denominator;
-      _touch_offset_y += (clamp_touch_offset(y) - _touch_offset_y)
-        / denominator;
-      if (_touch_samples < MAX_TOUCH_SAMPLES)
-        ++_touch_samples;
-      changed = true;
+      for (int i = 0; i < touches.size(); ++i)
+      {
+        TouchTrace.Entry touch = touches.get(i);
+        if (touch == null || touch.keyWidth <= 0f || touch.keyHeight <= 0f)
+          continue;
+        float x = (touch.touchX - touch.keyCenterX) / touch.keyWidth;
+        float y = (touch.touchY - touch.keyCenterY) / touch.keyHeight;
+        if (!finite(x) || !finite(y) || Math.abs(x) > 0.6f
+            || Math.abs(y) > 0.6f)
+          continue;
+        int denominator = Math.min(_touch_samples + 1, 256);
+        _touch_offset_x += (clamp_touch_offset(x) - _touch_offset_x)
+          / denominator;
+        _touch_offset_y += (clamp_touch_offset(y) - _touch_offset_y)
+          / denominator;
+        if (_touch_samples < MAX_TOUCH_SAMPLES)
+          ++_touch_samples;
+      }
     }
-    return changed;
+    return true;
   }
-
   private static float clamp_touch_offset(float value)
   {
     if (!finite(value))
@@ -1737,11 +1738,13 @@ public final class PersonalizationStore
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
   private static final int MAX_REPLACEMENT_RULES = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
-  private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
+  /** Fixed key-pair cost that still means "adjacent key": neighbours cost
+      5.9 Q8 (side) and 6.9 Q8 (diagonal); the next ring costs 14.9 Q8+. */
+  private static final int RELATED_SUBSTITUTION_COST_Q8 = 7 * 256;
   private static final int MIN_TOUCH_SAMPLES = 20;
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;
-  private static final int VOCABULARY_POLICY_VERSION = 1;
+  private static final int VOCABULARY_POLICY_VERSION = 2;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_WORD_SURFACES =
     "typing_model_word_surfaces_v1";

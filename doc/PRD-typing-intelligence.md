@@ -1,0 +1,267 @@
+# PRD — Typing intelligence: Gboard-grade correction and prediction
+
+Status: in progress · Branch: `ccr-fe400b38-bj1bar` · Owner: FrankenKey
+
+## 1. Problem
+
+Users report three things:
+
+1. FrankenKey **learns words they never asked it to learn**.
+2. Autocorrect **misses many mistakes** Gboard catches, especially
+   hit-the-key-next-door slips.
+3. Gboard **fixes mistakes immediately**. FrankenKey commits the typo and
+   replaces it later, if at all.
+
+Gboard is closed source. Its open-source ancestor, AOSP LatinIME (read
+via the `Helium314/HeliBoard` fork), plus our own code and a native probe
+of `assets/dictionaries/en_US.dict`, gave these root causes:
+
+| # | Root cause | Evidence |
+|---|---|---|
+| R1 | Every committed literal that Cdict "finds" increments `_word_counts`. That breaks the `AGENTS.md` rule that ordinary commits never save word counts. A learned word then permanently blocks autocorrect, gets a personal-suggestion boost, and appears in Learned words. | `PersonalizationStore.record_commit` → `record_touch_calibration` returns `true` for any uncorrected commit; `Decoder.choose_autocorrection`: `if (literal.unigramCount > 0) return …` |
+| R2 | "Recognized" is far too loose. Cdict has about 300k entries (about 84k at frequency 0). It matches lowercase input against acronyms (`nad` → `NAD`, f14) and against whitelist shortcuts (`wierd` → `weird`, `alot` → `a lot`, `cant` → `can't`). Any of these protects the typo from correction. | native probe of `en_US.dict` |
+| R3 | A slip to the neighbouring key costs nearly as much as a missed or extra letter (about 4–6.6 Q8 vs 6 Q8). LatinIME makes it about 3× cheaper. About 15 separate vetoes can then cancel the correction. | `Decoder.Geometry.substitution_cost_q8`; LatinIME `scoring_params.cpp` |
+| R4 | At the moment of space, only learned or 3-letter corrections are allowed. Everything else is committed as typed and replaced later. | `is_proven_fast_autocorrection`, `is_safe_boundary_autocorrection` |
+| R5 | No usable language model. Frequency is 4 bits and nearly flat across the top buckets. Context data is 4,096 Tatoeba n-grams. After space, predictions read only personal word pairs, which nothing ever writes, so the strip is always empty. | `LanguageModel`, `decode_next_words`, `_bigram_counts` has no writer |
+
+## 2. Goals and non-goals
+
+Goals:
+- G1: Nothing enters the learned vocabulary without an explicit user action
+  (Teach, or a verified backspace-then-select correction).
+- G2: Common typos that Gboard fixes (`nad`, `wierd`, `alot`, `cant`,
+  neighbour slips like `thw`, `hwllo`) are corrected.
+- G3: An explicit right swipe accepts the top suggestion immediately, with
+  no late replacement.
+- G4: After a word is committed, the strip shows next-word predictions.
+
+Non-goals (this PRD): cloud models, swipe/glide typing, and new languages.
+The privacy contracts in `AGENTS.md` are unchanged.
+
+## 3. Right-swipe accept gesture (replaces "commit on space" from the analysis)
+
+User request: instead of making space commit corrections immediately, add
+a right swipe that can start anywhere on the keyboard.
+
+- **Trigger:** a single pointer moves at least **3 key widths** to the
+  right. One key width is the layout's unit key width.
+  - 3 rather than 4: it is about 30% of a QWERTY row. That is far longer
+    than any side-symbol swipe (about 0.5 key) and still comfortable to
+    do with one thumb.
+  - The movement must be mostly horizontal: |dy| ≤ 0.5·|dx|.
+  - It fires on touch-up, so a pointer that comes back before release
+    cancels it.
+- **Start position:** any key. **Exception:** a pointer that has already
+  entered slider mode keeps its slider. That covers the space-bar cursor
+  slide and any custom slider key. Otherwise cursor movement on space would
+  break.
+- **Action:**
+  1. A word is being typed and the decoder's current result is ready:
+     commit the decoder's autocorrection if it has one, otherwise the
+     first suggestion, otherwise the typed word. Then add a space. This
+     uses the same commit path as tapping a suggestion, so undo,
+     personalization tokens and the stale-result checks are unchanged.
+  2. No word is being typed: insert a space, exactly like the space key.
+     A whole predicted word is never inserted by accident.
+  3. The result is pending or the editor can't be read: behave exactly like
+     the space key, so the existing late correction still applies. Never
+     wait on the main thread.
+- **Feedback:** the same vibration as the existing vertical keyboard swipes.
+- **Conflicts:** none of the side symbols are emitted. The side symbol
+  previewed during the drag is discarded, the same way vertical keyboard
+  swipes discard it.
+
+## 4. Work plan (ordered by impact ÷ effort; each part is pushed when green)
+
+### Part 1 — Stop passive learning (R1) · easy · very high impact
+- `record_commit` updates only context and touch calibration; it never
+  increments `_word_counts`.
+- Bump `VOCABULARY_POLICY_VERSION` to 2. The existing migration then
+  removes words that were neither taught nor correction targets, and keeps
+  touch calibration.
+- Tests: a recognized ordinary commit leaves `word_count` at 0, nothing
+  appears in `learned_words()`, and taught words survive the migration.
+
+### Part 2 — Right-swipe accept (G3) · easy–medium · high impact
+- `Pointers`: add `isRightAcceptSwipe(ptr)` plus a `set_key_unit_width`
+  setter fed by `Keyboard2View`. Add `onKeyboardSwipeRight()` to
+  `IPointerEventHandler`.
+- `KeyEventHandler.keyboard_swiped_right()` implements §3.
+- Tests: a Robolectric `Pointers` test covers the threshold, slope, and
+  slider exemption; a handler test covers accept, fallback-to-space, and
+  the no-word case.
+
+### Part 3 — Weak recognition and whitelist corrections (R2) · medium · high impact
+- **Whitelist:** a Cdict alias hit (`index != original_index`) whose
+  target differs from the typed word by more than case becomes a
+  `SOURCE_WHITELIST` candidate. It autocorrects with LatinIME's
+  `KIND_WHITELIST` priority: it overrides a Hunspell-valid literal, but not
+  taught words, replacement rules, or MIXED/ALL-CAPS input. It also counts
+  as a "proven fast" correction, so space applies it immediately.
+- **Acronym-only match:** lowercase input whose only Cdict match is an
+  all-caps entry (`nad` → `NAD`) is corrected only to a recognized
+  adjacent-transposition word at least as frequent (`nad` → `and`). This is
+  narrower than first planned: `ok` → `OK`, `btw` → `BTW` and `wifi` →
+  `WiFi` are also all-caps-only matches, and they must stay as typed.
+- **Rejected after inspection: the frequency-0 rule.** About 52k
+  frequency-0 entries are real lowercase names, places and possessives
+  (`beatrice`, `howard's`, `linux's`). Demoting them would over-correct.
+  Part 7's real frequencies replace this.
+- **Hunspell-valid aliases** (`lets` → `let's`, `ill` → `I'll`, `wont` →
+  `won't`) are not autocorrected. They are shown as the first suggestion,
+  so a right swipe accepts them.
+- Tests: in `AutocorrectScoringTest`, `nad`→`and`, `wierd`→`weird`, and a
+  taught `wierd` stays `wierd`.
+
+### Part 3b — Fix the dictionary frequency wrap (found by measurement) · medium · very high impact
+- Offline evaluation (the real `Decoder` with the shipped Cdict, Hunspell
+  and n-gram files) showed that `the`, `and`, `of`, `to`, `in`, `a` and
+  `was` have Cdict frequency **0**, the lowest bucket.
+- Cause: the vendored builder's `K_medians` computes
+  `cluster = i / (len / 16)`. That can reach 16 for the highest-frequency
+  words, and the 4-bit packing (`land 0xF`) wraps 16 to 0. So the most
+  common words lose every frequency bonus. This is why `yhe` → `he`,
+  `tge` → `teg`, `thw` → `thaw`, `abd` → `bad` and `amd` → `mad`.
+- **Shipped:** each English pack carries `word_frequencies.bin`, the
+  original 0–255 wordlist frequencies indexed by Cdict word, generated by
+  `scripts/gen_word_frequencies.py` from the pinned wordlist and checked
+  against the loaded Cdict with sample words. It repairs the wrapped 4-bit
+  levels and gives ranking real frequency resolution (`the` 222 vs `teg`
+  37, `words` 142 vs `wards` 113). The `.dict` files stay upstream byte
+  copies.
+- Verified by rebuilding with upstream `cdict@4e29981`: the clamped builder
+  changes exactly the 7 wrapped bytes. The builder fix is in the vendored
+  source for future rebuilds.
+- Original plan: clamp the cluster to 15 in `vendor/cdict/ocaml-cdict/builder/k_medians.ml`.
+  Then rebuild the en_US/en_GB/en_AU Cdicts from the pinned upstream
+  sources (Unexpected-Keyboard-dictionaries `c71e034`, aosp-dictionaries
+  `48c29a9`). First prove the unfixed builder reproduces the shipped
+  hashes; then the only change is the corrected frequencies.
+
+### Part 4 — Next-word predictions from the bundled model (R5a) · easy · medium impact
+- `decode_next_words` merges the personal word pairs (ranked first) with
+  the bundled `LanguageModel` word pairs and triples for the previous word.
+- Tests: after committing `I`, the strip contains words from the bundled
+  model.
+
+### Part 5 — Rebalance the key-position model (R3) · medium · high impact, needs tuning
+- With touch data: spread 0.55 → 0.8 key, scale 2.0 → 1.0. Without touch
+  data: neighbour cost 4 → about 2 Q8 (halve the squared distance).
+  Omission, extra-tap and transposition costs are unchanged.
+- Validate against `gboard_autocorrection_oracle.json` and
+  `swiftkey_autocorrection_oracle.json` (`SwiftKeyParityInstrumentedTest`).
+  No regression in the harmful-correction count is acceptable.
+
+**Result (Parts 3b + 5, offline Decoder evaluation with centred touches):**
+
+| Set | Typos fixed, before → after | Correct top suggestion | Harmful corrections |
+|---|---|---|---|
+| Gboard oracle (98 words) | 67 → 74 / 79 | 86 → 95 | 0 → 0 |
+| Chapter corpus (247 words) | 138 → 137 / 169 | 218 → 220 | 0 → 0 |
+| Common real-world typos (60 + 53 must-keep) | 48 → 55 / 60 | 89 → 99 | 2 → 2 |
+
+For comparison, Gboard's own recorded result on the oracle is 60/79.
+Final costs: transposition 4 Q8 (LatinIME's 7.2 lost too many fast-typing
+transpositions such as `hwat`, `waht`, `raed`), extra tap 9.3 Q8, neighbour
+slip 1.9 + 1.95·d² Q8, unigram weight 14 per step. A stronger capitalized
+candidate (`englis` → `English`) now keeps the literal instead of handing
+the correction to a weaker lowercase word.
+
+### Part 6 — Collapse the veto ladder (R3/R4) · large · high impact
+- Replace the runner-up and length-repair vetoes with one confidence score,
+  modelled on LatinIME's normalized score versus a threshold: (literal −
+  best) margin minus (best − runner-up) ambiguity, with a fixed threshold.
+  Keep the safety rules that protect user data: taught words, replacement
+  rules, casing, protected literals.
+- Gate on the instrumented parity suites; this needs the emulator.
+
+**Part 6 as shipped (targeted, not a rewrite):** measurement showed most
+of the ladder is protective. A blanket smaller runner-up margin breaks the
+"nearly tied → leave it" contract, which `conservative_autocorrect_requires_clear_one_edit_winner`
+encodes. So the shipped changes are only the vetoes that blocked clear
+winners:
+- A same-length repair yields to a one-edit length repair only within
+  1 Q8, down from 4 Q8 (`hellp` → `hello`, `cautios` → `cautious`).
+- The 3-letter fast path counts close one-edit length repairs as
+  competitors (`ths` no longer forced to `the` over `this`).
+- The neighbour distance cost is 4·d², so accurate taps on neighbouring
+  keys read as a missed letter rather than a slip. Personalization
+  adjacency moves to 7 Q8 to keep its meaning.
+
+**Final offline evaluation, original commit `e726145` vs this branch
+(real Decoder, shipped dictionary/Hunspell/n-grams, centred touches):**
+
+| Set | Fixed | Wrong-word corrections | Correct top suggestion | Valid words changed |
+|---|---|---|---|---|
+| Gboard oracle (79 typos) | 67 → **75** | 4 → **1** | 86 → **94** | 0 → 0 |
+| Chapter corpus (169 typos) | 138 → **141** | 4 → 6* | 217 → **224** | 0 → 0 |
+| Common typos (60 + 53 valid) | 46 → **55** | 5 → **1** | 87 → **103** | 1 → 1 (`async`) |
+| **Total** | 251 → **271** | 13 → **8** | 390 → **421** | 1 → 1 |
+
+\* Two of the six are US vs UK spellings (`neighboring`, `capitalization`)
+graded against UK expectations. For comparison, Gboard's own recorded
+result on the oracle is 60/79.
+
+### Part 7 — Real language model (R5b) · large · highest long-term impact
+
+**Shipped first step (no new licence or corpus decision needed):** the
+pinned AOSP en_US wordlist already holds three ranked continuations per
+word. `word_bigrams.bin` keeps them for the 30.7k head words with
+frequency ≥ 80, indexed by Cdict word (about 360 KB per locale, 210 KB
+compressed). After a committed word the strip now predicts for almost any
+common word (`keyboard → and is I`, `please → include send contact`), not
+only for the 4,096 Tatoeba short-word rows. In ranking, continuations add
+a capped context bonus. On the offline sets this left correction metrics
+unchanged; they mostly lack preceding context.
+
+Still open for a full language model: real n-gram probabilities from a
+licence-clean corpus, and context-driven real-word correction
+(`fro` → `for`, "I'm form" → "from").
+- Ship a pruned word-pair/word-triple model (licence-clean corpus) and
+  8-bit log-probability unigrams. Weight language roughly equally with key
+  distance (LatinIME `DISTANCE_WEIGHT_LANGUAGE` ≈ 1.12). Use context to fix
+  correctly spelled wrong words (`fro` → `for`, "I'm form" → "from").
+- This needs corpus and licence decisions, so it is planned here and done
+  as separate work.
+
+## 5. Verification
+
+- Each part runs its focused Robolectric tests:
+  `gradle testDebugUnitTest --tests <Class>`.
+- Parts 5 and 6 also need the instrumented `RealImeThroughputInstrumentedTest`
+  and `SwiftKeyParityInstrumentedTest` on the `FrankenKeyParity` emulator
+  (`AGENTS.md`). Those can't run in the cloud container and must be run on
+  the Mac before a release.
+- Release builds follow the signed `assembleRelease` + `verifyReleaseIdentity`
+  flow; that is not done from the cloud container.
+
+## 6. Status
+
+| Part | State |
+|---|---|
+| 1 Stop passive learning | done |
+| 2 Right-swipe accept | done |
+| 3 Weak recognition + whitelist | done |
+| 3b Dictionary frequency wrap fix | done |
+| 4 Next-word from bundled model | done |
+| 5 Key-position rebalance | done |
+| 6 Collapse veto ladder | done (targeted) |
+| 7 Real language model | done (first step: dictionary bigrams) |
+
+## 7. Adversarial review (after Part 7)
+
+Every finding was fixed with a regression test unless marked "accepted".
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Acronym repair would rewrite common lowercase acronyms: of 261 such dictionary pairs, `usb` → `sub`, `rna` → `ran` and `byu` → `buy` would fire. | The target needs a unigram lead of at least 50 over the acronym (`nad` 95 → `and` 212 still fires). |
+| 2 | Shortcut corrections skipped the cold-short-all-caps protection (`IM` → `I'M`). | Whitelist corrections now honour it. |
+| 3 | Right swipe after a valid word that autocorrect kept (`hone`) committed the top-ranked neighbour (`home`). | A recognized or learned literal is kept unless the leading suggestion is its dictionary shortcut (`cant` → `can't`). |
+| 4 | Right swipe left a latched Shift, unlike any other key. | It clears latched modifiers. |
+| 5 | Pack assets are re-copied on every pack lookup; the new tables add about 560 KB per copy. | Accepted: the existing pack loader already re-copies the 550 KB Hunspell `.dic` the same way. |
+| 6 | The vendored `cdict-tool query` no longer compiles (`Cdict.distance` was removed before this work). | Accepted, pre-existing. The builder fix was verified with upstream `cdict@4e29981`. |
+| 7 | Not verifiable in the cloud container: signed release build, instrumented `RealImeThroughputInstrumentedTest`/`SwiftKeyParityInstrumentedTest`, and on-device swipe feel. | Must run on the Mac or phone before release (root `AGENTS.md` Verification). |
+
+After the fixes the offline evaluation is unchanged (fixed 271, wrong 8,
+correct top suggestion 421). The unit suite has 607 tests with 5
+failures, the same 5 that fail on the original commit.

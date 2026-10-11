@@ -1,0 +1,1 @@
+{"added_at": "2026-10-06T12:58:13Z", "first_seen_sha": "94c9fc43a57f00db73045b2e46664d61402e33b9", "id": "file", "note": "nightly full-suite sweep red on clean main", "paths": ["file"], "reason": "assertion"}

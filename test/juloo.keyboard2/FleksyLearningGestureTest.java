@@ -74,6 +74,45 @@ public class FleksyLearningGestureTest
   }
 
   @Test
+  public void long_right_swipe_from_any_key_dispatches_accept()
+      throws Exception
+  {
+    Config config = testConfig("", true, true);
+    config.swipe_dist_px = 8f;
+    config.longPressTimeout = 60000;
+    RecordingPointerHandler pointerHandler = new RecordingPointerHandler();
+    Pointers pointers = new Pointers(pointerHandler, config);
+    pointers.set_key_unit_width(20f);
+    KeyboardData.Key key = horizontalSideLabelKey();
+
+    swipe(pointers, key, 1, 30f, 0f);
+    assertEquals("A swipe shorter than three key widths stays a side-label swipe.",
+        0, pointerHandler.keyboardSwipeRightCount);
+    assertTrue(pointerHandler.releasedValues.contains("e"));
+
+    swipe(pointers, key, 2, 60f, 10f);
+    assertEquals("Three key widths to the right from any key must accept.",
+        1, pointerHandler.keyboardSwipeRightCount);
+    assertEquals("The accept gesture must not also release the side label.",
+        1, java.util.Collections.frequency(pointerHandler.releasedValues, "e"));
+
+    swipe(pointers, key, 3, 60f, 40f);
+    assertEquals("A steep diagonal is not a right accept swipe.",
+        1, pointerHandler.keyboardSwipeRightCount);
+
+    pointers.onTouchDown(50f, 50f, 4, key, null);
+    pointers.onTouchMove(120f, 50f, 4);
+    pointers.onTouchMove(54f, 50f, 4);
+    pointers.onTouchUp(4);
+    assertEquals("Coming back before lifting cancels the accept swipe.",
+        1, pointerHandler.keyboardSwipeRightCount);
+
+    swipe(pointers, centerTrackpadKey(), 5, 80f, 0f);
+    assertEquals("Slider keys keep their cursor drag.",
+        1, pointerHandler.keyboardSwipeRightCount);
+  }
+
+  @Test
   public void g_swipes_behave_as_four_direction_trackpad()
       throws Exception
   {
@@ -323,6 +362,15 @@ public class FleksyLearningGestureTest
     return keyboard.rows.get(0).keys.get(0);
   }
 
+  private static KeyboardData.Key horizontalSideLabelKey()
+      throws Exception
+  {
+    KeyboardData keyboard = KeyboardData.load_string_exn(
+        "<keyboard bottom_row=\"false\" width=\"1\">"
+        + "<row><key c=\"a\" e=\"e\" w=\"w\"/></row></keyboard>");
+    return keyboard.rows.get(0).keys.get(0);
+  }
+
   private static KeyboardData.Key centerTrackpadKey()
       throws Exception
   {
@@ -369,6 +417,7 @@ public class FleksyLearningGestureTest
   {
     int keyboardSwipeUpCount;
     int keyboardSwipeDownCount;
+    int keyboardSwipeRightCount;
     final List<String> releasedValues = new ArrayList<String>();
     final List<KeyValue.Slider> pressedSliders =
       new ArrayList<KeyValue.Slider>();
@@ -404,6 +453,7 @@ public class FleksyLearningGestureTest
 
     @Override public void onKeyboardSwipeUp() { keyboardSwipeUpCount++; }
     @Override public void onKeyboardSwipeDown() { keyboardSwipeDownCount++; }
+    @Override public void onKeyboardSwipeRight() { keyboardSwipeRightCount++; }
   }
 
   private static final class RecordingReceiver

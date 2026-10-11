@@ -1,0 +1,25 @@
+{
+ "tasks": [
+  {
+   "content": "Survey run dir evidence surfaces (run.json, lanes/a-ticket/*.json, decisions, log.jsonl, incidents/denials)",
+   "status": "completed"
+  },
+  {
+   "content": "Inspect lane worktree state (git reflog/status/lease) and fleet journal/notify-log/boss-inbox",
+   "status": "completed"
+  },
+  {
+   "content": "Write forensic report to forensics/ explaining why a-ticket is on attempt 8",
+   "status": "completed"
+  },
+  {
+   "content": "Run gate quick-1 and prd_step done",
+   "status": "completed"
+  },
+  {
+   "content": "self-review \u2014 adversarial pass over the diff vs the acceptance list",
+   "kind": "self-review",
+   "status": "completed"
+  }
+ ]
+}

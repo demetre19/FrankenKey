@@ -62,9 +62,6 @@ public final class ReaderAiQuickActivity extends Activity
       case READ_CLIPBOARD:
         readClipboardAloud();
         return;
-      case AI_SETTINGS:
-        ReaderAiSettingsDialog.show(this, null, this::finish);
-        return;
       default:
         openDialog(action);
         return;

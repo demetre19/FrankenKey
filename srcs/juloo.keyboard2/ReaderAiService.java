@@ -676,7 +676,7 @@ final class ReaderAiService
       {
         String result = client.generate(apiKey, modelId, messages);
         if (result == null || result.trim().isEmpty())
-          throw new IOException("OpenRouter returned an empty result");
+          throw new IOException("AI provider returned an empty result");
         return new Generation(result.trim(), retries + 1);
       }
       catch (IOException error)
@@ -685,7 +685,7 @@ final class ReaderAiService
             || !ReaderBookAiPlanner.shouldRetryEmptyResponse(retries))
           throw error;
         retries++;
-        progress("OpenRouter returned empty output; retrying once…");
+        progress("AI provider returned empty output; retrying once…");
       }
     }
   }

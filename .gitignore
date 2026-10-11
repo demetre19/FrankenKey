@@ -45,3 +45,9 @@ captures/
 .prd-runs/**/cache/
 .prd-runs/**/*.sqlite-shm
 .prd-runs/**/*.sqlite-wal
+
+# prd-herdr (managed)
+.prd-crew-worktrees/
+.worktrees/
+.prd-crew/
+# /prd-herdr (managed)

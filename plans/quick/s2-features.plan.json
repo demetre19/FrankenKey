@@ -1,0 +1,72 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "--no-daemon",
+        "--no-configuration-cache",
+        "testDebugUnitTest"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/",
+        "res/xml/",
+        "res/values/",
+        "AndroidManifest.xml",
+        "test/juloo.keyboard2/",
+        "androidTest/juloo.keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    },
+    {
+      "argv": [
+        "./gradlew",
+        "--no-daemon",
+        "--no-configuration-cache",
+        "assembleDebug"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/",
+        "res/xml/",
+        "res/values/",
+        "AndroidManifest.xml",
+        "test/juloo.keyboard2/",
+        "androidTest/juloo.keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-2"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "S2-FEATURES consolidated lane (boss replan 2026-10-07): implement the full atomic scope of run prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 remaining lanes in dep order: A2 bounded retry+reject+debug counters; A2h accept haptic KEYBOARD_TAP + ti_strip_haptic_accept; A4 tap/page/swipe thresholds + swipe-up learn; A5 ImeReplayInstrumentedTest DSL 500-trial 0-dropped/0-dup; D0 shortcuts & gestures settings section; D1a ShortcutStore versioned JSON + management UI; D2 touch-calibration accessor + training exclusions + SettingsBackup text_shortcuts; C0 six ti_learn_* switches + LearningPolicy + vocab migration (HARD INVARIANT all-OFF == 2.0.119, contract tests UNCHANGED); C1 UndoWindow backspace-undo; C-F1a correction veto; C2 evidence tiers; C5 personal pairs; C6 READ_CONTACTS gate + ContactNamesIndex; C-perf decode p95 <=10%. Authoritative specs: lanes/<id>/charter.md under run dir /Users/apple/.prd-herdr/runs/FrankenKey-autobuild-autocorrect/prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211. a-haptic already landed ONLY the 6 unrelated test reds \u2014 do NOT re-do or weaken tests; features are missing and must be implemented. Closing: crew learn then land-manual --review pass."
+      ],
+      "depends_on": [],
+      "id": "s2-features",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "S2-FEATURES consolidated lane (boss replan 2026-10-07): implement the full atomic scope of run prd-frankenkey-typing-intelligence-2026-09-27-s2-20261006-095211 remaining lanes in dep order: A2 bounded",
+      "write_paths": [
+        "srcs/juloo.keyboard2/",
+        "res/xml/",
+        "res/values/",
+        "AndroidManifest.xml",
+        "test/juloo.keyboard2/",
+        "androidTest/juloo.keyboard2/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

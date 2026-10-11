@@ -71,6 +71,89 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void right_swipe_commits_the_decoder_correction_immediately()
+      throws Exception
+  {
+    Harness harness = harness("teh", true, true);
+    installCorrection(harness.decoder, harness.key, "teh", "the");
+
+    harness.handler.keyboard_swiped_right();
+
+    assertEquals("A right swipe must commit the READY correction and one space in a single replacement.",
+        "the ", harness.receiver.input.text.toString());
+    assertEquals(1, harness.receiver.input.commitTextCalls);
+    assertFalse("The accepted request key must not be reusable.",
+        harness.decoder.is_current(harness.key));
+  }
+
+  @Test
+  public void right_swipe_accepts_the_top_suggestion_without_autocorrection()
+      throws Exception
+  {
+    Harness harness = harness("teh", false, true);
+    Decoder.Candidate literal = candidate("teh", "teh",
+        Decoder.SOURCE_LITERAL, 8192, 0, 0, false, false,
+        Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate top = candidate("tea", "tea",
+        Decoder.SOURCE_CDICT_SPATIAL, 0, 1, Decoder.EDIT_SUBSTITUTION, true,
+        false, Decoder.Role.WORD);
+    installResult(harness.decoder, result(harness.key, "teh",
+          new Decoder.Candidate[] { top, literal }, literal, null));
+
+    harness.handler.keyboard_swiped_right();
+
+    assertEquals("Without an autocorrection the right swipe accepts the first suggestion.",
+        "tea ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void right_swipe_keeps_a_valid_literal_unless_its_shortcut_leads()
+      throws Exception
+  {
+    Harness harness = harness("hone", false, true);
+    Decoder.Candidate literal = candidate("hone", "hone",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT, 0, 0, 0, true,
+        false, Decoder.Role.WORD);
+    Decoder.Candidate home = candidate("home", "home",
+        Decoder.SOURCE_CDICT_SPATIAL, -100, 1, Decoder.EDIT_SUBSTITUTION,
+        true, false, Decoder.Role.WORD);
+    installResult(harness.decoder, result(harness.key, "hone",
+          new Decoder.Candidate[] { home, literal }, literal, null));
+    harness.handler.keyboard_swiped_right();
+    assertEquals("A valid word that autocorrect kept must not be swapped by the swipe.",
+        "hone ", harness.receiver.input.text.toString());
+
+    Harness cant = harness("cant", false, true);
+    Decoder.Candidate valid = candidate("cant", "cant",
+        Decoder.SOURCE_LITERAL | Decoder.SOURCE_HUNSPELL, 0, 0, 0, true,
+        false, Decoder.Role.WORD);
+    Decoder.Candidate shortcut = candidate("can't", "can't",
+        Decoder.SOURCE_CDICT_EXACT | Decoder.SOURCE_WHITELIST, -100, 1,
+        Decoder.EDIT_OMISSION, true, false, Decoder.Role.WORD);
+    installResult(cant.decoder, result(cant.key, "cant",
+          new Decoder.Candidate[] { shortcut, valid }, valid, null));
+    cant.handler.keyboard_swiped_right();
+    assertEquals("A leading dictionary shortcut is the explicit swipe target.",
+        "can't ", cant.receiver.input.text.toString());
+  }
+
+  @Test
+  public void right_swipe_without_a_word_or_result_acts_as_space()
+      throws Exception
+  {
+    Harness empty = harness("", true, true);
+    empty.handler.keyboard_swiped_right();
+    assertEquals("No typed word: a right swipe inserts a plain space.",
+        " ", empty.receiver.input.text.toString());
+
+    Harness pending = harness("teh", false, true);
+    clearResult(pending.decoder);
+    pending.handler.keyboard_swiped_right();
+    assertEquals("A pending result must never block: fall back to the space key.",
+        "teh ", pending.receiver.input.text.toString());
+  }
+
+  @Test
   public void bare_enter_performs_the_editor_action_instead_of_inserting_a_newline()
       throws Exception
   {
@@ -1248,8 +1331,9 @@ public class KeyEventHandlerAutocorrectContractTest
         "cazoo ", harness.receiver.input.text.toString());
     assertFalse("The boundary must revoke the completed word key before its prepared learning record is consumed.",
         harness.decoder.is_current(harness.key));
-    awaitCounts(harness.prefs, "cazoo", null, 1, 0);
-    assertCountsRemain(harness.prefs, "cazoo", null, 1, 0);
+    assertCountsRemain(harness.prefs, "cazoo", null, 0, 0);
+    assertFalse("An ordinary literal boundary must never enter the learned vocabulary.",
+        new PersonalizationStore(harness.prefs).is_learned("cazoo"));
   }
 
   @Test
