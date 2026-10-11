@@ -1931,15 +1931,17 @@ public class Keyboard2 extends InputMethodService
       update_reader_entry();
       update_inline_prediction(state);
     }
-
-    /** Gboard-style ghost text: when the decoder's READY state carries a
-        next-word prediction (only produced at an empty boundary), preview
-        the top one inside the editor. Any other state clears it. */
+    /** Gboard-style ghost text: preview the top next-word candidate inside
+        the editor — but ONLY after at least one letter was typed in this
+        editing context. An untouched or fully deleted field must never
+        ghost, or DEL fights a prediction that keeps respawning at the
+        empty boundary. */
     private void update_inline_prediction(
         SharedDecoder.Presentation state)
     {
       String ghost = null;
-      if (state != null
+      if (_keyeventhandler.has_typed_this_context()
+          && state != null
           && state.state == SharedDecoder.Presentation.State.READY
           && state.result != null)
       {
@@ -1954,7 +1956,7 @@ public class Keyboard2 extends InputMethodService
           }
       }
       if (ghost == null || !_keyeventhandler.show_inline_prediction(ghost))
-        _keyeventhandler.clear_inline_prediction(ghost == null);
+        _keyeventhandler.clear_inline_prediction(true);
     }
 
     @Override
@@ -1965,6 +1967,10 @@ public class Keyboard2 extends InputMethodService
             @Override public void run()
             {
               _keyeventhandler.decoder_result_ready(result);
+              /* [decoder_state_changed] skips delivery when this result was
+                 already the accepted completion — which is exactly when the
+                 ghost should appear — so update the preview here too. */
+              update_inline_prediction(_decoder.current_presentation());
             }
           });
     }

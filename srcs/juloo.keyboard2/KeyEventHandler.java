@@ -85,6 +85,12 @@ public final class KeyEventHandler
       preview until the user moves the context forward with real input,
       otherwise each dismissed ghost instantly re-predicts. */
   private boolean _inline_prediction_suppressed = false;
+  /** True once a real character was committed in this editing context; gates
+      the ghost so empty fields never preview. */
+  private boolean _typed_this_context = false;
+  /** True when the last editorial action deleted text: preview must not
+      reappear mid-deletion streak even though boundaries keep arriving. */
+  private boolean _inline_prediction_deleted_last = false;
   private static final int INLINE_PREDICTION_COLOR = 0x80808080;
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
   /** Incremented to invalidate a posted delayed DEL fallback; see
@@ -376,6 +382,8 @@ public final class KeyEventHandler
 
     _inline_prediction = null;
     _inline_prediction_editor_change = false;
+    _inline_prediction_suppressed = false;
+    _typed_this_context = false;
   }
   /** Show [word] as grayed uncommitted text inside the editor — Gboard
       Smart Compose. The suggestion lives in the composing region, so any
@@ -386,6 +394,10 @@ public final class KeyEventHandler
     if (word == null || word.length() == 0 || _config == null
         || !_config.inline_predictions_enabled
         || _inline_prediction_suppressed
+        || _inline_prediction_deleted_last
+        || !_typed_this_context
+        || word.equals(_inline_prediction)
+        || word.equals(_typedword.get())
         || !_config.editor_config.should_use_typing_assistance
         || uses_termux_raw_events())
       return false;
@@ -407,6 +419,11 @@ public final class KeyEventHandler
     _inline_prediction = word;
     return true;
   }
+  boolean has_typed_this_context()
+  {
+    return _typed_this_context;
+  }
+
 
   /** Clear the ghost. [editorChange] distinguishes "the editor/user removed
       it" (just drop our reference) from "we must remove it" (clear the
@@ -436,6 +453,7 @@ public final class KeyEventHandler
        boundary and a fresh next-word result would instantly resurrect the
        ghost, making deletion impossible. Lifts on the next real commit. */
     _inline_prediction_suppressed = true;
+    _inline_prediction_deleted_last = true;
     return true;
   }
 
@@ -2003,6 +2021,8 @@ public final class KeyEventHandler
        with a literal space. */
     if (text.equals(" ") && _inline_prediction != null)
     {
+      _inline_prediction_deleted_last = false;
+      _typed_this_context = true;
       String accepted = _inline_prediction;
       _inline_prediction = null;
       _inline_prediction_editor_change = false;
@@ -2015,6 +2035,8 @@ public final class KeyEventHandler
       }
     }
     _inline_prediction_suppressed = false;
+    _inline_prediction_deleted_last = false;
+    _typed_this_context = true;
     /* The commit below replaces any ghost in the composing region; drop our
        reference before the editor callback arrives. */
     _inline_prediction = null;
@@ -3059,6 +3081,7 @@ public final class KeyEventHandler
   {
     if (consult_backspace_hooks(isRepeat))
       return;
+    _inline_prediction_deleted_last = true;
     commit_pending_replacement();
     capture_manual_correction_source();
     send_backspace();

@@ -435,17 +435,19 @@ public final class Pointers implements Handler.Callback
   }
 
   /** Keyboard-wide right swipe: starts on any key that has not entered a
-      slider, travels at least [RIGHT_ACCEPT_SWIPE_KEYS] key units to the right
-      and stays mostly horizontal (|dy| <= |dx| / 2). Evaluated on release so
-      returning before lifting cancels it. */
+      slider — EXCEPT the spacebar, whose NE/SE corners own clipboard,
+      mode, emoji and GIF shortcuts. Letter keys keep right-accept even
+      when they bind corner gestures: a clearly diagonal flick fails the
+      |dy| <= |dx|/2 test and the gesture wins. */
   boolean isRightAcceptSwipe(Pointer ptr)
   {
     if (ptr.gesture == null || _key_unit_width <= 0.f
-        || ptr.hasFlagsAny(FLAG_P_SLIDING))
+        || ptr.hasFlagsAny(FLAG_P_SLIDING) || isSpaceBar(ptr.value))
       return false;
     return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
       && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
   }
+
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)
   {
