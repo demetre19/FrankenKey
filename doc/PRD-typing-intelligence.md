@@ -99,10 +99,17 @@ a right swipe that can start anywhere on the keyboard.
   taught words, replacement rules, or MIXED/ALL-CAPS input. It also counts
   as a "proven fast" correction, so space applies it immediately.
 - **Acronym-only match:** lowercase input whose only Cdict match is an
-  all-caps entry, with no Hunspell match, is unrecognized
-  (`nad` → `and`).
-- **Frequency-0-only match:** a literal recognized only by a frequency-0
-  Cdict entry, not by Hunspell and not learned, is unrecognized.
+  all-caps entry (`nad` → `NAD`) is corrected only to a recognized
+  adjacent-transposition word at least as frequent (`nad` → `and`). This is
+  narrower than first planned: `ok` → `OK`, `btw` → `BTW` and `wifi` →
+  `WiFi` are also all-caps-only matches, and they must stay as typed.
+- **Rejected after inspection: the frequency-0 rule.** About 52k
+  frequency-0 entries are real lowercase names, places and possessives
+  (`beatrice`, `howard's`, `linux's`). Demoting them would over-correct.
+  Part 7's real frequencies replace this.
+- **Hunspell-valid aliases** (`lets` → `let's`, `ill` → `I'll`, `wont` →
+  `won't`) are not autocorrected. They are shown as the first suggestion,
+  so a right swipe accepts them.
 - Tests: in `AutocorrectScoringTest`, `nad`→`and`, `wierd`→`weird`, and a
   taught `wierd` stays `wierd`.
 
@@ -151,8 +158,8 @@ a right swipe that can start anywhere on the keyboard.
 
 | Part | State |
 |---|---|
-| 1 Stop passive learning | in progress |
-| 2 Right-swipe accept | planned |
+| 1 Stop passive learning | done |
+| 2 Right-swipe accept | in progress |
 | 3 Weak recognition + whitelist | planned |
 | 4 Next-word from bundled model | planned |
 | 5 Key-position rebalance | planned |

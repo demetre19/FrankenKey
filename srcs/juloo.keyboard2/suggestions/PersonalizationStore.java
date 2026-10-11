@@ -546,11 +546,10 @@ public final class PersonalizationStore
     String previousWord = _last_word;
     _prior_word = previousWord;
     _last_word = normalizedWord;
-    boolean persisted = record_touch_calibration(typedWord, normalizedWord,
+    // Ordinary commits only advance context and touch calibration; vocabulary
+    // grows solely through explicit teaching or verified corrections.
+    boolean changed = record_touch_calibration(typedWord, normalizedWord,
         normalize(correctedFrom), touches);
-    boolean changed = persisted;
-    if (persisted)
-      changed |= increment(_word_counts, normalizedWord);
     _generation++;
     if (changed)
       save();
@@ -1698,7 +1697,7 @@ public final class PersonalizationStore
   private static final int MIN_TOUCH_SAMPLES = 20;
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;
-  private static final int VOCABULARY_POLICY_VERSION = 1;
+  private static final int VOCABULARY_POLICY_VERSION = 2;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_WORD_SURFACES =
     "typing_model_word_surfaces_v1";

@@ -1248,8 +1248,9 @@ public class KeyEventHandlerAutocorrectContractTest
         "cazoo ", harness.receiver.input.text.toString());
     assertFalse("The boundary must revoke the completed word key before its prepared learning record is consumed.",
         harness.decoder.is_current(harness.key));
-    awaitCounts(harness.prefs, "cazoo", null, 1, 0);
-    assertCountsRemain(harness.prefs, "cazoo", null, 1, 0);
+    assertCountsRemain(harness.prefs, "cazoo", null, 0, 0);
+    assertFalse("An ordinary literal boundary must never enter the learned vocabulary.",
+        new PersonalizationStore(harness.prefs).is_learned("cazoo"));
   }
 
   @Test
