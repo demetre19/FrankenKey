@@ -23,25 +23,41 @@ public final class LanguageModel
   private final Map<String, Map<String, Integer>> _bigrams;
   private final Map<String, Map<String, Integer>> _trigrams;
   private final WordFrequencies _unigrams;
+  private final WordBigrams _wordBigrams;
 
   private LanguageModel(Map<String, Map<String, Integer>> bigrams,
       Map<String, Map<String, Integer>> trigrams)
   {
-    this(bigrams, trigrams, null);
+    this(bigrams, trigrams, null, null);
   }
 
   private LanguageModel(Map<String, Map<String, Integer>> bigrams,
-      Map<String, Map<String, Integer>> trigrams, WordFrequencies unigrams)
+      Map<String, Map<String, Integer>> trigrams, WordFrequencies unigrams,
+      WordBigrams wordBigrams)
   {
     _bigrams = bigrams;
     _trigrams = trigrams;
     _unigrams = unigrams;
+    _wordBigrams = wordBigrams;
   }
 
-  /** The same context priors plus unigram frequencies for the main Cdict. */
+  /** The same model plus unigram frequencies for the main Cdict. */
   public LanguageModel with_unigrams(WordFrequencies unigrams)
   {
-    return new LanguageModel(_bigrams, _trigrams, unigrams);
+    return new LanguageModel(_bigrams, _trigrams, unigrams, _wordBigrams);
+  }
+
+  /** The same model plus ranked Cdict-indexed continuations. */
+  public LanguageModel with_word_bigrams(WordBigrams wordBigrams)
+  {
+    return new LanguageModel(_bigrams, _trigrams, _unigrams, wordBigrams);
+  }
+
+  /** Ranked continuation Cdict indexes for a head Cdict index. */
+  int[] cdict_followers(int cdictIndex)
+  {
+    return _wordBigrams == null ? new int[0]
+      : _wordBigrams.followers(cdictIndex);
   }
 
   /** Source unigram frequency 0..255 for a Cdict index, or -1. */

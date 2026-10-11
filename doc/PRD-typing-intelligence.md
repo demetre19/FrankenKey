@@ -203,6 +203,20 @@ graded against UK expectations. For comparison, Gboard's own recorded
 result on the oracle is 60/79.
 
 ### Part 7 — Real language model (R5b) · large · highest long-term impact
+
+**Shipped first step (no new licence or corpus decision needed):** the
+pinned AOSP en_US wordlist already holds three ranked continuations per
+word. `word_bigrams.bin` keeps them for the 30.7k head words with
+frequency ≥ 80, indexed by Cdict word (about 360 KB per locale, 210 KB
+compressed). After a committed word the strip now predicts for almost any
+common word (`keyboard → and is I`, `please → include send contact`), not
+only for the 4,096 Tatoeba short-word rows. In ranking, continuations add
+a capped context bonus. On the offline sets this left correction metrics
+unchanged; they mostly lack preceding context.
+
+Still open for a full language model: real n-gram probabilities from a
+licence-clean corpus, and context-driven real-word correction
+(`fro` → `for`, "I'm form" → "from").
 - Ship a pruned word-pair/word-triple model (licence-clean corpus) and
   8-bit log-probability unigrams. Weight language roughly equally with key
   distance (LatinIME `DISTANCE_WEIGHT_LANGUAGE` ≈ 1.12). Use context to fix
@@ -232,4 +246,4 @@ result on the oracle is 60/79.
 | 4 Next-word from bundled model | done |
 | 5 Key-position rebalance | done |
 | 6 Collapse veto ladder | done (targeted) |
-| 7 Real language model | planned (separate work) |
+| 7 Real language model | done (first step: dictionary bigrams) |

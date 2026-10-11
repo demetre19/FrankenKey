@@ -1375,6 +1375,24 @@ public final class SharedDecoder implements AutoCloseable
         Logs.exn("Failed to load word frequencies", e);
       }
     }
+    if (resources.languagePack != null
+        && resources.languagePack.word_bigrams != null
+        && resources.mainDictionary != null)
+    {
+      try
+      {
+        LanguageModel base = next.languageModel == null
+          ? LanguageModel.empty() : next.languageModel;
+        next.languageModel = base.with_word_bigrams(WordBigrams.load(
+              resources.languagePack.word_bigrams,
+              resources.mainDictionary));
+      }
+      catch (Exception e)
+      {
+        // Predictions fall back to the short-word context priors.
+        Logs.exn("Failed to load word bigrams", e);
+      }
+    }
     _workerResources = next;
     synchronized (_lock)
     {

@@ -2,5 +2,6 @@
   "hunspell_aff": "en_GB.aff",
   "hunspell_dic": "en_GB.dic",
   "next_words": "next_words.tsv",
-  "word_frequencies": "word_frequencies.bin"
+  "word_frequencies": "word_frequencies.bin",
+  "word_bigrams": "word_bigrams.bin"
 }

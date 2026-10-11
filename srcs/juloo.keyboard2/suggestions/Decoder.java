@@ -94,6 +94,14 @@ public final class Decoder
   private static final int UNIGRAM_FREQUENCY_WEIGHT = 14;
   /** Fixed-point score per 4-bit Cdict level when no unigram table exists. */
   private static final int CDICT_LEVEL_WEIGHT = 128;
+  /** Context weights for the previous word's ranked dictionary continuations;
+      they stay below the decisive-context threshold of 8 so continuations
+      alone never override a valid literal. */
+  private static final int[] CONTEXT_FOLLOWER_WEIGHTS = { 3, 2, 1 };
+  /** Next-word strip order for those continuations on a doubled 1..15 prior
+      scale (14.5, 13.5, 12.5): strong short-word priors (14+) still lead,
+      the bulk of weaker ones follow; trigram context is added first. */
+  private static final int[] NEXT_WORD_FOLLOWER_WEIGHTS = { 29, 27, 25 };
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
   private static final int PROTECTED_LITERAL_EXACT_EVENTS = 4;
@@ -173,8 +181,8 @@ public final class Decoder
       && request.config.autocorrectEnabled;
 
     if (request.normalized.length() == 0)
-      return decode_next_words(request, personalization, languageModel,
-          displayEnabled, failure);
+      return decode_next_words(request, dictionary, personalization,
+          languageModel, displayEnabled, failure);
 
     Map<String, Accumulator> merged = new HashMap<String, Accumulator>();
     Accumulator literal = new Accumulator(request.normalized,
@@ -411,12 +419,15 @@ public final class Decoder
       }
     }
 
+    int[] previousFollowers = context_followers(dictionary, languageModel,
+        previousWord, failure);
     if (generateCandidates && previousWord != null && languageModel != null)
     {
       try
       {
         collect_language_model_candidates(dictionary, hunspell, languageModel,
             priorWord, previousWord, merged);
+        collect_context_followers(dictionary, previousFollowers, merged);
       }
       catch (IllegalStateException e)
       {
@@ -434,7 +445,8 @@ public final class Decoder
           personalization == null ? 0f : personalization.touch_offset_y());
 
     List<Candidate> ranked = rank_candidates(request, merged, costs,
-        personalization, languageModel, priorWord, previousWord, failure);
+        personalization, languageModel, priorWord, previousWord,
+        previousFollowers, failure);
     Candidate literalCandidate = candidate_for_canonical(ranked,
         request.normalized);
     Candidate autocorrection = choose_autocorrection(request, ranked,
@@ -460,7 +472,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, priorWord, previousWord, failure);
+          languageModel, priorWord, previousWord, previousFollowers, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure,
@@ -484,7 +496,7 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, priorWord, previousWord, failure);
+          languageModel, priorWord, previousWord, previousFollowers, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
           literalCandidate, autocorrectEnabled, failure.failure,
@@ -531,7 +543,8 @@ public final class Decoder
   private static List<Candidate> rank_candidates(Request request,
       Map<String, Accumulator> merged, CostTable costs,
       PersonalizationStore personalization, LanguageModel languageModel,
-      String priorWord, String previousWord, FailureState failure)
+      String priorWord, String previousWord, int[] previousFollowers,
+      FailureState failure)
   {
     Scorer scorer = costs == null ? null : new Scorer(costs);
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
@@ -540,6 +553,7 @@ public final class Decoder
       add_unigram_frequency(accumulator, languageModel);
       add_personalization_metadata(accumulator, personalization, languageModel,
           priorWord, previousWord, failure);
+      add_context_follower_weight(accumulator, previousFollowers);
       Score score;
       if (accumulator.literal)
         score = Score.EXACT;
@@ -553,7 +567,7 @@ public final class Decoder
     return ranked;
   }
 
-  private static Result decode_next_words(Request request,
+  private static Result decode_next_words(Request request, Cdict dictionary,
       PersonalizationStore personalization, LanguageModel languageModel,
       boolean displayEnabled, FailureState failure)
   {
@@ -591,7 +605,20 @@ public final class Decoder
         String prior = personalization.previous_previous_word();
         add_model_next_words(words, seen,
             languageModel.following(prior, previous));
-        add_model_next_words(words, seen, languageModel.following(previous));
+        Map<String, Integer> following = new HashMap<String, Integer>();
+        for (Map.Entry<String, Integer> row
+            : languageModel.following(previous).entrySet())
+          following.put(row.getKey(), 2 * row.getValue());
+        int[] followers = context_followers(dictionary, languageModel,
+            previous, failure);
+        for (int rank = 0; rank < followers.length
+            && rank < NEXT_WORD_FOLLOWER_WEIGHTS.length; rank++)
+        {
+          String surface = dictionary.word(followers[rank]);
+          following.remove(normalize(surface));
+          following.put(surface, NEXT_WORD_FOLLOWER_WEIGHTS[rank]);
+        }
+        add_model_next_words(words, seen, following);
       }
       return new Result(request.key, request.typed,
           words.toArray(new Candidate[0]), null, null, null, true,
@@ -627,11 +654,11 @@ public final class Decoder
     {
       if (words.size() >= MAX_VISIBLE_WORDS)
         return;
-      String canonical = row.getKey();
+      String canonical = normalize(row.getKey());
       if (!seen.add(canonical))
         continue;
       String surface = "i'm".equals(canonical) ? "I'm"
-        : ("i".equals(canonical) ? "I" : canonical);
+        : ("i".equals(canonical) ? "I" : row.getKey());
       int weight = row.getValue();
       words.add(new Candidate(canonical, surface, SOURCE_CONTEXT, -1, 0,
           words.size(), 0, weight, 0, 0, 0, 0, 0, 0,
@@ -962,6 +989,58 @@ public final class Decoder
         canonical.codePoints().toArray(), surface);
     merged.put(canonical, candidate);
     return candidate;
+  }
+
+  /** Ranked dictionary continuations of [previousWord], or none. */
+  private static int[] context_followers(Cdict dictionary,
+      LanguageModel languageModel, String previousWord, FailureState failure)
+  {
+    if (dictionary == null || languageModel == null || previousWord == null)
+      return new int[0];
+    try
+    {
+      Cdict.Result head = dictionary.find(previousWord);
+      return head.found ? languageModel.cdict_followers(head.index)
+        : new int[0];
+    }
+    catch (RuntimeException e)
+    {
+      failure.resource();
+      return new int[0];
+    }
+  }
+
+  private static void collect_context_followers(Cdict dictionary,
+      int[] followers, Map<String, Accumulator> merged)
+  {
+    for (int index : followers)
+    {
+      String surface = dictionary.word(index);
+      Accumulator candidate = accumulator_for(merged, surface);
+      if (candidate == null)
+        continue;
+      candidate.sourceMask |= SOURCE_CDICT_EXACT;
+      candidate.set_cdict_exact(index, dictionary.freq(index));
+    }
+  }
+
+  private static void add_context_follower_weight(Accumulator candidate,
+      int[] followers)
+  {
+    if (followers == null)
+      return;
+    for (int rank = 0; rank < followers.length
+        && rank < CONTEXT_FOLLOWER_WEIGHTS.length; rank++)
+    {
+      int index = followers[rank];
+      if (index != candidate.exactIndex && index != candidate.spatialIndex
+          && index != candidate.prefixIndex)
+        continue;
+      candidate.bigramCount = Math.max(candidate.bigramCount,
+          CONTEXT_FOLLOWER_WEIGHTS[rank]);
+      candidate.sourceMask |= SOURCE_CONTEXT;
+      return;
+    }
   }
 
   private static void add_unigram_frequency(Accumulator candidate,

@@ -16,6 +16,8 @@
 
 - `gen_word_frequencies.py WORDLIST.combined DICT.dict OUT.bin` writes the 8-bit unigram table aligned to a Cdict (compiles `vendor/cdict/libcdict` with `cc`; output is deterministic).
 
+- `gen_word_bigrams.py BIGRAM_WORDLIST.combined DICT.dict OUT.bin` writes ranked top-3 continuations for head words with frequency ≥ 80, aligned to a Cdict (deterministic).
+
 ## Work Guidance
 
 - Keep scripts simple and root-runnable unless documented otherwise.
