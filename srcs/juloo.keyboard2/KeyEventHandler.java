@@ -81,6 +81,10 @@ public final class KeyEventHandler
       ourselves so [currently_typed_word] can skip them. */
   private String _inline_prediction = null;
   private boolean _inline_prediction_editor_change = false;
+  /** Set when DEL dismissed a ghost: suppress re-showing the next-word
+      preview until the user moves the context forward with real input,
+      otherwise each dismissed ghost instantly re-predicts. */
+  private boolean _inline_prediction_suppressed = false;
   private static final int INLINE_PREDICTION_COLOR = 0x80808080;
   private static final long BACKSPACE_FALLBACK_DELAY_MS = 24;
   /** Incremented to invalidate a posted delayed DEL fallback; see
@@ -381,6 +385,7 @@ public final class KeyEventHandler
   {
     if (word == null || word.length() == 0 || _config == null
         || !_config.inline_predictions_enabled
+        || _inline_prediction_suppressed
         || !_config.editor_config.should_use_typing_assistance
         || uses_termux_raw_events())
       return false;
@@ -427,8 +432,10 @@ public final class KeyEventHandler
     if (_inline_prediction == null)
       return false;
     clear_inline_prediction(false);
-    /* Consume the press: the user sees the ghost disappear first, matching
-       Gboard's one-press-dismisses-preview behavior. */
+    /* Consume the press AND suppress re-show: the editor event clears the
+       boundary and a fresh next-word result would instantly resurrect the
+       ghost, making deletion impossible. Lifts on the next real commit. */
+    _inline_prediction_suppressed = true;
     return true;
   }
 
@@ -771,6 +778,7 @@ public final class KeyEventHandler
   public void suggestion_entered(Decoder.RequestKey key, String text)
   {
     cancel_pending_backspace_fallback();
+    _inline_prediction_suppressed = false;
     commit_pending_replacement();
     if (!_decoder.is_current(key))
       return;
@@ -906,14 +914,24 @@ public final class KeyEventHandler
 
   String right_swipe_accept_text(Decoder.RequestKey key)
   {
+    /* A visible ghost is the strongest signal: accept it verbatim. */
+    if (_inline_prediction != null)
+      return _inline_prediction;
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
-    if (key == null || snapshot.word.length() == 0
-        || snapshot.completeness
+    if (key == null || snapshot.completeness
           == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
       return null;
     Decoder.Result result = _decoder.current_result(key);
     if (result == null)
       return null;
+    /* Empty boundary: right-swipe accepts the top next-word prediction. */
+    if (snapshot.word.length() == 0)
+    {
+      Decoder.Candidate[] boundary_words = result.words();
+      return boundary_words.length > 0
+          && boundary_words[0].role == Decoder.Role.NEXT_WORD
+        ? boundary_words[0].surface : null;
+    }
     if (result.autocorrection != null)
       return result.autocorrection.surface;
     Decoder.Candidate[] words = result.words();
@@ -1981,6 +1999,22 @@ public final class KeyEventHandler
   boolean send_text(String text, TouchTrace.Entry touch)
   {
     cancel_pending_backspace_fallback();
+    /* Space while a ghost is visible accepts it instead of overwriting it
+       with a literal space. */
+    if (text.equals(" ") && _inline_prediction != null)
+    {
+      String accepted = _inline_prediction;
+      _inline_prediction = null;
+      _inline_prediction_editor_change = false;
+      _inline_prediction_suppressed = false;
+      InputConnection accept_conn = _recv.getCurrentInputConnection();
+      if (accept_conn != null && accept_conn.commitText(accepted + " ", 1))
+      {
+        _typedword.typed(accepted + " ", touch);
+        return true;
+      }
+    }
+    _inline_prediction_suppressed = false;
     /* The commit below replaces any ghost in the composing region; drop our
        reference before the editor callback arrives. */
     _inline_prediction = null;
@@ -2681,31 +2715,6 @@ public final class KeyEventHandler
     return before != null && " ".contentEquals(before);
   }
 
-  private boolean is_double_space_period_candidate()
-  {
-    InputConnection conn = _recv.getCurrentInputConnection();
-    if (conn == null)
-      return false;
-    CharSequence before = conn.getTextBeforeCursor(3, 0);
-    if (before == null || before.length() < 2
-        || before.charAt(before.length() - 1) != ' ')
-      return false;
-    int previous = Character.codePointBefore(before, before.length() - 1);
-    return !Character.isWhitespace(previous)
-      && (previous > Character.MAX_VALUE
-        || !is_autocorrect_separator((char)previous));
-  }
-
-  private boolean replace_double_space_with_period()
-  {
-    if (!is_double_space_period_candidate()
-        || !replace_recent_text(" ", ". "))
-      return false;
-    _autocap.text_replaced(1, ". ");
-    _typedword.typed(". ");
-    return true;
-  }
-
   private void normalize_space_before_punctuation(String separator)
   {
     if (!should_normalize_prose_spacing() || separator.length() != 1
@@ -2885,16 +2894,7 @@ public final class KeyEventHandler
   void handle_space_bar()
   {
     if (should_normalize_prose_spacing())
-    {
       commit_pending_replacement();
-      if (has_plain_space_before_cursor()
-          && _config != null && _config.double_space_period)
-      {
-        if (!is_double_space_period_candidate()
-            || replace_double_space_with_period())
-          return;
-      }
-    }
     handle_word_separator(" ");
   }
 
