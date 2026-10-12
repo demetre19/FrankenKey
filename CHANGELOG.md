@@ -3,6 +3,18 @@
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
 
+## 2.0.217 — version code 10217 — 2026-10-12
+
+- **Accept the top suggestion with a short right swipe** from any letter key: slide right about one key-width and release, and the highlighted suggestion replaces the whole word you typed. The spacebar and the G trackpad are excluded so cursor drags keep working.
+- **Next-word predictions:** after you commit a word, the suggestion row shows ranked predictions for the likely next word, learned from the dictionary and your own accepted suggestions.
+- **Smarter autocorrect:** corrections now rank against real dictionary word frequencies and LatinIME-proportioned edit costs, so common intended words win over obscure near-misses. Automatic contractions are built in — typing `ive`, `were`, `well`, `im`, `cant` and ~30 more suggests `I've`, `we're`, `we'll`, `I'm`, `can't`.
+- **Contact emails finally reach the strip:** learned and imported email addresses now surface after roughly three letters of the local part — they were being crowded out by dictionary candidates and a too-short candidate length cap. Long email addresses up to 64 characters are accepted.
+- **Fixed suggestion taps duplicating the first letter** (e.g. `demet` → `ddemetre19@gmail.com`): the commit path now verifies the exact tracked word against the editor before replacing, recovering when the tracker or cursor drifts.
+- **Manage learned words:** a dedicated Learned Words screen lists everything the keyboard has taught itself, with search, per-word delete, and the Corrections view for `source → replacement` rules.
+- **Instant learn/unlearn gestures:** swipe up on an unknown suggestion to learn it and swipe down on a learned word to unlearn — no dialog, no keyboard flicker.
+- **Snappier, more disciplined suggestions:** the strip stays hidden while you type when nothing worth suggesting exists, empty placeholder categories no longer inflate, and ordinary commits no longer learn words silently.
+
+
 ## 2.0.198 — version code 10198 — 2026-10-10
 
 - **Reader AI now runs on Cloudflare Workers AI by default — completely free.** FrankenKey's built-in provider uses Cloudflare's free Workers AI tier (10,000 neurons/day per Cloudflare account, no card required). Paste a free Cloudflare Account ID plus one API token into AI Settings, pick a model — `@cf/meta/llama-3.1-8b-instruct-fp8-fast` default, or Llama 3.3 70B, gpt-oss-20b/120b, Mistral Small — and summaries, quizzes, and chat cost nothing. OpenRouter remains available as an alternative provider. Both credentials are stored encrypted and excluded from backups.
