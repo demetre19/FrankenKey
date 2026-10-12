@@ -5,7 +5,7 @@
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, private TTS tools, and a <strong>free</strong> built-in AI provider in one Android app.
+  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, private TTS tools, and a <strong>free</strong> built-in AI provider in one Android app — with an <strong>Omnibutton</strong> that opens Reader AI from anywhere.
 </p>
 
 <p align="center">
@@ -19,6 +19,15 @@
 </p>
 
 ---
+
+## The Omnibutton — Reader AI from anywhere
+
+The **omnibutton** is FrankenKey's centered AI key, and it works in two places:
+
+- **On the keyboard:** tap it on the Reader strip (or swipe it in any of eight directions) to run a Reader AI action — grounded chat, page and book summaries, quizzes, share, saved results, speed read, or settings.
+- **As a floating bubble:** enable FrankenKey's accessibility service and a draggable bubble floats over *any* app, so Reader AI opens even with the keyboard hidden. Tap for the tap action, swipe for that direction's action; it hides itself while the keyboard is up or a password field is on screen.
+
+Every tap and swipe direction is assignable in **Settings > Typing assistance > Omnibutton**, including styling the floating bubble (opacity, shape, colors). See [Omnibutton and the floating button](#omnibutton-and-the-floating-button) for setup, including the Android 13+ "restricted setting" unlock for sideloaded APKs.
 
 ## Overview
 
