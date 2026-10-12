@@ -30,12 +30,23 @@ public final class Pointers implements Handler.Callback
   private ArrayList<Pointer> _ptrs = new ArrayList<Pointer>();
   private IPointerEventHandler _handler;
   private Config _config;
+  /** Width of one layout key unit in pixels; 0 until the view is measured. */
+  private float _key_unit_width = 0.f;
+
+  /** A keyboard-wide right swipe must travel this many key units. */
+  static final float RIGHT_ACCEPT_SWIPE_KEYS = 1.5f;
 
   public Pointers(IPointerEventHandler h, Config c)
   {
     _longpress_handler = new Handler(this);
     _handler = h;
     _config = c;
+  }
+
+  /** Called by the view whenever the key unit width changes. */
+  public void set_key_unit_width(float width)
+  {
+    _key_unit_width = width > 0.f ? width : 0.f;
   }
 
   /** Return the list of modifiers currently activated. */
@@ -142,10 +153,35 @@ public final class Pointers implements Handler.Callback
     Pointer ptr = getPtr(pointerId);
     if (ptr == null)
       return;
+    /* Right-accept override: a clearly horizontal rightward flick accepts the
+       suggestion even when a corner slider captured the gesture into sliding
+       mode. Excluded keys: the spacebar (dedicated cursor/clipboard drags)
+       and any key carrying horizontal cursor sliders — G's trackpad swipes
+       must keep moving the cursor instead of accepting. */
+    if (!isSpaceBar(ptr.value)
+        && !isHorizontalCursorSliderKey(ptr)
+        && _key_unit_width > 0.f
+        && ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
+        && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx)
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
+      return;
+    }
     if (ptr.hasFlagsAny(FLAG_P_SLIDING))
     {
       clearLatched();
       ptr.sliding.onTouchUp(ptr);
+      return;
+    }
+    if (isRightAcceptSwipe(ptr))
+    {
+      stopLongPress(ptr);
+      clearLatched();
+      removePtr(ptr);
+      _handler.onKeyboardSwipeRight();
       return;
     }
     if (isVerticalKeyboardSwipe(ptr))
@@ -413,6 +449,34 @@ public final class Pointers implements Handler.Callback
       else if ((ptr.flags & FLAG_P_LATCHABLE) != 0)
         ptr.flags &= ~FLAG_P_LATCHABLE;
     }
+  }
+
+  /** Keyboard-wide right swipe: starts on any key that has not entered a
+      slider, travels at least [RIGHT_ACCEPT_SWIPE_KEYS] key units to the right
+      and stays mostly horizontal (|dy| <= |dx| / 2). Evaluated on release so
+      returning before lifting cancels it. */
+  boolean isRightAcceptSwipe(Pointer ptr)
+  {
+    if (ptr.gesture == null || _key_unit_width <= 0.f
+        || ptr.hasFlagsAny(FLAG_P_SLIDING)
+        || isSpaceBar(ptr.value) || isHorizontalCursorSliderKey(ptr))
+      return false;
+    return ptr.lastDx >= RIGHT_ACCEPT_SWIPE_KEYS * _key_unit_width
+      && Math.abs(ptr.lastDy) * 2.f <= ptr.lastDx;
+  }
+
+  /** True for keys that carry horizontal cursor sliders — G's trackpad —
+      whose left/right drags move the cursor and must never fire
+      right-accept. The spacebar is handled separately. */
+  private boolean isHorizontalCursorSliderKey(Pointer ptr)
+  {
+    KeyboardData.Key key = ptr.key;
+    if (key == null || key.keys == null || key.keys.length <= 6)
+      return false;
+    KeyValue right = _handler.modifyKey(key.keys[6], ptr.modifiers);
+    return right != null
+      && right.getKind() == KeyValue.Kind.Slider
+      && right.getSlider() == KeyValue.Slider.Cursor_right;
   }
 
   boolean isVerticalKeyboardSwipe(Pointer ptr)
@@ -1093,5 +1157,8 @@ public final class Pointers implements Handler.Callback
 
     /** Keyboard-wide vertical swipe, independent of side-label keys. */
     public void onKeyboardSwipeDown();
+
+    /** Keyboard-wide long right swipe, independent of side-label keys. */
+    public default void onKeyboardSwipeRight() {}
   }
 }

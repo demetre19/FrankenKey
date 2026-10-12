@@ -1,0 +1,42 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "true"
+      ],
+      "covered_paths": [
+        "build/",
+        "FrankenKey-installable-release.apk"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "Operator pipeline (2026-10-08): fetch origin into this checkout, fast-forward the autobuild/frankenkey-autocorrect-suggestions branch, build a signed installable APK and deliver it to the operator's Android phone. Signing: frankenkey-release.jks is in the repo root; if RELEASE_KEYSTORE_PASSWORD/RELEASE_KEY_ALIAS/RELEASE_KEY_PASSWORD envs are unset, look for the .env that ships them (check ~/.android/frankenkey-release-signing/, DEV-WORK secrets dirs, and the repo's documented signing setup); if release creds are genuinely unreachable, build the installable DEBUG apk instead and report that release signing needs the env file copied to the laptop. Phone delivery: scp the versioned APK (FrankenKey-<version>.apk) to u0_a344@100.126.174.17:8022:/storage/emulated/0/Download/ using ssh key ~/.ssh/macbook-to-termux-ed25519, then ssh -p 8022 u0_a344@100.126.174.17 'termux-open /storage/emulated/0/Download/<apk>' so the install prompt appears on the phone. Verify package=dev.frankenkey.keyboard signature matches the installed app before pushing (apksigner verify --print-certs). Record the exact commands used in the lane report so this becomes a repeatable recipe."
+      ],
+      "depends_on": [],
+      "id": "fk-build-push-android",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Operator pipeline (2026-10-08): fetch origin into this checkout, fast-forward the autobuild/frankenkey-autocorrect-suggestions branch, build a signed installable APK and deliver it to the operator's A",
+      "write_paths": [
+        "build/",
+        "FrankenKey-installable-release.apk"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/DEV-WORK/FK-laptop-build"
+}

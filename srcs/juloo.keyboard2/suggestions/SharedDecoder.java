@@ -617,13 +617,12 @@ public final class SharedDecoder implements AutoCloseable
     synchronized (_lock)
     {
       PendingDecode sourceEnvelope = find_envelope_locked(source);
-      boolean _dbg_bad = !is_active_session_locked(sessionEpoch)
+      if (!is_active_session_locked(sessionEpoch)
           || !is_valid_request_key_locked(source)
           || sourceEnvelope == null
           || (!is_current_locked(source) && !sourceEnvelope.boundary)
           || !_config.useTypingAssistance
-          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled);
-      if (_dbg_bad)
+          || (!_config.suggestionsEnabled && !_config.autocorrectEnabled))
         return null;
       Boolean recognized = recognized_from_result_locked(source,
           committedWord, sourceEnvelope);
@@ -690,14 +689,25 @@ public final class SharedDecoder implements AutoCloseable
       Decoder.RequestKey source, PersonalizationSpec personalization,
       String word)
   {
+    explicitly_teach_word(sessionEpoch, source, personalization, word, true);
+  }
+
+  /** [require_current] false is for post-dialog confirmation: the review
+      dialog takes focus, so the source key is no longer current by the
+      time the user taps Learn. The session epoch is the meaningful
+      guard. */
+  public void explicitly_teach_word(long sessionEpoch,
+      Decoder.RequestKey source, PersonalizationSpec personalization,
+      String word, boolean require_current)
+  {
     if (personalization == null || personalization.preferences == null
         || !PersonalizationStore.is_learnable(word))
       return;
     synchronized (_lock)
     {
       if (!is_active_session_locked(sessionEpoch)
-          || !is_current_locked(source) || !_config.useTypingAssistance
-          || !_config.suggestionsEnabled)
+          || (require_current && !is_current_locked(source))
+          || !_config.useTypingAssistance || !_config.suggestionsEnabled)
         return;
       Decoder.RequestKey feedbackKey = resubmit_latest_locked();
       enqueue_control_locked(Control.explicitLearn(sessionEpoch,
@@ -793,11 +803,22 @@ public final class SharedDecoder implements AutoCloseable
   public void unlearn_word(long sessionEpoch, Decoder.RequestKey source,
       String word)
   {
+    unlearn_word(sessionEpoch, source, word, true);
+  }
+
+  /** [require_current] false is for post-dialog confirmation: the confirm
+      dialog takes focus, so the source key is no longer current by the
+      time the user taps the unlearn button. The session epoch is the
+      meaningful guard. */
+  public void unlearn_word(long sessionEpoch, Decoder.RequestKey source,
+      String word, boolean require_current)
+  {
     if (source == null || word == null)
       return;
     synchronized (_lock)
     {
-      if (!is_active_session_locked(sessionEpoch) || !is_current_locked(source)
+      if (!is_active_session_locked(sessionEpoch)
+          || (require_current && !is_current_locked(source))
           || !_config.useTypingAssistance || !_config.suggestionsEnabled)
         return;
       _personalizationEpoch++;
@@ -1355,6 +1376,42 @@ public final class SharedDecoder implements AutoCloseable
       {
         next.languageModelFailed = true;
         Logs.exn("Failed to load language context model", e);
+      }
+    }
+    if (resources.languagePack != null
+        && resources.languagePack.word_frequencies != null
+        && resources.mainDictionary != null)
+    {
+      try
+      {
+        LanguageModel base = next.languageModel == null
+          ? LanguageModel.empty() : next.languageModel;
+        next.languageModel = base.with_unigrams(WordFrequencies.load(
+              resources.languagePack.word_frequencies,
+              resources.mainDictionary));
+      }
+      catch (Exception e)
+      {
+        // Ranking falls back to the dictionary's 4-bit levels.
+        Logs.exn("Failed to load word frequencies", e);
+      }
+    }
+    if (resources.languagePack != null
+        && resources.languagePack.word_bigrams != null
+        && resources.mainDictionary != null)
+    {
+      try
+      {
+        LanguageModel base = next.languageModel == null
+          ? LanguageModel.empty() : next.languageModel;
+        next.languageModel = base.with_word_bigrams(WordBigrams.load(
+              resources.languagePack.word_bigrams,
+              resources.mainDictionary));
+      }
+      catch (Exception e)
+      {
+        // Predictions fall back to the short-word context priors.
+        Logs.exn("Failed to load word bigrams", e);
       }
     }
     _workerResources = next;

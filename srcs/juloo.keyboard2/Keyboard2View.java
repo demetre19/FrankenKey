@@ -216,6 +216,14 @@ public class Keyboard2View extends View
     vibrate();
   }
 
+  public void onKeyboardSwipeRight()
+  {
+    _config.handler.keyboard_swiped_right();
+    updateFlags();
+    invalidate();
+    vibrate();
+  }
+
   public void onPointerHold(KeyValue k, Pointers.Modifiers mods, int holdCount)
   {
     _config.handler.key_hold(k, mods, holdCount);
@@ -349,6 +357,7 @@ public class Keyboard2View extends View
     _marginRight = Math.max(_config.horizontal_margin, _insets_right);
     _marginBottom = _config.margin_bottom + _insets_bottom;
     _keyWidth = (width - _marginLeft - _marginRight) / _keyboard.keysWidth;
+    _pointers.set_key_unit_width(_keyWidth);
     _tc = new Theme.Computed(_theme, _config, _keyWidth, _keyboard);
     // Compute the size of labels based on the width or the height of keys. The
     // margin around keys is taken into account. Keys normal aspect ratio is

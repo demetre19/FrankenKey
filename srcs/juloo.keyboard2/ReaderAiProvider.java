@@ -121,27 +121,6 @@ final class ReaderAiProvider
     };
   }
 
-  /**
-   * Grammar correction request: bounded tokens, zero temperature. Returns
-   * the raw model text for [AiGrammarFixer] guards.
-   */
-  String fixGrammar(String prompt, String input)
-      throws IOException, JSONException, GeneralSecurityException
-  {
-    Resolved resolved = resolve();
-    String modelId = settings.getActiveModelId();
-    if (modelId.isEmpty())
-      modelId = ReaderAiSettings.Provider.OPENROUTER
-          .equals(resolved.provider)
-        ? ReaderAiOpenRouter.PREFERRED_MODEL_ID
-        : ReaderAiCloudflare.PREFERRED_MODEL_ID;
-    org.json.JSONObject body = AiGrammarFixer.buildRequest(modelId, prompt,
-        input, AiGrammarFixer.maxTokensFor(input));
-    if (ReaderAiSettings.Provider.OPENROUTER.equals(resolved.provider))
-      return openRouter.generate(resolved.bearer, body, 30_000);
-    return cloudflare.generate(resolved.accountId, resolved.bearer, body,
-        30_000);
-  }
 
   /**
    * Model to run with: for Cloudflare the static catalog; for OpenRouter

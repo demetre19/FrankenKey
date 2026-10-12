@@ -160,8 +160,9 @@ public final class Config
     show_speak_key = _prefs.getBoolean("frankenkey_show_speak_key", true);
     double_space_period = _prefs.getBoolean("double_space_period", true);
     suggestions_enabled = _prefs.getBoolean("suggestions", true);
-    grammar_corrections_enabled =
-      _prefs.getBoolean("grammar_corrections", false);
+    /* Grammar features are parked until the rework — toggle hidden,
+       always off regardless of a stored value. */
+    grammar_corrections_enabled = false;
     multimodal_voice_typing_enabled =
       _prefs.getBoolean("multimodal_voice_typing", false);
     reader_keyboard_controls_enabled =
@@ -375,6 +376,7 @@ public final class Config
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(Decoder.RequestKey key, String text);
     public void suggestion_swiped_up(Decoder.RequestKey key, String text);
+    public void email_suggestion_entered(String text);
     /** Single acceptance dispatch for every strip candidate. The default
         reproduces the pre-seam routing; [KeyEventHandler] overrides it with a
         [SuggestionAcceptor] role map that extension lanes can register into. */
@@ -404,6 +406,8 @@ public final class Config
     public void typing_assistance_data_cleared();
     public void keyboard_swiped_up();
     public void keyboard_swiped_down();
+    /** Long right swipe across the keyboard: accept the top suggestion. */
+    public default void keyboard_swiped_right() {}
   }
 
   /** Config migrations. */

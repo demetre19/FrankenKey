@@ -22,7 +22,9 @@ let k_medians :
       if i >= len then ()
       else
         let idx = indexes.(i) in
-        let cluster = i / cluster_size and v = data.(idx) in
+        (* [len / k] rounds down, so the last [len mod k] elements would get
+           cluster [k], which callers packing [k] values wrap to 0. *)
+        let cluster = min (k - 1) (i / cluster_size) and v = data.(idx) in
         let cluster =
           (* Put equal values in the same cluster. This results in clusters of
              different size. *)

@@ -6,9 +6,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import juloo.cdict.Cdict;
 import juloo.keyboard2.ComposeKey;
 import juloo.keyboard2.ComposeKeyData;
@@ -39,6 +41,8 @@ public final class Decoder
   public static final int SOURCE_CONTEXTUAL_CORRECTION = 1 << 9;
   public static final int SOURCE_HUNSPELL_PRIMARY = 1 << 10;
   public static final int SOURCE_REPLACEMENT = 1 << 11;
+  /** Packaged dictionary shortcut: the typed form is a known misspelling. */
+  public static final int SOURCE_WHITELIST = 1 << 12;
 
   public static final int EDIT_SUBSTITUTION = 1;
   public static final int EDIT_OMISSION = 1 << 1;
@@ -52,18 +56,32 @@ public final class Decoder
   private static final int MAX_CORRECTION_RESULTS = 6;
 
   private static final int Q8 = 256;
+  // Edit costs follow AOSP LatinIME's typing weights, scaled so that an
+  // omission costs 6 Q8: insertion 0.72, same-key insertion 0.55, omission
+  // 0.47, doubled-letter omission 0.35 and a 0.15 proximity base. Two
+  // deliberate departures, tuned on the androidTest oracles: transposition
+  // stays cheaper than LatinIME's 0.56 because fast typing swaps letters
+  // often, and the per-squared-key distance cost is steeper so an accurate
+  // tap on the neighbouring key (mistaks) prefers a missed letter
+  // (mistakes) over a substitution (mistake).
   private static final int OMISSION_COST_Q8 = 6 * Q8;
-  private static final int EXTRA_TAP_COST_Q8 = 6 * Q8;
-  private static final int TRANSPOSITION_COST_Q8 = 2 * Q8;
+  private static final int SAME_LETTER_OMISSION_COST_Q8 = 1135;
+  private static final int EXTRA_TAP_COST_Q8 = 2384;
+  private static final int SAME_LETTER_EXTRA_TAP_COST_Q8 = 1811;
+  private static final int TRANSPOSITION_COST_Q8 = 1024;
+  private static final double PROXIMITY_BASE_COST = 1.9;
+  private static final double PROXIMITY_DISTANCE_COST = 4.0;
   private static final int UNKNOWN_SUBSTITUTION_COST_Q8 = 12 * Q8;
   private static final int MAX_SUBSTITUTION_COST_Q8 = 64 * Q8;
   private static final int BEAM_COST_Q8 = 48 * Q8;
-  private static final double TOUCH_SUBSTITUTION_COST_SCALE = 2.0;
   private static final int AUTOCORRECT_LITERAL_MARGIN_Q8 = 2 * Q8;
   private static final int AUTOCORRECT_RUNNER_MARGIN_Q8 = Q8 / 2;
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
   private static final int DECISIVE_SAME_LENGTH_MARGIN_Q8 = 2 * Q8;
   private static final int LENGTH_DELTA_RANKING_PENALTY_Q8 = 4 * Q8;
+  /** A same-length repair yields to a one-edit length repair only within
+      this ranking gap; word frequency already separates the two. */
+  private static final int COMPETING_LENGTH_REPAIR_GAP_Q8 = Q8;
   private static final int NEARBY_SUBSTITUTION_COST_Q8 = 8 * Q8;
   private static final int UNKNOWN_LITERAL_LENGTH_THRESHOLD = 5;
   private static final int UNKNOWN_LITERAL_LENGTH_PENALTY_Q8 = 3 * Q8 / 2;
@@ -72,6 +90,20 @@ public final class Decoder
   private static final int BOUNDARY_PREVIEW_LITERAL_MARGIN_Q8 = 8 * Q8;
   private static final int BOUNDARY_PREVIEW_RUNNER_MARGIN_Q8 = Q8;
   private static final int SCORE_LIMIT = 0x3fffffff;
+  /** Fixed-point score per source frequency step (0..255 wordlist scale). */
+  private static final int UNIGRAM_FREQUENCY_WEIGHT = 14;
+  /** Fixed-point score per 4-bit Cdict level when no unigram table exists. */
+  private static final int CDICT_LEVEL_WEIGHT = 128;
+  /** Unigram lead a transposition needs over a lowercase-typed acronym. */
+  private static final int ACRONYM_REPAIR_FREQUENCY_GAP = 50;
+  /** Context weights for the previous word's ranked dictionary continuations;
+      they stay below the decisive-context threshold of 8 so continuations
+      alone never override a valid literal. */
+  private static final int[] CONTEXT_FOLLOWER_WEIGHTS = { 3, 2, 1 };
+  /** Next-word strip order for those continuations on a doubled 1..15 prior
+      scale (14.5, 13.5, 12.5): strong short-word priors (14+) still lead,
+      the bulk of weaker ones follow; trigram context is added first. */
+  private static final int[] NEXT_WORD_FOLLOWER_WEIGHTS = { 29, 27, 25 };
   private static final int MAX_CORRECTION_WEIGHT = 8;
   private static final int CORRECTION_BONUS_Q8 = 3 * Q8;
   private static final int PROTECTED_LITERAL_EXACT_EVENTS = 4;
@@ -82,6 +114,26 @@ public final class Decoder
     { "are", "could", "did", "does", "had", "has", "have", "is", "might",
       "must", "need", "should", "was", "were", "would" };
 
+
+  /** Common contractions that MUST autocorrect even when the hunspell
+      dictionary lacks the surface (ive→I've, were→we're, well→we'll, ill→I'll,
+      cant→can't, dont→don't, isnt→isn't, wasnt→wasn't, wont→won't,
+      couldnt→couldn't, shouldnt→shouldn't, wouldnt→wouldn't, didnt→didn't,
+      doesnt→doesn't, havent→haven't, hasnt→hasn't, hadnt→hadn't, im→I'm). */
+  private static final String[][] CANONICAL_CONTRACTIONS = {
+    { "ive", "I've" }, { "im", "I'm" }, { "ill", "I'll" },
+    { "were", "we're" }, { "well", "we'll" }, { "cant", "can't" },
+    { "dont", "don't" }, { "isnt", "isn't" }, { "wasnt", "wasn't" },
+    { "wont", "won't" }, { "didnt", "didn't" }, { "doesnt", "doesn't" },
+    { "couldnt", "couldn't" }, { "shouldnt", "shouldn't" },
+    { "wouldnt", "wouldn't" }, { "havent", "haven't" },
+    { "hasnt", "hasn't" }, { "hadnt", "hadn't" }, { "aint", "ain't" },
+    { "lets", "let's" }, { "hes", "he's" }, { "shes", "she's" },
+    { "its", "it's" }, { "thats", "that's" }, { "whats", "what's" },
+    { "heres", "here's" }, { "theres", "there's" }, { "youre", "you're" },
+    { "youll", "you'll" }, { "youve", "you've" }, { "theyre", "they're" },
+    { "theyll", "they'll" }, { "theyve", "they've" }, { "id", "I'd" }
+  };
   public Decoder() {}
 
   /** Decode one immutable request. Each non-literal canonical candidate is
@@ -151,7 +203,8 @@ public final class Decoder
       && request.config.autocorrectEnabled;
 
     if (request.normalized.length() == 0)
-      return decode_next_words(request, personalization, displayEnabled, failure);
+      return decode_next_words(request, dictionary, personalization,
+          languageModel, displayEnabled, failure);
 
     Map<String, Accumulator> merged = new HashMap<String, Accumulator>();
     Accumulator literal = new Accumulator(request.normalized,
@@ -176,6 +229,8 @@ public final class Decoder
     boolean generateCandidates = inputLength >= 1 && boundedInput;
     PersonalizationStore.ReplacementRule replacementRule = null;
     CostTable costs = null;
+    String whitelistCanonical = null;
+    boolean literalAcronymOnly = false;
     if (generateCandidates && personalization != null)
     {
       try
@@ -210,9 +265,31 @@ public final class Decoder
         Cdict.Result exact = dictionary.find(request.normalized);
         if (exact.found)
         {
-          literal.sourceMask |= SOURCE_CDICT_EXACT;
-          literal.exactSurface = dictionary.word(exact.index);
-          literal.set_cdict_exact(exact.index, dictionary.freq(exact.index));
+          String exactWord = dictionary.word(exact.index);
+          int exactFrequency = dictionary.freq(exact.index);
+          if (exact.original_index != exact.index
+              && !normalize(exactWord).equals(request.normalized))
+          {
+            // The typed form only exists as a shortcut to another word
+            // (wierd -> weird): it is a misspelling, not a valid literal.
+            Accumulator target = accumulator_for(merged, exactWord);
+            if (target != null && is_whitelist_text(exactWord))
+            {
+              target.sourceMask |= SOURCE_CDICT_EXACT | SOURCE_WHITELIST;
+              target.exactSurface = exactWord;
+              target.set_cdict_exact(exact.index, exactFrequency);
+              whitelistCanonical = target.canonical;
+            }
+          }
+          else
+          {
+            literal.sourceMask |= SOURCE_CDICT_EXACT;
+            literal.exactSurface = exactWord;
+            literal.set_cdict_exact(exact.index, exactFrequency);
+            literalAcronymOnly = casing(request.typed) == Casing.LOWER
+              && exactWord.codePointCount(0, exactWord.length()) >= 2
+              && casing(exactWord) == Casing.UPPER;
+          }
         }
 
 
@@ -283,6 +360,7 @@ public final class Decoder
           collect_hunspell_contractions(
               hunspell, request.normalized, merged);
         }
+        collect_canonical_contractions(request.normalized, merged);
       }
       catch (RuntimeException e)
       {
@@ -364,12 +442,15 @@ public final class Decoder
       }
     }
 
+    int[] previousFollowers = context_followers(dictionary, languageModel,
+        previousWord, failure);
     if (generateCandidates && previousWord != null && languageModel != null)
     {
       try
       {
         collect_language_model_candidates(dictionary, hunspell, languageModel,
             priorWord, previousWord, merged);
+        collect_context_followers(dictionary, previousFollowers, merged);
       }
       catch (IllegalStateException e)
       {
@@ -387,11 +468,13 @@ public final class Decoder
           personalization == null ? 0f : personalization.touch_offset_y());
 
     List<Candidate> ranked = rank_candidates(request, merged, costs,
-        personalization, languageModel, priorWord, previousWord, failure);
+        personalization, languageModel, priorWord, previousWord,
+        previousFollowers, failure);
     Candidate literalCandidate = candidate_for_canonical(ranked,
         request.normalized);
     Candidate autocorrection = choose_autocorrection(request, ranked,
-        literalCandidate, autocorrectEnabled, failure.failure);
+        literalCandidate, autocorrectEnabled, failure.failure,
+        literalAcronymOnly);
     if (fast && !is_proven_fast_autocorrection(autocorrection))
       autocorrection = null;
     if (!fast && dictionary != null && costs != null
@@ -412,10 +495,11 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, priorWord, previousWord, failure);
+          languageModel, priorWord, previousWord, previousFollowers, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
-          literalCandidate, autocorrectEnabled, failure.failure);
+          literalCandidate, autocorrectEnabled, failure.failure,
+          literalAcronymOnly);
     }
     if (!fast && !boundaryPreview && hunspell != null && generateCandidates
         && literalCandidate != null
@@ -435,10 +519,11 @@ public final class Decoder
         failure.resource();
       }
       ranked = rank_candidates(request, merged, costs, personalization,
-          languageModel, priorWord, previousWord, failure);
+          languageModel, priorWord, previousWord, previousFollowers, failure);
       literalCandidate = candidate_for_canonical(ranked, request.normalized);
       autocorrection = choose_autocorrection(request, ranked,
-          literalCandidate, autocorrectEnabled, failure.failure);
+          literalCandidate, autocorrectEnabled, failure.failure,
+          literalAcronymOnly);
     }
     if (replacementRule != null)
       autocorrection = choose_replacement_autocorrection(
@@ -446,7 +531,9 @@ public final class Decoder
           autocorrectEnabled);
     boolean replacementApplied = replacementRule != null
       && autocorrection != null;
-    if (boundaryPreview && !replacementApplied
+    boolean whitelistApplied = autocorrection != null
+      && (autocorrection.sourceMask & SOURCE_WHITELIST) != 0;
+    if (boundaryPreview && !replacementApplied && !whitelistApplied
         && !is_safe_boundary_autocorrection(
           request, literalCandidate, autocorrection, ranked))
       autocorrection = null;
@@ -460,6 +547,11 @@ public final class Decoder
       ? query_emoji(emojiDictionary, request.normalized, failure) : null;
     if (autocorrection != null)
       promote_candidate(ranked, autocorrection.canonical);
+    else if (whitelistCanonical != null && literalCandidate != null
+        && !literalCandidate.learned)
+      // A valid literal with a packaged shortcut (cant -> can't) is kept on
+      // separators but its shortcut leads the strip for explicit acceptance.
+      promote_candidate(ranked, whitelistCanonical);
     Candidate[] words = displayEnabled && inputLength >= 2
       ? visible_words(ranked, request, personalization) : new Candidate[0];
 
@@ -474,14 +566,17 @@ public final class Decoder
   private static List<Candidate> rank_candidates(Request request,
       Map<String, Accumulator> merged, CostTable costs,
       PersonalizationStore personalization, LanguageModel languageModel,
-      String priorWord, String previousWord, FailureState failure)
+      String priorWord, String previousWord, int[] previousFollowers,
+      FailureState failure)
   {
     Scorer scorer = costs == null ? null : new Scorer(costs);
     List<Candidate> ranked = new ArrayList<Candidate>(merged.size());
     for (Accumulator accumulator : merged.values())
     {
+      add_unigram_frequency(accumulator, languageModel);
       add_personalization_metadata(accumulator, personalization, languageModel,
           priorWord, previousWord, failure);
+      add_context_follower_weight(accumulator, previousFollowers);
       Score score;
       if (accumulator.literal)
         score = Score.EXACT;
@@ -495,41 +590,103 @@ public final class Decoder
     return ranked;
   }
 
-  private static Result decode_next_words(Request request,
-      PersonalizationStore personalization, boolean displayEnabled,
-      FailureState failure)
+  private static Result decode_next_words(Request request, Cdict dictionary,
+      PersonalizationStore personalization, LanguageModel languageModel,
+      boolean displayEnabled, FailureState failure)
   {
     if (!displayEnabled || personalization == null)
       return new Result(request.key, request.typed, new Candidate[0], null,
           null, null, true, failure.complete(), failure.failure);
     try
     {
+      List<Candidate> words = new ArrayList<Candidate>(MAX_VISIBLE_WORDS);
+      Set<String> seen = new HashSet<String>();
       List<PersonalizationStore.ScoredWord> matches =
         personalization.suggest_next_words_with_counts(MAX_VISIBLE_WORDS);
-      int count = Math.min(matches.size(), MAX_VISIBLE_WORDS);
-      Candidate[] words = new Candidate[count];
-      for (int i = 0; i < count; i++)
+      for (PersonalizationStore.ScoredWord match : matches)
       {
-        PersonalizationStore.ScoredWord match = matches.get(i);
+        if (words.size() == MAX_VISIBLE_WORDS)
+          break;
         String canonical = normalize(match.word);
+        if (!seen.add(canonical))
+          continue;
         int unigram = personalization.word_count(canonical);
         int sourceMask = SOURCE_CONTEXT;
         if (unigram > 0)
           sourceMask |= SOURCE_PERSONAL;
         int total = clamp_score(-(long)256 * count_level(unigram)
             - (long)384 * count_level(match.count));
-        words[i] = new Candidate(canonical, match.word, sourceMask, -1, 0, i,
-            unigram, match.count, 0, 0, 0, 0, 0, 0, total,
-            Role.NEXT_WORD, false, unigram > 0, true);
+        words.add(new Candidate(canonical, match.word, sourceMask, -1, 0,
+            words.size(), unigram, match.count, 0, 0, 0, 0, 0, 0, total,
+            Role.NEXT_WORD, false, unigram > 0, true));
       }
-      return new Result(request.key, request.typed, words, null, null, null,
-          true, failure.complete(), failure.failure);
+      // Packaged context priors fill the remaining slots: trigram rows for
+      // the two previous words first, then bigram rows for the last word.
+      String previous = personalization.previous_word();
+      if (languageModel != null && previous != null)
+      {
+        String prior = personalization.previous_previous_word();
+        add_model_next_words(words, seen,
+            languageModel.following(prior, previous));
+        Map<String, Integer> following = new HashMap<String, Integer>();
+        for (Map.Entry<String, Integer> row
+            : languageModel.following(previous).entrySet())
+          following.put(row.getKey(), 2 * row.getValue());
+        int[] followers = context_followers(dictionary, languageModel,
+            previous, failure);
+        for (int rank = 0; rank < followers.length
+            && rank < NEXT_WORD_FOLLOWER_WEIGHTS.length; rank++)
+        {
+          String surface = dictionary.word(followers[rank]);
+          following.remove(normalize(surface));
+          following.put(surface, NEXT_WORD_FOLLOWER_WEIGHTS[rank]);
+        }
+        add_model_next_words(words, seen, following);
+      }
+      return new Result(request.key, request.typed,
+          words.toArray(new Candidate[0]), null, null, null, true,
+          failure.complete(), failure.failure);
     }
     catch (RuntimeException e)
     {
       failure.resource();
       return new Result(request.key, request.typed, new Candidate[0], null,
           null, null, true, failure.complete(), failure.failure);
+    }
+  }
+
+  private static void add_model_next_words(List<Candidate> words,
+      Set<String> seen, Map<String, Integer> following)
+  {
+    if (words.size() >= MAX_VISIBLE_WORDS || following.isEmpty())
+      return;
+    List<Map.Entry<String, Integer>> rows =
+      new ArrayList<Map.Entry<String, Integer>>(following.entrySet());
+    Collections.sort(rows, new Comparator<Map.Entry<String, Integer>>()
+        {
+          @Override
+          public int compare(Map.Entry<String, Integer> a,
+              Map.Entry<String, Integer> b)
+          {
+            int result = Integer.compare(b.getValue(), a.getValue());
+            return result != 0 ? result
+              : code_point_compare(a.getKey(), b.getKey());
+          }
+        });
+    for (Map.Entry<String, Integer> row : rows)
+    {
+      if (words.size() >= MAX_VISIBLE_WORDS)
+        return;
+      String canonical = normalize(row.getKey());
+      if (!seen.add(canonical))
+        continue;
+      String surface = "i'm".equals(canonical) ? "I'm"
+        : ("i".equals(canonical) ? "I" : row.getKey());
+      int weight = row.getValue();
+      words.add(new Candidate(canonical, surface, SOURCE_CONTEXT, -1, 0,
+          words.size(), 0, weight, 0, 0, 0, 0, 0, 0,
+          clamp_score(-(long)384 * count_level(weight)), Role.NEXT_WORD,
+          false, false, true));
     }
   }
 
@@ -637,6 +794,27 @@ public final class Decoder
         candidate.sourceMask |= SOURCE_HUNSPELL | SOURCE_CONTRACTION;
         candidate.set_hunspell(negative, rank);
       }
+    }
+  }
+
+  /** Inject canonical contractions when the typed word is exactly a known
+      uncontracted spelling. Whitelist-masked so autocorrect may pick them
+      even when hunspell lacks the surface (ive→I've, im→I'm). */
+  private static void collect_canonical_contractions(String normalized,
+      Map<String, Accumulator> merged)
+  {
+    if (normalized == null || !is_letters_only(normalized))
+      return;
+    for (String[] pair : CANONICAL_CONTRACTIONS)
+    {
+      if (!normalized.equalsIgnoreCase(pair[0]))
+        continue;
+      Accumulator candidate = accumulator_for(merged, pair[1]);
+      if (candidate == null)
+        continue;
+      candidate.sourceMask |= SOURCE_WHITELIST | SOURCE_CONTRACTION;
+      candidate.exactSurface = pair[1];
+      return;
     }
   }
 
@@ -857,6 +1035,75 @@ public final class Decoder
     return candidate;
   }
 
+  /** Ranked dictionary continuations of [previousWord], or none. */
+  private static int[] context_followers(Cdict dictionary,
+      LanguageModel languageModel, String previousWord, FailureState failure)
+  {
+    if (dictionary == null || languageModel == null || previousWord == null)
+      return new int[0];
+    try
+    {
+      Cdict.Result head = dictionary.find(previousWord);
+      return head.found ? languageModel.cdict_followers(head.index)
+        : new int[0];
+    }
+    catch (RuntimeException e)
+    {
+      failure.resource();
+      return new int[0];
+    }
+  }
+
+  private static void collect_context_followers(Cdict dictionary,
+      int[] followers, Map<String, Accumulator> merged)
+  {
+    for (int index : followers)
+    {
+      String surface = dictionary.word(index);
+      Accumulator candidate = accumulator_for(merged, surface);
+      if (candidate == null)
+        continue;
+      candidate.sourceMask |= SOURCE_CDICT_EXACT;
+      candidate.set_cdict_exact(index, dictionary.freq(index));
+    }
+  }
+
+  private static void add_context_follower_weight(Accumulator candidate,
+      int[] followers)
+  {
+    if (followers == null)
+      return;
+    for (int rank = 0; rank < followers.length
+        && rank < CONTEXT_FOLLOWER_WEIGHTS.length; rank++)
+    {
+      int index = followers[rank];
+      if (index != candidate.exactIndex && index != candidate.spatialIndex
+          && index != candidate.prefixIndex)
+        continue;
+      candidate.bigramCount = Math.max(candidate.bigramCount,
+          CONTEXT_FOLLOWER_WEIGHTS[rank]);
+      candidate.sourceMask |= SOURCE_CONTEXT;
+      return;
+    }
+  }
+
+  private static void add_unigram_frequency(Accumulator candidate,
+      LanguageModel languageModel)
+  {
+    if (languageModel == null)
+      return;
+    for (int index : new int[] { candidate.exactIndex, candidate.spatialIndex,
+        candidate.prefixIndex })
+    {
+      if (index < 0)
+        continue;
+      candidate.frequency8 = Math.max(candidate.frequency8,
+          languageModel.unigram(index));
+      if (candidate.cdictFrequency == 0)
+        candidate.cdictFrequency = languageModel.repaired_level(index, 0);
+    }
+  }
+
   private static void add_personalization_metadata(Accumulator candidate,
       PersonalizationStore personalization, LanguageModel languageModel,
       String priorWord, String previousWord, FailureState failure)
@@ -929,7 +1176,7 @@ public final class Decoder
   private static boolean is_proven_fast_autocorrection(Candidate candidate)
   {
     return candidate != null
-      && ((candidate.sourceMask & SOURCE_REPLACEMENT) != 0
+      && ((candidate.sourceMask & (SOURCE_REPLACEMENT | SOURCE_WHITELIST)) != 0
         || candidate.exactCorrectionCount > 0
         || (candidate.sourceMask & SOURCE_CONTEXTUAL_CORRECTION) != 0);
   }
@@ -996,6 +1243,14 @@ public final class Decoder
       List<Candidate> ranked, Candidate literal, boolean enabled,
       Failure failure)
   {
+    return choose_autocorrection(request, ranked, literal, enabled, failure,
+        false);
+  }
+
+  private static Candidate choose_autocorrection(Request request,
+      List<Candidate> ranked, Candidate literal, boolean enabled,
+      Failure failure, boolean literalAcronymOnly)
+  {
     if (!enabled || literal == null || request.codePointCount < 1
         || request.codePointCount > MAX_WORD_CODEPOINTS
         || !is_autocorrection_source_text(request)
@@ -1032,6 +1287,16 @@ public final class Decoder
     if (literal.unigramCount > 0)
       return repeatedExact == null ? null
         : present_candidate(repeatedExact, request, true);
+    Candidate whitelist = whitelist_correction(request, literal, ranked);
+    if (whitelist != null)
+      return present_candidate(whitelist, request, true);
+    if (literalAcronymOnly)
+    {
+      Candidate acronymRepair =
+        acronym_transposition_repair(request, literal, ranked);
+      if (acronymRepair != null)
+        return present_candidate(acronymRepair, request, true);
+    }
     if (contextualExact != null)
       return present_candidate(contextualExact, request, true);
     if (repeatedExact != null)
@@ -1074,8 +1339,18 @@ public final class Decoder
     Candidate best = null;
     Candidate runner = null;
     Candidate closestSpatial = null;
+    boolean betterCaseOnlyCandidate = false;
     for (Candidate candidate : ranked)
     {
+      // A stronger capitalized word (englis -> English) must not hand the
+      // correction to a weaker lowercase one (envois); keep the literal and
+      // let the strip offer the capitalized word.
+      if (best == null && candidate != literal
+          && casing(request.typed) == Casing.LOWER
+          && casing(candidate.surface) == Casing.INITIAL
+          && is_autocorrection_candidate_text(candidate, literal)
+          && candidate.recognized && is_safe_autocorrection_edit(candidate))
+        betterCaseOnlyCandidate = true;
       if (!is_autocorrection_candidate_text(candidate, literal)
           || !is_case_compatible_autocorrection(request, candidate)
           || !is_safe_autocorrection_edit(request, candidate)
@@ -1096,6 +1371,8 @@ public final class Decoder
       else if (runner == null)
         runner = candidate;
     }
+    if (betterCaseOnlyCandidate)
+      return null;
     Candidate primarySameLengthRepair =
       primary_same_length_repair_over_length_guesses(
         request, literal, best, ranked);
@@ -1135,6 +1412,56 @@ public final class Decoder
         && best.exactCorrectionCount < PROTECTED_LITERAL_EXACT_EVENTS)
       return null;
     return present_candidate(best, request, true);
+  }
+
+  /** A packaged shortcut target replaces an unrecognized, untaught literal
+      (LatinIME whitelist semantics). */
+  private static Candidate whitelist_correction(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.recognized || literal.learned)
+      return null;
+    for (Candidate candidate : ranked)
+      if (candidate != literal
+          && (candidate.sourceMask & SOURCE_WHITELIST) != 0
+          && is_case_compatible_autocorrection(request, candidate)
+          && !is_cold_short_all_caps_correction(request, candidate))
+        return candidate;
+    return null;
+  }
+
+  /** Lowercase input matching only an all-caps entry (nad -> NAD) yields to
+      a decisively more frequent adjacent transposition (nad -> and), but
+      not when the acronym is itself common (usb, rna, byu stay). */
+  private static Candidate acronym_transposition_repair(Request request,
+      Candidate literal, List<Candidate> ranked)
+  {
+    if (literal.learned || (literal.sourceMask & SOURCE_HUNSPELL) != 0)
+      return null;
+    for (Candidate candidate : ranked)
+      if (is_autocorrection_candidate_text(candidate, literal)
+          && is_case_compatible_autocorrection(request, candidate)
+          && candidate.recognized && candidate.completeEvidence
+          && candidate.editCount == 1
+          && candidate.editMask == EDIT_TRANSPOSITION
+          && candidate.cdictFrequency >= literal.cdictFrequency
+          && (candidate.frequency8 < 0 || literal.frequency8 < 0
+            || candidate.frequency8 >= literal.frequency8
+              + ACRONYM_REPAIR_FREQUENCY_GAP))
+        return candidate;
+    return null;
+  }
+
+  private static boolean is_whitelist_text(String word)
+  {
+    if (word.length() == 0 || word.startsWith(" ") || word.endsWith(" ")
+        || word.contains("  "))
+      return false;
+    for (String part : word.split(" "))
+      if (!(part.codePointCount(0, part.length()) == 1
+            ? is_letters_only(part) : is_word_text(part)))
+        return false;
+    return true;
   }
 
   private static Candidate regular_inflection_repair(Request request,
@@ -1467,8 +1794,11 @@ public final class Decoder
     {
       int candidateLength = candidate.canonical.codePointCount(
           0, candidate.canonical.length());
+      // A close one-edit length repair (ths: the vs this) is as much a
+      // competitor as a same-length word.
       if (candidate == selected || candidate == literal
-          || candidateLength != request.normalizedCodePointCount
+          || (candidateLength != request.normalizedCodePointCount
+            && !is_complete_one_edit_length_repair(candidate))
           || !is_autocorrection_candidate_text(candidate, literal)
           || !is_case_compatible_autocorrection(request, candidate)
           || !is_safe_autocorrection_edit(candidate))
@@ -1879,7 +2209,7 @@ public final class Decoder
       if ((best.sourceMask & SOURCE_HUNSPELL_PRIMARY) != 0
           && best.cdictFrequency >= candidate.cdictFrequency + 2)
         continue;
-      if (candidateGap <= LENGTH_DELTA_RANKING_PENALTY_Q8)
+      if (candidateGap <= COMPETING_LENGTH_REPAIR_GAP_Q8)
         return true;
     }
     return false;
@@ -2454,19 +2784,24 @@ public final class Decoder
           + (_x[candidatePosition] - _x[typedPosition]) * unitX;
         float candidateCenterY = touch.keyCenterY
           + (_y[candidatePosition] - _y[typedPosition]) * unitY;
-        float sigmaX = Math.max(touch.keyWidth * 0.55f, 1f);
-        float sigmaY = Math.max(touch.keyHeight * 0.55f, 1f);
         float dx = (touch.touchX - touch.keyWidth * touchOffsetX
-            - candidateCenterX) / sigmaX;
+            - candidateCenterX) / Math.max(touch.keyWidth, 1f);
         float dy = (touch.touchY - touch.keyHeight * touchOffsetY
-            - candidateCenterY) / sigmaY;
-        return round_q8(Math.min(64.0,
-            TOUCH_SUBSTITUTION_COST_SCALE * (dx * dx + dy * dy)));
+            - candidateCenterY) / Math.max(touch.keyHeight, 1f);
+        return proximity_cost_q8(dx * dx + dy * dy);
       }
 
+      // Layout coordinates use two units per key.
       float dx = _x[typedPosition] - _x[candidatePosition];
       float dy = _y[typedPosition] - _y[candidatePosition];
-      return round_q8(Math.min(64.0, dx * dx + dy * dy));
+      return proximity_cost_q8((dx * dx + dy * dy) / 4.0);
+    }
+
+    /** [squaredKeys] is the squared distance in key widths. */
+    private static int proximity_cost_q8(double squaredKeys)
+    {
+      return round_q8(Math.min(64.0,
+          PROXIMITY_BASE_COST + PROXIMITY_DISTANCE_COST * squaredKeys));
     }
 
     private static boolean valid_touch(TouchTrace.Entry touch)
@@ -2614,9 +2949,13 @@ public final class Decoder
             : costs.substitution(i - 1, candidate[j - 1]);
           set_path(current, j, previous, j - 1, substitution,
               exact ? 0 : 1, exact ? 0 : EDIT_SUBSTITUTION);
-          consider_path(current, j, previous, j, EXTRA_TAP_COST_Q8, 1,
+          consider_path(current, j, previous, j,
+              i > 1 && costs.typed[i - 1] == costs.typed[i - 2]
+                ? SAME_LETTER_EXTRA_TAP_COST_Q8 : EXTRA_TAP_COST_Q8, 1,
               EDIT_EXTRA_TAP);
-          consider_path(current, j, current, j - 1, OMISSION_COST_Q8, 1,
+          consider_path(current, j, current, j - 1,
+              j > 1 && candidate[j - 1] == candidate[j - 2]
+                ? SAME_LETTER_OMISSION_COST_Q8 : OMISSION_COST_Q8, 1,
               EDIT_OMISSION);
           if (i > 1 && j > 1
               && costs.typed[i - 2] == candidate[j - 1]
@@ -2715,6 +3054,8 @@ public final class Decoder
     int spatialIndex = -1;
     int prefixIndex = -1;
     int cdictFrequency;
+    /** Source unigram frequency 0..255, or -1 without a unigram table. */
+    int frequency8 = -1;
     int spatialRank = Integer.MAX_VALUE;
     int hunspellRank = Integer.MAX_VALUE;
     int prefixRank = Integer.MAX_VALUE;
@@ -2815,7 +3156,7 @@ public final class Decoder
       int contractionBonus = (sourceMask & SOURCE_CONTRACTION) != 0
         ? OMISSION_COST_Q8 : 0;
       long total = (long)score.spatialQ8 + sourcePenalty
-        + unknownLiteralPenalty - (long)128 * cdictFrequency
+        + unknownLiteralPenalty - frequency_bonus()
         - (long)256 * count_level(unigramCount)
         - (long)384 * count_level(bigramCount)
         - (long)CORRECTION_BONUS_Q8 * correctionWeight
@@ -2826,7 +3167,13 @@ public final class Decoder
           exactCorrectionCount, relatedCorrectionCount, correctionWeight,
           score.spatialQ8, score.editCount, score.editMask,
           clamp_score(total), role, recognized, learnedEvidence,
-          completeEvidence);
+          completeEvidence, frequency8);
+    }
+
+    private long frequency_bonus()
+    {
+      return frequency8 >= 0 ? (long)UNIGRAM_FREQUENCY_WEIGHT * frequency8
+        : (long)CDICT_LEVEL_WEIGHT * cdictFrequency;
     }
 
     private String surface()
@@ -2915,6 +3262,8 @@ public final class Decoder
     public final boolean recognized;
     public final boolean learned;
     public final boolean completeEvidence;
+    /** Pack unigram frequency 0..255, or -1 without a unigram table. */
+    public final int frequency8;
 
     private Candidate(String canonical_, String surface_, int sourceMask_,
         int cdictIndex_, int cdictFrequency_, int providerRank_,
@@ -2923,6 +3272,22 @@ public final class Decoder
         int editCount_, int editMask_, int totalQ8_, Role role_,
         boolean recognized_, boolean learned_, boolean completeEvidence_)
     {
+      this(canonical_, surface_, sourceMask_, cdictIndex_, cdictFrequency_,
+          providerRank_, unigramCount_, bigramCount_, exactCorrectionCount_,
+          relatedCorrectionCount_, correctionWeight_, spatialQ8_, editCount_,
+          editMask_, totalQ8_, role_, recognized_, learned_,
+          completeEvidence_, -1);
+    }
+
+    private Candidate(String canonical_, String surface_, int sourceMask_,
+        int cdictIndex_, int cdictFrequency_, int providerRank_,
+        int unigramCount_, int bigramCount_, int exactCorrectionCount_,
+        int relatedCorrectionCount_, int correctionWeight_, int spatialQ8_,
+        int editCount_, int editMask_, int totalQ8_, Role role_,
+        boolean recognized_, boolean learned_, boolean completeEvidence_,
+        int frequency8_)
+    {
+      frequency8 = frequency8_;
       canonical = canonical_;
       surface = surface_;
       sourceMask = sourceMask_;
@@ -2952,7 +3317,7 @@ public final class Decoder
           cdictFrequency, providerRank, unigramCount, bigramCount,
           exactCorrectionCount, relatedCorrectionCount, correctionWeight,
           spatialQ8, editCount, editMask, totalQ8, role, recognized, learned,
-          completeEvidence);
+          completeEvidence, frequency8);
     }
   }
   public static final class Result

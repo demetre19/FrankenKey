@@ -1030,6 +1030,50 @@ public class SharedDecoderTest
         new TouchTrace().snapshot());
   }
 
+
+  @Test
+  public void probe_strip_modal_rightswipe()
+      throws Exception
+  {
+    SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
+    long session = start(decoder, enabledConfig());
+    Decoder.RequestKey key = decoder.request(session, snapshot(1, "hello", false));
+    assertNotNull(key);
+    assertEquals("P1: presentation must be PENDING while typing",
+        SharedDecoder.Presentation.State.PENDING,
+        decoder.current_presentation().state);
+    SharedDecoder.Presentation ready = awaitReady(decoder, key);
+    assertTrue("P2: is_current after READY", decoder.is_current(key));
+    // simulate a commit (suggestion tap) then swipe-up learn path
+    SharedDecoder.CommitToken tok = decoder.prepare_commit(session, key, "hello", null);
+    assertNotNull("P3: prepare_commit on latest key", tok);
+    decoder.commit_prepared(tok);
+    Decoder.RequestKey k2 = decoder.current_key();
+    assertFalse("P4: old key stale after commit", decoder.is_current(key));
+    if (k2 != null)
+      awaitReady(decoder, k2);
+    assertEquals("P5: resubmitted key current", k2, decoder.current_key());
+    // right-swipe path: current_result on current_key
+    Decoder.Result r = decoder.current_result(k2);
+    assertNotNull("P6: current_result for right-swipe accept", r);
+  }
+
+
+  @Test
+  public void presentation_pending_ready_empty_drives_reader_strip()
+      throws Exception
+  {
+    SharedDecoder decoder = decoder(new QueuedHandler(), new RecordingCallback());
+    long session = start(decoder, enabledConfig());
+    Decoder.RequestKey key = decoder.request(session, snapshot(1, "hel", false));
+    // While typing, hasCandidates (PENDING) must hide the reader strip.
+    assertEquals(SharedDecoder.Presentation.State.PENDING,
+        decoder.current_presentation().state);
+    SharedDecoder.Presentation ready = awaitReady(decoder, key);
+    assertTrue(ready.result.words().length > 0 || ready.result.emoji != null
+        || ready.result.autocorrection != null);
+  }
+
   private static SharedDecoder.Presentation awaitReady(SharedDecoder decoder,
       Decoder.RequestKey key)
       throws Exception

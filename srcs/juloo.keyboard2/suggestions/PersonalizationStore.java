@@ -546,11 +546,10 @@ public final class PersonalizationStore
     String previousWord = _last_word;
     _prior_word = previousWord;
     _last_word = normalizedWord;
-    boolean persisted = record_touch_calibration(typedWord, normalizedWord,
+    // Ordinary commits only advance context and touch calibration; vocabulary
+    // grows solely through explicit teaching or verified corrections.
+    boolean changed = record_touch_calibration(typedWord, normalizedWord,
         normalize(correctedFrom), touches);
-    boolean changed = persisted;
-    if (persisted)
-      changed |= increment(_word_counts, normalizedWord);
     _generation++;
     if (changed)
       save();
@@ -933,6 +932,8 @@ public final class PersonalizationStore
   {
     if (word == null)
       return false;
+    if (is_email_token(word))
+      return word.codePointCount(0, word.length()) <= 64;
     int count = word.codePointCount(0, word.length());
     if (count < 2 || count > 32)
       return false;
@@ -953,6 +954,49 @@ public final class PersonalizationStore
         return false;
       apostrophe = true;
       offset = next;
+    }
+    return true;
+  }
+
+  /** Email addresses and bare domains are learnable so that typing their
+      prefix offers them in the candidate strip, like Gboard's email LM. */
+  public static boolean is_email_token(String word)
+  {
+    if (word == null)
+      return false;
+    int at = word.indexOf('@');
+    if (at >= 0)
+      return at > 0 && at == word.lastIndexOf('@')
+          && at < word.length() - 1
+          && is_email_local(word.substring(0, at))
+          && is_domainish(word.substring(at + 1));
+    return is_domainish(word);
+  }
+
+  static boolean is_email_local(String value)
+  {
+    if (value.length() == 0 || value.length() > 64)
+      return false;
+    for (int i = 0; i < value.length(); i++)
+    {
+      char c = value.charAt(i);
+      if (!Character.isLetterOrDigit(c) && c != '.' && c != '_' && c != '%'
+          && c != '+' && c != '-')
+        return false;
+    }
+    return true;
+  }
+
+  static boolean is_domainish(String value)
+  {
+    if (value.length() < 4 || value.length() > 253
+        || value.indexOf('.') < 0)
+      return false;
+    for (int i = 0; i < value.length(); i++)
+    {
+      char c = value.charAt(i);
+      if (!Character.isLetterOrDigit(c) && c != '.' && c != '-')
+        return false;
     }
     return true;
   }
@@ -1694,11 +1738,13 @@ public final class PersonalizationStore
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
   private static final int MAX_REPLACEMENT_RULES = 512;
   private static final int CORRECTION_WEIGHT_CAP = 8;
-  private static final int RELATED_SUBSTITUTION_COST_Q8 = 5 * 256;
+  /** Fixed key-pair cost that still means "adjacent key": neighbours cost
+      5.9 Q8 (side) and 6.9 Q8 (diagonal); the next ring costs 14.9 Q8+. */
+  private static final int RELATED_SUBSTITUTION_COST_Q8 = 7 * 256;
   private static final int MIN_TOUCH_SAMPLES = 20;
   private static final int MAX_TOUCH_SAMPLES = 4096;
   private static final float MAX_TOUCH_OFFSET = 0.2f;
-  private static final int VOCABULARY_POLICY_VERSION = 1;
+  private static final int VOCABULARY_POLICY_VERSION = 2;
   public static final String PREF_WORDS = "typing_model_words";
   public static final String PREF_WORD_SURFACES =
     "typing_model_word_surfaces_v1";

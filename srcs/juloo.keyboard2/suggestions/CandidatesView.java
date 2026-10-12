@@ -40,6 +40,9 @@ public class CandidatesView extends LinearLayout
     new CandidateRole[WORD_PAGES][WORDS_PER_PAGE];
   int _page = 0;
   Decoder.RequestKey _request_key = null;
+  /** Domain pills while composing "local@domain" own the strip; taps
+      commit via [email_suggestion_entered] without a decoder key. */
+  boolean _email_mode = false;
 
 
   /** Text views showing the candidates in [_items]. Text views visibility is
@@ -110,6 +113,25 @@ public class CandidatesView extends LinearLayout
       _status_no_dict.setVisibility(View.GONE);
   }
 
+  /** Domain completions after '@'. When non-empty the pills own the strip
+      regardless of decoder state; taps commit directly via
+      email_suggestion_entered. */
+  public void set_email_completions(java.util.List<String> completions)
+  {
+    if (completions == null || completions.isEmpty())
+      return;
+    _email_mode = true;
+    int count = Math.min(completions.size(), WORDS_PER_PAGE * WORD_PAGES);
+    for (int i = 0; i < count; i++)
+    {
+      int page = i / WORDS_PER_PAGE;
+      int slot = i % WORDS_PER_PAGE;
+      _page_items[page][slot] = completions.get(i);
+      _page_roles[page][slot] = CandidateRole.WORD;
+    }
+    render_page(0, false);
+  }
+
   static CandidateRole display_role(Decoder.Role role)
   {
     switch (role)
@@ -136,6 +158,7 @@ public class CandidatesView extends LinearLayout
   void clear_candidates()
   {
     _request_key = null;
+    _email_mode = false;
     _page = 0;
     for (int page = 0; page < WORD_PAGES; page++)
       for (int slot = 0; slot < WORDS_PER_PAGE; slot++)
@@ -370,6 +393,12 @@ public class CandidatesView extends LinearLayout
   void dispatch_accept(int item_index, CandidateRole role)
   {
     String it = _items[item_index];
+    if (_email_mode)
+    {
+      if (it != null)
+        Config.globalConfig().handler.email_suggestion_entered(it);
+      return;
+    }
     Decoder.RequestKey key = _request_key;
     if (it == null || key == null || role == null
         || role == CandidateRole.NONE)
@@ -399,6 +428,12 @@ public class CandidatesView extends LinearLayout
             // release still performs the default accept so a plain long tap
             // keeps its pre-seam outcome unless a lane registers a handler.
             String it = _items[item_index];
+            if (_email_mode)
+            {
+              if (it != null)
+                Config.globalConfig().handler.email_suggestion_entered(it);
+              return false;
+            }
             Decoder.RequestKey key = _request_key;
             CandidateRole role = _roles[item_index];
             if (it == null || key == null || role == CandidateRole.NONE)
@@ -417,7 +452,7 @@ public class CandidatesView extends LinearLayout
           public boolean onTouch(View _v, MotionEvent event)
           {
             Decoder.RequestKey key = _request_key;
-            if (key == null)
+            if (key == null && !_email_mode)
               return false;
             switch (event.getActionMasked())
             {
@@ -434,6 +469,12 @@ public class CandidatesView extends LinearLayout
                 String it = _items[item_index];
                 if (it == null || Math.abs(dy) < swipe_threshold_px())
                   return false;
+                if (_email_mode)
+                {
+                  if (dy >= 0)
+                    Config.globalConfig().handler.email_suggestion_entered(it);
+                  return true;
+                }
                 CandidateRole role = _roles[item_index];
                 if (role == CandidateRole.LEARNED_FEEDBACK
                     || role == CandidateRole.UNLEARNED_FEEDBACK)

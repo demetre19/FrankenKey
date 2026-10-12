@@ -227,6 +227,49 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void touch_backed_ordinary_commits_never_enter_vocabulary()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    TouchTrace trace = new TouchTrace();
+    for (int i = 0; i < 3; ++i)
+      trace.add(TouchTrace.entry(52f, 50f, 50f, 50f, 100f, 80f));
+    for (int i = 0; i < 20; i++)
+      store.record_commit("nad", null, "nad", trace.snapshot());
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    assertEquals("The IME commit path must not learn literals it merely saw.",
+        0, reloaded.word_count("nad"));
+    assertFalse(reloaded.is_learned("nad"));
+    assertEquals(Collections.emptyList(), reloaded.learned_words());
+    assertEquals("Touch calibration still learns from accepted literals.",
+        60, PersonalizationStore.stats(_prefs).calibratedTouches);
+  }
+
+  @Test
+  public void vocabulary_policy_v2_removes_words_learned_by_ordinary_commits()
+  {
+    _prefs.edit()
+      .putStringSet(PersonalizationStore.PREF_WORDS,
+          setOf("nad\t12", "wierd\t3", "zebra\t1", "the\t2"))
+      .putStringSet(PersonalizationStore.PREF_TAUGHT_WORDS, setOf("zebra"))
+      .putStringSet(PersonalizationStore.PREF_CORRECTIONS,
+          setOf("teh\tthe\t2"))
+      .putInt(PersonalizationStore.PREF_VOCABULARY_POLICY_VERSION, 1)
+      .putInt(PersonalizationStore.PREF_TOUCH_SAMPLES, 9)
+      .commit();
+
+    PersonalizationStore migrated = new PersonalizationStore(_prefs);
+
+    assertEquals(0, migrated.word_count("nad"));
+    assertEquals(0, migrated.word_count("wierd"));
+    assertEquals(Arrays.asList("zebra"), migrated.taught_words());
+    assertEquals(Arrays.asList("the"), migrated.learned_words());
+    assertEquals(9, PersonalizationStore.stats(_prefs).calibratedTouches);
+    assertEquals(2, _prefs.getInt(
+          PersonalizationStore.PREF_VOCABULARY_POLICY_VERSION, 0));
+  }
+
+  @Test
   public void vocabulary_policy_migration_removes_passive_history_once()
   {
     _prefs.edit()
@@ -254,7 +297,7 @@ public class SuggestionPersonalizationTest
     assertEquals(0, migrated.bigram_count("kn", "passive"));
     assertEquals("Touch calibration is unrelated to vocabulary pollution and must be preserved.",
         17, PersonalizationStore.stats(_prefs).calibratedTouches);
-    assertEquals(1, _prefs.getInt(
+    assertEquals(2, _prefs.getInt(
           PersonalizationStore.PREF_VOCABULARY_POLICY_VERSION, 0));
 
     migrated.record_selected_correction("sally", "silly");

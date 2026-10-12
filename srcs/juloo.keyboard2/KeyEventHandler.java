@@ -768,13 +768,28 @@ public final class KeyEventHandler
     _typedword.typed(" ");
   }
 
+  /** Domain pill tapped while composing an email address: append the
+      domain (or replace the partial domain after '@') — no decoder
+      request needed. */
+  @Override
+  public void email_suggestion_entered(String text)
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    commit_correction(text, " ", false);
+  }
+
   @Override
   public void suggestion_swiped_up(Decoder.RequestKey key, String text)
   {
     commit_pending_replacement();
     clear_manual_correction();
-    if (_decoder.is_current(key))
-      toggle_learned_word(key, text);
+    /* Learn the word the user actually typed (current snapshot), not the
+       swiped candidate surface — a stale request key paired with a newer
+       typed word was teaching the wrong literal. */
+    Decoder.RequestKey current = _decoder.current_key();
+    if (current != null && _decoder.is_current(current))
+      toggle_learned_word(current, _typedword.get());
   }
 
   @Override
@@ -791,6 +806,86 @@ public final class KeyEventHandler
     commit_pending_replacement();
     clear_manual_correction();
     unlearn_current_word();
+  }
+
+  /**
+   * Long right swipe: commit the decoder's autocorrection, else its top
+   * suggestion, followed by a space, through the same path as tapping a
+   * suggestion. Without a typed word or a ready result, act as the space bar
+   * so the separator autocorrect path still applies. Never waits on decoding.
+   */
+  @Override
+  public void keyboard_swiped_right()
+  {
+    cancel_pending_backspace_fallback();
+    commit_pending_replacement();
+    Decoder.RequestKey key = _decoder.current_key();
+    CurrentlyTypedWord.Snapshot swipe_snapshot = _typedword.snapshot();
+    String accepted = right_swipe_accept_text(key);
+    if (accepted != null && swipe_snapshot.word.length() == 0)
+    {
+      /* Boundary accept (next-word): bypass suggestion_entered — a stale
+         key fails is_current() silently. Direct, deduped commit. */
+      if (commit_boundary_prediction(accepted))
+        return;
+    }
+    if (accepted != null)
+    {
+      suggestion_entered(key, accepted);
+      return;
+    }
+    key_up(KeyValue.getKeyByName("space"), _mods, null);
+  }
+
+  String right_swipe_accept_text(Decoder.RequestKey key)
+  {
+    CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
+    if (key == null || snapshot.completeness
+          == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
+      return null;
+    Decoder.Result result = _decoder.current_result(key);
+    if (result == null)
+      return null;
+    /* Empty boundary: right-swipe accepts the top next-word prediction. */
+    if (snapshot.word.length() == 0)
+    {
+      Decoder.Candidate[] boundary_words = result.words();
+      return boundary_words.length > 0
+          && boundary_words[0].role == Decoder.Role.NEXT_WORD
+        ? boundary_words[0].surface : null;
+    }
+    if (result.autocorrection != null)
+      return result.autocorrection.surface;
+    Decoder.Candidate[] words = result.words();
+    if (words.length == 0 || words[0].role == Decoder.Role.NEXT_WORD)
+      return null;
+    // A valid or learned word that autocorrect kept stays as typed; only its
+    // dictionary shortcut (cant -> can't) may replace it.
+    boolean literalValid = result.literal != null
+      && (result.literal.recognized || result.literal.learned);
+    if (literalValid
+        && (words[0].sourceMask & Decoder.SOURCE_WHITELIST) == 0)
+      return snapshot.word;
+    return words[0].surface;
+  }
+
+
+  /** Commit a boundary next-word prediction directly, deduping the
+      separator: editor already ending in " " gets "word ", otherwise
+      " word ". Bypasses suggestion_entered/commit_correction so a stale
+      key can never mangle the insert. */
+  private boolean commit_boundary_prediction(String word)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(1, 0);
+    String insertion = (before != null && " ".contentEquals(before))
+      ? word + " " : " " + word + " ";
+    if (!conn.commitText(insertion, 1))
+      return false;
+    _typedword.typed(insertion, null);
+    return true;
   }
 
   void confirm_learn_current_word()
@@ -824,22 +919,11 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
-    final long session = _decoder_session;
-    _recv.review_unknown_word(word, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key))
-              learn_word(key, word);
-          }
-        }, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key))
-              set_replacement(key, word, null);
-          }
-        });
+    // The swipe-up gesture is already an explicit learn intent — showing the
+    // review dialog here stole IME focus, hid the keyboard, and its button
+    // presses silently dropped (the request key is stale by click time).
+    // Learn directly; the candidates row shows the learned feedback pill.
+    learn_word_now(_decoder_session, key, word);
   }
 
   void review_repeated_unknown_word(final long session, final String word)
@@ -847,23 +931,9 @@ public final class KeyEventHandler
     if (_decoder_session != session || !should_use_personalization()
         || !can_explicitly_teach(word))
       return;
-    _recv.review_unknown_word(word, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && should_use_personalization()
-                && can_explicitly_teach(word))
-              _decoder.learn_word(session, word);
-          }
-        }, new Runnable()
-        {
-          @Override public void run()
-          {
-            if (_decoder_session == session && should_use_personalization()
-                && can_explicitly_teach(word))
-              _decoder.set_replacement(session, word, null);
-          }
-        });
+    // Repeated unknown commits: direct learn — the modal focus-loss bug
+    // made it unsafe (PWA editors reset; buttons silently dropped).
+    _decoder.learn_word(session, word);
   }
 
   void learn_word(Decoder.RequestKey key, String word)
@@ -871,10 +941,35 @@ public final class KeyEventHandler
     if (key == null || !_decoder.is_current(key)
         || !can_explicitly_teach(word))
       return;
+    learn_word_now(_decoder_session, key, word);
+  }
+
+  /** Learn a word after the user confirmed in the review dialog. Unlike
+      learn_word() this does not require the request key to still be
+      current: the dialog takes focus, so by the time the user taps a
+      button the key has usually advanced. The session epoch is the
+      meaningful guard. */
+  void learn_word_now(long session, Decoder.RequestKey key, String word)
+  {
+    if (!can_explicitly_teach(word))
+      return;
     if (should_use_personalization())
-      _decoder.learn_word(_decoder_session, word);
+      _decoder.learn_word(session, word);
+    else if (key != null)
+      _recv.confirm_teach_word(key, word);
+  }
+
+  /** Same contract as learn_word_now for the replacement ("best match")
+      button: session-scoped, no is_current requirement. */
+  void set_replacement_now(long session, Decoder.RequestKey key,
+      String source, String target)
+  {
+    if (!can_explicitly_teach(source))
+      return;
+    if (should_use_personalization())
+      _decoder.set_replacement(session, source, target);
     else
-      _recv.explicitly_teach_word(key, word);
+      _recv.explicitly_set_replacement(source, target);
   }
 
   void set_replacement(Decoder.RequestKey key, String source, String target)
@@ -892,17 +987,10 @@ public final class KeyEventHandler
   {
     if (key == null || !_decoder.is_current(key) || !can_change_learning(word))
       return;
-    final long session = _decoder_session;
-    _recv.confirm_unlearn_word(word, new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            if (_decoder_session == session && _decoder.is_current(key)
-                && can_change_learning(word))
-              _decoder.unlearn_word(session, key, word);
-          }
-        });
+    // Same as learn: the confirm dialog kills IME focus and its button
+    // presses no-op because the request key is stale at click time.
+    // The swipe gesture is already explicit intent — apply directly.
+    _decoder.unlearn_word(_decoder_session, key, word, false);
   }
 
   void toggle_learned_word(Decoder.RequestKey key, String word)
@@ -1063,9 +1151,32 @@ public final class KeyEventHandler
       return;
     }
     update_editor_context();
+    if (snapshot.word.length() == 0 && !snapshot.hasSelection
+        && _config.editor_config.should_use_personalization)
+      learn_email_before_cursor();
     _current_request_key = _decoder.request(_decoder_session, snapshot);
   }
 
+
+  /** When the user finishes an email address (boundary after
+      local@domain), teach it and its domain to the personalization model
+      so both appear as suggestions later. */
+  private void learn_email_before_cursor()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    CharSequence before = conn.getTextBeforeCursor(80, 0);
+    String email = juloo.keyboard2.suggestions.EmailCompletions
+        .trailing_email(before);
+    if (email == null)
+      return;
+    _decoder.learn_word(_decoder_session, email);
+    String domain = juloo.keyboard2.suggestions.EmailCompletions
+        .domain_of(email);
+    if (domain != null)
+      _decoder.learn_word(_decoder_session, domain);
+  }
   @Override
   public void typing_assistance_data_cleared()
   {
@@ -2503,6 +2614,7 @@ public final class KeyEventHandler
       && !uses_termux_raw_events();
   }
 
+
   private boolean has_plain_space_before_cursor()
   {
     InputConnection conn = _recv.getCurrentInputConnection();
@@ -2659,7 +2771,10 @@ public final class KeyEventHandler
         ? literal_token
         : _decoder.prepare_selected_correction(_decoder_session, key,
             correction.surface, snapshot.word);
-    boolean should_capitalize_i = correction == null && _config != null
+    /* Standalone "i" capitalizes even when the decoder proposes a generic
+       correction (in/is/it); that correction is almost never intended for
+       a single letter. */
+    boolean should_capitalize_i = _config != null
       && _config.autocapitalisation
       && _config.editor_config.autocapitalise_standalone_i
       && should_commit_typed_word() && "i".equals(snapshot.word);
@@ -2667,7 +2782,19 @@ public final class KeyEventHandler
       should_record && should_capitalize_i
       ? _decoder.prepare_commit(_decoder_session, key, "I", null)
       : null;
-    if (correction != null)
+    if (should_capitalize_i)
+    {
+      _current_request_key = null;
+      if (replace_standalone_i(separator))
+      {
+        _autocap.text_replaced(1, "I" + separator);
+        _typedword.typed(separator);
+        commit_prepared(capitalized_token);
+      }
+      else if (send_text(separator))
+        commit_prepared(literal_token);
+    }
+    else if (correction != null)
     {
       _current_request_key = null;
       if (commit_correction(correction.surface, separator,
@@ -2678,18 +2805,6 @@ public final class KeyEventHandler
         else
           stage_pending_replacement(correction_token, literal_token,
               snapshot.word, correction.surface, separator, false);
-      }
-      else if (send_text(separator))
-        commit_prepared(literal_token);
-    }
-    else if (should_capitalize_i)
-    {
-      _current_request_key = null;
-      if (replace_standalone_i(separator))
-      {
-        _autocap.text_replaced(1, "I" + separator);
-        _typedword.typed(separator);
-        commit_prepared(capitalized_token);
       }
       else if (send_text(separator))
         commit_prepared(literal_token);
@@ -2908,6 +3023,9 @@ public final class KeyEventHandler
         Runnable positive_action) {}
     public default boolean explicitly_teach_word(Decoder.RequestKey key,
         String word) { return false; }
+    /** Confirmed-in-dialog teach: skips the stale is_current key guard. */
+    public default boolean confirm_teach_word(Decoder.RequestKey key,
+        String word) { return explicitly_teach_word(key, word); }
     public default boolean explicitly_set_replacement(
         String source, String target) { return false; }
     public default void review_unknown_word(String word,

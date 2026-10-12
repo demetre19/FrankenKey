@@ -18,7 +18,6 @@ import android.preference.TwoStatePreference;
 import android.preference.PreferenceActivity;
 import android.content.SharedPreferences;
 import android.preference.PreferenceCategory;
-import android.preference.PreferenceScreen;
 import android.view.LayoutInflater;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
@@ -40,6 +39,7 @@ public class SettingsActivity extends PreferenceActivity
   private static final int REQUEST_EXPORT_SETTINGS_BACKUP = 55;
   private static final int REQUEST_IMPORT_SETTINGS_BACKUP = 56;
   private static final int REQUEST_RECORD_AUDIO_PERMISSION = 57;
+  private static final int REQUEST_READ_CONTACTS_PERMISSION = 58;
   private static final String SETTINGS_BACKUP_FILENAME =
     "frankenkey-settings-backup.json";
   static final String EXTRA_REQUEST_SCREENSHOT_PERMISSION =
@@ -51,6 +51,8 @@ public class SettingsActivity extends PreferenceActivity
   private ReleaseUpdater _releaseUpdater;
   private EditText _settingsSearch;
   private SettingsListAdapter _settingsAdapter;
+  private boolean _adapterGuardInstalled;
+  private ListAdapter _styledListAdapter;
   private boolean _openExtraKeysBarWhenFocused;
   @Override
   public void onCreate(Bundle savedInstanceState)
@@ -74,6 +76,7 @@ public class SettingsActivity extends PreferenceActivity
     setupTypingAssistancePreferences();
     setupVoiceTypingPreference();
     setupClipboardPreferences();
+    setupContactEmailPreference();
     setupBackupPreferences();
     queueExtraKeysBarManager(getIntent());
     requestScreenshotPermissionFromIntent();
@@ -189,6 +192,18 @@ public class SettingsActivity extends PreferenceActivity
       setMultimodalVoiceTypingEnabled(granted);
       if (!granted)
         Toast.makeText(this, R.string.voice_typing_permission_denied,
+            Toast.LENGTH_SHORT).show();
+      return;
+    }
+    if (requestCode == REQUEST_READ_CONTACTS_PERMISSION)
+    {
+      boolean granted = grantResults.length > 0
+        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+      setContactEmailSuggestionsEnabled(granted);
+      if (granted)
+        import_contact_emails();
+      else
+        Toast.makeText(this, R.string.contacts_permission_denied,
             Toast.LENGTH_SHORT).show();
       return;
     }
@@ -350,25 +365,12 @@ public class SettingsActivity extends PreferenceActivity
               android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
         return true;
       });
-    hideEmptySmartTypingCategories();
-  }
-
-  /** Detach the Smart typing placeholder categories that are still empty at
-      inflation so the sub-screen opens blank; a lane that declares children
-      inside its [ti_*_category] makes it non-empty and it stays. */
-  private void hideEmptySmartTypingCategories()
-  {
-    Preference p = findPreference("ti_smart_typing");
-    if (!(p instanceof PreferenceScreen))
-      return;
-    PreferenceScreen screen = (PreferenceScreen)p;
-    for (int i = screen.getPreferenceCount() - 1; i >= 0; --i)
-    {
-      Preference child = screen.getPreference(i);
-      if (child instanceof PreferenceCategory
-          && ((PreferenceCategory)child).getPreferenceCount() == 0)
-        screen.removePreference(child);
-    }
+    Preference ttsOptions = findPreference("reader_tts_options");
+    if (ttsOptions != null)
+      ttsOptions.setOnPreferenceClickListener(preference -> {
+        startActivity(new Intent(this, ReaderActivity.class));
+        return true;
+      });
   }
 
   private void setupVoiceTypingPreference()
@@ -436,6 +438,127 @@ public class SettingsActivity extends PreferenceActivity
     Preference preference = findPreference("multimodal_voice_typing");
     if (preference instanceof TwoStatePreference)
       ((TwoStatePreference)preference).setChecked(enabled);
+  }
+
+
+  private void setupContactEmailPreference()
+  {
+    Preference preference = findPreference("contact_email_suggestions");
+    if (preference == null)
+      return;
+    preference.setOnPreferenceChangeListener((_preference, value) -> {
+        if (!Boolean.TRUE.equals(value))
+          return true;
+        if (hasContactsPermission())
+        {
+          import_contact_emails();
+          return true;
+        }
+        showContactsPermissionDisclosure();
+        return false;
+      });
+  }
+
+  private boolean hasContactsPermission()
+  {
+    return VERSION.SDK_INT < 23
+      || checkSelfPermission(Manifest.permission.READ_CONTACTS)
+        == PackageManager.PERMISSION_GRANTED;
+  }
+
+  private void showContactsPermissionDisclosure()
+  {
+    new AlertDialog.Builder(this)
+      .setTitle(R.string.contacts_permission_title)
+      .setMessage(R.string.contacts_permission_message)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.contacts_permission_continue,
+          (_dialog, _which) -> requestContactsPermission())
+      .show();
+  }
+
+  private void requestContactsPermission()
+  {
+    if (VERSION.SDK_INT >= 23)
+      requestPermissions(new String[]{Manifest.permission.READ_CONTACTS},
+          REQUEST_READ_CONTACTS_PERMISSION);
+    else
+    {
+      setContactEmailSuggestionsEnabled(true);
+      import_contact_emails();
+    }
+  }
+
+  private void setContactEmailSuggestionsEnabled(boolean enabled)
+  {
+    getPreferenceManager().getSharedPreferences().edit()
+      .putBoolean("contact_email_suggestions", enabled).apply();
+    Preference preference = findPreference("contact_email_suggestions");
+    if (preference instanceof TwoStatePreference)
+      ((TwoStatePreference)preference).setChecked(enabled);
+  }
+
+  /** Learn every contact email address and its domain so they surface in the
+      suggestion strip like any other learned word. Runs off the UI thread. */
+  private void import_contact_emails()
+  {
+    final SharedPreferences personalizationPrefs =
+      android.preference.PreferenceManager.getDefaultSharedPreferences(this);
+    new Thread(() ->
+    {
+      java.util.Set<String> emails = new java.util.HashSet<String>();
+      try
+      {
+        android.database.Cursor cursor = getContentResolver().query(
+            android.provider.ContactsContract.CommonDataKinds.Email
+              .CONTENT_URI,
+            new String[]{
+              android.provider.ContactsContract.CommonDataKinds.Email.ADDRESS},
+            null, null, null);
+        if (cursor != null)
+        {
+          try
+          {
+            while (cursor.moveToNext())
+            {
+              String address = cursor.getString(0);
+              if (address != null)
+                emails.add(address.trim().toLowerCase());
+            }
+          }
+          finally
+          {
+            cursor.close();
+          }
+        }
+      }
+      catch (RuntimeException ignored) {}
+
+      juloo.keyboard2.suggestions.PersonalizationStore store =
+        new juloo.keyboard2.suggestions.PersonalizationStore(
+            personalizationPrefs);
+      int learned = 0;
+      for (String email : emails)
+      {
+        if (!juloo.keyboard2.suggestions.PersonalizationStore
+            .is_email_token(email))
+          continue;
+        if (store.learn_word(email))
+          learned++;
+        String domain = juloo.keyboard2.suggestions.EmailCompletions
+            .domain_of(email);
+        if (domain != null)
+          store.learn_word(domain);
+      }
+      juloo.keyboard2.suggestions.PersonalizationStore
+        .notify_external_change(personalizationPrefs);
+      final int count = learned;
+      final boolean any = !emails.isEmpty();
+      runOnUiThread(() -> Toast.makeText(this,
+          any ? getString(R.string.contacts_import_done, count)
+              : getString(R.string.contacts_import_empty),
+          Toast.LENGTH_LONG).show());
+    }).start();
   }
 
   private void setupClipboardPreferences()
@@ -560,6 +683,28 @@ public class SettingsActivity extends PreferenceActivity
   private void styleSettingsList()
   {
     ListView list = getListView();
+    // The framework re-binds the raw preference adapter whenever the window
+    // re-attaches (e.g. IME opening for the search field), wiping the styled
+    // wrapper. Restore it on the next layout if that happens.
+    if (!_adapterGuardInstalled)
+    {
+      _adapterGuardInstalled = true;
+      final int headerPad = dp(20);
+      list.addOnLayoutChangeListener((view, l, t, r, b, oldL, oldT, oldR,
+          oldB) -> {
+        if (_settingsSearch != null)
+        {
+          View header = (View)_settingsSearch.getParent();
+          if (header != null && header.getPaddingStart() < headerPad)
+            header.setPadding(headerPad, header.getPaddingTop(), headerPad,
+                header.getPaddingBottom());
+        }
+        ListAdapter current = getListView().getAdapter();
+        if (_styledListAdapter != null && current != null
+            && current != _styledListAdapter)
+          getListView().post(this::styleSettingsList);
+      });
+    }
     boolean lightTheme = isLightTheme();
     int horizontal = settingsSidePadding();
     list.setPadding(0, list.getPaddingTop(), 0,
@@ -587,6 +732,7 @@ public class SettingsActivity extends PreferenceActivity
             + list.getHeaderViewsCount(), id);
     });
     list.setAdapter(_settingsAdapter);
+    _styledListAdapter = list.getAdapter();
   }
 
   private boolean isLightTheme()

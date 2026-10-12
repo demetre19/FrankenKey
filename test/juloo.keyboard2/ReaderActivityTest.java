@@ -403,8 +403,6 @@ public class ReaderActivityTest
     View ai = transport.findViewById(R.id.reader_transport_ai);
     View clipboard = transport.findViewById(R.id.reader_transport_clipboard);
     View library = transport.findViewById(R.id.reader_transport_library);
-    View fixGrammar = transport.findViewById(
-        R.id.reader_transport_fix_grammar);
     int textButtonHeight = Math.round(40f *
         context.getResources().getDisplayMetrics().density);
     int actionGap = Math.round(8f *
@@ -413,7 +411,7 @@ public class ReaderActivityTest
         context.getResources().getDisplayMetrics().density);
     int iconSize = Math.round(24f *
         context.getResources().getDisplayMetrics().density);
-    View[] iconActions = { voice, settings, ai, fixGrammar };
+    View[] iconActions = { voice, settings, ai };
     for (View view : iconActions)
     {
       ImageButton iconButton = (ImageButton)view;
@@ -442,8 +440,7 @@ public class ReaderActivityTest
         textButtonHeight, libraryButton.getLayoutParams().height);
     assertEquals("Library is a text button, not another file icon.",
         "Library", libraryButton.getText().toString());
-    View[] stripActions = { voice, settings, ai, fixGrammar, clipboard,
-        library };
+    View[] stripActions = { voice, settings, ai, clipboard, library };
     for (View view : stripActions)
       assertFalse("Every strip action announces its purpose.",
           view.getContentDescription().toString().isEmpty());
@@ -470,10 +467,6 @@ public class ReaderActivityTest
         R.drawable.ic_reader_ai,
         layoutAttributeResource(context, R.layout.reader_transport_strip,
           R.id.reader_transport_ai, "src"));
-    assertEquals("Fix grammar uses the pen-line icon.",
-        R.drawable.snippet_icon_pen_line,
-        layoutAttributeResource(context, R.layout.reader_transport_strip,
-          R.id.reader_transport_fix_grammar, "src"));
     int halfGap = actionGap / 2;
     for (View action : stripActions)
     {
@@ -488,13 +481,11 @@ public class ReaderActivityTest
         actions.indexOfChild(voice));
     assertEquals("Settings follows Voice.", 1,
         actions.indexOfChild(settings));
-    assertEquals("Fix grammar is the compact icon after Settings.", 2,
-        actions.indexOfChild(fixGrammar));
-    assertEquals("Read follows Fix grammar.", 3,
+    assertEquals("Read follows Settings.", 2,
         actions.indexOfChild(clipboard));
-    assertEquals("Library follows Read.", 4,
+    assertEquals("Library follows Read.", 3,
         actions.indexOfChild(library));
-    assertEquals("AI stays last on the right edge.", 5,
+    assertEquals("AI stays last on the right edge.", 4,
         actions.indexOfChild(ai));
     HorizontalScrollView actionsScroll = (HorizontalScrollView)
         transport.findViewById(R.id.reader_transport_actions_scroll);
@@ -566,32 +557,18 @@ public class ReaderActivityTest
   }
 
   @Test
-  public void keyboard_reader_actions_appear_only_for_an_empty_readable_editor()
+  public void keyboard_reader_actions_rest_when_idle()
   {
-    assertTrue("An enabled Reader exposes actions in an empty readable editor.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
-    assertFalse("Reader actions stay absent until the user enables them.",
-        Keyboard2.reader_entry_visible(
-          false, true, true, false, false, false));
-    assertFalse("The first editor text immediately hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, false, false, false, false));
-    assertFalse("Composing text hides both Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, true, false, false));
-    assertFalse("Visible candidates take precedence over Reader actions.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, true, false));
-    assertTrue("Collapsed playback leaves the empty-editor actions available.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, false));
-    assertFalse("Expanded playback controls replace the compact action row.",
-        Keyboard2.reader_entry_visible(
-          true, true, true, false, false, true));
-    assertFalse("Private or unsupported editors never expose Reader text access.",
-        Keyboard2.reader_entry_visible(
-          true, false, true, false, false, false));
+    assertTrue("The strip rests until typing produces candidates.",
+        Keyboard2.reader_entry_visible(true, false, false, false));
+    assertFalse("Disabled Reader never shows the strip.",
+        Keyboard2.reader_entry_visible(false, false, false, false));
+    assertFalse("Composing text hides the strip.",
+        Keyboard2.reader_entry_visible(true, true, false, false));
+    assertFalse("Visible candidates take precedence.",
+        Keyboard2.reader_entry_visible(true, false, true, false));
+    assertFalse("Expanded playback controls replace the action row.",
+        Keyboard2.reader_entry_visible(true, false, false, true));
   }
 
   @Test
