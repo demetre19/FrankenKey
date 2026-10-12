@@ -1052,7 +1052,6 @@ public final class KeyEventHandler
   {
     String old = _typedword.get();
     int cur_rel = _typedword.cursor_relative();
-    int remove_before = old.length() + cur_rel;
     String replacement = text + separator;
     boolean termux_raw_events = uses_termux_raw_events();
     InputConnection conn = _recv.getCurrentInputConnection();
@@ -1062,11 +1061,23 @@ public final class KeyEventHandler
         && _typedword.snapshot().completeness
           == CurrentlyTypedWord.WordCompleteness.INCOMPLETE)
       return false;
-    if (!termux_raw_events && tracked_word_mismatches_editor(old))
+    if (!termux_raw_events)
     {
-      _typedword.refresh_current_word();
-      return false;
+      // The tracked word and cursor can drift from the editor (transient
+      // selection echoes, dropped characters). Deleting a span derived from
+      // stale state leaves part of the typed word behind. Verify the exact
+      // span against the editor; on disagreement refresh and retry once.
+      if (!tracked_span_matches_editor(conn, old, cur_rel))
+      {
+        _typedword.refresh_current_word();
+        old = _typedword.get();
+        cur_rel = _typedword.cursor_relative();
+        if (!tracked_span_matches_editor(conn, old, cur_rel))
+          return false;
+      }
     }
+
+    int remove_before = old.length() + cur_rel;
 
     int correction_offset = report_editor_correction
       && !termux_raw_events && !old.equals(text)
@@ -2698,6 +2709,44 @@ public final class KeyEventHandler
     int previous = Character.codePointBefore(before, word_start);
     return Character.isLetterOrDigit(previous)
       || previous == '\'' || previous == '’';
+  }
+
+  /** Whether the editor text around the cursor exactly matches the tracked
+      word split at the tracked cursor offset. Verifies the prefix before the
+      cursor, the remainder after it, and that a word boundary precedes the
+      prefix — catching both a drifted cursor and a truncated tracked word,
+      which a before-cursor-only suffix check misses. Returns [false] when the
+      editor text cannot be read. */
+  private boolean tracked_span_matches_editor(InputConnection conn,
+      String word, int cur_rel)
+  {
+    if (word.length() == 0)
+      return cur_rel == 0;
+    int prefix_len = word.length() + cur_rel;
+    if (prefix_len < 0 || prefix_len > word.length())
+      return false;
+    CharSequence before = conn.getTextBeforeCursor(prefix_len + 2, 0);
+    if (before == null || before.length() < prefix_len)
+      return false;
+    int word_start = before.length() - prefix_len;
+    for (int i = 0; i < prefix_len; ++i)
+      if (before.charAt(word_start + i) != word.charAt(i))
+        return false;
+    if (word_start > 0)
+    {
+      int previous = Character.codePointBefore(before, word_start);
+      if (Character.isLetterOrDigit(previous) || previous == '\''
+          || previous == '’')
+        return false;
+    }
+    CharSequence after = conn.getTextAfterCursor(
+        word.length() - prefix_len, 0);
+    if (after == null || after.length() < word.length() - prefix_len)
+      return false;
+    for (int i = prefix_len; i < word.length(); ++i)
+      if (after.charAt(i - prefix_len) != word.charAt(i))
+        return false;
+    return true;
   }
 
   private boolean should_record_personalization()
