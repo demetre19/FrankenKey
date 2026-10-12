@@ -678,6 +678,9 @@ public final class PersonalizationStore
       return new ArrayList<ScoredWord>();
     prefix = normalize(prefix);
     TopWords matches = new TopWords(Math.min(count, _word_counts.size()));
+    /* Whole-key prefix match covers email local parts too: the learned key
+       "demetre19@gmail.com" starts with "demet", so no separate local-part
+       scan is needed. */
     for (Map.Entry<String, Integer> entry : _word_counts.entrySet())
       if (entry.getKey().startsWith(prefix) && !entry.getKey().equals(prefix))
         matches.offer(entry.getKey(), 0, entry.getValue());
