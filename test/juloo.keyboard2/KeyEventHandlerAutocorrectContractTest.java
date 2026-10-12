@@ -844,6 +844,57 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void suggestion_commit_replaces_everything_typed_even_when_cursor_relative_drifts()
+      throws Exception
+  {
+    Harness harness = harness("demet", true, true);
+    installCorrection(harness.decoder, harness.key, "demet",
+        "demetre19@gmail.com");
+    // Simulate a transient editor selection echo that shifted the tracked
+    // cursor one code point into the word without a refresh.
+    java.lang.reflect.Field cursorField = CurrentlyTypedWord.class
+      .getDeclaredField("_w_cursor");
+    cursorField.setAccessible(true);
+    cursorField.setInt(getTypedWord(harness.handler), -1);
+
+    harness.handler.suggestion_entered(harness.key, "demetre19@gmail.com");
+
+    assertEquals("A suggestion tap must replace the whole typed word even"
+        + " when the tracked cursor drifted inside it.",
+        "demetre19@gmail.com ", harness.receiver.input.text.toString());
+  }
+
+  @Test
+  public void suggestion_commit_replaces_everything_typed_when_tracker_lost_first_char()
+      throws Exception
+  {
+    Harness harness = harness("demet", true, true);
+    installCorrection(harness.decoder, harness.key, "demet",
+        "demetre19@gmail.com");
+    // Simulate the tracker having dropped the first typed character.
+    java.lang.reflect.Field wordField = CurrentlyTypedWord.class
+      .getDeclaredField("_w");
+    wordField.setAccessible(true);
+    StringBuilder w = (StringBuilder)wordField.get(getTypedWord(harness.handler));
+    w.delete(0, 1);
+
+    harness.handler.suggestion_entered(harness.key, "demetre19@gmail.com");
+
+    assertEquals("A suggestion tap must still replace the whole editor word"
+        + " when the tracker lost the first character.",
+        "demetre19@gmail.com ", harness.receiver.input.text.toString());
+  }
+
+  private static CurrentlyTypedWord getTypedWord(KeyEventHandler handler)
+      throws Exception
+  {
+    java.lang.reflect.Field field = KeyEventHandler.class
+      .getDeclaredField("_typedword");
+    field.setAccessible(true);
+    return (CurrentlyTypedWord)field.get(handler);
+  }
+
+  @Test
   public void explicit_candidate_tap_does_not_report_automatic_correction()
       throws Exception
   {

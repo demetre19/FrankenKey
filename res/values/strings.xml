@@ -301,7 +301,7 @@
     <string name="launcher_shortcuts_space_heading">Spacebar</string>
     <string name="launcher_shortcuts_space">Space ↖ — Clipboard\nSpace ↗ — Everyday / Coding mode\nSpace ↙ — Emoji\nSpace ↘ — GIF</string>
     <string name="launcher_shortcuts_learning_heading">Adaptive learning</string>
-    <string name="launcher_shortcuts_learning">Letter ↑ — Review whether to keep or replace the current word\nLetter ↓ — Forget the current word\nType the same unknown pattern three times in one editor session — Review whether to keep it or save a replacement\nCorrect the same typo to the same word four times — Make that exact correction the strongest recall, including supported two-edit corrections</string>
+    <string name="launcher_shortcuts_learning">Letter → (short) — Accept the highlighted suggestion\nLetter ↑ — Learn the current word instantly\nLetter ↓ — Unlearn a learned word\nType the same unknown pattern three times in one editor session — Learn it directly\nCorrect the same typo to the same word four times — Make that exact correction the strongest recall, including supported two-edit corrections</string>
     <string name="launcher_shortcuts_reader_ai_heading">Omnibutton</string>
     <string name="launcher_shortcuts_reader_ai">The omnibutton is the centered AI key on the Reader strip — tap or swipe it in any direction to run a configurable Reader AI action (chat, summaries, quiz, share, saved, speed read, settings). Configure its tap and swipes in Settings → Omnibutton.</string>
     <string name="launcher_shortcuts_ai_heading">AI</string>

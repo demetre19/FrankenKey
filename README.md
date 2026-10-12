@@ -53,15 +53,15 @@ FrankenKey learns how you type without uploading your typing history or silently
 
 Vocabulary enters FrankenKey only when:
 
-- You explicitly enter a word with **Teach** or choose **Keep word** from a keyboard review.
+- You swipe **up** from a letter key on an unknown suggestion — learned instantly, no dialog.
 - You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session opens a review, but that bounded counter stays in memory and disappears when the editor session ends.
+Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session learns it directly; the bounded counter stays in memory and disappears when the editor session ends.
 
 You stay in control:
 
 - Press Backspace immediately after a fresh autocorrection to restore the exact original text.
-- Swipe up on the keyboard to review the current word instead of saving it immediately; choose **Keep word**, **Use best**, **Replace…**, or dismiss without changing anything.
+- Swipe **up** on an unknown suggestion to learn it instantly; swipe **down** on a learned word to unlearn it — no dialog, no keyboard flicker.
 - Use **Learned words > Corrections** to see, search, edit, or delete exact `source → replacement` rules and `source → Best suggestion` decisions.
 - Convert an accidentally taught word into a correction directly from its Taught words row.
 - Exact user-authored replacements take precedence even when the source and intended word are unrelated. Adaptive correction evidence still helps immediately; correcting the same typo to the same intended suggestion four times makes that learned pair the strongest recall, including supported corrections up to two textual edits.
@@ -73,7 +73,8 @@ Passwords, structured fields, terminals, and other unsafe editors are excluded f
 
 Suggestions and autocorrect are separate controls, and both are enabled by default.
 
-- **Suggestions** help complete the word you are typing and surface likely next words.
+- **Suggestions** help complete the word you are typing and, after you commit a word, surface ranked predictions for the likely next word.
+- **Swipe right about one key-width from any letter key** to accept the highlighted suggestion; it replaces the whole word you typed. The spacebar and the G trackpad are excluded so cursor drags keep working.
 - Swipe left across the suggestion row to bring the next three ranked words in from the right; swipe right to return to the first three.
 - **Autocorrect** fixes high-confidence mistakes when you finish a word with Space, Shift+Enter, or supported punctuation.
 - Explicit teaching and deliberate correction choices improve local ranking without turning ordinary typing into vocabulary.
@@ -154,7 +155,8 @@ The same compact map is available from **Keyboard shortcut map** below the Space
 | Cut / Copy / Paste | **X ↖ / C ↖ / V ↖** |
 | Delete the previous word | **Backspace ←** |
 | Preview and delete more words or sentences | Hold **Backspace**, drag left, reverse to shrink, then release |
-| Review / forget the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
+| Accept the highlighted suggestion | Swipe **→** about one key-width from any letter key |
+| Learn / unlearn the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
 | Review one recurring unknown pattern | Type the same exact unknown literal three times in one editor session |
 | Make one exact adaptive typo correction the strongest recall | Correct the same typo to the same intended word and choose it **four times** |
 

@@ -49,7 +49,9 @@ public final class Decoder
   public static final int EDIT_EXTRA_TAP = 1 << 2;
   public static final int EDIT_TRANSPOSITION = 1 << 3;
 
-  private static final int MAX_CANDIDATE_CODEPOINTS = 50;
+  /** Matches PersonalizationStore.is_learnable's 64-char email allowance:
+      learned contact addresses must fit the candidate pipeline. */
+  private static final int MAX_CANDIDATE_CODEPOINTS = 64;
   private static final int MAX_PREFIX_RESULTS = 6;
   private static final int MAX_HUNSPELL_RESULTS = 9;
   private static final int MAX_PERSONAL_RESULTS = 6;
@@ -79,6 +81,11 @@ public final class Decoder
   private static final int AUTOCORRECT_SHORT_WORD_SPATIAL_GAP_Q8 = 2 * Q8;
   private static final int DECISIVE_SAME_LENGTH_MARGIN_Q8 = 2 * Q8;
   private static final int LENGTH_DELTA_RANKING_PENALTY_Q8 = 4 * Q8;
+  /** Learned-word prefix completions (contact emails, taught words) score
+      this base plus rank/length terms — never edit distance against the
+      full surface, which would bury a 19-char email under ~15 omissions. */
+  private static final int PERSONAL_COMPLETION_BASE_Q8 = Q8 / 2;
+  private static final int PERSONAL_COMPLETION_CHAR_Q8 = 12;
   /** A same-length repair yields to a one-edit length repair only within
       this ranking gap; word frequency already separates the two. */
   private static final int COMPETING_LENGTH_REPAIR_GAP_Q8 = Q8;
@@ -413,9 +420,22 @@ public final class Decoder
         for (int i = 0; i < count; i++)
         {
           PersonalizationStore.ScoredWord word = words.get(i);
-          Accumulator candidate = accumulator_for(merged, word.word);
+          /* Personal matches bypass the merge budget: dictionary spatial
+             expansion can fill all 80 slots before this loop runs, which
+             silently dropped contact emails on real dictionaries. Insert
+             directly rather than through accumulator_for's size cap. */
+          String canonical = normalize(word.word);
+          Accumulator candidate = merged.get(canonical);
           if (candidate == null)
-            continue;
+          {
+            if (canonical.length() == 0
+                || canonical.codePointCount(0, canonical.length())
+                  > MAX_CANDIDATE_CODEPOINTS)
+              continue;
+            candidate = new Accumulator(canonical,
+                canonical.codePoints().toArray(), word.word);
+            merged.put(canonical, candidate);
+          }
           candidate.sourceMask |= SOURCE_PERSONAL;
           candidate.set_personal(word.word, i);
         }
@@ -580,6 +600,19 @@ public final class Decoder
       Score score;
       if (accumulator.literal)
         score = Score.EXACT;
+      else if (is_personal_prefix_completion(accumulator, request))
+        /* Learned words (contact emails, taught words) extend the typed
+           prefix; scoring the full surface as an edit costs one omission
+           per untyped char and buries every contact below dictionary
+           noise. Charge a bounded completion cost instead: personal rank,
+           then a small per-extra-char term. */
+        score = new Score(
+            PERSONAL_COMPLETION_BASE_Q8
+              + 32 * Math.min(accumulator.personalRank, 31)
+              + PERSONAL_COMPLETION_CHAR_Q8
+                * (accumulator.codePoints.length
+                    - request.normalizedCodePointCount),
+            0, 0);
       else if (scorer == null)
         continue;
       else
@@ -588,6 +621,18 @@ public final class Decoder
     }
     sort_candidates_for_request(request, ranked);
     return ranked;
+  }
+
+  /** True when a learned-word candidate is a straight prefix extension of
+      the typed text — the case where edit-distance scoring is meaningless
+      and the candidate must surface near the top like a cdict prefix. */
+  private static boolean is_personal_prefix_completion(
+      Accumulator accumulator, Request request)
+  {
+    return (accumulator.sourceMask & SOURCE_PERSONAL) != 0
+        && request.normalized.length() > 0
+        && accumulator.codePoints.length > request.normalizedCodePointCount
+        && accumulator.canonical.startsWith(request.normalized);
   }
 
   private static Result decode_next_words(Request request, Cdict dictionary,
@@ -2442,8 +2487,17 @@ public final class Decoder
     int candidateLength = candidate.canonical.codePointCount(
         0, candidate.canonical.length());
     int lengthDelta = Math.abs(candidateLength - request.normalizedCodePointCount);
+    /* Learned words extending the typed prefix (contact emails, taught
+       words) are completions: their extra length is the point, not an
+       error, so the length-delta penalty must not apply. */
+    boolean personalCompletion =
+        (candidate.sourceMask & SOURCE_PERSONAL) != 0
+          && request.normalized.length() > 0
+          && candidateLength > request.normalizedCodePointCount
+          && candidate.canonical.startsWith(request.normalized);
     return (long)candidate.totalQ8
-      + (is_complete_one_edit_length_repair(candidate) ? 0L
+      + (is_complete_one_edit_length_repair(candidate) || personalCompletion
+        ? 0L
         : (long)LENGTH_DELTA_RANKING_PENALTY_Q8 * lengthDelta);
   }
 

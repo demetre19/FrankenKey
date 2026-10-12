@@ -1060,6 +1060,48 @@ public class SharedDecoderTest
 
 
   @Test
+  public void learned_email_surfaces_in_strip_on_local_prefix()
+      throws Exception
+  {
+    SharedPreferences preferences = RuntimeEnvironment.getApplication()
+      .getSharedPreferences("shared_decoder_email_test",
+          Context.MODE_PRIVATE);
+    preferences.edit().clear().commit();
+    try
+    {
+      PersonalizationStore store = new PersonalizationStore(preferences);
+      assertTrue(store.learn_word("demetre19@gmail.com"));
+      SharedDecoder decoder =
+        decoder(new QueuedHandler(), new RecordingCallback());
+      long session = decoder.start_session(enabledConfig(),
+          SharedDecoder.ResourceSpec.empty("r1"), null,
+          new SharedDecoder.PersonalizationSpec("profile:email", preferences));
+      Decoder.RequestKey key = decoder.request(session,
+          snapshot(1, "demet", false));
+      SharedDecoder.Presentation ready = awaitReady(decoder, key);
+      assertNotNull(ready.result);
+      Decoder.Candidate found = candidate(ready.result, "demetre19@gmail.com");
+      assertNotNull("A learned contact email must surface in the strip on a "
+          + "local-part prefix; got words=" + java.util.Arrays.toString(
+            surfacesOf(ready.result)), found);
+    }
+    finally
+    {
+      preferences.edit().clear().commit();
+    }
+  }
+
+  private static String[] surfacesOf(Decoder.Result result)
+  {
+    Decoder.Candidate[] words = result.words();
+    String[] out = new String[words.length];
+    for (int i = 0; i < words.length; i++)
+      out[i] = words[i].surface;
+    return out;
+  }
+
+
+  @Test
   public void presentation_pending_ready_empty_drives_reader_strip()
       throws Exception
   {

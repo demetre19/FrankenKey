@@ -38,6 +38,23 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void learned_emails_surface_by_local_part_prefix()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    assertTrue(store.learn_word("demetre19@gmail.com"));
+    assertTrue(store.learn_word("contact@outlook.com"));
+    assertTrue(store.learn_word("gmail.com"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+
+    assertEquals("A bare local-part prefix must surface the full learned email.",
+        Arrays.asList("demetre19@gmail.com"),
+        reloaded.suggest_words("demet", 3));
+    assertTrue("A fragment after '@' must surface the learned domain.",
+        reloaded.suggest_words("gma", 3).contains("gmail.com"));
+  }
+
+  @Test
   public void accepted_literal_touches_build_bounded_private_calibration()
   {
     PersonalizationStore store = new PersonalizationStore(_prefs);
