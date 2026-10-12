@@ -49,7 +49,9 @@ public final class Decoder
   public static final int EDIT_EXTRA_TAP = 1 << 2;
   public static final int EDIT_TRANSPOSITION = 1 << 3;
 
-  private static final int MAX_CANDIDATE_CODEPOINTS = 50;
+  /** Matches PersonalizationStore.is_learnable's 64-char email allowance:
+      learned contact addresses must fit the candidate pipeline. */
+  private static final int MAX_CANDIDATE_CODEPOINTS = 64;
   private static final int MAX_PREFIX_RESULTS = 6;
   private static final int MAX_HUNSPELL_RESULTS = 9;
   private static final int MAX_PERSONAL_RESULTS = 6;
@@ -418,9 +420,22 @@ public final class Decoder
         for (int i = 0; i < count; i++)
         {
           PersonalizationStore.ScoredWord word = words.get(i);
-          Accumulator candidate = accumulator_for(merged, word.word);
+          /* Personal matches bypass the merge budget: dictionary spatial
+             expansion can fill all 80 slots before this loop runs, which
+             silently dropped contact emails on real dictionaries. Insert
+             directly rather than through accumulator_for's size cap. */
+          String canonical = normalize(word.word);
+          Accumulator candidate = merged.get(canonical);
           if (candidate == null)
-            continue;
+          {
+            if (canonical.length() == 0
+                || canonical.codePointCount(0, canonical.length())
+                  > MAX_CANDIDATE_CODEPOINTS)
+              continue;
+            candidate = new Accumulator(canonical,
+                canonical.codePoints().toArray(), word.word);
+            merged.put(canonical, candidate);
+          }
           candidate.sourceMask |= SOURCE_PERSONAL;
           candidate.set_personal(word.word, i);
         }
