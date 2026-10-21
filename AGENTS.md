@@ -38,6 +38,7 @@
 - Published `README.md` version/hash/download metadata must match the exact APK and link `CHANGELOG.md`; keep about 10 major releases.
 - A GitHub APK update that introduces user-visible features must update the public README and include a deliberate pass over setup/help/settings surfaces; clarify in-app usage in the same release whenever discoverability materially improves.
 - New backup APKs require same-change `apk-backups/manifest.json` updates.
+- Releases since 2.0.198 are built and shipped from `../FrankenKey-autobuild-autocorrect/` (source repo `main`), which now carries its own copy of this delivery file set. After each publication, mirror the published state here: canonical APK bytes matching the GitHub release asset, README version/hash block, CHANGELOG entries, `fastlane` changelog, and an `apk-backups/` archive plus manifest row.
 
 ## Verification
 

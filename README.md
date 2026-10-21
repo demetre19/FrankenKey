@@ -5,11 +5,11 @@
 <h1 align="center">FrankenKey</h1>
 
 <p align="center">
-  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, and private TTS tools in one Android app.
+  Fast everyday typing, customizable coding keys, 2D/3D RSVP speed reading, private TTS tools, and a <strong>free</strong> built-in AI provider in one Android app — with an <strong>Omnibutton</strong> that opens Reader AI from anywhere.
 </p>
 
 <p align="center">
-  <strong>Private by design. Local learning. No ads. No tracking.</strong>
+  <strong>Private by design. Local learning. No ads. No tracking. Reader AI is free with a Cloudflare account.</strong>
 </p>
 
 <p align="center">
@@ -19,6 +19,15 @@
 </p>
 
 ---
+
+## The Omnibutton — Reader AI from anywhere
+
+The **omnibutton** is FrankenKey's centered AI key, and it works in two places:
+
+- **On the keyboard:** tap it on the Reader strip (or swipe it in any of eight directions) to run a Reader AI action — grounded chat, page and book summaries, quizzes, share, saved results, speed read, or settings.
+- **As a floating bubble:** enable FrankenKey's accessibility service and a draggable bubble floats over *any* app, so Reader AI opens even with the keyboard hidden. Tap for the tap action, swipe for that direction's action; it hides itself while the keyboard is up or a password field is on screen.
+
+Every tap and swipe direction is assignable in **Settings > Typing assistance > Omnibutton**, including styling the floating bubble (opacity, shape, colors). See [Omnibutton and the floating button](#omnibutton-and-the-floating-button) for setup, including the Android 13+ "restricted setting" unlock for sideloaded APKs.
 
 ## Overview
 
@@ -31,7 +40,7 @@ The project is built on a foundation of privacy, capability, and minimalism, ens
 FrankenKey serves a dual purpose:
 
 - **Input Platform:** a dual-mode keyboard (Everyday and Coding) featuring gesture-based navigation, a deliberate-only adaptive learning model, and deep terminal/coding support.
-- **Consumption Platform:** a Reader subsystem that handles TTS (Text-to-Speech), EPUB management, and AI-powered content synthesis via OpenRouter.
+- **Consumption Platform:** a Reader subsystem that handles TTS (Text-to-Speech), EPUB management, and AI-powered content synthesis via the built-in Cloudflare Workers AI provider (free tier) or your own OpenRouter key.
 
 ## Design philosophy
 
@@ -45,7 +54,7 @@ The development of FrankenKey is governed by a strict set of product principles:
 
 FrankenKey keeps its adaptive typing data on your device. Explicitly taught words, deliberate correction choices, typo-correction patterns, touch calibration, snippets, settings, and clipboard history are stored locally by FrankenKey. There are no ads and FrankenKey does not include tracking or analytics.
 
-Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe public article, text you explicitly loaded with **Read Clipboard**, or selected excerpts from a safely parsed EPUB, and only after you request an AI action, to the OpenRouter model you choose. PDF content and passively observed clipboard or editor text are never eligible.
+Optional online GIF search and opt-in Reader AI are the only network-backed features. If you add your own GIPHY API key, GIF searches and the key are sent to GIPHY's API. Reader AI sends only a safe public article, text you explicitly loaded with **Read Clipboard**, or selected excerpts from a safely parsed EPUB, and only after you request an AI action, to the provider you choose: **Cloudflare Workers AI** (free tier — see below) or **OpenRouter**. PDF content and passively observed clipboard or editor text are never eligible.
 
 ## Adaptive learning
 
@@ -53,15 +62,15 @@ FrankenKey learns how you type without uploading your typing history or silently
 
 Vocabulary enters FrankenKey only when:
 
-- You explicitly enter a word with **Teach** or choose **Keep word** from a keyboard review.
+- You swipe **up** from a letter key on an unknown suggestion — learned instantly, no dialog.
 - You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session opens a review, but that bounded counter stays in memory and disappears when the editor session ends.
+Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session learns it directly; the bounded counter stays in memory and disappears when the editor session ends.
 
 You stay in control:
 
 - Press Backspace immediately after a fresh autocorrection to restore the exact original text.
-- Swipe up on the keyboard to review the current word instead of saving it immediately; choose **Keep word**, **Use best**, **Replace…**, or dismiss without changing anything.
+- Swipe **up** on an unknown suggestion to learn it instantly; swipe **down** on a learned word to unlearn it — no dialog, no keyboard flicker.
 - Use **Learned words > Corrections** to see, search, edit, or delete exact `source → replacement` rules and `source → Best suggestion` decisions.
 - Convert an accidentally taught word into a correction directly from its Taught words row.
 - Exact user-authored replacements take precedence even when the source and intended word are unrelated. Adaptive correction evidence still helps immediately; correcting the same typo to the same intended suggestion four times makes that learned pair the strongest recall, including supported corrections up to two textual edits.
@@ -73,7 +82,8 @@ Passwords, structured fields, terminals, and other unsafe editors are excluded f
 
 Suggestions and autocorrect are separate controls, and both are enabled by default.
 
-- **Suggestions** help complete the word you are typing and surface likely next words.
+- **Suggestions** help complete the word you are typing and, after you commit a word, surface ranked predictions for the likely next word.
+- **Swipe right about one key-width from any letter key** to accept the highlighted suggestion; it replaces the whole word you typed. The spacebar and the G trackpad are excluded so cursor drags keep working.
 - Swipe left across the suggestion row to bring the next three ranked words in from the right; swipe right to return to the first three.
 - **Autocorrect** fixes high-confidence mistakes when you finish a word with Space, Shift+Enter, or supported punctuation.
 - Explicit teaching and deliberate correction choices improve local ranking without turning ordinary typing into vocabulary.
@@ -82,6 +92,8 @@ Suggestions and autocorrect are separate controls, and both are enabled by defau
 - Short two- and three-letter corrections combine touch-aware evidence with compact conversational context.
 - Explicitly taught short commands keep their casing, and manually turning Shift off preserves lowercase at sentence starts.
 - Default-on Typing assistance turns two consecutive spaces in prose into a full stop and one space; structured fields and terminals keep literal spaces.
+- **Email completion:** while typing an email address, once you type `@` the suggestion row shows matching domain pills (gmail.com, outlook.com, yahoo.com, icloud.com, hotmail.com, proton.me, aol.com, live.com, plus domains you have taught). Tapping a pill replaces the partial domain. Full addresses you have typed before are learned on-device and suggested in any field, not just email inputs.
+- **Contact email suggestions (opt-in):** the **Suggest email addresses** switch in Settings can import email addresses from your contacts — with an explicit disclosure and Android's contacts permission — so friends' addresses appear as suggestions too. Contacts are read once and never uploaded.
 
 You can turn Suggestions or Autocorrect off independently in Settings.
 
@@ -152,7 +164,8 @@ The same compact map is available from **Keyboard shortcut map** below the Space
 | Cut / Copy / Paste | **X ↖ / C ↖ / V ↖** |
 | Delete the previous word | **Backspace ←** |
 | Preview and delete more words or sentences | Hold **Backspace**, drag left, reverse to shrink, then release |
-| Review / forget the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
+| Accept the highlighted suggestion | Swipe **→** about one key-width from any letter key |
+| Learn / unlearn the current word | With Suggestions on, swipe **↑ / ↓** from an ordinary letter |
 | Review one recurring unknown pattern | Type the same exact unknown literal three times in one editor session |
 | Make one exact adaptive typo correction the strongest recall | Correct the same typo to the same intended word and choose it **four times** |
 
@@ -173,9 +186,9 @@ Clipboard data remains local to FrankenKey.
 
 ## Voice
 
-When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, and Voice reachable even on narrow screens or with larger text.
+When the current field is empty, the compact keyboard Reader controls keep Settings, Read Clipboard, Library, and Voice reachable even on narrow screens or with larger text. The suggestion candidates and the Reader/assistant strip share one fixed-height slot directly beneath the snippet row, so the keyboard surface never jumps or reflows when either appears.
 
-- **Voice** starts Android voice input, while Reader provides separate spoken playback with selectable installed voices.
+- **Voice** starts Android voice input, while Reader provides separate spoken playback with selectable installed voices. The Reader strip hides automatically while dictation is listening so the live transcript stays visible.
 
 ## G-key mouse-like cursor control, selection and deletion
 
@@ -247,15 +260,22 @@ Reader AI is optional and available for:
 
 Nothing is sent when you open Reader or a book. Reader AI runs only after you deliberately request a Summary, Quiz, or Chat response.
 
-#### Set up Reader AI
+#### Set up Reader AI — free with Cloudflare Workers AI
 
-1. Open an eligible article, clipboard text, or EPUB book.
-2. Tap **AI** in Classic Reader or **Book AI** in 3D Reader.
-3. Open AI Settings and enter your own OpenRouter API key.
-4. Keep the default Mercury model or choose another available model. Model search includes Free and 100k+ context filters.
-5. Review the first-use disclosure, then confirm before sending any source text.
+**Reader AI is free.** FrankenKey's default provider is **Cloudflare Workers AI**, which includes a generous free daily allowance (10,000 neurons/day per Cloudflare account — more than enough for everyday summaries, quizzes, and chat). You pay nothing to FrankenKey or to Cloudflare for typical use; there is no subscription and no paid API key is required.
 
-The OpenRouter key is encrypted in Android's secure local storage and excluded from backups.
+You only need a free Cloudflare account and one API token:
+
+1. Create or sign in to a free [Cloudflare account](https://dash.cloudflare.com/sign-up) — no card required for the Workers AI free tier.
+2. In the Cloudflare dashboard, copy your **Account ID** (right-hand sidebar on any account page).
+3. Create an API token: **Profile → API Tokens → Create Token**, using the **Workers AI** template (or a custom token with *Account → Workers AI → Read* permission). Copy the token.
+4. In FrankenKey, open an eligible article, clipboard text, or EPUB book, tap **AI** in Classic Reader or **Book AI** in 3D Reader, and open **AI Settings**.
+5. Choose provider **Cloudflare Workers AI** (the default), paste your **Account ID** and **API token**, and pick a model — `@cf/meta/llama-3.1-8b-instruct-fp8-fast` is the fast default; `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `@cf/openai/gpt-oss-20b`, `@cf/openai/gpt-oss-120b`, and `@cf/mistralai/mistral-small-3.1-24b-instruct` are also offered.
+6. Review the first-use disclosure, then confirm before sending any source text.
+
+Prefer OpenRouter instead? Switch the provider to **OpenRouter**, enter your own OpenRouter API key, keep the default Mercury model or search the catalog (with Free and 100k+ context filters), then confirm as before.
+
+Both credentials are encrypted in Android's secure local storage and excluded from backups.
 
 #### Create summaries
 
@@ -285,7 +305,7 @@ Choose **Chat**, enter a question, and send it. Book answers are grounded in sel
 
 Open AI Settings and choose the saved-results library. You can search, sort newest or oldest, group by date, mark favourites, and filter by Articles or Books and Summary, Quiz, or Chat. Saved entries retain source provenance and can reopen an available original book. Copy, Share, Favorite, and Delete remain local actions until you explicitly share something; eligible non-Quiz outputs can also open in Speed Read.
 
-Reader content, progress, bookmarks, retained files, and saved AI outputs stay private to FrankenKey. Selected eligible text is sent only for the explicit OpenRouter request you approve. Sensitive fields, unavailable sources, PDF content, and passive clipboard/editor text fail closed.
+Reader content, progress, bookmarks, retained files, and saved AI outputs stay private to FrankenKey. Selected eligible text is sent only for the explicit Cloudflare Workers AI or OpenRouter request you approve. Sensitive fields, unavailable sources, PDF content, and passive clipboard/editor text fail closed.
 
 ## Snippets
 
@@ -325,9 +345,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.119
-Version code: 170
-SHA-256: dfd95d82d7a56595afb55eeb93b878a342b084db395aa924755f4372a2c4dc67
+Version: 2.0.217
+Version code: 10217
+SHA-256: 070a2f240a5f7f888ccbb1c71aaf9538e1684656989fb096ad358edff0eeccb5
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
