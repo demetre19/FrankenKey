@@ -1,0 +1,1 @@
+Republished the verified 2.0.217 build as the current installable release: right-swipe suggestion accept, next-word predictions, autocorrect ranked by real dictionary word frequencies with built-in contractions (ive→I've, cant→can't, ~30 more), contact email suggestions, the first-letter tap fix, and the Learned Words manager with instant learn/unlearn swipes.

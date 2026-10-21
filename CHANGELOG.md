@@ -3,6 +3,11 @@
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
 
+## 2.0.218 — version code 10218 — 2026-10-22
+
+- Republished the verified 2.0.217 build as the current installable release. Same feature set — right-swipe suggestion accept, next-word predictions, frequency-ranked autocorrect with built-in contractions, contact email suggestions, first-letter tap fix, Learned Words manager — confirmed byte-for-byte against the tested phone candidate.
+
+
 ## 2.0.217 — version code 10217 — 2026-10-12
 
 - **Accept the top suggestion with a short right swipe** from any letter key: slide right about one key-width and release, and the highlighted suggestion replaces the whole word you typed. The spacebar and the G trackpad are excluded so cursor drags keep working.

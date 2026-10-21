@@ -167,6 +167,18 @@
       "sha256": "070a2f240a5f7f888ccbb1c71aaf9538e1684656989fb096ad358edff0eeccb5",
       "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
       "note": "2.0.217 published release (latest): right-swipe accept, ranked next-word predictions, real-frequency autocorrect with canonical contractions, contact emails in strip, first-letter commit fix, Learned Words manager. Also the canonical installable APK and the Samsung test-phone build."
+    },
+    {
+      "label": "verified-autocorrect-republish",
+      "file": "FrankenKey-2.0.218-vc10218-new-release-key-9fdb3633-37907921.apk",
+      "source": "GitHub Release v2.0.218-vc10218 asset FrankenKey-2.0.218-vc10218.apk",
+      "package": "dev.frankenkey.keyboard",
+      "versionCode": "10218",
+      "versionName": "2.0.218",
+      "size": 15576936,
+      "sha256": "3790792193e7c3781e03df7a9268d1143a18080c955b0d77f920dd4ce0b07c26",
+      "signerSha256": "9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9",
+      "note": "2.0.218 published release (latest): verified republish of the 2.0.217 feature set \u2014 right-swipe accept, ranked next-word predictions, real-frequency autocorrect with canonical contractions, contact emails in strip, first-letter commit fix, Learned Words manager. Canonical installable APK and Samsung test-phone build; remote SHA-256 verified."
     }
   ]
 }
