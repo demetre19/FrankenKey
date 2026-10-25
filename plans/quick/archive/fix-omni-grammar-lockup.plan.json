@@ -1,0 +1,58 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "--no-daemon",
+        "--no-configuration-cache",
+        "testDebugUnitTest"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/AiGrammarFixer.java",
+        "srcs/juloo.keyboard2/ReaderAiQuickActivity.java",
+        "srcs/juloo.keyboard2/ReaderTextAccess.java",
+        "srcs/juloo.keyboard2/ReaderAiButtonController.java",
+        "srcs/juloo.keyboard2/ReaderPageCaptureService.java",
+        "test/juloo.keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Fix three live FrankenKey bugs (operator report 2026-10-09, build at 467f9fa on autobuild/frankenkey-autocorrect-suggestions):\n\n1. AUTO-GRAMMAR CORRUPTS TYPING + LOCKS KEYBOARD. Keyboard2.pump_ai_grammar auto-applies an AI rewrite of the just-finished sentence via apply_ai_grammar_fix (setSelection+commitText) while the user is still typing into the same field: text jumps, edits land over new typing, and the keyboard wedges until app restart. Operator directive: grammar fixing should run at SENTENCE level only and the keyboard must never rewrite text behind an actively-typing cursor. Change the automatic pass so it never applies an in-place rewrite while composing/typing continues (e.g. require the session to be quiescent or surface the fix via the assistant strip instead of auto-committing), fix the revalidation so a sentence fix can never overwrite characters typed after the request fired, and guarantee _ai_grammar_busy always resets (try/finally, executor shutdown edge cases) so the keyboard can never permanently lock.\n\n2. OMNIBUTTON SUMMARIZE GRABS CLIPBOARD, NOT PAGE. ReaderAiQuickActivity.clipboardArticle() calls ReaderTextAccess.readClipboard() first and only falls back to ReaderPageCaptureService.captureNow() when the clipboard is empty \u2014 so swiping to summarize a page summarizes stale clipboard text. Page-first when the omnibutton action is a page action: SUMMARY_*/QUIZ/OPEN_CHAT should prefer ReaderPageCaptureService.captureNow() (foreground page) and fall back to clipboard, while LOAD_CLIPBOARD/READ_CLIPBOARD stay clipboard-first. Also verify ReaderPageCaptureService is actually capturing (check enablement check + latestText freshness); if capture requires the accessibility service, surface a clear empty-page toast instead of silently substituting clipboard.\n\n3. READER/ACTION ROW NEVER COMES BACK + HIDDEN IN CHROME. reader_entry_visible()/isReadableEditor() hide the omnibutton/settings/fix/read/voice action row in Chrome omnibox (URI variation excluded) and anywhere the editor is non-empty; worse, once candidates show then clear, the row often never reappears. Operator directive: the action row should be available AT ALL TIMES until the user starts typing, and must reliably reappear when suggestions clear. Re-audit update_reader_transport/reader_actions_visible gating: row must render on non-text or unreadable editors too (actions do not need a readable editor \u2014 page actions work on the foreground window), must not require editor_empty, and visibility must be recomputed on every refresh_candidates_view()/onUpdateSelection path including the candidates-cleared path. Keep password/secure-field exclusion ONLY for the auto-grammar/text-capture features, not for showing the button row.\n\nAcceptance: (a) unit tests covering: fix never applied when beforeCursor changed after request; _ai_grammar_busy resets on executor failure; clipboard-vs-page ordering per action; action-row visibility for URI editor, non-empty editor, and candidates-then-cleared transition. (b) existing grammar/reader tests still pass. (c) No behavior change to manual Fix button semantics other than it working reliably."
+      ],
+      "depends_on": [],
+      "goal": "Fix three live FrankenKey bugs (operator report 2026-10-09, build at 467f9fa on autobuild/frankenkey-autocorrect-suggestions):\n\n1. AUTO-GRAMMAR CORRUPTS TYPING + LOCKS KEYBOARD. Keyboard2.pump_ai_grammar auto-applies an AI rewrite of the just-finished sentence via apply_ai_grammar_fix (setSelection+commitText) while the user is still typing into the same field: text jumps, edits land over new typing, and the keyboard wedges until app restart. Operator directive: grammar fixing should run at SENTENCE level only and the keyboard must never rewrite text behind an actively-typing cursor. Change the automatic pass so it never applies an in-place rewrite while composing/typing continues (e.g. require the session to be quiescent or surface the fix via the assistant strip instead of auto-committing), fix the revalidation so a sentence fix can never overwrite characters typed after the request fired, and guarantee _ai_grammar_busy always resets (try/finally, executor shutdown edge cases) so the keyboard can never permanently lock.\n\n2. OMNIBUTTON SUMMARIZE GRABS CLIPBOARD, NOT PAGE. ReaderAiQuickActivity.clipboardArticle() calls ReaderTextAccess.readClipboard() first and only falls back to ReaderPageCaptureService.captureNow() when the clipboard is empty \u2014 so swiping to summarize a page summarizes stale clipboard text. Page-first when the omnibutton action is a page action: SUMMARY_*/QUIZ/OPEN_CHAT should prefer ReaderPageCaptureService.captureNow() (foreground page) and fall back to clipboard, while LOAD_CLIPBOARD/READ_CLIPBOARD stay clipboard-first. Also verify ReaderPageCaptureService is actually capturing (check enablement check + latestText freshness); if capture requires the accessibility service, surface a clear empty-page toast instead of silently substituting clipboard.\n\n3. READER/ACTION ROW NEVER COMES BACK + HIDDEN IN CHROME. reader_entry_visible()/isReadableEditor() hide the omnibutton/settings/fix/read/voice action row in Chrome omnibox (URI variation excluded) and anywhere the editor is non-empty; worse, once candidates show then clear, the row often never reappears. Operator directive: the action row should be available AT ALL TIMES until the user starts typing, and must reliably reappear when suggestions clear. Re-audit update_reader_transport/reader_actions_visible gating: row must render on non-text or unreadable editors too (actions do not need a readable editor \u2014 page actions work on the foreground window), must not require editor_empty, and visibility must be recomputed on every refresh_candidates_view()/onUpdateSelection path including the candidates-cleared path. Keep password/secure-field exclusion ONLY for the auto-grammar/text-capture features, not for showing the button row.\n\nAcceptance: (a) unit tests covering: fix never applied when beforeCursor changed after request; _ai_grammar_busy resets on executor failure; clipboard-vs-page ordering per action; action-row visibility for URI editor, non-empty editor, and candidates-then-cleared transition. (b) existing grammar/reader tests still pass. (c) No behavior change to manual Fix button semantics other than it working reliably.",
+      "id": "fix-omni-grammar-lockup",
+      "mode": "parallel",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Fix three live FrankenKey bugs (operator report 2026-10-09, build at 467f9fa on autobuild/frankenkey-autocorrect-suggestions):\n\n1. AUTO-GRAMMAR CORRUPTS TYPING + LOCKS KEYBOARD. Keyboard2.pump_ai_gram",
+      "weight": "S",
+      "write_paths": [
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/AiGrammarFixer.java",
+        "srcs/juloo.keyboard2/ReaderAiQuickActivity.java",
+        "srcs/juloo.keyboard2/ReaderTextAccess.java",
+        "srcs/juloo.keyboard2/ReaderAiButtonController.java",
+        "srcs/juloo.keyboard2/ReaderPageCaptureService.java",
+        "test/juloo.keyboard2/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

@@ -1,0 +1,55 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "--no-daemon",
+        "--no-configuration-cache",
+        "testDebugUnitTest"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/grammar/",
+        "srcs/juloo.keyboard2/AssistantStripView.java",
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+        "res/values/strings.xml",
+        "res/xml/settings.xml",
+        "test/juloo.keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "Operator directive (2026-10-08): grammar should auto-correct as you type, like spell autocorrect \u2014 no button, always on. Implement: (1) an auto-apply mode for the offline GrammarRules engine \u2014 high-confidence rule hits (the deterministic families that pass the >=98% precision gate) auto-apply immediately at word boundary like autocorrect, with the 5s Undo affordance kept in the assistant strip; gate it behind a new pref ti_grammar_auto_apply default ON; the manual Fix/Ignore prompt remains for issues that don't qualify for auto-apply and when the pref is off. (2) Restore always-visible suggestion/assistant strip buttons \u2014 the strip disappeared; the candidate row and assistant controls must render exactly as they did before the strip rework (check AssistantStripView/CandidatesView visibility logic and any conditional hiding). Build on autobuild/frankenkey-autocorrect-suggestions tip."
+      ],
+      "depends_on": [],
+      "id": "grammar-auto-correct",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Operator directive (2026-10-08): grammar should auto-correct as you type, like spell autocorrect \u2014 no button, always on. Implement: (1) an auto-apply mode for the offline GrammarRules engine \u2014 high-co",
+      "write_paths": [
+        "srcs/juloo.keyboard2/grammar/",
+        "srcs/juloo.keyboard2/AssistantStripView.java",
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/suggestions/CandidatesView.java",
+        "res/values/strings.xml",
+        "res/xml/settings.xml",
+        "test/juloo.keyboard2/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

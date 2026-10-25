@@ -1,0 +1,45 @@
+{
+ "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+ "driver": "code",
+ "evidence": "none \u2014 quick lane",
+ "gate_matrix": [
+  {
+   "argv": [
+    "./gradlew",
+    "--no-daemon",
+    "--no-configuration-cache",
+    "testDebugUnitTest"
+   ],
+   "covered_paths": [
+    "srcs/juloo.keyboard2/Keyboard2.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/Utils.java"
+   ],
+   "cwd": ".",
+   "expected_exit": 0,
+   "gate_id": "quick-1"
+  }
+ ],
+ "lanes": [
+  {
+   "acceptance": [
+    "gate:quick-1 pressing Learn on the unknown-word review dialog always applies the learn even after the dialog has taken focus"
+   ],
+   "depends_on": [],
+   "goal": "Operator report (build 2.0.198): tapping 'learn' on a word shows the unknown-word review dialog but the IME disappears and pressing Learn does nothing \u2014 the word is never learned. In srcs/juloo.keyboard2/Keyboard2.java review_unknown_word shows an AlertDialog attached via Utils.show_dialog_on_ime (TYPE_APPLICATION_ATTACHED_DIALOG + FLAG_ALT_FOCUSABLE_IM); in srcs/juloo.keyboard2/KeyEventHandler.java confirm_learn_word/review_repeated_unknown_word gate the learn Runnable on _decoder.is_current(key) and _decoder_session \u2014 the dialog steals focus from the editor, the key/session state is likely invalidated by the time the user taps, so learn_action silently no-ops. Fix so a tap on Learn always applies: capture enough state at dialog-show time (don't depend on is_current at click time \u2014 re-check only that the decoder session hasn't rolled), ensure the dialog reliably returns focus to the IME on dismiss so the keyboard reappears, and keep the learn action idempotent. Also check the dialog isn't canceled by the key-tap that opened it being delivered as an outside touch (setCanceledOnTouchOutside + FLAG_NOT_TOUCH_MODAL behavior on attached dialogs).",
+   "id": "fix-learn-word-modal",
+   "mode": "sequential",
+   "non_goals": [
+    "touching anything outside srcs/juloo.keyboard2/Keyboard2.java, srcs/juloo.keyboard2/KeyEventHandler.java, srcs/juloo.keyboard2/Utils.java"
+   ],
+   "title": "Learn-word modal never applies learn (focus breaks is_current)",
+   "weight": "S",
+   "write_paths": [
+    "srcs/juloo.keyboard2/Keyboard2.java",
+    "srcs/juloo.keyboard2/KeyEventHandler.java",
+    "srcs/juloo.keyboard2/Utils.java"
+   ]
+  }
+ ],
+ "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

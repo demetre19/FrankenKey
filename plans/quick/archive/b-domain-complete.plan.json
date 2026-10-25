@@ -1,0 +1,46 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "evidence": {
+    "none": "operator-directed quick task \u2014 no research pass"
+  },
+  "gate_matrix": [
+    {
+      "argv": [
+        "./gradlew",
+        "assembleDebug",
+        "testDebugUnitTest",
+        "--parallel",
+        "--max-workers=6",
+        "-x",
+        "lint"
+      ],
+      "covered_paths": [
+        "src/java/juloo/keyboard2/"
+      ],
+      "cwd": ".",
+      "expected_exit": 0,
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "Email-@ domain autocomplete: when composing token contains uncommitted '@' (email context), offer domain suggestions gmail.com outlook.com yahoo.com hotmail.com icloud.com immediately on the strip; single tap commits the whole domain into the composing token. Match Gboard UX. Build on b-token email-tokenization work (merge 27433b5)."
+      ],
+      "depends_on": [],
+      "id": "b-domain-complete",
+      "non_goals": [
+        "Stay inside the declared write_paths; adjacent machinery fixes are separate lanes",
+        "No refactoring, renaming, or drive-by cleanup beyond what the goal requires",
+        "No new dependencies, daemons, or timers"
+      ],
+      "title": "Email-@ domain autocomplete: when composing token contains uncommitted '@' (email context), offer domain suggestions gmail.com outlook.com yahoo.com hotmail.com icloud.com immediately on the strip; si",
+      "write_paths": [
+        "src/java/juloo/keyboard2/"
+      ]
+    }
+  ],
+  "origin": "quick",
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}

@@ -1,0 +1,42 @@
+{
+  "backend_template": "/Users/apple/.local/bin/python3.12 /Users/apple/Developer/prd-herdr/src/crew_herdr_backend.py '{worktree}' '{brief}' '{lane_id}'",
+  "driver": "code",
+  "gate_matrix": [
+    {
+      "argv": [
+        "git",
+        "log",
+        "--oneline",
+        "-1"
+      ],
+      "covered_paths": [
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/",
+        "test/",
+        "doc/",
+        "tasks.json",
+        "lessons/"
+      ],
+      "gate_id": "quick-1"
+    }
+  ],
+  "lanes": [
+    {
+      "acceptance": [
+        "gate:quick-1 Implement the IME wedge fixes from doc/IME-WEDGE-2026-10-09.md (forensic report by Herdr Mobile on the desktop copy of this repo \u2014 if the file is absent on your branch, also check other worktrees/remotes; the report lives on the desktop checkout at doc/IME-WEDGE-2026-10-09.md). Symptom: FrankenKey intermittently fails to reshow after a WebView dictation/Send cycle in OMP; pressing Enter or pasting re-arms it. Fix direction per the report: (1) audit onFinishInput ordering vs speech teardown \u2014 the mic/dictation path may leave stale state when finishing input; (2) audit isInputViewShown latching \u2014 a stale flag can suppress the next show request; (3) implement the watchdog: when an editable field focused (input view expected) but mWindowVisible/isInputViewShown has been hidden beyond a short threshold without a user dismissal, force requestShowSelf. Keep it minimal and inside Keyboard2.java + related IME surface classes. Report the committed sha in closing."
+      ],
+      "goal": "Implement the IME wedge fixes from doc/IME-WEDGE-2026-10-09.md (forensic report by Herdr Mobile on the desktop copy of this repo \u2014 if the file is absent on your branch, also check other worktrees/remotes; the report lives on the desktop checkout at doc/IME-WEDGE-2026-10-09.md). Symptom: FrankenKey intermittently fails to reshow after a WebView dictation/Send cycle in OMP; pressing Enter or pasting re-arms it. Fix direction per the report: (1) audit onFinishInput ordering vs speech teardown \u2014 the mic/dictation path may leave stale state when finishing input; (2) audit isInputViewShown latching \u2014 a stale flag can suppress the next show request; (3) implement the watchdog: when an editable field focused (input view expected) but mWindowVisible/isInputViewShown has been hidden beyond a short threshold without a user dismissal, force requestShowSelf. Keep it minimal and inside Keyboard2.java + related IME surface classes. Report the committed sha in closing.",
+      "id": "fix-ime-wedge-reshow",
+      "title": "Implement the IME wedge fixes from doc/IME-WEDGE-2026-10-09.md (forensic report by Herdr Mobile on the desktop copy of this repo \u2014 if the file is absent on your branch, also check other worktrees/remo",
+      "write_paths": [
+        "srcs/juloo.keyboard2/Keyboard2.java",
+        "srcs/juloo.keyboard2/",
+        "test/",
+        "doc/",
+        "tasks.json",
+        "lessons/"
+      ]
+    }
+  ],
+  "repo": "/Users/apple/Documents/UNCLUTTER-NEW/CLAUDE-DEV/FrankenKey-autobuild-autocorrect"
+}
