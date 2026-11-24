@@ -53,7 +53,8 @@ public final class KeyEventHandler
   boolean _autocorrect_enabled = false;
   private PendingReplacement _pending_replacement = null;
   private ManualCorrection _manual_correction = null;
-  private AppliedCorrection _last_applied_correction = null;
+  private final ArrayDeque<AppliedCorrection> _applied_corrections =
+      new ArrayDeque<AppliedCorrection>();
   private boolean _skip_next_word_learning = false;
   private boolean _preserve_manual_correction_transition = false;
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
@@ -82,6 +83,7 @@ public final class KeyEventHandler
   private static final int SELECT_WORDS_BEFORE_SENTENCES = 3;
   private static final int PENDING_BOUNDARY_FOLLOWING_CODEPOINTS = 8;
   private static final int MAX_LATENT_AUTOCORRECT_BOUNDARIES = 48;
+  private static final int MAX_TRACKED_APPLIED_CORRECTIONS = 8;
   private static final int MAX_LATE_CORRECTION_SENTENCES = 3;
   private static final int MAX_LATE_CORRECTION_UTF16 = 768;
 
@@ -187,8 +189,8 @@ public final class KeyEventHandler
     }
   }
 
-  /** The last word autocorrect itself wrote into the editor. A correction
-      whose "source" is one of these surfaces was never typed by the user, so
+  /** A word autocorrect itself wrote into the editor. A correction whose
+      "source" is one of these surfaces was never typed by the user, so
       committing the edit must not be recorded as (surface -> new word)
       correction evidence — that would teach the misspelling it replaced. */
   private static final class AppliedCorrection
@@ -1221,7 +1223,7 @@ public final class KeyEventHandler
     _pending_autocorrect_boundary = null;
     _latent_autocorrect_boundaries.clear();
     _preserve_autocorrect_boundary_transition = false;
-    _last_applied_correction = null;
+    _applied_corrections.clear();
     clear_manual_correction();
     _decoder.clear_personalization(_decoder_session);
   }
@@ -1337,11 +1339,14 @@ public final class KeyEventHandler
 
   private boolean is_applied_correction_source(ManualCorrection manual)
   {
-    AppliedCorrection applied = _last_applied_correction;
-    return manual != null && applied != null
-      && manual.connection == applied.connection
-      && manual.boundaryStart == applied.boundaryStart
-      && manual.source.equals(applied.surface);
+    if (manual == null)
+      return false;
+    for (AppliedCorrection applied : _applied_corrections)
+      if (manual.connection == applied.connection
+          && manual.boundaryStart == applied.boundaryStart
+          && manual.source.equals(applied.surface))
+        return true;
+    return false;
   }
 
   private void note_applied_correction(String literal, String surface,
@@ -1359,8 +1364,19 @@ public final class KeyEventHandler
   private void note_applied_correction(String literal, String surface,
       InputConnection conn, int boundaryStart)
   {
-    _last_applied_correction = boundaryStart >= 0
-      ? new AppliedCorrection(literal, surface, conn, boundaryStart) : null;
+    if (boundaryStart < 0 || conn == null)
+      return;
+    for (Iterator<AppliedCorrection> it = _applied_corrections.iterator();
+        it.hasNext(); )
+    {
+      AppliedCorrection applied = it.next();
+      if (applied.connection == conn && applied.boundaryStart == boundaryStart)
+        it.remove();
+    }
+    if (_applied_corrections.size() >= MAX_TRACKED_APPLIED_CORRECTIONS)
+      _applied_corrections.pollFirst();
+    _applied_corrections.addLast(
+        new AppliedCorrection(literal, surface, conn, boundaryStart));
   }
 
   private void commit_prepared(SharedDecoder.CommitToken token)
