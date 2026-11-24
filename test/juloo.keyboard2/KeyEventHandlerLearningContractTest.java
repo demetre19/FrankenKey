@@ -203,6 +203,42 @@ public class KeyEventHandlerLearningContractTest
   }
 
   @Test
+  public void undoing_a_machine_applied_correction_never_learns_the_undo()
+      throws Exception
+  {
+    Context context = RuntimeEnvironment.getApplication();
+    SharedPreferences prefs = context.getSharedPreferences(
+        "key_event_learning_" + _decoders.size(), Context.MODE_PRIVATE);
+    prefs.edit().clear().commit();
+    Harness harness = harness("teh", true, true, true, prefs);
+
+    Decoder.RequestKey key = harness.handler._current_request_key;
+    assertNotNull(key);
+    awaitResult(harness.decoder, key);
+    installCorrection(harness.decoder, key, "teh", "the");
+    harness.handler.handle_space_bar();
+    assertEquals("The fixture must first apply the teh-to-the autocorrection.",
+        "the ", harness.receiver.input.text.toString());
+
+    backspace(harness);
+    assertEquals("Backspace must accept the applied correction.",
+        "the", harness.receiver.input.text.toString());
+
+    backspace(harness);
+    harness.handler.send_text("em");
+    assertEquals("Reverting the applied word must visibly produce them.",
+        "them", harness.receiver.input.text.toString());
+    Decoder.RequestKey reverted = installCurrentLiteral(harness, "them");
+
+    harness.handler.suggestion_entered(reverted, "them");
+
+    awaitCounts(prefs, "them", "the", 0, 0);
+    assertCountsRemain(prefs, "them", "the", 0, 0);
+    assertEquals("A word the keyboard itself wrote must never become a correction source.",
+        0, wordCount(prefs, "them"));
+  }
+
+  @Test
   public void repeated_selected_correction_replays_without_auto_relearning()
       throws Exception
   {
@@ -373,6 +409,33 @@ public class KeyEventHandlerLearningContractTest
     Decoder.Result result = constructor.newInstance(key, word,
         new Decoder.Candidate[] { literal }, null, literal, null, true, true,
         Decoder.Failure.NONE);
+    for (String fieldName : new String[] {
+        "_acceptedResult", "_lastCompletedResult" })
+    {
+      Field field = SharedDecoder.class.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      field.set(decoder, result);
+    }
+  }
+
+  private static void installCorrection(SharedDecoder decoder,
+      Decoder.RequestKey key, String queried, String corrected)
+      throws Exception
+  {
+    Decoder.Candidate literal = candidate(Decoder.normalize(queried), queried,
+        Decoder.SOURCE_LITERAL, false, false, Decoder.Role.ENTERED_LITERAL);
+    Decoder.Candidate correction = candidate(Decoder.normalize(corrected),
+        corrected, Decoder.SOURCE_CDICT_SPATIAL, true, false,
+        Decoder.Role.WORD);
+    Constructor<Decoder.Result> constructor = Decoder.Result.class
+      .getDeclaredConstructor(Decoder.RequestKey.class, String.class,
+          Decoder.Candidate[].class, String.class, Decoder.Candidate.class,
+          Decoder.Candidate.class, boolean.class, boolean.class,
+          Decoder.Failure.class);
+    constructor.setAccessible(true);
+    Decoder.Result result = constructor.newInstance(key, queried,
+        new Decoder.Candidate[] { correction, literal }, null, literal,
+        correction, true, true, Decoder.Failure.NONE);
     for (String fieldName : new String[] {
         "_acceptedResult", "_lastCompletedResult" })
     {
