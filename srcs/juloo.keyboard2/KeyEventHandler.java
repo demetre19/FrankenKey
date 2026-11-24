@@ -53,6 +53,7 @@ public final class KeyEventHandler
   boolean _autocorrect_enabled = false;
   private PendingReplacement _pending_replacement = null;
   private ManualCorrection _manual_correction = null;
+  private AppliedCorrection _last_applied_correction = null;
   private boolean _skip_next_word_learning = false;
   private boolean _preserve_manual_correction_transition = false;
   private PendingAutocorrectBoundary _pending_autocorrect_boundary = null;
@@ -181,6 +182,27 @@ public final class KeyEventHandler
         int boundary_start_)
     {
       source = source_;
+      connection = connection_;
+      boundaryStart = boundary_start_;
+    }
+  }
+
+  /** The last word autocorrect itself wrote into the editor. A correction
+      whose "source" is one of these surfaces was never typed by the user, so
+      committing the edit must not be recorded as (surface -> new word)
+      correction evidence — that would teach the misspelling it replaced. */
+  private static final class AppliedCorrection
+  {
+    final String literal;
+    final String surface;
+    final InputConnection connection;
+    final int boundaryStart;
+
+    AppliedCorrection(String literal_, String surface_,
+        InputConnection connection_, int boundary_start_)
+    {
+      literal = literal_;
+      surface = surface_;
       connection = connection_;
       boundaryStart = boundary_start_;
     }
@@ -931,9 +953,13 @@ public final class KeyEventHandler
     if (_decoder_session != session || !should_use_personalization()
         || !can_explicitly_teach(word))
       return;
-    // Repeated unknown commits: direct learn — the modal focus-loss bug
-    // made it unsafe (PWA editors reset; buttons silently dropped).
-    _decoder.learn_word(session, word);
+    // The third repeated unknown commit must ask: keep the word, delegate to
+    // the best recognized suggestion, or install an exact replacement. The
+    // actions use the session-scoped *_now paths because the dialog takes
+    // focus and the request key is stale by the time the user taps.
+    _recv.review_unknown_word(word,
+        () -> learn_word_now(session, null, word),
+        () -> set_replacement_now(session, null, word, ""));
   }
 
   void learn_word(Decoder.RequestKey key, String word)
@@ -1195,6 +1221,7 @@ public final class KeyEventHandler
     _pending_autocorrect_boundary = null;
     _latent_autocorrect_boundaries.clear();
     _preserve_autocorrect_boundary_transition = false;
+    _last_applied_correction = null;
     clear_manual_correction();
     _decoder.clear_personalization(_decoder_session);
   }
@@ -1295,11 +1322,45 @@ public final class KeyEventHandler
   {
     String source = null;
     if (manual_target_matches_snapshot(snapshot) && target.equals(snapshot.word))
-      source = _manual_correction.source;
+    {
+      // Reverting or re-editing a word autocorrect itself wrote is not a
+      // correction of the user's typing; recording it backwards would teach
+      // the misspelling the user just rejected.
+      if (!is_applied_correction_source(_manual_correction))
+        source = _manual_correction.source;
+    }
     else if (snapshot != null && !snapshot.hasSelection
         && snapshot.cursorRelative == 0)
       source = snapshot.word;
     return plausible_correction_source(source, target);
+  }
+
+  private boolean is_applied_correction_source(ManualCorrection manual)
+  {
+    AppliedCorrection applied = _last_applied_correction;
+    return manual != null && applied != null
+      && manual.connection == applied.connection
+      && manual.boundaryStart == applied.boundaryStart
+      && manual.source.equals(applied.surface);
+  }
+
+  private void note_applied_correction(String literal, String surface,
+      String separator)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    ExtractedText et = conn == null ? null : get_cursor_pos(conn);
+    int start = et != null && et.selectionStart == et.selectionEnd
+      ? et.startOffset + et.selectionStart
+          - surface.length() - separator.length()
+      : -1;
+    note_applied_correction(literal, surface, conn, start);
+  }
+
+  private void note_applied_correction(String literal, String surface,
+      InputConnection conn, int boundaryStart)
+  {
+    _last_applied_correction = boundaryStart >= 0
+      ? new AppliedCorrection(literal, surface, conn, boundaryStart) : null;
   }
 
   private void commit_prepared(SharedDecoder.CommitToken token)
@@ -1485,7 +1546,11 @@ public final class KeyEventHandler
           correction.surface, null)
       : null;
     if (replace_latent_word(latent, correction.surface))
+    {
+      note_applied_correction(pending.source, correction.surface,
+          pending.connection, latent.wordStart);
       commit_prepared(correction_token);
+    }
     else
       commit_prepared(pending.literalToken);
   }
@@ -1668,6 +1733,8 @@ public final class KeyEventHandler
       _autocap.text_replaced(expected.length(), replacement);
       report_editor_correction(pending.connection, pending.correctionOffset,
           pending.source, correction.surface);
+      note_applied_correction(pending.source, correction.surface,
+          pending.connection, pending.correctionOffset);
       stage_pending_replacement(correction_token, pending.literalToken,
           pending.source, correction.surface, pending.separator,
           pending.mayLearnSourceOnUndo
@@ -2852,8 +2919,12 @@ public final class KeyEventHandler
         if (correction.surface.equals(snapshot.word))
           commit_prepared(correction_token);
         else
+        {
+          note_applied_correction(snapshot.word, correction.surface,
+              separator);
           stage_pending_replacement(correction_token, literal_token,
               snapshot.word, correction.surface, separator, false);
+        }
       }
       else if (send_text(separator))
         commit_prepared(literal_token);
