@@ -72,6 +72,7 @@ public final class DirectBootAwarePreferences
     e.remove(PersonalizationStore.PREF_TAUGHT_WORDS);
     e.remove(PersonalizationStore.PREF_BIGRAMS);
     e.remove(PersonalizationStore.PREF_CORRECTIONS);
+    e.remove(PersonalizationStore.PREF_CORRECTION_REJECTIONS);
     e.remove(PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS);
     e.remove(PersonalizationStore.PREF_REPLACEMENTS);
     e.remove(PersonalizationStore.PREF_TOUCH_SAMPLES);
@@ -87,6 +88,7 @@ public final class DirectBootAwarePreferences
           || PersonalizationStore.PREF_TAUGHT_WORDS.equals(k)
           || PersonalizationStore.PREF_BIGRAMS.equals(k)
           || PersonalizationStore.PREF_CORRECTIONS.equals(k)
+          || PersonalizationStore.PREF_CORRECTION_REJECTIONS.equals(k)
           || PersonalizationStore.PREF_CONTEXTUAL_CORRECTIONS.equals(k)
           || PersonalizationStore.PREF_REPLACEMENTS.equals(k)
           || PersonalizationStore.PREF_TOUCH_SAMPLES.equals(k)
