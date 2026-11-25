@@ -621,6 +621,18 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void deleting_a_correction_unwinds_its_context_bigram()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("good");
+    store.record_correction("mornign", "morning");
+    assertEquals(1, store.bigram_count("good", "morning"));
+    store.remove_correction("mornign", "morning");
+    assertEquals("Deleting the correction must not leave its prediction behind.",
+        0, store.bigram_count("good", "morning"));
+  }
+
+  @Test
   public void ordinary_commits_still_create_no_bigrams()
   {
     PersonalizationStore store = PersonalizationStore.empty();

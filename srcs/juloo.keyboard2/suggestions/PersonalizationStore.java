@@ -566,7 +566,19 @@ public final class PersonalizationStore
           && correction.target.equals(target))
         contextual.add(correction);
     for (ContextualCorrection correction : contextual)
-      changed |= _contextual_correction_counts.remove(correction) != null;
+    {
+      Integer tripleCount = _contextual_correction_counts.get(correction);
+      if (_contextual_correction_counts.remove(correction) != null)
+      {
+        changed = true;
+        /* Every increment of the triple was paired with one of the context
+           bigram; deleting the correction must not leave that prediction
+           behind. */
+        if (tripleCount != null)
+          decrement_bigram_by(correction.previous, correction.target,
+              tripleCount.intValue());
+      }
+    }
     if (!changed)
       return false;
     remove_orphan_adaptive_word(target);
@@ -744,14 +756,19 @@ public final class PersonalizationStore
 
   private void decrement_bigram(String previousWord, String word)
   {
+    decrement_bigram_by(previousWord, word, 1);
+  }
+
+  private void decrement_bigram_by(String previousWord, String word, int count)
+  {
     String key = previousWord + " " + word;
     Integer existing = _bigram_counts.get(key);
     if (existing == null)
       return;
-    if (existing.intValue() <= 1)
+    if (existing.intValue() <= count)
       _bigram_counts.remove(key);
     else
-      _bigram_counts.put(key, Integer.valueOf(existing.intValue() - 1));
+      _bigram_counts.put(key, Integer.valueOf(existing.intValue() - count));
   }
 
   /* Pair-level netting subtracts reverse-direction evidence so contested
