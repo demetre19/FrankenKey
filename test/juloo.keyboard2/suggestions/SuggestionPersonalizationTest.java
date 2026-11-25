@@ -611,6 +611,21 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void rejected_pair_does_not_train_nearby_spellings()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "gello", "hello", 4);
+    store.record_correction_rejection("gello", "hello");
+    store.record_correction_rejection("gello", "hello");
+    Decoder.Geometry geometry = Decoder.Geometry.from(null);
+
+    assertTrue("Two double-weighted rejections must neutralize the exact evidence.",
+        store.suggest_corrections_with_counts("gello", geometry, 3).isEmpty());
+    assertTrue("A neutralized pair must not keep correcting adjacent spellings through inherited evidence.",
+        store.suggest_corrections_with_counts("jello", geometry, 3).isEmpty());
+  }
+
+  @Test
   public void oscillating_corrections_neutralize_each_other()
   {
     PersonalizationStore store = PersonalizationStore.empty();

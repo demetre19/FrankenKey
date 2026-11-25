@@ -780,6 +780,13 @@ public final class PersonalizationStore
       if (!exact && !is_related_source(sourceCodePoints, pair, geometry))
         continue;
       int net = net_correction_count(pair, entry.getValue());
+      if (!exact)
+        /* Rejections keyed by the borrowed pair's own source neutralize its
+           inherited strength too: rejecting teh-to-the means that evidence
+           must not keep correcting nearby spellings at full strength.
+           Exact pairs leave rejection absorption to the target level so the
+           typed source is not charged twice. */
+        net -= 2 * rejection_count(pair.source, pair.target);
       if (net <= 0)
         continue;
       MutableCorrection total = totals.get(pair.target);
