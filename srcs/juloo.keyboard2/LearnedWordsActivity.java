@@ -281,9 +281,16 @@ public final class LearnedWordsActivity extends Activity
       return;
     }
     PersonalizationStore store = new PersonalizationStore(_prefs);
+    /* Correction sources count too: saving a rule removes the source from
+       the word lists, so exported rules would otherwise be undeletable. */
+    Set<String> correctionSources = new LinkedHashSet<String>();
+    for (PersonalizationStore.CorrectionEntry entry
+        : store.correction_entries())
+      correctionSources.add(entry.source);
     final List<String> matched = new ArrayList<String>();
     for (String word : listed)
-      if (store.is_taught(word) || store.is_learned(word))
+      if (store.is_taught(word) || store.is_learned(word)
+          || correctionSources.contains(word.toLowerCase(Locale.ROOT)))
         matched.add(word);
     if (matched.isEmpty())
     {
