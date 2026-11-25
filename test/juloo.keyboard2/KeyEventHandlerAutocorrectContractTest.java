@@ -403,6 +403,25 @@ public class KeyEventHandlerAutocorrectContractTest
   }
 
   @Test
+  public void digit_adjacent_periods_survive_in_sentence_case_prose()
+      throws Exception
+  {
+    Harness decimal = harness("Opus 5", false, true);
+    assertTrue(decimal.handler.send_text("."));
+    assertTrue(decimal.handler.send_text("5"));
+    decimal.handler.handle_space_bar();
+    assertEquals("A period between digits is a decimal or version number, never an accidental word boundary.",
+        "Opus 5.5 ", decimal.receiver.input.text.toString());
+
+    Harness version = harness("Opus v2", false, true);
+    assertTrue(version.handler.send_text("."));
+    assertTrue(version.handler.send_text("0"));
+    version.handler.handle_space_bar();
+    assertEquals("A period before a digit survives even after a letter token.",
+        "Opus v2.0 ", version.receiver.input.text.toString());
+  }
+
+  @Test
   public void automatic_correction_reports_editor_metadata_for_platform_flash()
       throws Exception
   {
