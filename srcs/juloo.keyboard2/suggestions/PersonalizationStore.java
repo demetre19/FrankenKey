@@ -346,7 +346,13 @@ public final class PersonalizationStore
     _decay_checkpoint = nowMillis;
     _generation++;
     if (_prefs != null)
+    {
       save();
+      /* The running keyboard holds its own loaded model; without a revision
+         bump it would never reload and its next save would resurrect the
+         pre-decay counts and checkpoint. */
+      notify_external_change(_prefs);
+    }
   }
 
   private void halve_counts(Map<String, Integer> counts,
