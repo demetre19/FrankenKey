@@ -627,18 +627,26 @@ public final class PersonalizationStore
     save();
   }
 
-  /* Net evidence for a pair: acceptances minus twice the rejections and
-     minus reverse-direction evidence, so contested pairs neutralize instead
-     of oscillating. */
+  /* Pair-level netting subtracts reverse-direction evidence so contested
+     pairs neutralize instead of oscillating. Rejection subtraction happens
+     per target against the TYPED source in suggest_corrections_with_counts:
+     a rejection means "don't correct what I typed into that", whether the
+     applied correction drew on exact or inherited nearby-spelling evidence. */
   private int net_correction_count(CorrectionPair pair, int count)
   {
-    Integer rejections = _correction_rejection_counts.get(pair);
-    int net = count - 2 * (rejections == null ? 0 : rejections.intValue());
+    int net = count;
     Integer reverse = _correction_counts.get(
         new CorrectionPair(pair.target, pair.source));
     if (reverse != null)
       net -= reverse.intValue();
     return net;
+  }
+
+  private int rejection_count(String source, String target)
+  {
+    Integer rejections = _correction_rejection_counts.get(
+        new CorrectionPair(source, target));
+    return rejections == null ? 0 : rejections.intValue();
   }
 
   public int correction_rejection_count(String source, String target)
@@ -790,7 +798,21 @@ public final class PersonalizationStore
     for (Map.Entry<String, MutableCorrection> entry : totals.entrySet())
     {
       MutableCorrection total = entry.getValue();
-      top.offer(entry.getKey(), total.exactCount, total.relatedCount);
+      int rejections = rejection_count(source, entry.getKey());
+      if (rejections == 0)
+      {
+        top.offer(entry.getKey(), total.exactCount, total.relatedCount);
+        continue;
+      }
+      /* Rejections weigh twice acceptances: undoing a correction is
+         deliberate, while accepting one is often inattention. Exact evidence
+         absorbs the rejection first, overflow spills into related. */
+      int weight = 2 * rejections;
+      int exact = Math.max(0, total.exactCount - weight);
+      int spill = Math.max(0, weight - total.exactCount);
+      int related = Math.max(0, total.relatedCount - spill);
+      if (exact > 0 || related > 0)
+        top.offer(entry.getKey(), exact, related);
     }
     return top.scored_corrections();
   }
@@ -817,7 +839,8 @@ public final class PersonalizationStore
          at least two after rejections and reverse evidence. */
       int net = net_correction_count(
           new CorrectionPair(correction.source, correction.target),
-          entry.getValue());
+          entry.getValue())
+        - 2 * rejection_count(correction.source, correction.target);
       if (net >= 2)
         matches.offer(correction.target, 0, net);
     }
