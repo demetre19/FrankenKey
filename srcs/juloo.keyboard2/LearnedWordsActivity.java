@@ -329,8 +329,18 @@ public final class LearnedWordsActivity extends Activity
     PersonalizationStore store = new PersonalizationStore(_prefs);
     int deleted = 0;
     for (String word : matched)
+    {
+      /* Remove the word's own corrections first so an adaptive target they
+         solely backed is pruned with them, matching row deletion; plain
+         unlearning would leave the target learned. */
+      String normalized = word.toLowerCase(Locale.ROOT);
+      for (PersonalizationStore.CorrectionEntry entry
+          : store.correction_entries())
+        if (entry.source.equals(normalized) && entry.target != null)
+          store.remove_correction(entry.source, entry.target);
       if (store.unlearn_word(word))
         deleted++;
+    }
     if (deleted == 0)
       return;
     PersonalizationStore.notify_external_change(_prefs);
