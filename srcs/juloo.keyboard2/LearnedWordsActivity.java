@@ -51,6 +51,9 @@ public final class LearnedWordsActivity extends Activity
 
   private static final int REQUEST_EXPORT = 1;
   private static final int REQUEST_DELETE_LIST = 2;
+  /* A delete list is user-authored plain text; bound provider input so a
+     hostile or broken content provider cannot exhaust memory. */
+  private static final int MAX_DELETE_LIST_BYTES = 1024 * 1024;
   private static final String EXPORT_FILENAME =
     "frankenkey-learned-words.txt";
   private static final class RowItem
@@ -245,8 +248,18 @@ public final class LearnedWordsActivity extends Activity
     {
       if (stream == null)
         throw new IOException("missing content stream");
-      BufferedReader reader = new BufferedReader(
-          new InputStreamReader(stream, StandardCharsets.UTF_8));
+      byte[] bytes = new byte[MAX_DELETE_LIST_BYTES];
+      int length = 0;
+      while (length < bytes.length)
+      {
+        int read = stream.read(bytes, length, bytes.length - length);
+        if (read < 0)
+          break;
+        length += read;
+      }
+      BufferedReader reader = new BufferedReader(new InputStreamReader(
+          new java.io.ByteArrayInputStream(bytes, 0, length),
+          StandardCharsets.UTF_8));
       for (String line = reader.readLine(); line != null;
           line = reader.readLine())
       {
