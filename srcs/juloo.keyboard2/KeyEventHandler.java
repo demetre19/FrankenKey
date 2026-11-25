@@ -729,14 +729,10 @@ public final class KeyEventHandler
     /* Reverting a word autocorrect itself wrote and selecting a different
        suggestion is evidence AGAINST the applied pair: record the rejection
        so the correction weakens instead of re-firing forever. */
-    if (should_record && corrected_from == null
-        && manual_target_matches_snapshot(snapshot) && text.equals(snapshot.word)
-        && is_applied_correction_source(_manual_correction))
-    {
-      AppliedCorrection applied = find_applied_correction(_manual_correction);
+    AppliedCorrection applied = find_applied_correction(_manual_correction);
+    if (should_record && applied != null && !text.equals(applied.surface))
       _decoder.reject_correction(_decoder_session, applied.literal,
           applied.surface);
-    }
     SharedDecoder.CommitToken token = should_record
       ? corrected_from == null
         ? _decoder.prepare_commit(_decoder_session, key, text, null)
