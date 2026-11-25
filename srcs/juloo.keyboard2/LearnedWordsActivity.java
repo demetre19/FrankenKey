@@ -257,6 +257,16 @@ public final class LearnedWordsActivity extends Activity
           break;
         length += read;
       }
+      if (length == bytes.length && stream.read() >= 0)
+      {
+        /* Input over the cap: the final buffered line is cut off mid-word
+           and must not count as a listed entry. Drop everything after the
+           last complete line. */
+        int lastNewline = length - 1;
+        while (lastNewline >= 0 && bytes[lastNewline] != '\n')
+          lastNewline--;
+        length = lastNewline + 1;
+      }
       BufferedReader reader = new BufferedReader(new InputStreamReader(
           new java.io.ByteArrayInputStream(bytes, 0, length),
           StandardCharsets.UTF_8));
