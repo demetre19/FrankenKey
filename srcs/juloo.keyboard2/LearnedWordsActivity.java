@@ -332,13 +332,16 @@ public final class LearnedWordsActivity extends Activity
     {
       /* Remove the word's own corrections first so an adaptive target they
          solely backed is pruned with them, matching row deletion; plain
-         unlearning would leave the target learned. */
+         unlearning would leave the target learned. Correction removals
+         count on their own: a listed source that is only a correction
+         source has no word entry for unlearn_word to delete. */
       String normalized = word.toLowerCase(Locale.ROOT);
+      boolean removed = false;
       for (PersonalizationStore.CorrectionEntry entry
           : store.correction_entries())
         if (entry.source.equals(normalized) && entry.target != null)
-          store.remove_correction(entry.source, entry.target);
-      if (store.unlearn_word(word))
+          removed |= store.remove_correction(entry.source, entry.target);
+      if (store.unlearn_word(word) || removed)
         deleted++;
     }
     if (deleted == 0)
