@@ -1924,7 +1924,11 @@ public final class KeyEventHandler
       return;
     String left = before.subSequence(left_start, dot).toString();
     String dotted = left + "." + right;
+    /* Decimal and version numbers keep their dot: digit-adjacent periods are
+       never accidental sentence breaks (e.g. "5.5", "v2.0"). */
     if ("www".equalsIgnoreCase(left) || is_common_domain_suffix(right)
+        || Character.isDigit(Character.codePointBefore(before, dot))
+        || Character.isDigit(right.codePointAt(0))
         || has_url_marker_before(before, left_start)
         || !recent_sentence_has_uppercase(before, dot))
       return;

@@ -3,8 +3,10 @@ package juloo.keyboard2;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.Editable;
@@ -21,9 +23,19 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import juloo.keyboard2.suggestions.PersonalizationStore;
 
 /** Private settings surface for learned literals and correction rules. */
@@ -37,6 +49,10 @@ public final class LearnedWordsActivity extends Activity
   private static final int COLOR_SECONDARY = 0xffa8b2be;
   private static final int COLOR_SURFACE = 0xff20252b;
 
+  private static final int REQUEST_EXPORT = 1;
+  private static final int REQUEST_DELETE_LIST = 2;
+  private static final String EXPORT_FILENAME =
+    "frankenkey-learned-words.txt";
   private static final class RowItem
   {
     final String word;
@@ -106,6 +122,10 @@ public final class LearnedWordsActivity extends Activity
     _primaryAction.setOnClickListener(_view -> performPrimaryAction());
     _taughtTab.setOnClickListener(_view -> setMode(true));
     _correctionsTab.setOnClickListener(_view -> setMode(false));
+    findViewById(R.id.learned_words_export).setOnClickListener(
+        _view -> startExport());
+    findViewById(R.id.learned_words_delete_list).setOnClickListener(
+        _view -> startDeleteList());
     setupLengthFilters();
     updateModeControls();
     _addWord.setOnEditorActionListener((_view, actionId, _event) -> {
@@ -144,6 +164,141 @@ public final class LearnedWordsActivity extends Activity
     super.onResume();
     if (_adapter != null)
       refreshRows();
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode,
+      Intent data)
+  {
+    super.onActivityResult(requestCode, resultCode, data);
+    Uri uri = data == null ? null : data.getData();
+    if (resultCode != RESULT_OK || uri == null)
+      return;
+    if (requestCode == REQUEST_EXPORT)
+      exportTo(uri);
+    else if (requestCode == REQUEST_DELETE_LIST)
+      deleteListed(uri);
+  }
+
+  private void startExport()
+  {
+    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType("text/plain");
+    intent.putExtra(Intent.EXTRA_TITLE, EXPORT_FILENAME);
+    startActivityForResult(intent, REQUEST_EXPORT);
+  }
+
+  private void startDeleteList()
+  {
+    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType("*/*");
+    startActivityForResult(intent, REQUEST_DELETE_LIST);
+  }
+
+  private void exportTo(Uri uri)
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    List<String> taught = store.taught_words();
+    List<String> adaptive = store.learned_words();
+    StringBuilder text = new StringBuilder();
+    text.append("# FrankenKey learned words\n");
+    for (String word : taught)
+      text.append(word).append('\n');
+    if (!adaptive.isEmpty())
+    {
+      text.append("\n# Adaptive (correction-backed)\n");
+      for (String word : adaptive)
+        text.append(word).append('\n');
+    }
+    List<PersonalizationStore.CorrectionEntry> corrections =
+      store.correction_entries();
+    if (!corrections.isEmpty())
+    {
+      text.append("\n# Corrections (source -> target)\n");
+      for (PersonalizationStore.CorrectionEntry correction : corrections)
+        text.append(correction.source).append(" -> ")
+          .append(correction.target == null ? "" : correction.target)
+          .append('\n');
+    }
+    try (OutputStream stream = getContentResolver().openOutputStream(uri);
+         Writer out = new OutputStreamWriter(stream,
+             StandardCharsets.UTF_8))
+    {
+      out.write(text.toString());
+    }
+    catch (IOException | NullPointerException error)
+    {
+      Toast.makeText(this, R.string.learned_words_export_failed,
+          Toast.LENGTH_LONG).show();
+      return;
+    }
+    Toast.makeText(this, getString(R.string.learned_words_export_done,
+          taught.size() + adaptive.size()), Toast.LENGTH_SHORT).show();
+  }
+
+  private void deleteListed(Uri uri)
+  {
+    Set<String> listed = new LinkedHashSet<String>();
+    try (InputStream stream = getContentResolver().openInputStream(uri))
+    {
+      if (stream == null)
+        throw new IOException("missing content stream");
+      BufferedReader reader = new BufferedReader(
+          new InputStreamReader(stream, StandardCharsets.UTF_8));
+      for (String line = reader.readLine(); line != null;
+          line = reader.readLine())
+      {
+        String word = line.trim();
+        if (word.length() == 0 || word.startsWith("#"))
+          continue;
+        int arrow = word.indexOf("->");
+        if (arrow > 0)
+          word = word.substring(0, arrow).trim();
+        listed.add(word);
+      }
+    }
+    catch (IOException | NullPointerException error)
+    {
+      Toast.makeText(this, R.string.learned_words_delete_list_failed,
+          Toast.LENGTH_LONG).show();
+      return;
+    }
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    final List<String> matched = new ArrayList<String>();
+    for (String word : listed)
+      if (store.is_taught(word) || store.is_learned(word))
+        matched.add(word);
+    if (matched.isEmpty())
+    {
+      Toast.makeText(this, R.string.learned_words_delete_list_none,
+          Toast.LENGTH_SHORT).show();
+      return;
+    }
+    new AlertDialog.Builder(this)
+      .setTitle(getString(R.string.learned_words_delete_list_title,
+            matched.size()))
+      .setMessage(R.string.learned_words_delete_list_message)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.learned_words_delete_list_positive,
+          (_dialog, _which) -> applyDeleteList(matched))
+      .show();
+  }
+
+  private void applyDeleteList(List<String> matched)
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    int deleted = 0;
+    for (String word : matched)
+      if (store.unlearn_word(word))
+        deleted++;
+    if (deleted == 0)
+      return;
+    PersonalizationStore.notify_external_change(_prefs);
+    refreshRows();
+    Toast.makeText(this, getString(R.string.learned_words_delete_list_done,
+          deleted), Toast.LENGTH_SHORT).show();
   }
 
   private void performPrimaryAction()

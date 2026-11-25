@@ -61,6 +61,31 @@
         android:textAllCaps="false"/>
   </LinearLayout>
 
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="48dp"
+      android:layout_marginTop="8dp"
+      android:orientation="horizontal">
+    <Button
+        android:id="@+id/learned_words_export"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
+        android:background="@drawable/reader_icon_button"
+        android:text="@string/learned_words_export"
+        android:textAllCaps="false"/>
+    <Button
+        android:id="@+id/learned_words_delete_list"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:background="@drawable/reader_icon_button"
+        android:text="@string/learned_words_delete_list"
+        android:textAllCaps="false"/>
+  </LinearLayout>
+
   <TextView
       android:id="@+id/learned_words_scope_explanation"
       android:layout_width="match_parent"
