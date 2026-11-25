@@ -611,6 +611,94 @@ public class SuggestionPersonalizationTest
   }
 
   @Test
+  public void verified_corrections_attach_context_as_bigrams()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("good");
+    store.record_selected_correction("mornign", "morning");
+    assertEquals("A verified correction must record the context it was verified in.",
+        1, store.bigram_count("good", "morning"));
+  }
+
+  @Test
+  public void ordinary_commits_still_create_no_bigrams()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("good");
+    store.record_word("morning");
+    assertEquals(0, store.bigram_count("good", "morning"));
+  }
+
+  @Test
+  public void rejection_undoes_the_context_bigram()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    store.record_word("good");
+    store.record_correction("mornign", "morning");
+    assertEquals(1, store.bigram_count("good", "morning"));
+    store.record_correction_rejection("mornign", "morning");
+    assertEquals("Rejecting the correction must undo the bigram it recorded.",
+        0, store.bigram_count("good", "morning"));
+  }
+
+  @Test
+  public void stale_evidence_decays_while_taught_words_survive()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.record_word("good");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    store.learn_word("companion");
+    long now = System.currentTimeMillis();
+    store.decay_evidence(now);
+    assertEquals("Establishing the checkpoint must not decay existing evidence.",
+        4, store.correction_count("mornign", "morning"));
+
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    reloaded.decay_evidence(now + PersonalizationStore.DECAY_PERIOD_MILLIS + 1);
+    assertEquals("One period must halve correction evidence.",
+        2, reloaded.correction_count("mornign", "morning"));
+    assertEquals("One period must halve bigram evidence.",
+        2, reloaded.bigram_count("good", "morning"));
+    assertTrue("Taught words are explicit intent and never decay.",
+        reloaded.is_learned("companion"));
+
+    reloaded.decay_evidence(now + 2 * PersonalizationStore.DECAY_PERIOD_MILLIS + 2);
+    PersonalizationStore twice = new PersonalizationStore(_prefs);
+    assertEquals("A second period halves again.",
+        1, twice.correction_count("mornign", "morning"));
+    twice.decay_evidence(now + 3 * PersonalizationStore.DECAY_PERIOD_MILLIS + 3);
+    PersonalizationStore thrice = new PersonalizationStore(_prefs);
+    assertEquals("Evidence halved to zero must be dropped entirely.",
+        0, thrice.correction_count("mornign", "morning"));
+    assertTrue("Taught words survive repeated decay passes.",
+        thrice.is_learned("companion"));
+  }
+
+  @Test
+  public void decay_checkpoint_survives_reload_and_clear_resets_it()
+  {
+    PersonalizationStore store = new PersonalizationStore(_prefs);
+    store.record_word("good");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    store.record_correction("mornign", "morning");
+    long now = System.currentTimeMillis();
+    PersonalizationStore reloaded = new PersonalizationStore(_prefs);
+    reloaded.decay_evidence(now + PersonalizationStore.DECAY_PERIOD_MILLIS / 2);
+    assertEquals("Half a period must trigger no decay pass.",
+        4, reloaded.correction_count("mornign", "morning"));
+    assertTrue("The checkpoint must persist across reloads.",
+        _prefs.contains(PersonalizationStore.PREF_DECAY_CHECKPOINT));
+    reloaded.clear();
+    assertFalse("Clear must wipe the decay checkpoint.",
+        _prefs.contains(PersonalizationStore.PREF_DECAY_CHECKPOINT));
+  }
+
+  @Test
   public void rejected_pair_does_not_train_nearby_spellings()
   {
     PersonalizationStore store = PersonalizationStore.empty();
@@ -877,7 +965,7 @@ public class SuggestionPersonalizationTest
     store.set_replacement("agol", "goal");
 
     assertTrue(_prefs.contains(PersonalizationStore.PREF_WORDS));
-    assertFalse("The correction-only policy must not persist bigram rows.",
+    assertTrue("A correction verified in context persists that context as a bigram.",
         _prefs.contains(PersonalizationStore.PREF_BIGRAMS));
     assertTrue(_prefs.contains(PersonalizationStore.PREF_CORRECTIONS));
     assertTrue(_prefs.contains(
