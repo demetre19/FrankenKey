@@ -264,8 +264,14 @@ public final class LearnedWordsActivity extends Activity
           line = reader.readLine())
       {
         String word = line.trim();
-        while (word.length() > 0 && word.charAt(0) == '\uFEFF')
-          word = word.substring(1).trim();
+        /* Scan instead of copying: a hostile provider can front a line with
+           hundreds of thousands of BOMs, and repeated substring copies would
+           freeze the UI thread even within the byte cap. */
+        int bomEnd = 0;
+        while (bomEnd < word.length() && word.charAt(bomEnd) == '\uFEFF')
+          bomEnd++;
+        if (bomEnd > 0)
+          word = word.substring(bomEnd).trim();
         if (word.length() == 0 || word.startsWith("#"))
           continue;
         int arrow = word.indexOf("->");
