@@ -307,7 +307,94 @@ public final class PersonalizationStore
       _touch_offset_y = clamp_touch_offset(
           prefs.getFloat(PREF_TOUCH_OFFSET_Y, 0f));
     }
+    if (prefs != null)
+      _decay_checkpoint = prefs.getLong(PREF_DECAY_CHECKPOINT, 0L);
     migrate_vocabulary_policy();
+    decay_evidence(System.currentTimeMillis());
+  }
+
+  /* Periodic halving of adaptive evidence. Counts are monotonic without it,
+     so a burst of mistakes from months ago would outweigh everything typed
+     recently; halving makes the override thresholds measure sustained habits
+     instead of ancient accidents. Taught words and replacement rules are
+     explicit user intent and never decay. Package-visible and time-parameterized
+     so tests drive it deterministically. */
+  void decay_evidence(long nowMillis)
+  {
+    if (_decay_checkpoint == 0L)
+    {
+      /* Pre-decay data carries no timestamps, so its age is unknowable:
+         establish the checkpoint without retroactively halting it. */
+      _decay_checkpoint = nowMillis;
+      if (_prefs != null)
+        save();
+      return;
+    }
+    long elapsed = nowMillis - _decay_checkpoint;
+    if (elapsed < DECAY_PERIOD_MILLIS)
+      return;
+    int periods = (int)Math.min(MAX_DECAY_PERIODS_PER_PASS,
+        elapsed / DECAY_PERIOD_MILLIS);
+    for (int period = 0; period < periods; period++)
+    {
+      halve_counts(_word_counts, true);
+      halve_counts(_bigram_counts, false);
+      halve_pair_counts(_correction_counts);
+      halve_pair_counts(_correction_rejection_counts);
+      halve_contextual_counts();
+    }
+    _decay_checkpoint = nowMillis;
+    _generation++;
+    if (_prefs != null)
+      save();
+  }
+
+  private void halve_counts(Map<String, Integer> counts,
+      boolean exemptTaught)
+  {
+    java.util.Iterator<Map.Entry<String, Integer>> it =
+      counts.entrySet().iterator();
+    while (it.hasNext())
+    {
+      Map.Entry<String, Integer> entry = it.next();
+      if (exemptTaught && _taught_words.contains(entry.getKey()))
+        continue;
+      int halved = entry.getValue().intValue() / 2;
+      if (halved <= 0)
+        it.remove();
+      else
+        entry.setValue(Integer.valueOf(halved));
+    }
+  }
+
+  private void halve_pair_counts(Map<CorrectionPair, Integer> counts)
+  {
+    java.util.Iterator<Map.Entry<CorrectionPair, Integer>> it =
+      counts.entrySet().iterator();
+    while (it.hasNext())
+    {
+      Map.Entry<CorrectionPair, Integer> entry = it.next();
+      int halved = entry.getValue().intValue() / 2;
+      if (halved <= 0)
+        it.remove();
+      else
+        entry.setValue(Integer.valueOf(halved));
+    }
+  }
+
+  private void halve_contextual_counts()
+  {
+    java.util.Iterator<Map.Entry<ContextualCorrection, Integer>> it =
+      _contextual_correction_counts.entrySet().iterator();
+    while (it.hasNext())
+    {
+      Map.Entry<ContextualCorrection, Integer> entry = it.next();
+      int halved = entry.getValue().intValue() / 2;
+      if (halved <= 0)
+        it.remove();
+      else
+        entry.setValue(Integer.valueOf(halved));
+    }
   }
 
   /**
@@ -575,8 +662,11 @@ public final class PersonalizationStore
     changed |= increment_correction(new CorrectionPair(source, target));
     if (previousWord != null
         && is_plausible_contextual_correction(source, target))
+    {
       changed |= increment_contextual_correction(new ContextualCorrection(
             previousWord, source, target));
+      changed |= increment_bigram(previousWord, target);
+    }
     _prior_word = previousWord;
     _last_word = target;
     _generation++;
@@ -597,8 +687,11 @@ public final class PersonalizationStore
       changed |= increment_correction(new CorrectionPair(source, target));
     if (_last_word != null
         && is_plausible_contextual_correction(source, target))
+    {
       changed |= increment_contextual_correction(new ContextualCorrection(
             _last_word, source, target));
+      changed |= increment_bigram(_last_word, target);
+    }
     if (!changed)
       return;
     _generation++;
@@ -623,8 +716,36 @@ public final class PersonalizationStore
       return;
     _correction_rejection_counts.put(pair,
         Integer.valueOf(prev == null ? 1 : prev.intValue() + 1));
+    if (_last_word != null)
+      decrement_bigram(_last_word, target);
     _generation++;
     save();
+  }
+
+  /* Verified corrections are deliberate evidence, so the context they were
+     verified in may attach as a bigram even though ordinary consecutive-word
+     use never does. Bounded like the correction evidence it derives from. */
+  private boolean increment_bigram(String previousWord, String word)
+  {
+    if (!is_learnable(word) || !is_learnable(previousWord))
+      return false;
+    String key = previousWord + " " + word;
+    Integer existing = _bigram_counts.get(key);
+    if (existing == null && _bigram_counts.size() >= MAX_BIGRAMS)
+      return false;
+    return increment(_bigram_counts, key);
+  }
+
+  private void decrement_bigram(String previousWord, String word)
+  {
+    String key = previousWord + " " + word;
+    Integer existing = _bigram_counts.get(key);
+    if (existing == null)
+      return;
+    if (existing.intValue() <= 1)
+      _bigram_counts.remove(key);
+    else
+      _bigram_counts.put(key, Integer.valueOf(existing.intValue() - 1));
   }
 
   /* Pair-level netting subtracts reverse-direction evidence so contested
@@ -986,6 +1107,7 @@ public final class PersonalizationStore
     _touch_samples = 0;
     _touch_offset_x = 0f;
     _touch_offset_y = 0f;
+    _decay_checkpoint = 0L;
     clear(_prefs);
     if (changed)
       _generation++;
@@ -1007,6 +1129,7 @@ public final class PersonalizationStore
       .remove(PREF_TOUCH_SAMPLES)
       .remove(PREF_TOUCH_OFFSET_X)
       .remove(PREF_TOUCH_OFFSET_Y)
+      .remove(PREF_DECAY_CHECKPOINT)
       .apply();
   }
 
@@ -1388,6 +1511,8 @@ public final class PersonalizationStore
     SharedPreferences.Editor editor = _prefs.edit();
     editor.putInt(PREF_VOCABULARY_POLICY_VERSION,
         VOCABULARY_POLICY_VERSION);
+    if (_decay_checkpoint != 0L)
+      editor.putLong(PREF_DECAY_CHECKPOINT, _decay_checkpoint);
     save_counts(editor, PREF_WORDS, _word_counts);
     if (_word_surfaces.isEmpty())
       editor.remove(PREF_WORD_SURFACES);
@@ -1840,10 +1965,16 @@ public final class PersonalizationStore
   private float _touch_offset_x = 0f;
   private float _touch_offset_y = 0f;
   private long _generation = 0;
+  private long _decay_checkpoint = 0L;
 
   static final int MAX_EXACT_CORRECTION_EDITS = 2;
   static final int MAX_CONTEXTUAL_CORRECTION_EDITS = 3;
   private static final int MAX_COUNT = 10000;
+  private static final int MAX_BIGRAMS = 1024;
+  /** Adaptive evidence halves once per period when it is not reinforced;
+      taught words and replacement rules are explicit intent and exempt. */
+  static final long DECAY_PERIOD_MILLIS = 30L * 24 * 60 * 60 * 1000;
+  private static final int MAX_DECAY_PERIODS_PER_PASS = 8;
   private static final int MAX_CORRECTION_COUNT = 15;
   private static final int MAX_CORRECTION_PAIRS = 512;
   private static final int MAX_CONTEXTUAL_CORRECTIONS = 512;
@@ -1880,4 +2011,6 @@ public final class PersonalizationStore
     "typing_model_vocabulary_policy_version";
   public static final String PREF_EXTERNAL_REVISION =
     "typing_model_external_revision_v1";
+  public static final String PREF_DECAY_CHECKPOINT =
+    "typing_model_decay_checkpoint_v1";
 }
