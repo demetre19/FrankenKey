@@ -264,6 +264,8 @@ public final class LearnedWordsActivity extends Activity
           line = reader.readLine())
       {
         String word = line.trim();
+        while (word.length() > 0 && word.charAt(0) == '\uFEFF')
+          word = word.substring(1).trim();
         if (word.length() == 0 || word.startsWith("#"))
           continue;
         int arrow = word.indexOf("->");
