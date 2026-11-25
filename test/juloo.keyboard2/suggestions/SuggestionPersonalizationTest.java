@@ -490,10 +490,11 @@ public class SuggestionPersonalizationTest
 
     store.record_word("flarn");
     store.record_correction("zip", "zep");
-    assertEquals("The adaptive threshold must use exactly one verified global source-target event.",
-        1, store.correction_count("zip", "zep"));
-    assertEquals("The same completed occurrence must persist one exact previous-source-target triple.",
-        1, store.contextual_correction_count("flarn", "zip", "zep"));
+    store.record_correction("zip", "zep");
+    assertEquals("The adaptive threshold must count each verified global source-target event.",
+        2, store.correction_count("zip", "zep"));
+    assertEquals("The completed occurrences must persist the exact previous-source-target triple.",
+        2, store.contextual_correction_count("flarn", "zip", "zep"));
     assertEquals("Correction-only contextual learning must not promote a fabricated target to a global unigram.",
         0, store.word_count("zep"));
 
@@ -501,7 +502,7 @@ public class SuggestionPersonalizationTest
     reloaded.record_word("flarn");
     Decoder.Result matching =
       decode("zip", reloaded, enabledConfig(), 1001);
-    assertNotNull("One persisted exact contextual triple must be enough for fluid same-context adaptation.",
+    assertNotNull("A twice-persisted exact contextual triple must be enough for fluid same-context adaptation.",
         matching.autocorrection);
     assertEquals("zep", matching.autocorrection.canonical);
     assertTrue("The actionable target must come from exact contextual evidence.",
@@ -526,16 +527,17 @@ public class SuggestionPersonalizationTest
     PersonalizationStore store = PersonalizationStore.empty();
     store.record_word("plim");
     store.record_correction("zi", "zo");
-    assertEquals(1,
+    store.record_correction("zi", "zo");
+    assertEquals(2,
         store.contextual_correction_count("plim", "zi", "zo"));
 
     store.reset_context();
     store.record_word("plim");
     Decoder.Result result = decode("zi", store, enabledConfig(), 1003);
-    assertNotNull("A completed prior occurrence must let the same context replay a bounded two-letter correction.",
+    assertNotNull("Repeated completed occurrences must let the same context replay a bounded two-letter correction.",
         result.autocorrection);
     assertEquals("zo", result.autocorrection.canonical);
-    assertEquals(1, result.autocorrection.exactCorrectionCount);
+    assertEquals(2, result.autocorrection.exactCorrectionCount);
     assertTrue((result.autocorrection.sourceMask
           & Decoder.SOURCE_CONTEXTUAL_CORRECTION) != 0);
   }
@@ -546,11 +548,12 @@ public class SuggestionPersonalizationTest
     PersonalizationStore store = PersonalizationStore.empty();
     store.record_word("plarn");
     store.record_correction("aww", "see");
+    store.record_correction("aww", "see");
 
     assertEquals("The global pair model must remain capped at two textual edits.",
         0, store.correction_count("aww", "see"));
-    assertEquals("A verified contextual triple may retain one bounded three-edit key-mash occurrence.",
-        1, store.contextual_correction_count("plarn", "aww", "see"));
+    assertEquals("Verified contextual triples may retain bounded three-edit key-mash occurrences.",
+        2, store.contextual_correction_count("plarn", "aww", "see"));
     assertTrue(PersonalizationStore.is_plausible_contextual_correction(
           "aww", "see"));
     assertFalse("Even contextual exact evidence remains bounded and must reject four-edit rewrites.",
@@ -571,6 +574,51 @@ public class SuggestionPersonalizationTest
       decode("aww", store, enabledConfig(), 1005);
     assertNull("Three-edit contextual learning must not leak into another previous-word context.",
         unrelated.autocorrection);
+  }
+
+  @Test
+  public void rejecting_an_applied_correction_neutralizes_its_evidence()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "thys", "this", 4);
+    Decoder.Result before = decode("thys", store, enabledConfig(), 101);
+    assertNotNull("Four exact corrections must be actionable before any rejection.",
+        before.autocorrection);
+
+    store.record_correction_rejection("thys", "this");
+    store.record_correction_rejection("thys", "this");
+    assertEquals(2, store.correction_rejection_count("thys", "this"));
+    Decoder.Result after = decode("thys", store, enabledConfig(), 102);
+    Decoder.Candidate candidate = find(after, "this");
+    assertTrue("Rejections weighing twice acceptances must neutralize four accepts with two rejects.",
+        candidate == null || candidate.exactCorrectionCount == 0);
+    assertTrue("A fully rejected pair must not drive autocorrection.",
+        after.autocorrection == null
+          || !"this".equals(after.autocorrection.canonical));
+  }
+
+  @Test
+  public void one_rejection_does_not_erase_stronger_evidence()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "thys", "this", 6);
+    store.record_correction_rejection("thys", "this");
+    Decoder.Result after = decode("thys", store, enabledConfig(), 101);
+    assertNotNull("Six accepts minus one double-weighted rejection must still leave actionable evidence.",
+        after.autocorrection);
+    assertEquals("this", after.autocorrection.canonical);
+    assertEquals(4, after.autocorrection.exactCorrectionCount);
+  }
+
+  @Test
+  public void oscillating_corrections_neutralize_each_other()
+  {
+    PersonalizationStore store = PersonalizationStore.empty();
+    correction(store, "theri", "their", 4);
+    correction(store, "their", "theri", 4);
+    Decoder.Result forward = decode("theri", store, enabledConfig(), 101);
+    assertNull("Equal evidence in both directions must neutralize rather than oscillate.",
+        forward.autocorrection);
   }
 
   @Test

@@ -1342,7 +1342,10 @@ public final class Decoder
       if (acronymRepair != null)
         return present_candidate(acronymRepair, request, true);
     }
-    if (contextualExact != null)
+    /* A recognized or learned literal is never contextually rewritten: the
+       designed override path for protected literals is repeated exact
+       evidence, and a contextual triple is weaker evidence than that. */
+    if (contextualExact != null && !literal.recognized && !literal.learned)
       return present_candidate(contextualExact, request, true);
     if (repeatedExact != null)
       return present_candidate(repeatedExact, request, true);

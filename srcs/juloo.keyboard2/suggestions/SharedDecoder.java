@@ -734,6 +734,29 @@ public final class SharedDecoder implements AutoCloseable
     }
   }
 
+  /**
+   * Record that the user reverted a machine-applied correction: negative
+   * evidence against the pair, mirroring [set_replacement]'s worker path.
+   */
+  public void reject_correction(long sessionEpoch, String source,
+      String target)
+  {
+    if (source == null || target == null || source.length() == 0)
+      return;
+    synchronized (_lock)
+    {
+      if (!is_active_session_locked(sessionEpoch)
+          || !_config.useTypingAssistance || !_config.suggestionsEnabled)
+        return;
+      _personalizationEpoch++;
+      resubmit_latest_locked();
+      enqueue_control_locked(Control.rejectCorrection(sessionEpoch,
+            _resourceEpoch, _resources, _personalizationSpecEpoch,
+            _personalizationEpoch, _personalization, source, target));
+      ensure_drain_locked();
+    }
+  }
+
   public void explicitly_set_replacement(long sessionEpoch,
       PersonalizationSpec personalization, String source, String target)
   {
@@ -1727,6 +1750,10 @@ public final class SharedDecoder implements AutoCloseable
           _workerPersonalization.set_replacement(
               control.word, control.correctedFrom);
           break;
+        case REJECT_CORRECTION:
+          _workerPersonalization.record_correction_rejection(
+              control.word, control.correctedFrom);
+          break;
         case EXPLICIT_REPLACEMENT:
           new PersonalizationStore(control.personalization.preferences)
             .set_replacement(control.word, control.correctedFrom);
@@ -2025,6 +2052,7 @@ public final class SharedDecoder implements AutoCloseable
     EXPLICIT_LEARN,
     REPLACEMENT,
     EXPLICIT_REPLACEMENT,
+    REJECT_CORRECTION,
     UNLEARN,
     CLEAR,
     RESET
@@ -2106,6 +2134,17 @@ public final class SharedDecoder implements AutoCloseable
       return new Control(ControlKind.REPLACEMENT, sessionEpoch, resourceEpoch,
           resources, personalizationSpecEpoch, personalizationEpoch,
           personalization, null, source, target, false, null, null);
+    }
+
+    static Control rejectCorrection(long sessionEpoch, long resourceEpoch,
+        ResourceSpec resources, long personalizationSpecEpoch,
+        long personalizationEpoch, PersonalizationSpec personalization,
+        String source, String target)
+    {
+      return new Control(ControlKind.REJECT_CORRECTION, sessionEpoch,
+          resourceEpoch, resources, personalizationSpecEpoch,
+          personalizationEpoch, personalization, null, source, target,
+          false, null, null);
     }
 
     static Control explicitReplacement(long sessionEpoch, long resourceEpoch,

@@ -726,6 +726,17 @@ public final class KeyEventHandler
     CurrentlyTypedWord.Snapshot snapshot = _typedword.snapshot();
     String corrected_from = manual_selected_correction_source(snapshot, text);
     boolean should_record = should_use_personalization();
+    /* Reverting a word autocorrect itself wrote and selecting a different
+       suggestion is evidence AGAINST the applied pair: record the rejection
+       so the correction weakens instead of re-firing forever. */
+    if (should_record && corrected_from == null
+        && manual_target_matches_snapshot(snapshot) && text.equals(snapshot.word)
+        && is_applied_correction_source(_manual_correction))
+    {
+      AppliedCorrection applied = find_applied_correction(_manual_correction);
+      _decoder.reject_correction(_decoder_session, applied.literal,
+          applied.surface);
+    }
     SharedDecoder.CommitToken token = should_record
       ? corrected_from == null
         ? _decoder.prepare_commit(_decoder_session, key, text, null)
@@ -1337,16 +1348,21 @@ public final class KeyEventHandler
     return plausible_correction_source(source, target);
   }
 
-  private boolean is_applied_correction_source(ManualCorrection manual)
+  private AppliedCorrection find_applied_correction(ManualCorrection manual)
   {
     if (manual == null)
-      return false;
+      return null;
     for (AppliedCorrection applied : _applied_corrections)
       if (manual.connection == applied.connection
           && manual.boundaryStart == applied.boundaryStart
           && manual.source.equals(applied.surface))
-        return true;
-    return false;
+        return applied;
+    return null;
+  }
+
+  private boolean is_applied_correction_source(ManualCorrection manual)
+  {
+    return find_applied_correction(manual) != null;
   }
 
   private void note_applied_correction(String literal, String surface,
