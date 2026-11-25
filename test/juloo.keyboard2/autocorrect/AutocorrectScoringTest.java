@@ -729,10 +729,9 @@ public class AutocorrectScoringTest
     Decoder.Candidate crossProductOnly = contextualCandidate("vox", "vox",
         1, 1, false, 1, Decoder.EDIT_SUBSTITUTION);
 
-    assertEquals("One exact editor-verified previous-source-target triple may override a recognized literal in that exact context.",
-        "vox", choose(request, Arrays.asList(matchingContext,
-              recognizedLiteral), recognizedLiteral, true,
-            Decoder.Failure.NONE).canonical);
+    assertNull("A recognized literal must never be contextually rewritten: only repeated exact evidence may override protected literals.",
+        choose(request, Arrays.asList(matchingContext, recognizedLiteral),
+          recognizedLiteral, true, Decoder.Failure.NONE));
     assertNull("A global exact pair plus a separately learned previous-target bigram must not synthesize contextual evidence.",
         choose(request, Arrays.asList(crossProductOnly, recognizedLiteral),
           recognizedLiteral, true, Decoder.Failure.NONE));
@@ -744,8 +743,8 @@ public class AutocorrectScoringTest
   {
     Decoder.Request request = request("zi");
     Decoder.Candidate literal = candidate("zi", "zi",
-        Decoder.SOURCE_LITERAL | Decoder.SOURCE_CDICT_EXACT,
-        8192, 0, 0, true, false, true, Decoder.Role.WORD);
+        Decoder.SOURCE_LITERAL, 8192, 0, 0, false, false, true,
+        Decoder.Role.ENTERED_LITERAL);
     Decoder.Candidate learned = contextualCandidate("zo", "zo",
         1, 1, true, 1, Decoder.EDIT_SUBSTITUTION);
 

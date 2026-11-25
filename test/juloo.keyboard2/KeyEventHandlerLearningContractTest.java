@@ -236,6 +236,22 @@ public class KeyEventHandlerLearningContractTest
     assertCountsRemain(prefs, "them", "the", 0, 0);
     assertEquals("A word the keyboard itself wrote must never become a correction source.",
         0, wordCount(prefs, "them"));
+    awaitRejectionCount(prefs, "teh", "the", 1);
+  }
+
+  private static void awaitRejectionCount(SharedPreferences prefs,
+      String source, String target, int expected) throws Exception
+  {
+    long deadline = System.nanoTime() + 3_000_000_000L;
+    do
+    {
+      if (new PersonalizationStore(prefs)
+            .correction_rejection_count(source, target) == expected)
+        return;
+      Thread.sleep(2L);
+    }
+    while (System.nanoTime() < deadline);
+    fail("Timed out waiting for rejection count " + source + "->" + target);
   }
 
   @Test

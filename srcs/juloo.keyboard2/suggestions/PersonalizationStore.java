@@ -293,6 +293,9 @@ public final class PersonalizationStore
     _contextual_correction_counts = prefs == null
       ? new HashMap<ContextualCorrection, Integer>()
       : load_contextual_corrections();
+    _correction_rejection_counts = prefs == null
+      ? new HashMap<CorrectionPair, Integer>()
+      : load_corrections(PREF_CORRECTION_REJECTIONS);
     _replacement_rules = prefs == null ? new HashMap<String, String>()
       : load_replacement_rules();
     if (prefs != null)
@@ -460,6 +463,8 @@ public final class PersonalizationStore
       return false;
     boolean changed = _correction_counts.remove(
         new CorrectionPair(source, target)) != null;
+    changed |= _correction_rejection_counts.remove(
+        new CorrectionPair(source, target)) != null;
     List<ContextualCorrection> contextual =
       new ArrayList<ContextualCorrection>();
     for (ContextualCorrection correction
@@ -600,6 +605,49 @@ public final class PersonalizationStore
     save();
   }
 
+  /**
+   * Record that the user reverted a correction the keyboard applied itself:
+   * evidence AGAINST the pair, not for any reverse pair. A rejection weighs
+   * twice a passive acceptance when counts are netted, because undoing a
+   * correction is a deliberate act while accepting one is often inattention.
+   */
+  public void record_correction_rejection(String source, String target)
+  {
+    source = normalize(source);
+    target = normalize(target);
+    if (!is_plausible_correction(source, target))
+      return;
+    CorrectionPair pair = new CorrectionPair(source, target);
+    Integer prev = _correction_rejection_counts.get(pair);
+    if (prev != null && prev.intValue() >= MAX_CORRECTION_COUNT)
+      return;
+    _correction_rejection_counts.put(pair,
+        Integer.valueOf(prev == null ? 1 : prev.intValue() + 1));
+    _generation++;
+    save();
+  }
+
+  /* Net evidence for a pair: acceptances minus twice the rejections and
+     minus reverse-direction evidence, so contested pairs neutralize instead
+     of oscillating. */
+  private int net_correction_count(CorrectionPair pair, int count)
+  {
+    Integer rejections = _correction_rejection_counts.get(pair);
+    int net = count - 2 * (rejections == null ? 0 : rejections.intValue());
+    Integer reverse = _correction_counts.get(
+        new CorrectionPair(pair.target, pair.source));
+    if (reverse != null)
+      net -= reverse.intValue();
+    return net;
+  }
+
+  public int correction_rejection_count(String source, String target)
+  {
+    Integer count = _correction_rejection_counts.get(
+        new CorrectionPair(normalize(source), normalize(target)));
+    return count == null ? 0 : count.intValue();
+  }
+
   public boolean is_learned(String word)
   {
     word = normalize(word);
@@ -723,6 +771,9 @@ public final class PersonalizationStore
       boolean exact = pair.source.equals(source);
       if (!exact && !is_related_source(sourceCodePoints, pair, geometry))
         continue;
+      int net = net_correction_count(pair, entry.getValue());
+      if (net <= 0)
+        continue;
       MutableCorrection total = totals.get(pair.target);
       if (total == null)
       {
@@ -730,11 +781,9 @@ public final class PersonalizationStore
         totals.put(pair.target, total);
       }
       if (exact)
-        total.exactCount = saturating_count_add(total.exactCount,
-            entry.getValue());
+        total.exactCount = saturating_count_add(total.exactCount, net);
       else
-        total.relatedCount = saturating_count_add(total.relatedCount,
-            entry.getValue());
+        total.relatedCount = saturating_count_add(total.relatedCount, net);
     }
 
     TopCorrections top = new TopCorrections(Math.min(count, totals.size()));
@@ -761,9 +810,16 @@ public final class PersonalizationStore
         : _contextual_correction_counts.entrySet())
     {
       ContextualCorrection correction = entry.getKey();
-      if (correction.previous.equals(_last_word)
-          && correction.source.equals(source))
-        matches.offer(correction.target, 0, entry.getValue());
+      if (!correction.previous.equals(_last_word)
+          || !correction.source.equals(source))
+        continue;
+      /* One observation is noise: a contextual rewrite needs a net count of
+         at least two after rejections and reverse evidence. */
+      int net = net_correction_count(
+          new CorrectionPair(correction.source, correction.target),
+          entry.getValue());
+      if (net >= 2)
+        matches.offer(correction.target, 0, net);
     }
     List<ScoredWord> scored = matches.scored_words();
     List<ScoredContextualCorrection> out =
@@ -883,6 +939,7 @@ public final class PersonalizationStore
     boolean changed = !_word_counts.isEmpty() || !_word_surfaces.isEmpty()
       || !_taught_words.isEmpty() || !_bigram_counts.isEmpty()
       || !_correction_counts.isEmpty()
+      || !_correction_rejection_counts.isEmpty()
       || !_contextual_correction_counts.isEmpty()
       || !_replacement_rules.isEmpty() || _last_word != null
       || _touch_samples != 0 || has_data(_prefs);
@@ -891,6 +948,7 @@ public final class PersonalizationStore
     _taught_words.clear();
     _bigram_counts.clear();
     _correction_counts.clear();
+    _correction_rejection_counts.clear();
     _contextual_correction_counts.clear();
     _replacement_rules.clear();
     _prior_word = null;
@@ -913,6 +971,7 @@ public final class PersonalizationStore
       .remove(PREF_TAUGHT_WORDS)
       .remove(PREF_BIGRAMS)
       .remove(PREF_CORRECTIONS)
+      .remove(PREF_CORRECTION_REJECTIONS)
       .remove(PREF_CONTEXTUAL_CORRECTIONS)
       .remove(PREF_REPLACEMENTS)
       .remove(PREF_TOUCH_SAMPLES)
@@ -926,6 +985,7 @@ public final class PersonalizationStore
     return prefs != null
       && (prefs.contains(PREF_WORDS) || prefs.contains(PREF_WORD_SURFACES)
         || prefs.contains(PREF_BIGRAMS) || prefs.contains(PREF_CORRECTIONS)
+        || prefs.contains(PREF_CORRECTION_REJECTIONS)
         || prefs.contains(PREF_CONTEXTUAL_CORRECTIONS)
         || prefs.contains(PREF_REPLACEMENTS)
         || prefs.getInt(PREF_TOUCH_SAMPLES, 0) > 0);
@@ -1155,9 +1215,14 @@ public final class PersonalizationStore
 
   private Map<CorrectionPair, Integer> load_corrections()
   {
+    return load_corrections(PREF_CORRECTIONS);
+  }
+
+  private Map<CorrectionPair, Integer> load_corrections(String preference)
+  {
     Map<CorrectionPair, Integer> out =
       new HashMap<CorrectionPair, Integer>();
-    Set<String> entries = _prefs.getStringSet(PREF_CORRECTIONS, null);
+    Set<String> entries = _prefs.getStringSet(preference, null);
     if (entries == null)
       return out;
     for (String entry : entries)
@@ -1310,6 +1375,11 @@ public final class PersonalizationStore
     else
       editor.putStringSet(PREF_CORRECTIONS,
           encode_corrections(_correction_counts));
+    if (_correction_rejection_counts.isEmpty())
+      editor.remove(PREF_CORRECTION_REJECTIONS);
+    else
+      editor.putStringSet(PREF_CORRECTION_REJECTIONS,
+          encode_corrections(_correction_rejection_counts));
     if (_contextual_correction_counts.isEmpty())
       editor.remove(PREF_CONTEXTUAL_CORRECTIONS);
     else
@@ -1569,6 +1639,13 @@ public final class PersonalizationStore
         toRemove.add(pair);
     for (CorrectionPair pair : toRemove)
       changed |= _correction_counts.remove(pair) != null;
+    List<CorrectionPair> rejectionsToRemove =
+      new ArrayList<CorrectionPair>();
+    for (CorrectionPair pair : _correction_rejection_counts.keySet())
+      if (pair.source.equals(word) || pair.target.equals(word))
+        rejectionsToRemove.add(pair);
+    for (CorrectionPair pair : rejectionsToRemove)
+      changed |= _correction_rejection_counts.remove(pair) != null;
     return changed;
   }
 
@@ -1723,6 +1800,7 @@ public final class PersonalizationStore
   private final Set<String> _taught_words;
   private final Map<String, Integer> _bigram_counts;
   private final Map<CorrectionPair, Integer> _correction_counts;
+  private final Map<CorrectionPair, Integer> _correction_rejection_counts;
   private final Map<ContextualCorrection, Integer>
     _contextual_correction_counts;
   private final Map<String, String> _replacement_rules;
@@ -1758,6 +1836,8 @@ public final class PersonalizationStore
     "typing_model_corrections_v1";
   public static final String PREF_CONTEXTUAL_CORRECTIONS =
     "typing_model_contextual_corrections_v1";
+  public static final String PREF_CORRECTION_REJECTIONS =
+    "typing_model_correction_rejections_v1";
   public static final String PREF_REPLACEMENTS =
     "typing_model_replacements_v1";
   public static final String PREF_TOUCH_SAMPLES =
