@@ -3,9 +3,14 @@
 This file summarizes the 10 most recent major user-visible changes. For downloadable builds and complete release notes, see [GitHub Releases](https://github.com/demetre19/FrankenKey/releases).
 
 
-## 2.0.218 — version code 10218 — 2026-10-22
 
-- Republished the verified 2.0.217 build as the current installable release. Same feature set — right-swipe suggestion accept, next-word predictions, frequency-ranked autocorrect with built-in contractions, contact email suggestions, first-letter tap fix, Learned Words manager — confirmed byte-for-byte against the tested phone candidate.
+## 2.0.219 — version code 10219 — 2026-11-26
+
+- **Fixed inverted autocorrect learning:** undoing an autocorrect no longer teaches the misspelling you rejected, and typing the same unusual word several times in a row no longer silently adds it to your vocabulary — it goes through the Keep word / Use best / Replace review instead. This is what was polluting learned words with typos.
+- **Numbers keep their dots:** typing decimals and versions like `5.5` or `v2.0` no longer loses the period — the accidental-period repair that split `opus 5.5` into `opus 5 5` now leaves digit-adjacent periods alone.
+- **Learned words export and bulk cleanup:** the Learned Words screen gains an Export button (writes your taught words, adaptive words, and correction rules to a text file) and a Delete list button (pick a text file of words to forget — one per line — confirm, and they're all unlearned in one pass, including their correction history). Long-accumulated junk vocabulary no longer needs hundreds of manual deletes.
+- **Next-word learning grows up:** context pairs learn again, stale predictions time-decay instead of calcifying, and rejecting a correction now unwinds the evidence that produced it — so the keyboard stops insisting on completions you keep undoing.
+- **Autocorrect available in every non-secret text field:** suggestions now appear even in fields that opt out of spell-checking (search boxes, filters, voice input), while structured email and URL fields get suggestions but no automatic rewriting of what you typed.
 
 
 ## 2.0.217 — version code 10217 — 2026-10-12
@@ -19,10 +24,6 @@ This file summarizes the 10 most recent major user-visible changes. For download
 - **Instant learn/unlearn gestures:** swipe up on an unknown suggestion to learn it and swipe down on a learned word to unlearn — no dialog, no keyboard flicker.
 - **Snappier, more disciplined suggestions:** the strip stays hidden while you type when nothing worth suggesting exists, empty placeholder categories no longer inflate, and ordinary commits no longer learn words silently.
 
-
-## 2.0.199 — version code 10199 — 2026-10-10
-
-- Learning words finally works: swipe **up** on an unknown suggestion and it's learned instantly — no dialog, no keyboard flicker. The review modal used to steal IME focus, which hid the keyboard and made its Learn button a dead tap; the gesture itself is now the confirmation. Swipe **down** on a learned word to unlearn the same way. The confirm dialog remains for the automatic repeated-unknown-word review, and its buttons work now too.
 
 ## 2.0.198 — version code 10198 — 2026-10-10
 

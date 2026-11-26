@@ -65,7 +65,7 @@ Vocabulary enters FrankenKey only when:
 - You swipe **up** from a letter key on an unknown suggestion — learned instantly, no dialog.
 - You go back into a word, edit/delete part of it, then choose the intended variation from Suggestions.
 
-Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal three times in one safe editor session learns it directly; the bounded counter stays in memory and disappears when the editor session ends.
+Ordinary typing, automatic autocorrection, and consecutive words never teach vocabulary. Repeating the same exact unknown literal several times in one safe editor session asks once through the Keep word / Use best / Replace review — it never learns silently. Undoing an autocorrect never teaches the spelling you rejected.
 
 You stay in control:
 
@@ -73,6 +73,7 @@ You stay in control:
 - Swipe **up** on an unknown suggestion to learn it instantly; swipe **down** on a learned word to unlearn it — no dialog, no keyboard flicker.
 - Use **Learned words > Corrections** to see, search, edit, or delete exact `source → replacement` rules and `source → Best suggestion` decisions.
 - Convert an accidentally taught word into a correction directly from its Taught words row.
+- Use **Export** on the Learned words screen to write your taught words, adaptive words, and correction rules to a text file, and **Delete list** to bulk-forget every word listed in a text file (one per line) after a confirmation — useful for one-time cleanup of long-accumulated vocabulary.
 - Exact user-authored replacements take precedence even when the source and intended word are unrelated. Adaptive correction evidence still helps immediately; correcting the same typo to the same intended suggestion four times makes that learned pair the strongest recall, including supported corrections up to two textual edits.
 - Use **Clear adaptive accuracy** in Settings to remove taught words, correction patterns and rules, and touch calibration.
 
@@ -345,9 +346,9 @@ Current signed repository APK:
 
 ```text
 Package: dev.frankenkey.keyboard
-Version: 2.0.218
-Version code: 10218
-SHA-256: 3790792193e7c3781e03df7a9268d1143a18080c955b0d77f920dd4ce0b07c26
+Version: 2.0.219
+Version code: 10219
+SHA-256: 1318f76a5375831a22c446e31bc2d8184e6fd70a0afc8d4567920c1733379215
 Signing certificate SHA-256: 9fdb36334eb40c87d174a2dca1f5efa26e7e7cf52b0f63aac2ac1d507d4376d9
 ```
 
