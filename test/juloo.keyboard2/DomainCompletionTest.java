@@ -159,6 +159,7 @@ public class DomainCompletionTest
     config.autocorrect_enabled = true;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = true;
+    config.editor_config.should_autocorrect_words = true;
     config.editor_config.initial_text_before_cursor = text;
     config.editor_config.initial_text_after_cursor = "";
     config.editor_config.initial_sel_start = text.length();

@@ -287,6 +287,7 @@ public class FleksyLearningGestureTest
     config.autocorrect_enabled = false;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
+    config.editor_config.should_autocorrect_words = safeEditor;
     config.editor_config.should_allow_explicit_teaching = safeEditor;
     config.editor_config.initial_text_before_cursor = word;
     config.editor_config.initial_text_after_cursor = "";

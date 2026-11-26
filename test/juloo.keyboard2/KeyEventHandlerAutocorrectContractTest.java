@@ -1525,6 +1525,7 @@ public class KeyEventHandlerAutocorrectContractTest
     config.editor_config.caps_initially_updated = false;
     config.editor_config.should_show_candidates_view = true;
     config.editor_config.should_use_typing_assistance = safeEditor;
+    config.editor_config.should_autocorrect_words = safeEditor;
     config.editor_config.should_use_personalization = !termux;
     config.editor_config.should_use_sentence_assistance = safeEditor && !termux;
     config.editor_config.initial_text_before_cursor = text;

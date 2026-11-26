@@ -45,6 +45,9 @@ public final class EditorConfig
   public boolean should_show_snippet_row;
   /** Whether autocorrect and local learning are safe for this editor. */
   public boolean should_use_typing_assistance;
+  /** Whether typing a separator may rewrite the word under the cursor.
+      Structured email/URI editors get suggestions but no automatic rewrite. */
+  public boolean should_autocorrect_words;
   /** Whether sentence-level grammar and voice assistance fit this editor. */
   public boolean should_use_sentence_assistance;
   /** Whether suggestions may read or write persistent learned words. */
@@ -115,6 +118,8 @@ public final class EditorConfig
     boolean terminal_editor =
       is_termux_raw_editor(info) || is_herdr_terminal_editor(info);
     should_use_typing_assistance = should_use_typing_assistance(info);
+    should_autocorrect_words = should_use_typing_assistance
+      && !is_structured_text_editor(info);
     should_use_sentence_assistance = should_use_typing_assistance
       && !terminal_editor && !is_structured_text_editor(info);
     should_show_candidates_view = should_use_typing_assistance;
@@ -160,23 +165,18 @@ public final class EditorConfig
         || (info.inputType & InputType.TYPE_MASK_CLASS)
           != InputType.TYPE_CLASS_TEXT)
       return false;
+    /* Every text variation that does not hold a secret gets correction.
+       Denylisting matters: browsers and web apps still send legacy or
+       app-specific variations (e.g. the removed public constant
+       WEB_TEXT_AREA = 0xf0) that an allowlist would silently miss. */
     switch (info.inputType & InputType.TYPE_MASK_VARIATION)
     {
-      case InputType.TYPE_TEXT_VARIATION_NORMAL:
-      case InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE:
-      case InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE:
-      case InputType.TYPE_TEXT_VARIATION_PERSON_NAME:
-      case InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS:
-      case InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT:
-      case InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT:
-      case InputType.TYPE_TEXT_VARIATION_FILTER:
-      case InputType.TYPE_TEXT_VARIATION_PHONETIC:
-      case InputType.TYPE_TEXT_VARIATION_URI:
-      case InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
-      case InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
-        return true;
-      default:
+      case InputType.TYPE_TEXT_VARIATION_PASSWORD:
+      case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
+      case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
         return false;
+      default:
+        return true;
     }
   }
 

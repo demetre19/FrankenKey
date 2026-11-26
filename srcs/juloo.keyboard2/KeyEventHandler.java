@@ -2776,7 +2776,7 @@ public final class KeyEventHandler
   {
     return _autocorrect_enabled
       && _config != null
-      && _config.editor_config.should_use_typing_assistance
+      && _config.editor_config.should_autocorrect_words
       && !_typedword.is_selection_not_empty()
       && _typedword.cursor_relative() == 0;
   }

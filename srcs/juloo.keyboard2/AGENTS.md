@@ -11,7 +11,7 @@
 ## Local Contracts
 
 - Preserve clean/dense modes and local/private user data. Migrate callsites cleanly; no compatibility shims.
-- Suggestions/autocorrect use one async session decoder with atomic request/layout/resource/privacy identity. Enable for non-secret text (including search/URI/email/web) despite no-suggestions flags; exclude passwords/numeric/phone/unknown. Structured/terminal fields remain stateless.
+- Suggestions/autocorrect use one async session decoder with atomic request/layout/resource/privacy identity. Enable for every non-secret text field (normal, long/short message, names, postal, email subjects, web edit text and web textareas, filter/search, phonetic, voice input, URI and email addresses) despite no-suggestions flags; exclude passwords/numeric/phone/unknown-TYPE_NULL. Structured email/URI fields show suggestions but never auto-rewrite the typed word (`should_autocorrect_words`); terminal and structured fields remain stateless.
 - Grammar and multimodal voice are explicit opt-ins with bounded exact requests, revalidation, Android-service disclosure, safe command grammar, and fail-closed destructive actions. Grammar submits only the latest completed sentence after `.`, `!`, or `?`.
 - Paste/delete holds use independent intervals; repeated holds emit no release action. Backspace repeats letters, then supports reversible word/sentence selection; release deletes exactly the preview.
 - Termux `TYPE_NULL` uses raw DEL/local replacement and no persistence/grammar/voice. Herdr uses only `deleteSurroundingText(1,0)`. Normal editors verify mutation before DEL fallback to prevent double deletion.

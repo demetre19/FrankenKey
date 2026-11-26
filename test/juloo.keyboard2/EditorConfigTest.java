@@ -53,6 +53,8 @@ public class EditorConfigTest
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_FILTER,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PHONETIC,
+      InputType.TYPE_CLASS_TEXT | 0x000000f0, // legacy WEB_TEXT_AREA removed from API
+      InputType.TYPE_CLASS_TEXT | 0x000000d0, // app-specific hidden variation
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI,
       InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
@@ -113,6 +115,8 @@ public class EditorConfigTest
           config.should_show_candidates_view);
       assertTrue("URL and address fields must run autocorrect like SwiftKey.",
           config.should_use_typing_assistance);
+      assertFalse("Email and URL fields must never rewrite the typed text automatically.",
+          config.should_autocorrect_words);
       assertFalse("URLs and email addresses must not enter persistent adaptive learning.",
           config.should_use_personalization);
       assertFalse("Structured address text must not be explicitly taught.",
@@ -195,12 +199,33 @@ public class EditorConfigTest
         config.should_show_candidates_view);
     assertTrue("Herdr terminals must keep local correction.",
         config.should_use_typing_assistance);
-    assertFalse("Terminal text may include hidden passwords and must never use persistent personalization.",
-        config.should_use_personalization);
+    assertTrue("Terminals keep separator autocorrect; only email/URI fields lose it.",
+        config.should_autocorrect_words);
     assertFalse("Write-only terminal editors cannot safely run sentence grammar or multimodal voice.",
         config.should_use_sentence_assistance);
     assertTrue("Herdr behavior must remain scoped to its exact terminal EditorInfo contract.",
         EditorConfig.is_herdr_terminal_editor(herdr));
+  }
+
+  @Test
+  public void web_text_area_and_voice_input_get_suggestions_and_autocorrect()
+  {
+    int[] webInputTypes = {
+      InputType.TYPE_CLASS_TEXT | 0x000000f0, // legacy WEB_TEXT_AREA removed from API
+      InputType.TYPE_CLASS_TEXT | 0x000000f0 | InputType.TYPE_TEXT_FLAG_MULTI_LINE,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT,
+      InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE,
+    };
+    for (int inputType : webInputTypes)
+    {
+      EditorConfig config = new EditorConfig();
+      config.refresh(editor(inputType), null);
+
+      assertTrue("Browser and web-app textareas must show suggestions: " + inputType,
+          config.should_show_candidates_view);
+      assertTrue("Browser and web-app textareas must run autocorrect: " + inputType,
+          config.should_autocorrect_words);
+    }
   }
 
   @Test
